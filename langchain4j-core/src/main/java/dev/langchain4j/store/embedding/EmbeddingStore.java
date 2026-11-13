@@ -175,6 +175,9 @@ public interface EmbeddingStore<Embedded> {
      * <p>
      * An implementation that honors cancellation should abort its in-flight query when the returned future is
      * cancelled (best-effort).
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param request A request to search in an {@link EmbeddingStore}. Contains all search criteria.
      * @return a {@link CompletableFuture} of the {@link EmbeddingSearchResult}.

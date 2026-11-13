@@ -3,6 +3,7 @@ package dev.langchain4j.guardrail;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.message.ChatMessage;
@@ -53,6 +54,9 @@ public interface ChatExecutor {
      * call the model without blocking (via the async/reactive model APIs). Used by output-guardrail reprompts on the
      * non-blocking AI Service paths. Consistent with {@code ChatModel#doChatAsync} and the other async defaults, a
      * blocking executor is not silently run on the calling thread.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @return a {@link CompletableFuture} that completes with the response
      * @since 1.20.0
@@ -69,6 +73,9 @@ public interface ChatExecutor {
      * call the model without blocking (via the async/reactive model APIs). Used by output-guardrail reprompts on the
      * non-blocking AI Service paths. Consistent with {@code ChatModel#doChatAsync} and the other async defaults, a
      * blocking executor is not silently run on the calling thread.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param chatMessages The chat messages containing the context of the conversation.
      * @return a {@link CompletableFuture} that completes with the response
@@ -102,6 +109,9 @@ public interface ChatExecutor {
      * <p>
      * The default implementation calls {@link #executeAsync(List)} and returns {@code null} as the request, because
      * the request that the executor sent is not known.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param chatMessages The chat messages containing the context of the conversation.
      * @return a {@link CompletableFuture} that completes with the request and the response
@@ -109,11 +119,7 @@ public interface ChatExecutor {
      */
     @Experimental
     default CompletableFuture<ChatExchange> exchangeAsync(List<ChatMessage> chatMessages) {
-        try {
-            return ChatExchanges.exchangeAsync(null, executeAsync(chatMessages));
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        return failOnThrow(() -> ChatExchanges.exchangeAsync(null, executeAsync(chatMessages)));
     }
 
     /**
@@ -245,6 +251,10 @@ public interface ChatExecutor {
 
         /**
          * Sets a custom error handler to manage exceptions or errors that occur during the execution.
+         * <p>
+         * The error handler is called first; then {@link ChatExecutor#execute()} fails with the same error, and the
+         * future returned by {@link ChatExecutor#executeAsync()} completes exceptionally with it. So a caller that also
+         * handles the thrown error or the failed future sees the error twice.
          *
          * @param errorHandler a {@link Consumer} of {@link Throwable} that processes the error
          * @return the current {@link StreamingToSynchronousBuilder} instance for method chaining

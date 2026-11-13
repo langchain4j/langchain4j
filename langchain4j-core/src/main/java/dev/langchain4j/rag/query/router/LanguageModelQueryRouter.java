@@ -1,5 +1,7 @@
 package dev.langchain4j.rag.query.router;
 
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -12,6 +14,7 @@ import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -42,6 +45,12 @@ import java.util.concurrent.CompletionException;
  * <br>
  * - {@link #fallbackStrategy}: The strategy applied if the call to the LLM fails of if LLM does not return a valid response.
  * Please check {@link FallbackStrategy} for more details. Default value: {@link FallbackStrategy#DO_NOT_ROUTE}
+ * <br>
+ * <br>
+ * On the asynchronous path ({@link #routeAsync(Query)}), a chat model without native asynchronous support makes
+ * routing fail with an {@link AsyncNotSupportedException} instead of applying the fallback strategy. To use such a
+ * chat model there, set {@code offloadBlocking(true)} on the {@code DefaultRetrievalAugmentor}: it then routes with
+ * {@link #route(Query)} on another thread.
  *
  * @see DefaultQueryRouter
  */
@@ -111,9 +120,17 @@ public class LanguageModelQueryRouter implements QueryRouter {
 
     @Override
     public CompletableFuture<Collection<ContentRetriever>> routeAsync(Query query) {
-        Prompt prompt = createPrompt(query);
-        CompletableFuture<ChatResponse> chatFuture =
-                chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build());
+        Prompt prompt;
+        try {
+            prompt = createPrompt(query);
+        } catch (Throwable e) {
+            restoreInterruptIfInterrupted(e);
+            return CompletableFuture.failedFuture(e);
+        }
+        CompletableFuture<ChatResponse> chatFuture = failOnThrow(
+                chatModel,
+                "chatAsync(ChatRequest)",
+                () -> chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build()));
         CompletableFuture<Collection<ContentRetriever>> result = chatFuture
                 .thenApply(response -> parse(response.aiMessage().text()))
                 // Mirror route()'s `catch (Exception)`: a failed LLM call or an unparseable response applies the
@@ -121,7 +138,10 @@ public class LanguageModelQueryRouter implements QueryRouter {
                 // propagate it - and an Error (like sync's `catch (Exception)`) is not caught either.
                 .exceptionally(error -> {
                     Throwable cause = unwrapCompletionException(error);
-                    if (cause instanceof Exception e && !(cause instanceof CancellationException)) {
+                    // AsyncNotSupportedException is propagated, so that the caller can call route() instead
+                    if (cause instanceof Exception e
+                            && !(cause instanceof CancellationException)
+                            && !(cause instanceof AsyncNotSupportedException)) {
                         return fallback(query, e);
                     }
                     throw cause instanceof RuntimeException re ? re : new CompletionException(cause);
@@ -173,6 +193,9 @@ public class LanguageModelQueryRouter implements QueryRouter {
     /**
      * Strategy applied if the call to the LLM fails of if LLM does not return a valid response.
      * It could be because it was formatted improperly, or it is unclear where to route.
+     * <p>
+     * It is not applied when {@link #routeAsync(Query)} fails because the chat model has no native asynchronous
+     * support: see {@link LanguageModelQueryRouter}.
      */
     public enum FallbackStrategy {
 

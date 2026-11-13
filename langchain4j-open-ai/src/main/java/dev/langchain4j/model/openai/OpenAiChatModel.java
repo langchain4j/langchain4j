@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
@@ -177,21 +178,22 @@ public class OpenAiChatModel implements ChatModel {
 
     @Override
     public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
+        return failOnThrow(() -> {
+            OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
+            validate(parameters);
 
-        OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
-        validate(parameters);
+            ChatCompletionRequest openAiRequest = toOpenAiChatRequest(
+                            chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
+                    .build();
 
-        ChatCompletionRequest openAiRequest = toOpenAiChatRequest(
-                        chatRequest, parameters, sendThinking, thinkingFieldName, strictTools, strictJsonSchema)
-                .build();
+            CompletableFuture<ParsedAndRawResponse<ChatCompletionResponse>> rawFuture = withRetryMappingExceptionsAsync(
+                    () -> client.chatCompletion(openAiRequest).executeRawAsync(), maxRetries);
 
-        CompletableFuture<ParsedAndRawResponse<ChatCompletionResponse>> rawFuture = withRetryMappingExceptionsAsync(
-                () -> client.chatCompletion(openAiRequest).executeRawAsync(), maxRetries);
+            CompletableFuture<ChatResponse> result = rawFuture.thenApply(this::toChatResponse);
 
-        CompletableFuture<ChatResponse> result = rawFuture.thenApply(this::toChatResponse);
-
-        propagateCancellation(result, rawFuture);
-        return result;
+            propagateCancellation(result, rawFuture);
+            return result;
+        });
     }
 
     private ChatResponse toChatResponse(ParsedAndRawResponse<ChatCompletionResponse> parsedAndRawResponse) {

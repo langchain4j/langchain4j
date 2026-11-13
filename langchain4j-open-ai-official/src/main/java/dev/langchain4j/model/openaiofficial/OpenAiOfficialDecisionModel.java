@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.copy;
@@ -95,16 +96,18 @@ public class OpenAiOfficialDecisionModel implements DecisionModel {
 
     @Override
     public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
-        DecisionCreateParams params = toDecisionCreateParams(request);
-        CompletableFuture<Decision> decision = client.async().decisions().create(params);
-        CompletableFuture<DecisionResponse> result = decision.handle((response, error) -> {
-            if (error != null) {
-                throw OpenAiOfficialExceptionMapper.INSTANCE.mapException(unwrapCompletionException(error));
-            }
-            return toDecisionResponse(response, request);
+        return failOnThrow(() -> {
+            DecisionCreateParams params = toDecisionCreateParams(request);
+            CompletableFuture<Decision> decision = client.async().decisions().create(params);
+            CompletableFuture<DecisionResponse> result = decision.handle((response, error) -> {
+                if (error != null) {
+                    throw OpenAiOfficialExceptionMapper.INSTANCE.mapException(unwrapCompletionException(error));
+                }
+                return toDecisionResponse(response, request);
+            });
+            propagateCancellation(result, decision);
+            return result;
         });
-        propagateCancellation(result, decision);
-        return result;
     }
 
     @Override

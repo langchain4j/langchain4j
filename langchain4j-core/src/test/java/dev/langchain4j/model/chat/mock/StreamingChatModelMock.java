@@ -194,8 +194,9 @@ public class StreamingChatModelMock implements StreamingChatModel {
     }
 
     /**
-     * Throws the exception of this mock from {@code chat(ChatRequest, StreamingChatResponseHandler)} itself, as some
-     * providers do when a request cannot be sent, instead of passing it to the handler. The {@code Publisher}-based
+     * Throws the exception of this mock from {@code doChat(ChatRequest, StreamingChatResponseHandler)}, as some
+     * providers do when a request cannot be sent, instead of passing it to the handler.
+     * {@code chat(ChatRequest, StreamingChatResponseHandler)} then reports it to the handler's {@code onError}. The {@code Publisher}-based
      * {@code chat(ChatRequest)} then fails with an {@link IllegalStateException}, as this option does not apply to it.
      *
      * @deprecated has no replacement: {@link MockStreamingChatModel} reports every failure with {@code onError}, like

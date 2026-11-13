@@ -431,4 +431,26 @@ class ScoringModelListenerTest {
         // then
         assertThat(first.responseContext.attributes()).containsEntry("seen-by-second", "12345");
     }
+
+    @Test
+    void scoreAsync_should_return_failed_future_and_notify_listeners_once_when_doScoreAsync_throws_an_error() {
+
+        // given
+        RecordingListener listener = new RecordingListener();
+        NoClassDefFoundError error = new NoClassDefFoundError("MissingOptionalDependency");
+        ScoringModel model = ScoringModelMock.thatAlwaysScores(0.5)
+                .withAsyncResult(() -> {
+                    throw error;
+                })
+                .withListeners(listener);
+
+        // when
+        CompletableFuture<ScoringResponse> future = model.scoreAsync(
+                ScoringRequest.builder().documents(List.of("a")).query("query").build());
+
+        // then
+        assertThat(future).failsWithin(5, SECONDS).withThrowableThat().havingCause().isSameAs(error);
+        assertThat(listener.events).containsExactly("onRequest", "onError");
+        assertThat(listener.errorContext.error()).isSameAs(error);
+    }
 }

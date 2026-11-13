@@ -10,6 +10,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.service.tool.ToolExecutionResult;
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -127,5 +128,35 @@ class McpToolExecutorTest {
 
         assertThat(clientFuture).isCancelled();
         assertThatThrownBy(executorFuture::join).isInstanceOf(CancellationException.class);
+    }
+
+    @Test
+    void should_return_a_failed_future_when_the_client_throws_synchronously() {
+        McpClient mcpClient = mock(McpClient.class);
+        IllegalStateException failure = new IllegalStateException("closed");
+        when(mcpClient.executeToolAsync(any(), any())).thenThrow(failure);
+        McpToolExecutor executor = new McpToolExecutor(mcpClient);
+
+        CompletableFuture<ToolExecutionResult> future = executor.executeAsync(
+                ToolExecutionRequest.builder().name("tool").arguments("{}").build(), null);
+
+        assertThat(future).failsWithin(Duration.ofSeconds(5)).withThrowableThat().havingCause().isSameAs(failure);
+    }
+
+    @Test
+    void should_return_a_failed_future_when_the_client_returns_null() {
+        McpClient mcpClient = mock(McpClient.class);
+        when(mcpClient.executeToolAsync(any(), any())).thenReturn(null);
+        McpToolExecutor executor = new McpToolExecutor(mcpClient);
+
+        CompletableFuture<ToolExecutionResult> future = executor.executeAsync(
+                ToolExecutionRequest.builder().name("tool").arguments("{}").build(), null);
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(IllegalStateException.class)
+                .withMessageContaining("executeToolAsync(ToolExecutionRequest, InvocationContext) returned null");
     }
 }

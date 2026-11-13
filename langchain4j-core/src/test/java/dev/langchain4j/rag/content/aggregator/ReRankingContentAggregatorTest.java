@@ -18,17 +18,20 @@ import static org.mockito.Mockito.when;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
+import dev.langchain4j.model.scoring.mock.ScoringModelMock;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.query.Query;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -128,6 +131,26 @@ class ReRankingContentAggregatorTest {
                 .hasMessage("The 'queryToContents' contains 2 queries, making the re-ranking ambiguous. "
                         + "Because there are multiple queries, it is unclear which one should be used for re-ranking. "
                         + "Please provide a 'querySelector' in the constructor/builder.");
+    }
+
+    @Test
+    void aggregateAsync_should_return_failed_future_when_multiple_queries_with_default_query_selector() {
+
+        // given
+        Map<Query, Collection<List<Content>>> queryToContents = new HashMap<>();
+        queryToContents.put(Query.from("query 1"), null);
+        queryToContents.put(Query.from("query 2"), null);
+
+        ScoringModelMock scoringModel = new ScoringModelMock(text -> 0.5);
+        ContentAggregator aggregator = new ReRankingContentAggregator(scoringModel);
+
+        // when-then
+        assertThat(aggregator.aggregateAsync(queryToContents))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .withMessageContaining("making the re-ranking ambiguous");
     }
 
     @Test

@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.logIgnoredError;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
@@ -64,7 +65,8 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
         private static final Logger LOG = LoggerFactory.getLogger(StreamingToSyncResponseHandler.class);
         private final Consumer<Throwable> errorHandler;
         private final CountDownLatch latch = new CountDownLatch(1);
-        private AtomicReference<ChatResponse> response = new AtomicReference<>();
+        private final AtomicReference<ChatResponse> response = new AtomicReference<>();
+        private final AtomicReference<Throwable> error = new AtomicReference<>();
 
         StreamingToSyncResponseHandler(Consumer<Throwable> errorHandler) {
             this.errorHandler = errorHandler;
@@ -87,20 +89,41 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
 
         ChatResponse getResponse() {
             waitForCompletion();
+            ChatResponse completeResponse = this.response.get();
+            if (completeResponse != null) {
+                return completeResponse; // an error reported after the complete response does not fail the request
+            }
+            Throwable failure = this.error.get();
+            if (failure != null) {
+                // like the asynchronous execution, whose future fails after the error handler was called
+                if (failure instanceof RuntimeException runtimeException) {
+                    throw runtimeException;
+                }
+                if (failure instanceof Error e) {
+                    throw e;
+                }
+                throw new RuntimeException(failure);
+            }
             return this.response.get();
         }
 
         @Override
         public void onError(Throwable error) {
-            if (errorHandler != null) {
-                try {
-                    errorHandler.accept(error);
-                } catch (Exception e) {
-                    LOG.error("While handling the following error...", error);
-                    LOG.error("...the following error happened", e);
+            try {
+                if (errorHandler != null) {
+                    try {
+                        errorHandler.accept(error);
+                    } catch (Exception e) {
+                        LOG.error("While handling the following error...", error);
+                        LOG.error("...the following error happened", e);
+                    }
                 }
-            } else {
-                LOG.warn("Ignored error", error);
+            } finally {
+                boolean first = response.get() == null && this.error.compareAndSet(null, error);
+                if (!first && errorHandler == null) {
+                    logIgnoredError(error); // nobody else sees this error: the request already has its outcome
+                }
+                this.latch.countDown();
             }
         }
     }

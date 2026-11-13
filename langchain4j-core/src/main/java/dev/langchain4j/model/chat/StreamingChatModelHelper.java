@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat;
 
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import dev.langchain4j.Internal;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -38,7 +39,7 @@ public final class StreamingChatModelHelper {
     public static CompletableFuture<ChatResponse> chatAsync(
             StreamingChatModel streamingChatModel, ChatRequest request, Consumer<Throwable> errorHandler) {
         CompletableFuture<ChatResponse> future = new CompletableFuture<>();
-        streamingChatModel.chat(request).subscribe(new Flow.Subscriber<>() {
+        Flow.Subscriber<ChatModelStreamingEvent> subscriber = new Flow.Subscriber<>() {
 
             private ChatResponse response;
 
@@ -81,7 +82,13 @@ public final class StreamingChatModelHelper {
                             "The streaming model completed without emitting a CompleteResponse"));
                 }
             }
-        });
+        };
+        try {
+            streamingChatModel.chat(request).subscribe(subscriber);
+        } catch (Throwable e) {
+            restoreInterruptIfInterrupted(e);
+            future.completeExceptionally(e);
+        }
         return future;
     }
 }

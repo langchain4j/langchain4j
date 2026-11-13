@@ -1,6 +1,7 @@
 package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolNameFrom;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Exceptions.unwrapRuntimeException;
 import static dev.langchain4j.internal.Utils.allConcreteMethods;
@@ -167,6 +168,11 @@ public class DefaultToolExecutor implements ToolExecutor {
      */
     @Override
     public CompletableFuture<ToolExecutionResult> executeAsync(
+            ToolExecutionRequest request, InvocationContext context) {
+        return failOnThrow(() -> doExecuteAsync(request, context));
+    }
+
+    private CompletableFuture<ToolExecutionResult> doExecuteAsync(
             ToolExecutionRequest request, InvocationContext context) {
         Object[] arguments = prepareArguments(request, context);
 

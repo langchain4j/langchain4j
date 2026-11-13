@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.content.aggregator;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -119,40 +120,42 @@ public class ReRankingContentAggregator implements ContentAggregator {
 
     @Override
     public CompletableFuture<List<Content>> aggregateAsync(Map<Query, Collection<List<Content>>> queryToContents) {
+        return failOnThrow(() -> {
+            if (queryToContents.isEmpty()) {
+                return CompletableFuture.completedFuture(emptyList());
+            }
 
-        if (queryToContents.isEmpty()) {
-            return CompletableFuture.completedFuture(emptyList());
-        }
+            // Select a query against which all contents will be re-ranked
+            Query query = querySelector.apply(queryToContents);
 
-        // Select a query against which all contents will be re-ranked
-        Query query = querySelector.apply(queryToContents);
+            // For each query, fuse all contents retrieved from different sources using that query
+            Map<Query, List<Content>> queryToFusedContents = fuse(queryToContents);
 
-        // For each query, fuse all contents retrieved from different sources using that query
-        Map<Query, List<Content>> queryToFusedContents = fuse(queryToContents);
+            // Fuse all contents retrieved using all queries
+            List<Content> fusedContents = ReciprocalRankFuser.fuse(queryToFusedContents.values());
 
-        // Fuse all contents retrieved using all queries
-        List<Content> fusedContents = ReciprocalRankFuser.fuse(queryToFusedContents.values());
+            if (fusedContents.isEmpty()) {
+                return CompletableFuture.completedFuture(fusedContents);
+            }
 
-        if (fusedContents.isEmpty()) {
-            return CompletableFuture.completedFuture(fusedContents);
-        }
+            // Re-rank all the fused contents against the query selected by the query selector.
+            // Only the scoring call is genuine I/O; the fusion above is CPU-bound and stays synchronous.
+            List<TextSegment> segments = fusedContents.stream()
+                    .map(Content::textSegment)
+                    .collect(Collectors.toList());
 
-        // Re-rank all the fused contents against the query selected by the query selector.
-        // Only the scoring call is genuine I/O; the fusion above is CPU-bound and stays synchronous.
-        List<TextSegment> segments = fusedContents.stream()
-                .map(Content::textSegment)
-                .collect(Collectors.toList());
-
-        ScoringRequest scoringRequest = ScoringRequest.builder()
-                .documents(segments.stream().map(TextSegment::text).collect(Collectors.toList()))
-                .query(query.text())
-                .build();
-        CompletableFuture<ScoringResponse> scoreFuture = scoringModel.scoreAsync(scoringRequest);
-        CompletableFuture<List<Content>> result =
-                scoreFuture.thenApply(response -> toReRankedContents(fusedContents, response.scores()));
-        // Link the caller-facing derived stage back to the raw scoring call so cancellation reaches the in-flight I/O.
-        propagateCancellation(result, scoreFuture);
-        return result;
+            ScoringRequest scoringRequest = ScoringRequest.builder()
+                    .documents(segments.stream().map(TextSegment::text).collect(Collectors.toList()))
+                    .query(query.text())
+                    .build();
+            CompletableFuture<ScoringResponse> scoreFuture = failOnThrow(
+                    scoringModel, "scoreAsync(ScoringRequest)", () -> scoringModel.scoreAsync(scoringRequest));
+            CompletableFuture<List<Content>> result =
+                    scoreFuture.thenApply(response -> toReRankedContents(fusedContents, response.scores()));
+            // Link the caller-facing derived stage back to the raw scoring call so cancellation reaches the in-flight I/O.
+            propagateCancellation(result, scoreFuture);
+            return result;
+        });
     }
 
     protected Map<Query, List<Content>> fuse(Map<Query, Collection<List<Content>>> queryToContents) {

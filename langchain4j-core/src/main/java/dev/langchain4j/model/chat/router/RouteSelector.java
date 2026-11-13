@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.router;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -86,20 +87,19 @@ final class RouteSelector<M> {
     }
 
     CompletableFuture<String> selectAsync(ChatRequest chatRequest, ChatRequestOptions options) {
-        try {
+        return failOnThrow(() -> {
             String previousRoute = toolCallRoute(chatRequest.messages());
             if (previousRoute != null) {
                 return CompletableFuture.completedFuture(previousRoute);
             }
             List<ChatModelRoute> candidates = candidates(chatRequest);
             ChatModelRoutingRequest routingRequest = routingRequest(chatRequest, candidates, options);
-            CompletableFuture<ChatModelRoutingResult> routed = router.routeAsync(routingRequest);
+            CompletableFuture<ChatModelRoutingResult> routed = failOnThrow(
+                    router, "routeAsync(ChatModelRoutingRequest)", () -> router.routeAsync(routingRequest));
             CompletableFuture<String> result = routed.thenApply(routingResult -> validate(routingResult, candidates));
             propagateCancellation(result, routed);
             return result;
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        });
     }
 
     M model(String routeName) {

@@ -6,6 +6,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Metadata;
@@ -18,6 +19,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -89,19 +91,24 @@ public class CompressingQueryTransformer implements QueryTransformer {
 
     @Override
     public CompletableFuture<Collection<Query>> transformAsync(Query query) {
-        Metadata metadata = query.metadata();
-        if (metadata == null || metadata.chatMemory().isEmpty()) {
-            // no need to compress if there are no previous messages
-            return CompletableFuture.completedFuture(singletonList(query));
-        }
-        List<ChatMessage> chatMemory = metadata.chatMemory();
-        Prompt prompt = createPrompt(query, format(chatMemory));
-        var chatFuture = chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build());
-        CompletableFuture<Collection<Query>> result =
-                chatFuture.thenApply(response -> singletonList(toQuery(query, response.aiMessage().text())));
-        // Link the caller-facing derived stage back to the raw chat call so cancellation reaches the in-flight I/O.
-        propagateCancellation(result, chatFuture);
-        return result;
+        return failOnThrow(() -> {
+            Metadata metadata = query.metadata();
+            if (metadata == null || metadata.chatMemory().isEmpty()) {
+                // no need to compress if there are no previous messages
+                return CompletableFuture.completedFuture(singletonList(query));
+            }
+            List<ChatMessage> chatMemory = metadata.chatMemory();
+            Prompt prompt = createPrompt(query, format(chatMemory));
+            CompletableFuture<ChatResponse> chatFuture = failOnThrow(
+                    chatModel,
+                    "chatAsync(ChatRequest)",
+                    () -> chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build()));
+            CompletableFuture<Collection<Query>> result =
+                    chatFuture.thenApply(response -> singletonList(toQuery(query, response.aiMessage().text())));
+            // Link the caller-facing derived stage back to the raw chat call so cancellation reaches the in-flight I/O.
+            propagateCancellation(result, chatFuture);
+            return result;
+        });
     }
 
     private static Query toQuery(Query originalQuery, String compressedQueryText) {

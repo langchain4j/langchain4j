@@ -48,6 +48,12 @@ public class LambdaStreamingResponseHandler {
 
             @Override
             public void onError(Throwable error) {
+                if (error instanceof RuntimeException runtimeException) {
+                    throw runtimeException;
+                }
+                if (error instanceof Error javaError) {
+                    throw javaError;
+                }
                 throw new RuntimeException(error);
             }
         };
@@ -116,8 +122,11 @@ public class LambdaStreamingResponseHandler {
 
             @Override
             public void onError(Throwable error) {
-                onError.accept(error);
-                completionLatch.countDown();
+                try {
+                    onError.accept(error);
+                } finally {
+                    completionLatch.countDown();
+                }
             }
         };
 

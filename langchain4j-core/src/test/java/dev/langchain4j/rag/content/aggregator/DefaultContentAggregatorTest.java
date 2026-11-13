@@ -10,10 +10,12 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -173,6 +175,18 @@ class DefaultContentAggregatorTest {
 
         // when/then
         assertThatThrownBy(() -> aggregator.aggregate(null)).isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void aggregateAsync_should_return_failed_future_for_null_input() {
+        // given
+        ContentAggregator aggregator = new DefaultContentAggregator();
+
+        // when/then
+        assertThat(aggregator.aggregateAsync(null))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(NullPointerException.class);
     }
 
     @Test

@@ -2,16 +2,23 @@ package dev.langchain4j.model.chat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import org.junit.jupiter.api.Test;
 
@@ -38,6 +45,40 @@ class StreamingChatModelHelperTest {
                 .isExactlyInstanceOf(CompletionException.class)
                 .hasCauseExactlyInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("completed without emitting a CompleteResponse");
+    }
+
+    @Test
+    void should_return_failed_future_when_the_request_is_invalid() {
+        List<Throwable> handledErrors = new ArrayList<>();
+
+        CompletableFuture<ChatResponse> future = StreamingChatModelHelper.chatAsync(
+                StreamingChatModelMock.thatAlwaysStreams("Hi"), null, handledErrors::add);
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .withMessage("request cannot be null");
+        // the stream reports the invalid request through onError, like any other stream failure
+        assertThat(handledErrors).singleElement().isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void should_return_failed_future_when_the_model_throws_instead_of_returning_a_stream() {
+        List<Throwable> handledErrors = new ArrayList<>();
+        StreamingChatModelMock model = spy(StreamingChatModelMock.thatAlwaysStreams("Hi"));
+        IllegalStateException failure = new IllegalStateException("cannot stream");
+        doThrow(failure).when(model).chat(any(ChatRequest.class));
+
+        CompletableFuture<ChatResponse> future = StreamingChatModelHelper.chatAsync(model, request(), handledErrors::add);
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isSameAs(failure);
+        assertThat(handledErrors).isEmpty();
     }
 
     private static ChatRequest request() {

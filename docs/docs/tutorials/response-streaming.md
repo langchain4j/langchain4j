@@ -57,6 +57,16 @@ above: `onUnmappedRawEvent(Object)` is invoked. See [Unmapped Raw Events](#unmap
 - When the LLM has completed generation: `onCompleteResponse(ChatResponse)` is invoked.
 The `ChatResponse` object contains the complete response (`AiMessage`) as well as `ChatResponseMetadata`.
 - When an error occurs: `onError(Throwable error)` is invoked.
+`onError` is also invoked when one of your own handler methods (for example `onPartialResponse`) throws,
+so it can be invoked more than once, and before or after `onCompleteResponse`: do not treat it as the end of the stream.
+
+`chat(...)` does not throw: every failure, including an invalid request (for example no messages,
+or a parameter the model does not support), is passed to `onError`.
+The one exception: if `onError` throws while it is called on the calling thread, that exception is thrown from `chat(...)`.
+If `onError` throws on another thread, or after `chat(...)` returned, the exception is logged.
+`onError` can be called on the calling thread, before `chat(...)` returns,
+so prepare anything that `onError` uses before you call `chat(...)`.
+The handler must not be `null`: `chat(...)` rejects a `null` handler with an `IllegalArgumentException`.
 
 Below is an example of how to implement streaming with `StreamingChatModel`:
 ```java

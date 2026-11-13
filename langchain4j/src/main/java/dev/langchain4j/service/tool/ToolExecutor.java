@@ -60,11 +60,18 @@ public interface ToolExecutor {
      * <p>
      * Override this method to use this tool with an asynchronous AI Service. If the tool performs I/O that
      * can be initiated without holding a thread (e.g. it delegates to an asynchronous client), return that
-     * future. If blocking execution is acceptable, it can simply return
-     * {@code CompletableFuture.completedFuture(executeWithContext(request, context))}.
+     * future. If blocking execution is acceptable, it can run the tool synchronously:
+     * <pre>{@code
+     * try {
+     *     return CompletableFuture.completedFuture(executeWithContext(request, context));
+     * } catch (Exception e) {
+     *     return CompletableFuture.failedFuture(e);
+     * }
+     * }</pre>
      * <p>
-     * Errors may be signaled either synchronously (thrown from this method) or via a failed future;
-     * the AI Service applies the configured tool error handlers to both identically.
+     * An implementation never throws and never returns {@code null}: every failure, including invalid arguments,
+     * completes the returned future exceptionally. The AI Service applies the configured tool error handlers to a failed future. For
+     * compatibility, it also handles an exception thrown from this method the same way.
      *
      * @param request The tool execution request. Contains tool name and arguments.
      * @param context The AI Service invocation context, contains {@link ChatMemory} ID
@@ -78,7 +85,8 @@ public interface ToolExecutor {
         return AsyncNotSupported.failedFuture(getClass().getName()
                 + " does not support asynchronous execution. To use this tool with an AI Service method"
                 + " returning a CompletableFuture, override ToolExecutor.executeAsync()."
-                + " If blocking execution is acceptable, it can simply return"
-                + " CompletableFuture.completedFuture(executeWithContext(request, context)).");
+                + " If blocking execution is acceptable, it can return"
+                + " CompletableFuture.completedFuture(executeWithContext(request, context)),"
+                + " or CompletableFuture.failedFuture(e) when executeWithContext throws.");
     }
 }

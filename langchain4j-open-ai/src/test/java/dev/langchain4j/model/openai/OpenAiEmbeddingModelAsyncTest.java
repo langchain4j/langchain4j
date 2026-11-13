@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.doThrow;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -107,5 +109,22 @@ class OpenAiEmbeddingModelAsyncTest {
 
         // the returned future fails with the real error, not a masked CancellationException
         assertThatThrownBy(() -> future.get(5, SECONDS)).hasMessageContaining("real batch error");
+    }
+
+    @Test
+    void doEmbedAsync_reports_a_failure_while_preparing_the_request_through_the_future() {
+        EmbeddingModel model = OpenAiEmbeddingModel.builder()
+                .baseUrl("http://localhost:1")
+                .apiKey("test-key")
+                .modelName("text-embedding-3-small")
+                .maxRetries(0)
+                .build();
+        EmbeddingRequest request = spy(EmbeddingRequest.builder().input("hello").build());
+        IllegalStateException failure = new IllegalStateException("cannot read the inputs");
+        doThrow(failure).when(request).inputs();
+
+        CompletableFuture<EmbeddingResponse> future = model.doEmbedAsync(request);
+
+        assertThat(future).failsWithin(5, SECONDS).withThrowableThat().havingCause().isSameAs(failure);
     }
 }

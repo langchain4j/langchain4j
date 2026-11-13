@@ -353,6 +353,8 @@ Decision models can offer their own subclass of `DecisionRequestParameters` with
 
 `decideAsync(request)` returns a `CompletableFuture<DecisionResponse>`.
 Implementations that do not support non-blocking calls return a future that fails with `AsyncNotSupportedException`.
+`decideAsync(request)` never throws: every failure, including an invalid request, completes the returned future
+exceptionally.
 
 ## Refusals
 

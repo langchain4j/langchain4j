@@ -970,4 +970,17 @@ class OllamaDecisionModelTest {
             super(DefaultDecisionRequestParameters.builder().modelName("other-model"));
         }
     }
+
+    @Test
+    void doDecideAsync_reports_a_missing_model_name_through_the_future_without_calling_the_api() {
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok("{}"));
+        OllamaDecisionModel model = model(httpClient);
+
+        // the hook gets the request as it is, without the model name set on the builder
+        assertThat(model.doDecideAsync(REQUEST))
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class);
+        assertThat(httpClient.requests()).isEmpty();
+    }
 }

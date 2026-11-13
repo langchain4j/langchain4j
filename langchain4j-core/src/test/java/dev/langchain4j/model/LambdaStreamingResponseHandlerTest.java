@@ -4,12 +4,18 @@ import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResp
 import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponseAndError;
 import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponseAndErrorBlocking;
 import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponseBlocking;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.assertj.core.api.WithAssertions;
@@ -148,6 +154,66 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
         // then
         assertThat(receivedTokens).containsExactly("Never ", "ending ");
         assertThat(errorHandled.get()).isTrue(); // Should complete even with error
+    }
+
+    @Test
+    void onPartialResponseShouldRethrowUncheckedErrorsAsTheyAreAndWrapCheckedOnes() {
+        // given
+        StreamingChatResponseHandler handler = onPartialResponse(token -> {});
+        RuntimeException unchecked = new IllegalStateException("unchecked");
+        Error error = new NoClassDefFoundError("missing");
+        IOException checked = new IOException("checked");
+
+        // then
+        assertThatThrownBy(() -> handler.onError(unchecked)).isSameAs(unchecked);
+        assertThatThrownBy(() -> handler.onError(error)).isSameAs(error);
+        assertThatThrownBy(() -> handler.onError(checked))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasCause(checked);
+    }
+
+    @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
+    void onPartialResponseAndErrorBlockingShouldNotWaitWhenTheErrorHandlerThrowsOnAnotherThread() throws Exception {
+        // given a model that reports a failure on its own thread, like a provider's I/O thread
+        RuntimeException failure = new IllegalStateException("connection reset");
+        StreamingChatModelMock model = spy(StreamingChatModelMock.thatAlwaysStreams("Hi"));
+        doAnswer(invocation -> {
+                    StreamingChatResponseHandler handler = invocation.getArgument(1);
+                    new Thread(() -> handler.onError(failure)).start();
+                    return null;
+                })
+                .when(model)
+                .doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        List<Throwable> errors = new CopyOnWriteArrayList<>();
+
+        // when the error handler throws there
+        onPartialResponseAndErrorBlocking(model, "Hi", token -> {}, error -> {
+            errors.add(error);
+            throw new IllegalStateException("the error handler failed");
+        });
+
+        // then the helper returns (the @Timeout fails the test if it waits forever)
+        assertThat(errors).containsExactly(failure);
+    }
+
+    @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
+    void onPartialResponseAndErrorBlockingShouldNotWaitWhenTheErrorHandlerThrows() {
+        // given
+        StreamingChatModel model = new DummyModel(List.<Object>of());
+        List<Throwable> errors = new ArrayList<>();
+
+        // when an invalid request (a null message) reaches an error handler that throws
+        assertThatThrownBy(() -> onPartialResponseAndErrorBlocking(model, null, token -> {}, error -> {
+                    errors.add(error);
+                    throw new IllegalStateException(error);
+                }))
+                // then the helper does not wait forever: what the error handler threw reaches the caller
+                .isInstanceOf(IllegalStateException.class)
+                .hasCauseInstanceOf(IllegalArgumentException.class);
+
+        assertThat(errors).singleElement().isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

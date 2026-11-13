@@ -12,8 +12,10 @@ import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -74,6 +76,22 @@ class ExpandingQueryTransformerTest {
                         Query.from("query 1", metadata),
                         Query.from("query 2", metadata),
                         Query.from("query 3", metadata));
+    }
+
+    @Test
+    void transformAsync_should_return_failed_future_when_prompt_cannot_be_created() {
+
+        PromptTemplate promptTemplate = PromptTemplate.from("Generate variations of {{query}} in {{language}}");
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("does not matter");
+        QueryTransformer transformer = new ExpandingQueryTransformer(model, promptTemplate);
+
+        assertThat(transformer.transformAsync(Query.from("query")))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .withMessageContaining("Value for the variable 'language' is missing");
+        assertThat(model.requests()).isEmpty();
     }
 
     @Test

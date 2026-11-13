@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.query.router;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -152,16 +153,8 @@ public class DecisionModelQueryRouter implements QueryRouter {
 
     @Override
     public CompletableFuture<Collection<ContentRetriever>> routeAsync(Query query) {
-        CompletableFuture<DecisionResponse> source;
-        try {
-            source = decisionModel.decideAsync(toRequest(query));
-        } catch (Exception e) {
-            try {
-                return CompletableFuture.completedFuture(fallback(query, e));
-            } catch (RuntimeException fallbackError) {
-                return CompletableFuture.failedFuture(fallbackError);
-            }
-        }
+        CompletableFuture<DecisionResponse> source = failOnThrow(
+                decisionModel, "decideAsync(DecisionRequest)", () -> decisionModel.decideAsync(toRequest(query)));
         CompletableFuture<Collection<ContentRetriever>> result = source.thenApply(this::select)
                 .exceptionally(error -> {
                     Throwable cause = unwrapCompletionException(error);

@@ -121,7 +121,11 @@ ChatModelRouter router = new ChatModelRouter() {
 
     @Override
     public CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
-        return CompletableFuture.completedFuture(route(request)); // route(...) does not block
+        try {
+            return CompletableFuture.completedFuture(route(request)); // route(...) does not block
+        } catch (Exception e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 };
 ```

@@ -58,6 +58,9 @@ public interface ContentRetriever {
      * <p>
      * An implementation that honors cancellation should abort its in-flight I/O when the returned future is
      * cancelled (best-effort); Java cannot safely interrupt arbitrary code, so this is not guaranteed.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param query The {@link Query} to use for retrieval.
      * @return A {@link CompletableFuture} of the retrieved {@link Content}s, sorted by relevance.

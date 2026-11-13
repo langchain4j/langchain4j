@@ -712,6 +712,11 @@ tokenStream
 futureResponse.join(); // Blocks the main thread until the streaming process (running in another thread) is complete
 ```
 
+`start()` does not throw: every failure, including an invalid request, is passed to `onError`,
+possibly before `start()` returns.
+If you call `ignoreErrors()` instead of `onError(...)`, failures are only logged and no other callback is called,
+so code that waits for `onCompleteResponse` (like the `futureResponse.join()` above) would wait forever.
+
 ### Streaming Cancellation
 
 If you wish to cancel the streaming, you can do so from one of the following callbacks:

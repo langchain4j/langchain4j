@@ -10,15 +10,19 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.Test;
 
 class CompressingQueryTransformerTest {
@@ -89,6 +93,31 @@ class CompressingQueryTransformerTest {
 
         assertThat(transformer.transformAsync(query).get(5, SECONDS))
                 .containsExactly(Query.from(expectedCompressedQuery, metadata));
+    }
+
+    @Test
+    void transformAsync_should_return_failed_future_when_chat_memory_cannot_be_formatted() {
+
+        SystemMessage systemMessage = SystemMessage.from("Be polite");
+        List<ChatMessage> chatMemory = asList(
+                UserMessage.from(
+                        TextContent.from("Who is on this picture?"),
+                        ImageContent.from("https://example.com/klaus-heisler.png")),
+                AiMessage.from("Klaus Heisler"));
+        UserMessage userMessage = UserMessage.from("How old is he?");
+        Metadata metadata = Metadata.from(userMessage, systemMessage, "default", chatMemory);
+        Query query = Query.from(userMessage.singleText(), metadata);
+
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("does not matter");
+        CompressingQueryTransformer transformer = new CompressingQueryTransformer(model);
+
+        assertThat(transformer.transformAsync(query))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isExactlyInstanceOf(RuntimeException.class)
+                .withMessageContaining("Expecting single text content");
+        assertThat(model.requests()).isEmpty();
     }
 
     @Test

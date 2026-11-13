@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -106,10 +107,12 @@ public class OpenAiResponsesChatModel implements ChatModel {
     @Experimental
     @Override
     public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
-        validate(chatRequest.parameters());
-        OpenAiResponsesChatRequestParameters parameters =
-                (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
-        return client.chatAsync(chatRequest, parameters);
+        return failOnThrow(() -> {
+            validate(chatRequest.parameters());
+            OpenAiResponsesChatRequestParameters parameters =
+                    (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
+            return client.chatAsync(chatRequest, parameters);
+        });
     }
 
     private static void validate(final ChatRequestParameters parameters) {

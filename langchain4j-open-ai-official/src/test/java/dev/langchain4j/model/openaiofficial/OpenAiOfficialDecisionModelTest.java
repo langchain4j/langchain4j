@@ -855,4 +855,16 @@ class OpenAiOfficialDecisionModelTest {
             super(DefaultDecisionRequestParameters.builder().modelName("other-model"));
         }
     }
+
+    @Test
+    void doDecideAsync_reports_a_missing_model_name_through_the_future_without_calling_the_api() {
+        OpenAiOfficialDecisionModel model = model();
+
+        // the hook gets the request as it is, without the model name set on the builder
+        assertThat(model.doDecideAsync(REQUEST))
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class);
+        assertThat(httpClient.recordedRequests()).isEmpty();
+    }
 }

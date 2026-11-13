@@ -15,4 +15,15 @@ public class InternalFlowUtils {
         public void cancel() {}
     };
 
+    /**
+     * A {@link Flow.Publisher} that fails every subscriber with the given error: it calls {@code onSubscribe} with
+     * {@link #EMPTY_SUBSCRIPTION}, then {@code onError}.
+     */
+    public static <T> Flow.Publisher<T> failedPublisher(Throwable error) {
+        return subscriber -> {
+            subscriber.onSubscribe(EMPTY_SUBSCRIPTION);
+            subscriber.onError(error);
+        };
+    }
+
 }

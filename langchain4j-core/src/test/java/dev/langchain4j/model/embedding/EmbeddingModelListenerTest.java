@@ -6,7 +6,10 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.data.MapEntry.entry;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -265,6 +268,49 @@ class EmbeddingModelListenerTest {
     }
 
     @Test
+    void embedAsync_should_return_failed_future_and_notify_listeners_once_when_doEmbedAsync_returns_null() {
+        // given
+        EmbeddingModelListener listener = spy(new SuccessfulListener());
+        EmbeddingModelMock model = spy(new EmbeddingModelMock().withListeners(listener));
+        doReturn(null).when(model).doEmbedAsync(any());
+
+        // when
+        CompletableFuture<EmbeddingResponse> future =
+                model.embedAsync(EmbeddingRequest.builder().input("hi").build());
+
+        // then
+        assertThat(future)
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(IllegalStateException.class)
+                .withMessageContaining("doEmbedAsync(EmbeddingRequest) returned null");
+        InOrder inOrder = inOrder(listener);
+        inOrder.verify(listener).onRequest(any());
+        inOrder.verify(listener).onError(any());
+        verifyNoMoreInteractions(listener);
+    }
+
+    @Test
+    void embedAsync_without_listeners_should_return_failed_future_when_doEmbedAsync_returns_null() {
+        // given
+        EmbeddingModelMock model = spy(new EmbeddingModelMock());
+        doReturn(null).when(model).doEmbedAsync(any());
+
+        // when
+        CompletableFuture<EmbeddingResponse> future =
+                model.embedAsync(EmbeddingRequest.builder().input("hi").build());
+
+        // then
+        assertThat(future)
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(IllegalStateException.class)
+                .withMessageContaining("doEmbedAsync(EmbeddingRequest) returned null");
+    }
+
+    @Test
     void should_handle_empty_listeners_list() {
         // given
         EmbeddingModel model = new TestEmbeddingModel().addListeners(List.of());
@@ -382,5 +428,45 @@ class EmbeddingModelListenerTest {
         assertThat(wrapper.provider()).isEqualTo(dev.langchain4j.model.ModelProvider.COHERE);
         assertThat(wrapper.modelName()).isEqualTo("multimodal-model");
         assertThat(wrapper.dimension()).isEqualTo(42);
+    }
+
+    @Test
+    void embedAsync_should_return_failed_future_and_notify_listeners_once_when_doEmbedAsync_throws_an_error() {
+        // given
+        EmbeddingModelListener listener = spy(new SuccessfulListener());
+        EmbeddingModelMock model = spy(new EmbeddingModelMock().withListeners(listener));
+        NoClassDefFoundError error = new NoClassDefFoundError("MissingOptionalDependency");
+        doThrow(error).when(model).doEmbedAsync(any());
+
+        // when
+        CompletableFuture<EmbeddingResponse> future =
+                model.embedAsync(EmbeddingRequest.builder().input("hi").build());
+
+        // then
+        assertThat(future).failsWithin(5, SECONDS).withThrowableThat().havingCause().isSameAs(error);
+        ArgumentCaptor<EmbeddingModelErrorContext> errorContext =
+                ArgumentCaptor.forClass(EmbeddingModelErrorContext.class);
+        InOrder inOrder = inOrder(listener);
+        inOrder.verify(listener).onRequest(any());
+        inOrder.verify(listener).onError(errorContext.capture());
+        verifyNoMoreInteractions(listener);
+        assertThat(errorContext.getValue().error()).isSameAs(error);
+    }
+
+    @Test
+    void embedAsync_should_return_failed_future_without_calling_the_model_when_a_listener_on_request_throws_an_error() {
+        // given
+        EmbeddingModelListener listener = spy(new SuccessfulListener());
+        NoClassDefFoundError error = new NoClassDefFoundError("MissingOptionalDependency");
+        doThrow(error).when(listener).onRequest(any());
+        EmbeddingModelMock model = spy(new EmbeddingModelMock().withListeners(listener));
+
+        // when
+        CompletableFuture<EmbeddingResponse> future =
+                model.embedAsync(EmbeddingRequest.builder().input("hi").build());
+
+        // then
+        assertThat(future).failsWithin(5, SECONDS).withThrowableThat().havingCause().isSameAs(error);
+        verify(model, never()).doEmbedAsync(any());
     }
 }

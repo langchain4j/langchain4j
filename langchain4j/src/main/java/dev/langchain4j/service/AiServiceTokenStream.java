@@ -247,7 +247,6 @@ public class AiServiceTokenStream implements TokenStream {
                         runContext.chatMemoryId()));
 
         ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
-                .errorHandler(errorHandler)
                 .chatRequest(chatRequest)
                 .invocationContext(runContext)
                 .eventListenerRegistrar(context.eventListenerRegistrar)

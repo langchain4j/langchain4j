@@ -51,11 +51,21 @@ public interface Guardrail<P extends GuardrailRequest, R extends GuardrailResult
      * run on the model-delivery thread. A guardrail that performs blocking I/O (e.g. calling a remote moderation or
      * PII service) must override this method to return a future completed off the calling thread (for instance via
      * an async client, or {@code CompletableFuture.supplyAsync(..., executor)} onto its own executor). A guardrail
-     * that does not perform blocking I/O may simply return
-     * {@code CompletableFuture.completedFuture(validate(request))}.
+     * that does not perform blocking I/O can call {@link #validate(GuardrailRequest)} directly and report a failure
+     * through the future:
+     * <pre>{@code
+     * try {
+     *     return CompletableFuture.completedFuture(validate(request));
+     * } catch (Exception e) {
+     *     return CompletableFuture.failedFuture(e);
+     * }
+     * }</pre>
      * <p>
      * This mirrors {@code ChatMemoryStore} and {@code ToolExecutor}, whose asynchronous counterparts likewise
      * report "not implemented" through the returned future rather than throwing.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param request
      *            The parameters of the request or the response to be validated
@@ -68,6 +78,7 @@ public interface Guardrail<P extends GuardrailRequest, R extends GuardrailResult
                 + " does not implement validateAsync(). To use this guardrail with an asynchronous"
                 + " (CompletableFuture/CompletionStage) or reactive (Flow.Publisher) AI Service, override"
                 + " validateAsync(). If the guardrail does not perform blocking I/O, return"
-                + " CompletableFuture.completedFuture(validate(request)).");
+                + " CompletableFuture.completedFuture(validate(request)), or CompletableFuture.failedFuture(e) if"
+                + " validate(request) throws.");
     }
 }

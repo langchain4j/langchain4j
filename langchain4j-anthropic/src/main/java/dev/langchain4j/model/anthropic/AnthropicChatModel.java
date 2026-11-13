@@ -1,5 +1,6 @@
 package dev.langchain4j.model.anthropic;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
@@ -937,20 +938,22 @@ public class AnthropicChatModel implements ChatModel {
 
     @Override
     public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
-        AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
-        validate(parameters);
+        return failOnThrow(() -> {
+            AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
+            validate(parameters);
 
-        AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
-        boolean returnThinking = getOrDefault(parameters.returnThinking(), false);
+            AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
+            boolean returnThinking = getOrDefault(parameters.returnThinking(), false);
 
-        CompletableFuture<ParsedAndRawResponse> rawFuture = withRetryMappingExceptionsAsync(
-                () -> client.createMessageWithRawResponseAsync(anthropicRequest), maxRetries);
+            CompletableFuture<ParsedAndRawResponse> rawFuture = withRetryMappingExceptionsAsync(
+                    () -> client.createMessageWithRawResponseAsync(anthropicRequest), maxRetries);
 
-        CompletableFuture<ChatResponse> result =
-                rawFuture.thenApply(response -> createChatResponse(response, returnThinking));
+            CompletableFuture<ChatResponse> result =
+                    rawFuture.thenApply(response -> createChatResponse(response, returnThinking));
 
-        propagateCancellation(result, rawFuture);
-        return result;
+            propagateCancellation(result, rawFuture);
+            return result;
+        });
     }
 
     private AnthropicCreateMessageRequest toAnthropicRequest(

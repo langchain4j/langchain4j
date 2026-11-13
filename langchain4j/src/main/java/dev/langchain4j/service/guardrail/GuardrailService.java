@@ -49,6 +49,9 @@ public interface GuardrailService {
      * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; the internal implementation
      * ({@code AbstractGuardrailService}) overrides it, and only implementors that opt into the non-blocking
      * AI Service modes need to provide it.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param method The method whose input guardrails are to be executed.
      * @param request The parameters to validate against the input guardrails. Must not be null.
@@ -81,6 +84,9 @@ public interface GuardrailService {
     /**
      * Non-blocking counterpart of {@link #executeGuardrails(Object, InputGuardrailRequest)}: runs the input
      * guardrails without blocking the calling thread and yields the (possibly rewritten) {@link UserMessage}.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @since 1.20.0
      */
@@ -110,6 +116,9 @@ public interface GuardrailService {
      * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; the internal implementation
      * ({@code AbstractGuardrailService}) overrides it, and only implementors that opt into the non-blocking
      * AI Service modes need to provide it.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param method The method whose output guardrails are to be executed.
      * @param request The parameters to validate against the output guardrails. Must not be null.
@@ -158,6 +167,9 @@ public interface GuardrailService {
      * including any reprompt round-trips to the model — run without blocking the calling thread; a guardrail that
      * performs blocking I/O keeps the calling thread free only if it overrides
      * {@link dev.langchain4j.guardrail.Guardrail#validateAsync(dev.langchain4j.guardrail.GuardrailRequest)}.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @since 1.20.0
      */

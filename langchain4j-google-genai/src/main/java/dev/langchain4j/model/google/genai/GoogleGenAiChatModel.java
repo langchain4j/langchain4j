@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
@@ -148,19 +149,21 @@ public class GoogleGenAiChatModel implements ChatModel {
 
     @Override
     public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
-        List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking);
-        GenerateContentConfig config = buildConfigAndLogRequest(chatRequest);
+        return failOnThrow(() -> {
+            List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking);
+            GenerateContentConfig config = buildConfigAndLogRequest(chatRequest);
 
-        CompletableFuture<GenerateContentResponse> rawFuture = withRetryMappingExceptionsAsync(
-                () -> client.async.models.generateContent(chatRequest.modelName(), contents, config),
-                maxRetries,
-                GoogleGenAiExceptionMapper.INSTANCE);
+            CompletableFuture<GenerateContentResponse> rawFuture = withRetryMappingExceptionsAsync(
+                    () -> client.async.models.generateContent(chatRequest.modelName(), contents, config),
+                    maxRetries,
+                    GoogleGenAiExceptionMapper.INSTANCE);
 
-        CompletableFuture<ChatResponse> result =
-                rawFuture.thenApply(response -> toChatResponseAndLogResponse(response, chatRequest.modelName()));
+            CompletableFuture<ChatResponse> result =
+                    rawFuture.thenApply(response -> toChatResponseAndLogResponse(response, chatRequest.modelName()));
 
-        propagateCancellation(result, rawFuture);
-        return result;
+            propagateCancellation(result, rawFuture);
+            return result;
+        });
     }
 
     private GenerateContentConfig buildConfigAndLogRequest(ChatRequest chatRequest) {

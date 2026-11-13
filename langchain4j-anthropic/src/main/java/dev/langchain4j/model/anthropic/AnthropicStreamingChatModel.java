@@ -1,5 +1,7 @@
 package dev.langchain4j.model.anthropic;
 
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
+import static dev.langchain4j.internal.InternalFlowUtils.failedPublisher;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
@@ -932,9 +934,16 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
 
     @Override
     public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
-        AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
-        AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
-        AnthropicCreateMessageOptions options = toOptions(parameters);
+        AnthropicCreateMessageRequest anthropicRequest;
+        AnthropicCreateMessageOptions options;
+        try {
+            AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
+            anthropicRequest = toAnthropicRequest(chatRequest, parameters);
+            options = toOptions(parameters);
+        } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
+            return failedPublisher(error);
+        }
         return client.createMessagePublisher(anthropicRequest, options, streamingBufferSize);
     }
 

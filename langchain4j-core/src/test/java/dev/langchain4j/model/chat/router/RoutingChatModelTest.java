@@ -3,6 +3,10 @@ package dev.langchain4j.model.chat.router;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -40,7 +44,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class RoutingChatModelTest {
@@ -341,6 +347,40 @@ class RoutingChatModelTest {
                 .withMessageContaining("routeAsync() is not implemented by")
                 .withMessageContaining("CompletableFuture.completedFuture(route(request))");
         assertThat(small.requests()).isEmpty();
+    }
+
+    @Test
+    void should_return_failed_future_when_async_chat_request_is_null() {
+
+        ChatModel chatModel = routingModel(nonBlocking(byLength()));
+
+        assertThat(chatModel.chatAsync((ChatRequest) null))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class);
+        assertThat(small.requests()).isEmpty();
+        assertThat(large.requests()).isEmpty();
+    }
+
+    @Test
+    void should_return_failed_future_when_routed_model_returns_null() {
+
+        ChatModelMock modelReturningNull = spy(ChatModelMock.thatAlwaysResponds("unused"));
+        doReturn(null).when(modelReturningNull).chatAsync(any(ChatRequest.class), any(ChatRequestOptions.class));
+        ChatModel chatModel = RoutingChatModel.builder()
+                .route("simple", "Short questions", modelReturningNull)
+                .route("complex", "Everything else", large)
+                .router(nonBlocking(byLength()))
+                .defaultRoute("complex")
+                .build();
+
+        assertThat(chatModel.chatAsync(
+                        ChatRequest.builder().messages(UserMessage.from("Hi!")).build()))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isInstanceOf(IllegalStateException.class)
+                .withMessageEndingWith(".chatAsync(ChatRequest, ChatRequestOptions) returned null");
     }
 
     @Test
@@ -743,6 +783,171 @@ class RoutingChatModelTest {
         assertThat(events).isEmpty();
         route.complete(ChatModelRoutingResult.route("simple"));
         assertThat(events).singleElement().isInstanceOf(PartialResponse.class);
+    }
+
+    @Test
+    void should_report_a_null_streaming_request_to_the_handler_instead_of_throwing() {
+
+        List<Throwable> errors = new ArrayList<>();
+
+        routingStreamingModel(byLength()).chat((ChatRequest) null, ChatRequestOptions.EMPTY, new StreamingChatResponseHandler() {
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {}
+
+            @Override
+            public void onError(Throwable error) {
+                errors.add(error);
+            }
+        });
+
+        assertThat(errors)
+                .singleElement()
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasFieldOrPropertyWithValue("message", "request cannot be null");
+        assertThat(smallStreaming.requests()).isEmpty();
+        assertThat(largeStreaming.requests()).isEmpty();
+    }
+
+    @Test
+    void should_report_an_error_thrown_by_the_streaming_router_to_the_handler() {
+
+        Error failure = new NoClassDefFoundError("com/example/Missing");
+        List<Throwable> errors = new ArrayList<>();
+
+        routingStreamingModel(request -> {
+                    throw failure;
+                })
+                .chat("Hi!", new StreamingChatResponseHandler() {
+                    @Override
+                    public void onCompleteResponse(ChatResponse completeResponse) {}
+
+                    @Override
+                    public void onError(Throwable error) {
+                        errors.add(error);
+                    }
+                });
+
+        assertThat(errors).containsExactly(failure);
+    }
+
+    @Test
+    void should_still_reject_a_null_streaming_handler() {
+
+        assertThatThrownBy(() -> routingStreamingModel(byLength()).chat("Hi!", (StreamingChatResponseHandler) null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("handler cannot be null");
+    }
+
+    @Test
+    void should_signal_a_null_reactive_streaming_request_to_the_subscriber_instead_of_throwing() {
+
+        List<Object> signals = new ArrayList<>();
+
+        routingStreamingModel(byLength()).chat((ChatRequest) null).subscribe(new Flow.Subscriber<ChatModelStreamingEvent>() {
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                signals.add("onSubscribe");
+            }
+
+            @Override
+            public void onNext(ChatModelStreamingEvent item) {
+                signals.add(item);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                signals.add(error);
+            }
+
+            @Override
+            public void onComplete() {
+                signals.add("onComplete");
+            }
+        });
+
+        assertThat(signals).hasSize(2);
+        assertThat(signals.get(0)).isEqualTo("onSubscribe");
+        assertThat((Throwable) signals.get(1))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("request cannot be null");
+    }
+
+    @Test
+    void should_throw_what_the_streaming_handler_on_error_throws_without_reporting_it_twice() {
+
+        StreamingChatModel failing = new StreamingChatModelMock(new IllegalArgumentException("unsupported parameter"));
+        RuntimeException onErrorFailure = new IllegalStateException("onError failed");
+        List<Throwable> errors = new ArrayList<>();
+        StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {}
+
+            @Override
+            public void onError(Throwable error) {
+                errors.add(error);
+                throw onErrorFailure;
+            }
+        };
+        RoutingStreamingChatModel model = RoutingStreamingChatModel.builder()
+                .route("only", failing)
+                .router(request -> ChatModelRoutingResult.route("only"))
+                .defaultRoute("only")
+                .build();
+
+        assertThatThrownBy(() -> model.chat("Hi!", handler)).isSameAs(onErrorFailure);
+        assertThat(errors).singleElement().isInstanceOf(IllegalArgumentException.class);
+
+        errors.clear();
+        assertThatThrownBy(() -> routingStreamingModel(request -> ChatModelRoutingResult.route("medium"))
+                        .chat("Hi!", handler))
+                .isSameAs(onErrorFailure);
+        assertThat(errors).singleElement().isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void should_only_log_what_the_streaming_handler_on_error_throws_on_another_thread() throws Exception {
+
+        StreamingChatModelMock selected = spy(StreamingChatModelMock.thatAlwaysStreams("Hi"));
+        AtomicReference<StreamingChatResponseHandler> selectedModelHandler = new AtomicReference<>();
+        doAnswer(invocation -> {
+                    // a model that reports the failure later, on its own thread
+                    selectedModelHandler.set(invocation.getArgument(2));
+                    return null;
+                })
+                .when(selected)
+                .chat(any(ChatRequest.class), any(ChatRequestOptions.class), any(StreamingChatResponseHandler.class));
+        RoutingStreamingChatModel model = RoutingStreamingChatModel.builder()
+                .route("only", selected)
+                .router(request -> ChatModelRoutingResult.route("only"))
+                .defaultRoute("only")
+                .build();
+        List<Throwable> errors = new CopyOnWriteArrayList<>();
+        StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {}
+
+            @Override
+            public void onError(Throwable error) {
+                errors.add(error);
+                throw new IllegalStateException("onError failed");
+            }
+        };
+        model.chat("Hi!", handler);
+        RuntimeException failure = new IllegalStateException("connection reset");
+        AtomicReference<Throwable> reachedTheModel = new AtomicReference<>();
+
+        Thread thread = new Thread(() -> {
+            try {
+                selectedModelHandler.get().onError(failure);
+            } catch (Throwable e) {
+                reachedTheModel.set(e);
+            }
+        });
+        thread.start();
+        thread.join(5_000);
+
+        assertThat(reachedTheModel.get()).isNull();
+        assertThat(errors).containsExactly(failure);
     }
 
     @Test

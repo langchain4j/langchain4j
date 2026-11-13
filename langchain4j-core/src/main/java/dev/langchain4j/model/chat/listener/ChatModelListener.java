@@ -44,6 +44,8 @@ public interface ChatModelListener {
 
     /**
      * This method is called when an error occurs during interaction with the model.
+     * With a streaming model, it is also called when the {@code StreamingChatResponseHandler} throws, so it can be
+     * called more than once for one request, also after {@link #onResponse(ChatModelResponseContext)}.
      *
      * @param errorContext The error context.
      *                     It contains the error, corresponding {@link ChatRequest},
