@@ -20,6 +20,7 @@ import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.output.TokenUsage;
@@ -679,7 +680,8 @@ class DecisionRouterPlannerTest {
 
     // ── Token usage ──
 
-    private <T> T monitoredRouter(Class<T> routerType, DecisionModelMock model, AgentMonitor monitor, Object... experts) {
+    private <T> T monitoredRouter(
+            Class<T> routerType, MockDecisionModel model, AgentMonitor monitor, Object... experts) {
         return AgenticServices.plannerBuilder(routerType)
                 .subAgents(experts)
                 .outputKey("response")
@@ -690,9 +692,11 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldCountTheDecisionCallOnTheRouter() {
-        DecisionModelMock model = modelAnswering(choice("legal", Map.of("legal", 0.8, "medical", 0.2)))
-                .withModelName("decision-model")
-                .withTokenUsage(new TokenUsage(40, 2));
+        MockDecisionModel model = MockDecisionModel.thatResponds(DecisionResponse.builder()
+                .answer(QUESTION_NAME, choice("legal", Map.of("legal", 0.8, "medical", 0.2)))
+                .modelName("decision-model")
+                .tokenUsage(new TokenUsage(40, 2))
+                .build());
         AgentMonitor monitor = new AgentMonitor();
 
         monitoredRouter(ExpertRouter.class, model, monitor, medicalExpert, legalExpert, technicalExpert)
@@ -705,7 +709,11 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldCountNoTokensWhenTheOnlyCandidateIsInvokedWithoutAskingTheModel() {
-        DecisionModelMock model = modelAnswering(choice("medical", Map.of())).withTokenUsage(new TokenUsage(40, 2));
+        // a response with tokens, so that a call that should not happen would be counted
+        MockDecisionModel model = MockDecisionModel.thatResponds(DecisionResponse.builder()
+                .answer(QUESTION_NAME, choice("medical", Map.of()))
+                .tokenUsage(new TokenUsage(40, 2))
+                .build());
         AgentMonitor monitor = new AgentMonitor();
 
         monitoredRouter(ExpertRouter.class, model, monitor, medicalExpert).ask(REQUEST);

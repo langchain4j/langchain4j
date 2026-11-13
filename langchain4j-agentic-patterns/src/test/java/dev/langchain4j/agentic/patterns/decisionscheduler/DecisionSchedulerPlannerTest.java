@@ -38,6 +38,7 @@ import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
@@ -1074,11 +1075,26 @@ class DecisionSchedulerPlannerTest {
 
     // ── Token usage ──
 
+    /**
+     * A response with the given goal probability and scores, keyed by the names of the subagents, that reports a model
+     * name and a token usage.
+     */
+    private static DecisionResponse decisionWithTokens(double goalProbability, Map<String, Double> scores) {
+        DecisionResponse.Builder response = DecisionResponse.builder()
+                .answer(GOAL_QUESTION_NAME, YesNoAnswer.from(goalProbability))
+                .modelName("decision-model")
+                .tokenUsage(new TokenUsage(40, 2));
+        scores.forEach((name, score) -> response.answer(name, score(score)));
+        return response.build();
+    }
+
     @Test
     void shouldCountEveryDecisionCallOnTheScheduler() {
-        DecisionModelMock model = modelReachingTheGoalWithAReply(Map.of("tracker", 0.9, "advisor", 0.2, "writer", 0.6))
-                .withModelName("decision-model")
-                .withTokenUsage(new TokenUsage(40, 2));
+        Map<String, Double> scores = Map.of("tracker", 0.9, "advisor", 0.2, "writer", 0.6);
+        // the goal is reached once the writer wrote the reply, which happens with the second invocation
+        MockDecisionModel model = MockDecisionModel.thatResponds(decisionWithTokens(0.1, scores))
+                .thenResponds(decisionWithTokens(0.1, scores))
+                .thenResponds(decisionWithTokens(0.9, scores));
         AgentMonitor monitor = new AgentMonitor();
         SupportDesk desk = AgenticServices.plannerBuilder(SupportDesk.class)
                 .subAgents(tracker(), advisor(), writer())

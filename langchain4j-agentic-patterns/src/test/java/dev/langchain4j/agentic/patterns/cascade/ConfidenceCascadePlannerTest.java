@@ -21,6 +21,7 @@ import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;
@@ -573,8 +574,12 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldCountEveryGradingCallOnTheCascadeAndNoneForTheLastTier() {
-        DecisionModelMock model =
-                modelGrading(0.1).withModelName("decision-model").withTokenUsage(new TokenUsage(40, 2));
+        MockDecisionModel model = MockDecisionModel.thatResponds(DecisionResponse.builder()
+                        .answer(QUESTION_NAME, YesNoAnswer.from(0.1))
+                        .modelName("decision-model")
+                        .tokenUsage(new TokenUsage(40, 2))
+                        .build())
+                .thenRepeats();
         AgentMonitor monitor = new AgentMonitor();
         SupportCascade cascade = AgenticServices.plannerBuilder(SupportCascade.class)
                 .subAgents(faqAgent, expertAgent, seniorExpertAgent)
