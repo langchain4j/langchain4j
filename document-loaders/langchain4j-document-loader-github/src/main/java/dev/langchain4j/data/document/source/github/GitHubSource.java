@@ -1,15 +1,24 @@
 package dev.langchain4j.data.document.source.github;
 
-import dev.langchain4j.data.document.DocumentSource;
-import dev.langchain4j.data.document.Metadata;
-import org.kohsuke.github.GHContent;
-
-import java.io.IOException;
-import java.io.InputStream;
-
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.data.document.DocumentSource;
+import dev.langchain4j.data.document.Metadata;
+import java.io.IOException;
+import java.io.InputStream;
+import org.kohsuke.github.GHContent;
+
 public class GitHubSource implements DocumentSource {
+
+    public static final String GITHUB_GIT_URL = "github_git_url";
+    public static final String GITHUB_DOWNLOAD_URL = "github_download_url";
+    public static final String GITHUB_HTML_URL = "github_html_url";
+    public static final String GITHUB_URL = "github_url";
+    public static final String GITHUB_FILE_NAME = "github_file_name";
+    public static final String GITHUB_FILE_PATH = "github_file_path";
+    public static final String GITHUB_FILE_SHA = "github_file_sha";
+    public static final String GITHUB_FILE_SIZE = "github_file_size";
+    public static final String GITHUB_FILE_ENCODING = "github_file_encoding";
 
     private final InputStream inputStream;
 
@@ -25,22 +34,38 @@ public class GitHubSource implements DocumentSource {
         return inputStream;
     }
 
+    /**
+     * Returns the metadata of the GitHub file. All values are {@link String}s.
+     * <ul>
+     *     <li>{@link #GITHUB_GIT_URL}: the Git API URL of the file</li>
+     *     <li>{@link #GITHUB_DOWNLOAD_URL}: the raw download URL of the file (optional: absent when not available)</li>
+     *     <li>{@link #GITHUB_HTML_URL}: the URL of the file on github.com</li>
+     *     <li>{@link #GITHUB_URL}: the contents API URL of the file</li>
+     *     <li>{@link #GITHUB_FILE_NAME}: the name of the file</li>
+     *     <li>{@link #GITHUB_FILE_PATH}: the path of the file in the repository</li>
+     *     <li>{@link #GITHUB_FILE_SHA}: the SHA of the file</li>
+     *     <li>{@link #GITHUB_FILE_SIZE}: the size of the file in bytes</li>
+     *     <li>{@link #GITHUB_FILE_ENCODING}: the encoding of the file content</li>
+     * </ul>
+     *
+     * @return the metadata of the GitHub file
+     */
     @Override
     public Metadata metadata() {
         Metadata metadata = new Metadata();
-        metadata.put("github_git_url", content.getGitUrl());
+        metadata.put(GITHUB_GIT_URL, content.getGitUrl());
         try {
-            metadata.put("github_download_url", content.getDownloadUrl());
+            metadata.put(GITHUB_DOWNLOAD_URL, content.getDownloadUrl());
         } catch (IOException e) {
             // Ignore if download_url is not available
         }
-        metadata.put("github_html_url", content.getHtmlUrl());
-        metadata.put("github_url", content.getUrl());
-        metadata.put("github_file_name", content.getName());
-        metadata.put("github_file_path", content.getPath());
-        metadata.put("github_file_sha", content.getSha());
-        metadata.put("github_file_size", Long.toString(content.getSize()));
-        metadata.put("github_file_encoding", content.getEncoding());
+        metadata.put(GITHUB_HTML_URL, content.getHtmlUrl());
+        metadata.put(GITHUB_URL, content.getUrl());
+        metadata.put(GITHUB_FILE_NAME, content.getName());
+        metadata.put(GITHUB_FILE_PATH, content.getPath());
+        metadata.put(GITHUB_FILE_SHA, content.getSha());
+        metadata.put(GITHUB_FILE_SIZE, Long.toString(content.getSize()));
+        metadata.put(GITHUB_FILE_ENCODING, content.getEncoding());
         return metadata;
     }
 }

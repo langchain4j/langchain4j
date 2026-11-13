@@ -1,5 +1,12 @@
 package dev.langchain4j.data.document.source.gcs;
 
+import static dev.langchain4j.data.document.source.gcs.GcsSource.BUCKET;
+import static dev.langchain4j.data.document.source.gcs.GcsSource.CONTENT_TYPE;
+import static dev.langchain4j.data.document.source.gcs.GcsSource.CREATE_TIME;
+import static dev.langchain4j.data.document.source.gcs.GcsSource.NAME;
+import static dev.langchain4j.data.document.source.gcs.GcsSource.SIZE;
+import static dev.langchain4j.data.document.source.gcs.GcsSource.SOURCE;
+import static dev.langchain4j.data.document.source.gcs.GcsSource.UPDATE_TIME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -7,6 +14,7 @@ import static org.mockito.Mockito.when;
 
 import com.google.cloud.ReadChannel;
 import com.google.cloud.storage.Blob;
+import dev.langchain4j.data.document.Metadata;
 import java.nio.ByteBuffer;
 import java.time.OffsetDateTime;
 import org.junit.jupiter.api.Test;
@@ -62,5 +70,37 @@ class GcsSourceTest {
 
         // then
         assertThat(source.metadata().getString("contentType")).isEqualTo("text/plain");
+    }
+
+    @Test
+    void should_expose_metadata_keys_as_public_constants() {
+        // constant values must stay unchanged for backward compatibility with persisted metadata
+        assertThat(SOURCE).isEqualTo("source");
+        assertThat(BUCKET).isEqualTo("bucket");
+        assertThat(NAME).isEqualTo("name");
+        assertThat(CONTENT_TYPE).isEqualTo("contentType");
+        assertThat(SIZE).isEqualTo("size");
+        assertThat(CREATE_TIME).isEqualTo("createTime");
+        assertThat(UPDATE_TIME).isEqualTo("updateTime");
+    }
+
+    @Test
+    void should_populate_all_documented_keys_with_documented_types() {
+        // given
+        Blob blob = mockBlob("text/plain");
+
+        // when
+        Metadata metadata = new GcsSource(blob).metadata();
+
+        // then
+        assertThat(metadata.toMap())
+                .containsOnlyKeys(SOURCE, BUCKET, NAME, CONTENT_TYPE, SIZE, CREATE_TIME, UPDATE_TIME);
+        assertThat(metadata.getString(SOURCE)).isEqualTo("gs://my-bucket/my-object.txt");
+        assertThat(metadata.getString(BUCKET)).isEqualTo("my-bucket");
+        assertThat(metadata.getString(NAME)).isEqualTo("my-object.txt");
+        assertThat(metadata.getString(CONTENT_TYPE)).isEqualTo("text/plain");
+        assertThat(metadata.getLong(SIZE)).isEqualTo(123L);
+        assertThat(metadata.getString(CREATE_TIME)).isEqualTo("2024-01-01T00:00Z");
+        assertThat(metadata.getString(UPDATE_TIME)).isEqualTo("2024-01-02T00:00Z");
     }
 }
