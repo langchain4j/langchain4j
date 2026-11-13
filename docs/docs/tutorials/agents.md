@@ -1464,6 +1464,16 @@ The resolver is called once for each agent of the system when it is built, and t
 - an agent passed as an instance to a workflow builder, a [non-AI agent](#non-ai-agents) or a [human-in-the-loop](#human-in-the-loop) object, is its own helper object: its `@ActivationCondition` and `@AgentListenerSupplier` can be instance methods, and the parameters of its agent method can be resolved through a `SupplierParameterResolver`;
 - in plain LangChain4j the helper objects are mainly a tool for integrations: the Quarkus extension lets an agent be a bean class whose instance helpers are invoked on the bean, see its documentation.
 
+An `AgentConfigurator` can also change the agents of the system while they are created, after their declarative configuration has been applied. Its `configurator` is called for each AI agent, each decision agent and each agent orchestrating subagents, which is a workflow, a supervisor or a planner agent. These three kinds of agents have different builders, so the creation context it receives provides the builder through one of three methods, and the other two return `null`: `agentBuilder()` for an AI agent, `decisionAgentBuilder()` for a decision agent and `agenticService()` for an agent orchestrating subagents. A configurator has to check which one it received before using it. For instance, a [listener](#observability) is notified of the events of the agent it is registered on, and not of the ones of the agents containing it, so this is how a listener that has to follow the model calls of every supervisor of the system is registered on them:
+
+```java
+AgentConfigurator configurator = new AgentConfigurator(context -> {
+    if (context.agenticService() != null) {
+        context.agenticService().listener(listener);
+    }
+});
+```
+
 ## Strongly typed inputs and outputs
 
 Up to this point, all input and output keys used to pass data to and from agents have been identified by a simple `String`. However, this approach can be error-prone, as it relies on the correct spelling of those keys. Also in this way it is not possible to strongly bind these variables to a specific types, thus obliging to type checks and casts when reading their values from the `AgenticScope`. To avoid these issues, it is optionally allowed to define strongly typed input and output keys using the `TypedKey` interface.
