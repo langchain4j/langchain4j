@@ -8,6 +8,8 @@ import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
+import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -188,18 +190,18 @@ class DefaultGuardrailServiceTests {
         // without a config on the builder, the config still comes from the annotation
         assertThat(guardrailService.getOutputConfig("chat"))
                 .get()
-                .extracting(dev.langchain4j.guardrail.config.OutputGuardrailsConfig::maxRetries)
+                .extracting(OutputGuardrailsConfig::maxRetries)
                 .isEqualTo(10);
         assertThat(guardrailService.getOutputConfig("chat2"))
                 .get()
-                .extracting(dev.langchain4j.guardrail.config.OutputGuardrailsConfig::maxRetries)
-                .isEqualTo(dev.langchain4j.guardrail.config.OutputGuardrailsConfig.MAX_RETRIES_DEFAULT);
+                .extracting(OutputGuardrailsConfig::maxRetries)
+                .isEqualTo(OutputGuardrailsConfig.MAX_RETRIES_DEFAULT);
     }
 
     @Test
     void builderConfigTakesPrecedenceOverAnnotationConfig() {
         var guardrailService = (DefaultGuardrailService) GuardrailService.builder(ClassAndMethodLevelAssistant.class)
-                .outputGuardrailsConfig(dev.langchain4j.guardrail.config.OutputGuardrailsConfig.builder()
+                .outputGuardrailsConfig(OutputGuardrailsConfig.builder()
                         .maxRetries(5)
                         .build())
                 .build();
@@ -215,12 +217,38 @@ class DefaultGuardrailServiceTests {
 
         assertThat(guardrailService.getOutputConfig("chat"))
                 .get()
-                .extracting(dev.langchain4j.guardrail.config.OutputGuardrailsConfig::maxRetries)
+                .extracting(OutputGuardrailsConfig::maxRetries)
                 .isEqualTo(5);
         assertThat(guardrailService.getOutputConfig("chat2"))
                 .get()
-                .extracting(dev.langchain4j.guardrail.config.OutputGuardrailsConfig::maxRetries)
+                .extracting(OutputGuardrailsConfig::maxRetries)
                 .isEqualTo(5);
+    }
+
+    @Test
+    void builderGuardrailInstancesAndConfigsTakePrecedenceOverClassAndMethodAnnotations() {
+        var inputGuardrailsConfig = InputGuardrailsConfig.builder().build();
+        var guardrailService = (DefaultGuardrailService) GuardrailService.builder(ClassAndMethodLevelAssistant.class)
+                .inputGuardrails(new IG2())
+                .inputGuardrailsConfig(inputGuardrailsConfig)
+                .outputGuardrailClasses(OG2.class)
+                .outputGuardrailsConfig(
+                        OutputGuardrailsConfig.builder().maxRetries(5).build())
+                .build();
+
+        assertThat(Stream.of("chat", "chat2")).allSatisfy(method -> {
+            assertThat(guardrailService.getInputGuardrails(method))
+                    .singleElement()
+                    .isExactlyInstanceOf(IG2.class);
+            assertThat(guardrailService.getInputConfig(method)).containsSame(inputGuardrailsConfig);
+            assertThat(guardrailService.getOutputGuardrails(method))
+                    .singleElement()
+                    .isExactlyInstanceOf(OG2.class);
+            assertThat(guardrailService.getOutputConfig(method))
+                    .get()
+                    .extracting(OutputGuardrailsConfig::maxRetries)
+                    .isEqualTo(5);
+        });
     }
 
     @ParameterizedTest

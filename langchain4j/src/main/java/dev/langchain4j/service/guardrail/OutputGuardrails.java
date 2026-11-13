@@ -1,6 +1,7 @@
 package dev.langchain4j.service.guardrail;
 
 import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.service.AiServices;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -8,7 +9,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * An annotation to apply guardrails to the output of the model using the declarative {@link dev.langchain4j.service.AiServices AiServices}
+ * An annotation to apply guardrails to the output of the model using the declarative {@link AiServices}
  * approach.
  * <p>
  *     An output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
@@ -23,9 +24,11 @@ import java.lang.annotation.Target;
  * </p>
  * <p>
  *     If the annotation is present on a class, the guardrails will be applied to all the methods of the class. An
- *     annotation on a method takes precedence over one on the class. Output guardrails set on the
- *     {@link dev.langchain4j.service.AiServices AiServices} builder take precedence over the guardrails of both, and an
- *     output guardrails configuration set on the builder takes precedence over their {@link #maxRetries()}.
+ *     annotation on a method takes precedence over one on the class: for that method, it replaces the annotation on
+ *     the class as a whole, including its {@link #maxRetries()}, and the two are not combined. Output guardrails set
+ *     on the {@link AiServices} builder take precedence over the guardrails of both: they replace the guardrails of
+ *     these annotations, and are not combined with them either. An output guardrails configuration set on the
+ *     builder takes precedence over their {@link #maxRetries()}.
  * </p>
  * <p>
  *     When several guardrails are applied, the order of the guardrails is important, as the guardrails are applied in
@@ -50,9 +53,11 @@ public @interface OutputGuardrails {
     Class<? extends OutputGuardrail>[] value();
 
     /**
-     * The maximum number of retries to perform when an output guardrail forces a retry or reprompt.
+     * The maximum number of times the output guardrails validate a response of the model, including the first one:
+     * the model is called again at most {@code maxRetries - 1} times when an output guardrail forces a retry or
+     * reprompt.
      * <p>
-     *     Set to {@code 0} to disable retries
+     *     Set to {@code 0} or {@code 1} to disable retries.
      * </p>
      * @see dev.langchain4j.guardrail.config.OutputGuardrailsConfig#maxRetries()
      */

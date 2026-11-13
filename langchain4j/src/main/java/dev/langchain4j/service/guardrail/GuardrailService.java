@@ -311,6 +311,11 @@ public interface GuardrailService {
          * This method configures input and output guardrails for each method of the service.
          * Guardrails set in the builder take precedence. If none are set, it uses the
          * method-level annotations, and if those are absent, the class-level annotations.
+         * <p>
+         * The guardrails and their configuration are resolved independently of each other, and separately for input
+         * and output guardrails. Only the first source found is used: guardrails set in the builder, on the method and
+         * on the class are not combined. Guardrails set in the builder count only when there is at least one:
+         * {@code null} or an empty list does not disable the guardrails declared in annotations.
          *
          * @return an instance of {@link GuardrailService} configured with appropriate
          * input and output guardrails.
