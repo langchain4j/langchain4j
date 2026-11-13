@@ -402,7 +402,12 @@ public class ApacheHttpClient implements HttpClient {
 
     @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
-        executeServerSentEvents(request, parser, listener);
+        try {
+            executeServerSentEvents(request, parser, listener);
+        } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
+            listener.onError(error); // not ignoringExceptions: what onError throws on the calling thread propagates
+        }
     }
 
     /**

@@ -198,7 +198,12 @@ public class OkHttpClient implements HttpClient {
 
     @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
-        enqueueServerSentEvents(request, parser, listener, (statusCode, headers) -> {});
+        try {
+            enqueueServerSentEvents(request, parser, listener, (statusCode, headers) -> {});
+        } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
+            listener.onError(error); // not ignoringExceptions: what onError throws on the calling thread propagates
+        }
     }
 
     private Call enqueueServerSentEvents(

@@ -2,6 +2,8 @@ package dev.langchain4j.http.client.apache;
 
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
@@ -9,6 +11,8 @@ import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 import org.junit.jupiter.api.Test;
+import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
+import dev.langchain4j.http.client.sse.ServerSentEventListener;
 
 class ApacheHttpClientAsyncFailureTest {
 
@@ -53,5 +57,32 @@ class ApacheHttpClientAsyncFailureTest {
         });
 
         assertThat(error).succeedsWithin(Duration.ofSeconds(5)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void execute_should_report_an_invalid_url_to_the_listener_instead_of_throwing() {
+
+        HttpRequest request = HttpRequest.builder().method(GET).url("http://localhost/a b").build();
+        CompletableFuture<Throwable> error = new CompletableFuture<>();
+        ServerSentEventListener listener = error::complete;
+
+        assertThatCode(() -> ApacheHttpClient.builder().build().execute(request, new DefaultServerSentEventParser(), listener))
+                .doesNotThrowAnyException();
+
+        assertThat(error).succeedsWithin(Duration.ofSeconds(5)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void execute_should_throw_what_the_listener_throws_for_an_invalid_url() {
+        // a streaming model passes the failure on to its handler, whose onError may throw on the calling thread
+
+        HttpRequest request = HttpRequest.builder().method(GET).url("http://localhost/a b").build();
+        RuntimeException onErrorFailure = new IllegalStateException("onError failed");
+        ServerSentEventListener listener = error -> {
+            throw onErrorFailure;
+        };
+
+        assertThatThrownBy(() -> ApacheHttpClient.builder().build().execute(request, new DefaultServerSentEventParser(), listener))
+                .isSameAs(onErrorFailure);
     }
 }

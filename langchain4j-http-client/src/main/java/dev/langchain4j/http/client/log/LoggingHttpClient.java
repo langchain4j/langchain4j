@@ -18,6 +18,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.InternalFlowUtils.failedPublisher;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -92,11 +93,13 @@ public class LoggingHttpClient implements HttpClient {
                 return future;
             }
 
-            return future.whenComplete((response, throwable) -> {
+            CompletableFuture<SuccessfulHttpResponse> logged = future.whenComplete((response, throwable) -> {
                 if (response != null) {
                     HttpResponseLogger.log(log, response);
                 }
             });
+            propagateCancellation(logged, future);
+            return logged;
         });
     }
 

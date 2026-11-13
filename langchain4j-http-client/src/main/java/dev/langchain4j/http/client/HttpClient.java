@@ -85,6 +85,10 @@ public interface HttpClient {
      * <p>
      * If any exception is thrown from the listener's methods, the stream processing
      * will be terminated and no further events will be processed.
+     * <p>
+     * An implementation does not throw: every failure, including an invalid request (for example an invalid URL or
+     * header), is passed to {@link ServerSentEventListener#onError(Throwable)}, possibly before this method returns.
+     * If {@code onError} throws while it is called on the calling thread, that exception is thrown from this method.
      *
      * @param request  the HTTP request to be executed.
      * @param parser   the parser to process incoming server-sent events.
@@ -119,6 +123,9 @@ public interface HttpClient {
 
     /**
      * Like {@link #stream(HttpRequest)}, but with a caller-supplied {@link ServerSentEventParser}.
+     * <p>
+     * An implementation never throws and never returns {@code null}: every failure, including an invalid request,
+     * reaches the subscriber's {@code onError}, after {@code onSubscribe}.
      *
      * @since 1.20.0
      */

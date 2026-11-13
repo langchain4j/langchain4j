@@ -159,7 +159,14 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
 
     @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
-        java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
+        java.net.http.HttpRequest jdkRequest;
+        try {
+            jdkRequest = toJdkRequest(request);
+        } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
+            listener.onError(error); // not ignoringExceptions: what onError throws on the calling thread propagates
+            return;
+        }
 
         delegate.sendAsync(jdkRequest, BodyHandlers.ofInputStream())
                 .thenAccept(jdkResponse -> {
@@ -191,17 +198,16 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
 
     @Override
     public Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
-        java.net.http.HttpRequest jdkRequest;
         try {
-            jdkRequest = toJdkRequest(request);
+            java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
+            if (streamingBackpressure) {
+                return new BackpressuredHttpStreamingEventPublisher(delegate, jdkRequest, parser);
+            }
+            return new HttpStreamingEventPublisher(delegate, jdkRequest, parser, streamingBufferSize);
         } catch (Throwable error) {
             restoreInterruptIfInterrupted(error);
             return failedPublisher(error);
         }
-        if (streamingBackpressure) {
-            return new BackpressuredHttpStreamingEventPublisher(delegate, jdkRequest, parser);
-        }
-        return new HttpStreamingEventPublisher(delegate, jdkRequest, parser, streamingBufferSize);
     }
 
     java.net.http.HttpRequest toJdkRequest(HttpRequest request) {
