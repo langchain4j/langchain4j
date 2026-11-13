@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
@@ -135,6 +136,29 @@ public class DefaultMcpClientTest {
                 .havingCause()
                 .isInstanceOf(IllegalStateException.class)
                 .withMessage("The client is closed");
+    }
+
+    @Test
+    public void executeToolAsync_should_return_a_failed_future_for_invalid_arguments() throws Exception {
+        // given
+        final McpTransport transport = getMinimalMcpTransportMock();
+        DefaultMcpClient client =
+                new DefaultMcpClient.Builder().transport(transport).build();
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("echo")
+                .arguments("{not json")
+                .build();
+
+        // when
+        CompletableFuture<ToolExecutionResult> future = client.executeToolAsync(request, null);
+
+        // then
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(ToolArgumentsException.class);
     }
 
     @Test

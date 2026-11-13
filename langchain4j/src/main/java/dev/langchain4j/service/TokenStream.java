@@ -221,6 +221,8 @@ public interface TokenStream {
      * The provided consumer will be invoked when an error occurs, before or during streaming. A failure of the model
      * call, including an invalid request, is passed to this consumer and is not thrown from {@link #start()}. The
      * consumer can be called before {@link #start()} returns.
+     * <p>
+     * If this consumer throws an exception, the exception is logged and is not thrown from {@link #start()}.
      *
      * @param errorHandler lambda that will be invoked when an error occurs
      * @return token stream instance used to configure or start stream processing
@@ -228,7 +230,10 @@ public interface TokenStream {
     TokenStream onError(Consumer<Throwable> errorHandler);
 
     /**
-     * All errors during streaming will be ignored (but will be logged with a WARN log level).
+     * Every failure, before or during streaming, including an invalid request, is ignored and logged with the WARN
+     * level. It is not thrown from {@link #start()}. After such a failure no other callback is called, so code that
+     * waits for {@link #onCompleteResponse(Consumer)} would wait forever: to also finish on a failure, use
+     * {@link #onError(Consumer)} instead.
      *
      * @return token stream instance used to configure or start stream processing
      */

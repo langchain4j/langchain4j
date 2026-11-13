@@ -8,6 +8,9 @@ import static dev.langchain4j.internal.TestUtils.systemMessageWithTokens;
 import static dev.langchain4j.internal.TestUtils.userMessageWithTokens;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static java.util.Collections.singletonList;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
@@ -24,6 +27,8 @@ import java.util.List;
 import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import java.time.Duration;
 
 class TokenWindowChatMemoryTest implements WithAssertions {
 
@@ -878,5 +883,53 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         // and further mutation of the caller's list must not affect stored memory
         callerList.add(userMessageWithTokens(10));
         assertThat(chatMemory.messages()).containsExactly(m2, m3);
+    }
+
+    @Test
+    void async_methods_should_return_a_failed_future_when_the_store_throws() {
+
+        RuntimeException failure = new IllegalStateException("store unavailable");
+        ChatMemoryStore store = mock(ChatMemoryStore.class);
+        when(store.getMessagesAsync(any())).thenThrow(failure);
+        when(store.updateMessagesAsync(any(), any())).thenThrow(failure);
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(1000, TOKEN_COUNT_ESTIMATOR)
+                .chatMemoryStore(store)
+                .build();
+
+        assertThat(chatMemory.messagesAsync()).failsWithin(Duration.ofSeconds(5)).withThrowableThat().withCause(failure);
+        assertThat(chatMemory.addAsync(List.of(userMessage("hi"))))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .withCause(failure);
+        assertThat(chatMemory.setAsync(List.of(userMessage("hi"))))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .withCause(failure);
+    }
+
+    @Test
+    void async_methods_should_return_a_failed_future_when_the_store_returns_null() {
+
+        ChatMemoryStore store = mock(ChatMemoryStore.class);
+        when(store.getMessagesAsync(any())).thenReturn(null);
+        when(store.updateMessagesAsync(any(), any())).thenReturn(null);
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(1000, TOKEN_COUNT_ESTIMATOR)
+                .chatMemoryStore(store)
+                .build();
+
+        assertThat(chatMemory.messagesAsync())
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(IllegalStateException.class)
+                .withMessageContaining("getMessagesAsync(Object) returned null");
+        assertThat(chatMemory.setAsync(List.of(userMessage("hi"))))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(IllegalStateException.class)
+                .withMessageContaining("updateMessagesAsync(Object, List) returned null");
     }
 }
