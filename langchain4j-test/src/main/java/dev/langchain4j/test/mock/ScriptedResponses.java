@@ -33,11 +33,14 @@ import org.jspecify.annotations.Nullable;
  */
 final class ScriptedResponses {
 
-    // the pre-tokenization pattern of OpenAI's cl100k_base tokenizer; its alternatives together match every character,
-    // and UNICODE_CHARACTER_CLASS makes \s match every Unicode space, as in tiktoken
+    // the pre-tokenization pattern of OpenAI's cl100k_base tokenizer, except that each Chinese or Japanese character is
+    // a token of its own, as tokenizers split such text, written without spaces, about that finely; its alternatives
+    // together match every character, and UNICODE_CHARACTER_CLASS makes \s match every Unicode space, as in tiktoken
     private static final Pattern TOKEN = Pattern.compile(
             "(?i:'s|'t|'re|'ve|'m|'ll|'d)"
-                    + "|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*"
+                    + "|[\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}]"
+                    + "|[^\\r\\n\\p{L}\\p{N}]?[\\p{L}&&[^\\p{IsHan}\\p{IsHiragana}\\p{IsKatakana}]]+"
+                    + "|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*"
                     + "|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
             Pattern.UNICODE_CHARACTER_CLASS);
 
@@ -315,8 +318,8 @@ final class ScriptedResponses {
 
     /**
      * Splits the text into tokens the way the streaming mock streams it, like the first step of a tokenizer: a word
-     * with the character before it (usually a space), up to three digits of a number, a run of punctuation, or
-     * whitespace. Together the tokens make up exactly the text.
+     * with the character before it (usually a space), a single Chinese or Japanese character, up to three digits of a
+     * number, a run of punctuation, or whitespace. Together the tokens make up exactly the text.
      */
     static List<String> splitIntoTokens(@Nullable String text) {
         if (isNullOrEmpty(text)) {

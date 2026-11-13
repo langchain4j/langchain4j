@@ -847,6 +847,20 @@ public class MockStreamingChatModelTest {
     }
 
     @Test
+    void should_stream_chinese_and_japanese_text_one_character_per_token() throws Exception {
+
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds("\u53d6\u6d88\u9884\u8ba2\uff0c\u597d\u5417\uff1f")
+                .thenResponds("\u4e88\u7d04\u3092\u30ad\u30e3\u30f3\u30bb\u30eb")
+                .thenResponds("Hello \u4e16\u754c!");
+
+        assertThat(stream(model).tokens())
+                .containsExactly("\u53d6", "\u6d88", "\u9884", "\u8ba2", "\uff0c", "\u597d", "\u5417", "\uff1f");
+        assertThat(stream(model).tokens())
+                .containsExactly("\u4e88", "\u7d04", "\u3092", "\u30ad", "\u30e3", "\u30f3", "\u30bb", "\u30eb");
+        assertThat(stream(model).tokens()).containsExactly("Hello", " ", "\u4e16", "\u754c", "!");
+    }
+
+    @Test
     void should_stream_tokens_that_make_up_exactly_the_text() throws Exception {
 
         String text = "  H\u00e9llo,\u00a0w\u00f6rld! \ud83d\ude00 12345\r\n\tend  ";

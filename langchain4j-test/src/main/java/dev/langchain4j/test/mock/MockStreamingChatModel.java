@@ -76,8 +76,9 @@ import org.jspecify.annotations.Nullable;
  * streamed in word-like tokens, the way a tokenizer splits text before it encodes it: a word with the space before it,
  * up to three digits of a number, a run of punctuation, or whitespace. So {@code "Hello, world!"} is streamed as
  * {@code "Hello"}, {@code ","}, {@code " world"} and {@code "!"}, and {@code "Order 12345"} as {@code "Order"},
- * {@code " "}, {@code "123"} and {@code "45"}. The complete response reports what a provider reports: the model name of
- * the request, and the finish reason {@link FinishReason#TOOL_EXECUTION} for an answer with tool calls, otherwise
+ * {@code " "}, {@code "123"} and {@code "45"}. Chinese and Japanese text, written without spaces between words, is
+ * streamed one character per token. The complete response reports what a provider reports: the model name of the
+ * request, and the finish reason {@link FinishReason#TOOL_EXECUTION} for an answer with tool calls, otherwise
  * {@link FinishReason#STOP}. To report token usage in every response, use {@link #withTokenUsage(TokenUsage)}. To
  * report anything else, for example {@link FinishReason#LENGTH} or a different token usage per step, give the whole
  * response: {@link #thatResponds(ChatResponse)}.
