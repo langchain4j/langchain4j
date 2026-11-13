@@ -79,7 +79,6 @@ Check the list of [available models](https://ai.google.dev/gemini-api/docs/model
 * `gemini-4-carbon`
 * `gemini-4-argon`
 * `gemini-3.8-flash`
-* `gemini-3.1-pro-preview`
 * `gemini-3.1-flash-lite`
 
 The Gemini 4 models are available on the Gemini Developer API only, not on Vertex AI, and do not support explicit caching.
@@ -493,13 +492,13 @@ caches.deleteCache(cache.name().orElseThrow());
 
 ## Thinking Models
 
-Gemini 3 and later models (like `gemini-3.1-pro-preview` and `gemini-3.8-flash`) support advanced reasoning (thinking) capabilities. 
+Gemini 3 and later models (like `gemini-4-hydrogen` and `gemini-3.8-flash`) support advanced reasoning (thinking) capabilities. 
 You can enable this by specifying a `thinkingLevel` during model configuration. The supported values are `"MINIMAL"`, `"LOW"`, `"MEDIUM"`, and `"HIGH"`:
 
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-3.1-pro-preview")
+    .modelName("gemini-4-hydrogen")
     .thinkingLevel("MEDIUM")
     .build();
 ```
@@ -523,7 +522,7 @@ and `returnThinking(true)` to have them mapped to `AiMessage.thinking()`:
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-3.1-pro-preview")
+    .modelName("gemini-4-hydrogen")
     .thinkingLevel("MEDIUM")
     .includeThoughts(true)
     .returnThinking(true)

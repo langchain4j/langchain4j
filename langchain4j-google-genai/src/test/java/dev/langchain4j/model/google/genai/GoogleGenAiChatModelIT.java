@@ -102,9 +102,9 @@ class GoogleGenAiChatModelIT extends AbstractChatModelIT {
     void should_persist_thought_signature_in_multi_turn_tool_execution() {
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-                .modelName("gemini-3.1-pro-preview")
+                .modelName("gemini-4-hydrogen")
                 .temperature(0.0)
-                .timeout(ofMinutes(2)) // this preview model sometimes stalls for minutes, the call is then retried
+                .timeout(ofMinutes(2))
                 .build();
 
         ToolSpecification tool = ToolSpecification.builder()

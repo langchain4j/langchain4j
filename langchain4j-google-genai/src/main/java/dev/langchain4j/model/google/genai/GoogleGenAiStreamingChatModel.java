@@ -498,7 +498,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         /**
          * Sets the model to use for streaming chat completions.
          * <p>
-         * Examples: {@code "gemini-3.8-flash"}, {@code "gemini-3.1-pro-preview"}.
+         * Examples: {@code "gemini-3.8-flash"}, {@code "gemini-4-hydrogen"}.
          *
          * @param modelName the model name
          * @return {@code this}

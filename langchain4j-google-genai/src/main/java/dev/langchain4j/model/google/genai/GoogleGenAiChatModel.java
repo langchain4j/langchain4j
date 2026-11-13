@@ -355,7 +355,7 @@ public class GoogleGenAiChatModel implements ChatModel {
         /**
          * Sets the model to use for chat completions.
          * <p>
-         * Examples: {@code "gemini-3.8-flash"}, {@code "gemini-3.1-pro-preview"}.
+         * Examples: {@code "gemini-3.8-flash"}, {@code "gemini-4-hydrogen"}.
          *
          * @param modelName the model name
          * @return {@code this}
