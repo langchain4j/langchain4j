@@ -53,7 +53,10 @@ import java.util.concurrent.Flow.Subscription;
  * {@code streamingOnCallingThread()} have no replacement, and {@code withListeners(...)} and
  * {@code withSupportedCapabilities(...)} have the same names. Other differences: the new mock also streams partial tool
  * calls and thinking, streams text in word-like tokens, reports every failure on its streaming thread, and
- * {@code requests()} returns a copy. This class will be removed in 1.26.0 at the earliest.
+ * {@code requests()} returns a copy. Its {@code Publisher} produces the events on its own thread, so a test that
+ * subscribes has to wait for the end of the stream before it checks the events.
+ * {@link MockStreamingChatModel#thatStreams(String...)} without tokens completes with no text ({@code null}), where
+ * this class completed with {@code ""}. This class will be removed in 1.26.0 at the earliest.
  */
 @Experimental
 @Deprecated(since = "1.24.0", forRemoval = true)
@@ -72,7 +75,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     /**
      * @deprecated use {@link MockStreamingChatModel#thatStreams(List)} followed by
-     * {@link MockStreamingChatModel#thenRepeats()}
+     * {@link MockStreamingChatModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public StreamingChatModelMock(List<String> tokens) {
@@ -81,7 +84,8 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     /**
      * @deprecated use {@link MockStreamingChatModel#thatResponds(List)}, followed by
-     * {@link MockStreamingChatModel#thenRepeats()} if the model gets more requests than there are messages
+     * {@link MockStreamingChatModel#thenRepeats()} if the model gets more requests than there are messages. Removed
+     * together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public StreamingChatModelMock(Collection<AiMessage> aiMessages) {
@@ -96,7 +100,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     /**
      * @deprecated use {@link MockStreamingChatModel#thatFails(RuntimeException)} followed by
-     * {@link MockStreamingChatModel#thenRepeats()}
+     * {@link MockStreamingChatModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public StreamingChatModelMock(RuntimeException exception) {
@@ -105,6 +109,11 @@ public class StreamingChatModelMock implements StreamingChatModel {
         this.exception = ensureNotNull(exception, "exception");
     }
 
+    /**
+     * @deprecated use {@link MockStreamingChatModel#withSupportedCapabilities(Capability...)}. Removed together with
+     * this class, in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public StreamingChatModelMock withSupportedCapabilities(Capability... supportedCapabilities) {
         this.supportedCapabilities = Set.of(supportedCapabilities);
         return this;
@@ -112,14 +121,23 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     /**
      * Reports the given token usage in every complete response.
+     *
+     * @deprecated use {@link MockStreamingChatModel#withTokenUsage(TokenUsage)}. Removed together with this class, in
+     * 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public StreamingChatModelMock withTokenUsage(TokenUsage tokenUsage) {
         return withTokenUsages(tokenUsage);
     }
 
     /**
      * Reports the given token usages in successive complete responses, repeating the last one.
+     *
+     * @deprecated for a different token usage per step, give a step the whole response:
+     * {@link MockStreamingChatModel#thatResponds(ChatResponse)}. Removed together with this class, in 1.26.0 at the
+     * earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public StreamingChatModelMock withTokenUsages(TokenUsage... tokenUsages) {
         this.tokenUsages = List.of(tokenUsages);
         return this;
@@ -128,7 +146,8 @@ public class StreamingChatModelMock implements StreamingChatModel {
     /**
      * Notifies the given listeners of each call, like a real model does.
      *
-     * @deprecated use {@link MockStreamingChatModel#withListeners(ChatModelListener...)}
+     * @deprecated use {@link MockStreamingChatModel#withListeners(ChatModelListener...)}. Removed together with this
+     * class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public StreamingChatModelMock withListeners(ChatModelListener... listeners) {
@@ -145,7 +164,8 @@ public class StreamingChatModelMock implements StreamingChatModel {
      * Streams on the thread that calls {@code chat(ChatRequest, StreamingChatResponseHandler)}, before that call
      * returns, as some in-process models do, instead of on a separate thread.
      *
-     * @deprecated has no replacement: {@link MockStreamingChatModel} always streams on its own thread, like a provider
+     * @deprecated has no replacement: {@link MockStreamingChatModel} always streams on its own thread, like a provider.
+     * Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public StreamingChatModelMock streamingOnCallingThread() {
@@ -162,7 +182,12 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     /**
      * Reports the given finish reason in every complete response.
+     *
+     * @deprecated a response of {@link MockStreamingChatModel} reports {@code STOP} or {@code TOOL_EXECUTION}; for
+     * another finish reason, give a step the whole response: {@link MockStreamingChatModel#thatResponds(ChatResponse)}.
+     * Removed together with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public StreamingChatModelMock withFinishReason(FinishReason finishReason) {
         this.finishReason = finishReason;
         return this;
@@ -172,7 +197,11 @@ public class StreamingChatModelMock implements StreamingChatModel {
      * Throws the exception of this mock from {@code chat(ChatRequest, StreamingChatResponseHandler)} itself, as some
      * providers do when a request cannot be sent, instead of passing it to the handler. The {@code Publisher}-based
      * {@code chat(ChatRequest)} then fails with an {@link IllegalStateException}, as this option does not apply to it.
+     *
+     * @deprecated has no replacement: {@link MockStreamingChatModel} reports every failure with {@code onError}, like
+     * the streaming models of LangChain4j. Removed together with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public StreamingChatModelMock throwingFromChat() {
         this.throwFromChat = true;
         return this;
@@ -365,7 +394,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     /**
      * @deprecated use {@link MockStreamingChatModel#thatStreams(String...)} followed by
-     * {@link MockStreamingChatModel#thenRepeats()}
+     * {@link MockStreamingChatModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static StreamingChatModelMock thatAlwaysStreams(String... tokens) {
@@ -374,7 +403,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     /**
      * @deprecated use {@link MockStreamingChatModel#thatStreams(List)} followed by
-     * {@link MockStreamingChatModel#thenRepeats()}
+     * {@link MockStreamingChatModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static StreamingChatModelMock thatAlwaysStreams(List<String> tokens) {
@@ -383,8 +412,9 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     /**
      * @deprecated use {@link MockStreamingChatModel#thatResponds(AiMessage...)} followed by
-     * {@link MockStreamingChatModel#thenRepeats()}; for a message with tool calls, script the answer that follows the tool results with
-     * {@link MockStreamingChatModel#thenResponds(String)} instead
+     * {@link MockStreamingChatModel#thenRepeats()}; for a message with tool calls, script the answer that follows the
+     * tool results with {@link MockStreamingChatModel#thenResponds(String)} instead. Removed together with this class,
+     * in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static StreamingChatModelMock thatAlwaysStreams(AiMessage aiMessage) {
@@ -393,7 +423,8 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     /**
      * @deprecated use {@link MockStreamingChatModel#thatResponds(AiMessage...)}, followed by
-     * {@link MockStreamingChatModel#thenRepeats()} if the model gets more requests than there are messages
+     * {@link MockStreamingChatModel#thenRepeats()} if the model gets more requests than there are messages. Removed
+     * together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static StreamingChatModelMock thatAlwaysStreams(AiMessage... aiMessages) {
@@ -402,7 +433,8 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     /**
      * @deprecated use {@link MockStreamingChatModel#thatResponds(List)}, followed by
-     * {@link MockStreamingChatModel#thenRepeats()} if the model gets more requests than there are messages
+     * {@link MockStreamingChatModel#thenRepeats()} if the model gets more requests than there are messages. Removed
+     * together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static StreamingChatModelMock thatAlwaysStreams(Collection<AiMessage> aiMessages) {
@@ -411,7 +443,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     /**
      * @deprecated use {@link MockStreamingChatModel#thatFails(RuntimeException)} followed by
-     * {@link MockStreamingChatModel#thenRepeats()}
+     * {@link MockStreamingChatModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static StreamingChatModelMock thatAlwaysThrowsException() {
@@ -420,7 +452,7 @@ public class StreamingChatModelMock implements StreamingChatModel {
 
     /**
      * @deprecated use {@link MockStreamingChatModel#thatFails(RuntimeException)} followed by
-     * {@link MockStreamingChatModel#thenRepeats()}
+     * {@link MockStreamingChatModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static StreamingChatModelMock thatAlwaysThrowsExceptionWithMessage(String message) {

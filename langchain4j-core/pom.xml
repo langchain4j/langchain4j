@@ -105,8 +105,8 @@
             <!-- The langchain4j-test module depends on this module -->
             <!-- So instead we will just add the source of that module to the test source of this module -->
             <!-- Core tests only need the guardrail assertions and the model mocks, so only those packages are copied (keeping their folders) -->
-            <!-- The test-jar of this module leaves them out (see maven-jar-plugin), so they are published only in langchain4j-test: other modules depend on langchain4j-test, and langchain4j, which langchain4j-test depends on, copies the mocks the same way -->
-            <!-- Maven does not see this copy as a dependency, so a change in the mocks alone does not select these modules in incremental builds -->
+            <!-- The test-jar of this module leaves them out (see maven-jar-plugin), so they are published only in langchain4j-test: other modules depend on langchain4j-test -->
+            <!-- Maven does not see this copy as a dependency, so a change in the mocks alone does not select this module in incremental builds -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>

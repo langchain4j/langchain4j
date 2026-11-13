@@ -476,6 +476,19 @@ public class MockStreamingChatModelTest {
     }
 
     @Test
+    void should_accept_a_repeated_capability_and_reject_null_capabilities() {
+
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds("Hi")
+                .withSupportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA, RESPONSE_FORMAT_JSON_SCHEMA);
+
+        assertThat(model.supportedCapabilities()).containsExactly(RESPONSE_FORMAT_JSON_SCHEMA);
+        assertThatThrownBy(() -> model.withSupportedCapabilities((Capability[]) null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> model.withSupportedCapabilities((Set<Capability>) null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void should_call_a_tool_and_then_stream() throws Exception {
 
         MockStreamingChatModel model = MockStreamingChatModel.thatCallsTool("cancelBooking", Map.of("id", 7))
@@ -852,6 +865,7 @@ public class MockStreamingChatModelTest {
         MockStreamingChatModel model = MockStreamingChatModel.thatStreams("Hel", "lo").andFails(failure);
         List<Object> signals = new CopyOnWriteArrayList<>();
         CompletableFuture<Flow.Subscription> subscribed = new CompletableFuture<>();
+        CompletableFuture<Thread> streamingThread = new CompletableFuture<>();
         CompletableFuture<Void> done = new CompletableFuture<>();
 
         model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build())
@@ -866,6 +880,7 @@ public class MockStreamingChatModelTest {
                     @Override
                     public void onNext(ChatModelStreamingEvent event) {
                         signals.add(event);
+                        streamingThread.complete(Thread.currentThread());
                     }
 
                     @Override
@@ -880,14 +895,126 @@ public class MockStreamingChatModelTest {
                     }
                 });
 
-        // the mock has the second token and the failure ready, but the subscriber requested only one event
-        Thread.sleep(200);
+        // the subscriber requested one event before the mock's thread started, so that thread delivers it; once the
+        // thread has ended, the second token and the failure wait until the subscriber requests more
+        streamingThread.get(5, SECONDS).join(5_000);
         assertThat(signals).containsExactly(new PartialResponse("Hel"));
 
         subscribed.get(5, SECONDS).request(1);
 
         assertThat(done).succeedsWithin(5, SECONDS);
         assertThat(signals).containsExactly(new PartialResponse("Hel"), new PartialResponse("lo"), failure);
+    }
+
+    @Test
+    void should_complete_after_the_last_event_when_the_subscriber_requests_the_events_later() throws Exception {
+
+        CompletableFuture<Thread> streamingThread = new CompletableFuture<>();
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(request -> {
+            streamingThread.complete(Thread.currentThread());
+            return AiMessage.from("Hello world");
+        });
+        List<Object> signals = new CopyOnWriteArrayList<>();
+        CompletableFuture<Flow.Subscription> subscribed = new CompletableFuture<>();
+        CompletableFuture<Void> done = new CompletableFuture<>();
+
+        model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build())
+                .subscribe(new Flow.Subscriber<>() {
+
+                    @Override
+                    public void onSubscribe(Flow.Subscription subscription) {
+                        subscribed.complete(subscription);
+                    }
+
+                    @Override
+                    public void onNext(ChatModelStreamingEvent event) {
+                        signals.add(event);
+                    }
+
+                    @Override
+                    public void onError(Throwable error) {
+                        done.completeExceptionally(error);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        signals.add("complete");
+                        done.complete(null);
+                    }
+                });
+
+        // nothing was requested yet, so the mock's thread produces all events, delivers none of them and ends;
+        // every event and the completion are then delivered on this thread, one request at a time
+        streamingThread.get(5, SECONDS).join(5_000);
+        Flow.Subscription subscription = subscribed.get(5, SECONDS);
+        subscription.request(1);
+        assertThat(signals).containsExactly(new PartialResponse("Hello"));
+        subscription.request(1);
+        assertThat(signals).containsExactly(new PartialResponse("Hello"), new PartialResponse(" world"));
+        subscription.request(1);
+
+        assertThat(done).succeedsWithin(5, SECONDS);
+        assertThat(signals).hasSize(4);
+        assertThat(signals.get(2)).isInstanceOf(CompleteResponse.class);
+        assertThat(signals.get(3)).isEqualTo("complete");
+    }
+
+    @Test
+    void should_take_the_next_step_for_each_subscription_to_the_same_publisher() {
+
+        RuntimeException failure = new IllegalStateException("connection reset");
+        MockStreamingChatModel model = MockStreamingChatModel.thatFails(failure).thenResponds("recovered");
+        Flow.Publisher<ChatModelStreamingEvent> publisher =
+                model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build());
+
+        assertThat(model.requests()).isEmpty();
+
+        assertThat(signals(publisher)).containsExactly(failure);
+        assertThat(model.requests()).hasSize(1);
+
+        List<Object> retry = signals(publisher);
+        assertThat(retry.get(0)).isEqualTo(new PartialResponse("recovered"));
+        assertThat(retry.get(1)).isInstanceOf(CompleteResponse.class);
+        assertThat(retry).hasSize(2);
+        assertThat(model.requests()).hasSize(2);
+
+        assertThat(signals(publisher))
+                .singleElement()
+                .isInstanceOf(IllegalStateException.class)
+                .extracting(error -> ((Throwable) error).getMessage())
+                .asString()
+                .contains("received request 3");
+        assertThat(model.requests()).hasSize(3);
+    }
+
+    @Test
+    void should_report_a_null_request_with_on_error_without_recording_it() throws Exception {
+
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds("Hi");
+        CompletableFuture<Throwable> handlerError = new CompletableFuture<>();
+
+        model.doChat(null, new StreamingChatResponseHandler() {
+
+            @Override
+            public void onPartialResponse(String partialResponse) {}
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                handlerError.completeExceptionally(new AssertionError("completed"));
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                handlerError.complete(error);
+            }
+        });
+
+        assertThat(handlerError.get(5, SECONDS)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(signals(model.doChat((ChatRequest) null)))
+                .singleElement()
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(model.requests()).isEmpty();
+        assertThat(chat(model)).isEqualTo("Hi");
     }
 
     @Test
@@ -1317,6 +1444,8 @@ public class MockStreamingChatModelTest {
                     @Override
                     public void onSubscribe(Flow.Subscription subscription) {
                         subscriptions.add(subscription);
+                        // requested before the mock's thread starts, so the event reaches onNext on that thread
+                        subscription.request(1);
                     }
 
                     @Override
@@ -1337,11 +1466,9 @@ public class MockStreamingChatModelTest {
                     }
                 });
 
-        Flow.Subscription subscription = subscriptions.get(0);
-        subscription.request(1);
         // the failure ends the streaming thread, like an uncaught exception on a provider's I/O thread
         streamingThread.get(5, SECONDS).join(5_000);
-        subscription.request(10);
+        subscriptions.get(0).request(10);
 
         assertThat(signals).singleElement().isInstanceOf(PartialResponse.class);
     }
@@ -1455,6 +1582,36 @@ public class MockStreamingChatModelTest {
     /**
      * Subscribes to the events of the next answer, requesting all of them, and waits for the end of the stream.
      */
+    private static List<Object> signals(Flow.Publisher<ChatModelStreamingEvent> publisher) {
+        List<Object> signals = new CopyOnWriteArrayList<>();
+        CompletableFuture<Void> done = new CompletableFuture<>();
+        publisher.subscribe(new Flow.Subscriber<>() {
+
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                subscription.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(ChatModelStreamingEvent event) {
+                signals.add(event);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                signals.add(error);
+                done.complete(null);
+            }
+
+            @Override
+            public void onComplete() {
+                done.complete(null);
+            }
+        });
+        assertThat(done).succeedsWithin(5, SECONDS);
+        return signals;
+    }
+
     private static void subscribe(MockStreamingChatModel model, List<Object> signals) {
         CompletableFuture<Void> done = new CompletableFuture<>();
         model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build())

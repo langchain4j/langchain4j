@@ -55,7 +55,7 @@ public class DecisionModelMock implements DecisionModel {
 
     /**
      * @deprecated use {@link MockDecisionModel#thatAnswers(Function)} followed by
-     * {@link MockDecisionModel#thenRepeats()}
+     * {@link MockDecisionModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public DecisionModelMock(Function<DecisionRequest, Map<String, ? extends DecisionAnswer>> answers) {
@@ -64,7 +64,11 @@ public class DecisionModelMock implements DecisionModel {
 
     /**
      * Reports the given token usage in every response.
+     *
+     * @deprecated has no replacement: a response of {@link MockDecisionModel} reports no token usage. Removed together
+     * with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public DecisionModelMock withTokenUsage(TokenUsage tokenUsage) {
         this.tokenUsage = tokenUsage;
         return this;
@@ -73,7 +77,8 @@ public class DecisionModelMock implements DecisionModel {
     /**
      * Reports the given model name in every response.
      *
-     * @deprecated has no replacement: a response of {@link MockDecisionModel} reports the model name of the request
+     * @deprecated has no replacement: a response of {@link MockDecisionModel} reports the model name of the request.
+     * Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public DecisionModelMock withModelName(String modelName) {
@@ -84,7 +89,8 @@ public class DecisionModelMock implements DecisionModel {
     /**
      * Returns the given provider from {@link #provider()}.
      *
-     * @deprecated has no replacement: stub {@code provider()} on a Mockito spy of {@link MockDecisionModel}
+     * @deprecated has no replacement: stub {@code provider()} on a Mockito spy of {@link MockDecisionModel}. Removed
+     * together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public DecisionModelMock withProvider(ModelProvider provider) {
@@ -101,7 +107,11 @@ public class DecisionModelMock implements DecisionModel {
      * Makes {@link #decideAsync(DecisionRequest)} fail with an
      * {@link dev.langchain4j.exception.AsyncNotSupportedException}, like a decision model without asynchronous
      * support.
+     *
+     * @deprecated has no replacement: {@link MockDecisionModel} always answers asynchronous calls. Removed together
+     * with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public DecisionModelMock withoutAsyncSupport() {
         this.asyncSupported = false;
         return this;
@@ -110,7 +120,11 @@ public class DecisionModelMock implements DecisionModel {
     /**
      * Makes {@link #decideAsync(DecisionRequest)} return the future given by the function instead of answering, for
      * example a future that is never completed, to test cancellation.
+     *
+     * @deprecated has no replacement: {@link MockDecisionModel} completes asynchronous calls on another thread with the
+     * steps of its script. Removed together with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public DecisionModelMock withAsyncResponse(Function<DecisionRequest, CompletableFuture<DecisionResponse>> asyncResponse) {
         this.asyncResponse = asyncResponse;
         return this;
@@ -166,7 +180,8 @@ public class DecisionModelMock implements DecisionModel {
     /**
      * Always answers with the given answers, keyed by question name.
      *
-     * @deprecated use {@link MockDecisionModel#thatAnswers(Map)} followed by {@link MockDecisionModel#thenRepeats()}
+     * @deprecated use {@link MockDecisionModel#thatAnswers(Map)} followed by {@link MockDecisionModel#thenRepeats()}.
+     * Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static DecisionModelMock thatAlwaysAnswers(Map<String, ? extends DecisionAnswer> answers) {
@@ -178,7 +193,7 @@ public class DecisionModelMock implements DecisionModel {
      * Answers with the answers computed from each request, keyed by question name.
      *
      * @deprecated use {@link MockDecisionModel#thatAnswers(Function)} followed by
-     * {@link MockDecisionModel#thenRepeats()}
+     * {@link MockDecisionModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static DecisionModelMock thatAnswers(
@@ -190,7 +205,7 @@ public class DecisionModelMock implements DecisionModel {
      * Answers every question of each request with the answer computed from the question.
      *
      * @deprecated use {@link MockDecisionModel#thatAnswersQuestions(Function)} followed by
-     * {@link MockDecisionModel#thenRepeats()}
+     * {@link MockDecisionModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static DecisionModelMock thatAnswersQuestions(Function<Question, ? extends DecisionAnswer> answer) {
@@ -208,7 +223,7 @@ public class DecisionModelMock implements DecisionModel {
      * @throws IllegalStateException when a request contains a question that is not a yes/no question.
      *
      * @deprecated use {@link MockDecisionModel#thatAnswersYesNoQuestions(ToDoubleFunction)} followed by
-     * {@link MockDecisionModel#thenRepeats()}
+     * {@link MockDecisionModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static DecisionModelMock thatAnswersYesNoQuestions(Function<YesNoQuestion, Double> probability) {
@@ -223,7 +238,7 @@ public class DecisionModelMock implements DecisionModel {
 
     /**
      * @deprecated use {@link MockDecisionModel#thatFails(RuntimeException)} followed by
-     * {@link MockDecisionModel#thenRepeats()}
+     * {@link MockDecisionModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static DecisionModelMock thatAlwaysThrowsException() {
@@ -232,7 +247,7 @@ public class DecisionModelMock implements DecisionModel {
 
     /**
      * @deprecated use {@link MockDecisionModel#thatFails(RuntimeException)} followed by
-     * {@link MockDecisionModel#thenRepeats()}
+     * {@link MockDecisionModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static DecisionModelMock thatAlwaysThrowsExceptionWithMessage(String message) {
@@ -242,7 +257,8 @@ public class DecisionModelMock implements DecisionModel {
     }
 
     /**
-     * @deprecated use {@link MockDecisionModel#withListeners(DecisionModelListener...)}
+     * @deprecated use {@link MockDecisionModel#withListeners(DecisionModelListener...)}. Removed together with this
+     * class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public DecisionModelMock withListeners(DecisionModelListener... listeners) {

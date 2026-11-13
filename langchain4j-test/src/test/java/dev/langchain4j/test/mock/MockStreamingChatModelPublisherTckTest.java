@@ -19,9 +19,10 @@ public class MockStreamingChatModelPublisherTckTest extends PublisherVerificatio
     private static final ChatRequest REQUEST =
             ChatRequest.builder().messages(UserMessage.from("Hi")).build();
 
-    // each subscription starts a new thread, so expected signals get some slack on a loaded CI runner
-    private static final long DEFAULT_TIMEOUT_MILLIS = 5_000L;
-    private static final long DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS = 500L;
+    // the same values as ReactiveStreamingTestSupport in langchain4j-reactive-streaming, which the TCK tests of the
+    // providers use, so that the mock is checked as strictly as the publishers it stands in for
+    private static final long DEFAULT_TIMEOUT_MILLIS = 10_000L;
+    private static final long DEFAULT_NO_SIGNALS_TIMEOUT_MILLIS = 2_000L;
     private static final long DEFAULT_POLL_TIMEOUT_MILLIS = 50L;
     private static final long PUBLISHER_REFERENCE_CLEANUP_TIMEOUT_MILLIS = 300L;
     private static final long MAX_ELEMENTS = 100L;

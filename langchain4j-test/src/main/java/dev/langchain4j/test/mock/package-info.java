@@ -24,7 +24,8 @@
  * <p>
  * A mock can be called from several threads at once. The steps of a script are taken in the order the requests arrive,
  * so to answer concurrent requests, compute the answer from the request, for example
- * {@code MockChatModel.thatResponds(request -> answer).thenRepeats()}. Set the listeners with {@code withListeners(...)}
- * before the first request.
+ * {@code MockChatModel.thatResponds(request -> answer).thenRepeats()}. Set the options, such as
+ * {@code withListeners(...)}, {@code withSupportedCapabilities(...)} and {@code withTokenUsage(...)}, before the first
+ * request.
  */
 package dev.langchain4j.test.mock;

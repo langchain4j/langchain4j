@@ -34,7 +34,11 @@ public class EmbeddingModelMock implements EmbeddingModel {
 
     /**
      * Reports the given provider from {@link #provider()}.
+     *
+     * @deprecated has no replacement: {@link MockEmbeddingModel} reports {@code OTHER} as its provider. Removed
+     * together with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public EmbeddingModelMock withProvider(ModelProvider provider) {
         this.provider = provider;
         return this;
@@ -43,7 +47,8 @@ public class EmbeddingModelMock implements EmbeddingModel {
     /**
      * Notifies the given listeners, see {@link #listeners()}.
      *
-     * @deprecated use {@link MockEmbeddingModel#withListeners(EmbeddingModelListener...)}
+     * @deprecated use {@link MockEmbeddingModel#withListeners(EmbeddingModelListener...)}. Removed together with this
+     * class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public EmbeddingModelMock withListeners(EmbeddingModelListener... listeners) {
@@ -54,7 +59,8 @@ public class EmbeddingModelMock implements EmbeddingModel {
     /**
      * Implements {@link #doEmbedAsync(EmbeddingRequest)}: the returned future completes on another thread.
      *
-     * @deprecated has no replacement: {@link MockEmbeddingModel} always supports asynchronous calls
+     * @deprecated has no replacement: {@link MockEmbeddingModel} always supports asynchronous calls. Removed together
+     * with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public EmbeddingModelMock withAsyncSupport() {

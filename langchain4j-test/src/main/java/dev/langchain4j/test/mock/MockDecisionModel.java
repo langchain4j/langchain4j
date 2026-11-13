@@ -11,8 +11,6 @@ import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -71,25 +69,24 @@ public class MockDecisionModel implements DecisionModel {
     /**
      * One step of the script: the answers to one request, keyed by question name.
      */
-    private interface Step {
+    interface Step {
 
         Map<String, ? extends DecisionAnswer> answer(DecisionRequest request);
     }
 
-    private final List<Step> steps = new ArrayList<>();
+    private final Script<Step> script = new Script<>(MOCK_NAME);
     private final RecordedRequests<DecisionRequest> requests = new RecordedRequests<>("decision");
-    private int nextIndex;
-    private boolean repeatsLastStep;
     private List<DecisionModelListener> listeners = List.of();
 
-    private MockDecisionModel(Step firstStep) {
-        steps.add(firstStep);
+    MockDecisionModel(Step firstStep) {
+        script.add(firstStep);
     }
 
     /**
      * Adds a step: the next request is answered with the given answers, keyed by question name.
      *
-     * @throws IllegalStateException if the script already ends with {@link #thenRepeats()}
+     * @throws IllegalArgumentException if the answers are empty, or if a name is blank or an answer is {@code null}
+     * @throws IllegalStateException    if the script already ends with {@link #thenRepeats()}
      */
     public MockDecisionModel thenAnswers(Map<String, ? extends DecisionAnswer> answers) {
         return add(fixed(answers));
@@ -115,8 +112,8 @@ public class MockDecisionModel implements DecisionModel {
     }
 
     /**
-     * Adds a step: every yes/no question of the next request is answered with the probability computed from the
-     * question, see {@link #thatAnswersYesNoQuestions(ToDoubleFunction)}.
+     * Adds a step: every yes/no question of the next request is answered with the probability of "yes", from 0 to 1,
+     * computed from the question, see {@link #thatAnswersYesNoQuestions(ToDoubleFunction)}.
      *
      * @throws IllegalStateException if the script already ends with {@link #thenRepeats()}
      */
@@ -141,22 +138,13 @@ public class MockDecisionModel implements DecisionModel {
      * @throws IllegalStateException if the script already ends with {@code thenRepeats()}
      */
     public synchronized MockDecisionModel thenRepeats() {
-        ensureNotRepeating();
-        repeatsLastStep = true;
+        script.repeatLastStep();
         return this;
     }
 
     private synchronized MockDecisionModel add(Step step) {
-        ensureNotRepeating();
-        steps.add(step);
+        script.add(step);
         return this;
-    }
-
-    private void ensureNotRepeating() {
-        if (repeatsLastStep) {
-            throw new IllegalStateException("thenRepeats() must be the last call of the script: the last"
-                    + " step already answers every further request");
-        }
     }
 
     @Override
@@ -166,27 +154,31 @@ public class MockDecisionModel implements DecisionModel {
 
     /**
      * Answers like {@link #doDecide(DecisionRequest)}, with the next step of the script, and completes the future on
-     * another thread, where a step that computes its answers also computes them.
+     * another thread, where a step that computes its answers also computes them. It never throws: a {@code null}
+     * request gives a failed future.
      */
     @Override
     public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
-        Step step = take(request);
+        Step step;
+        try {
+            step = take(request);
+        } catch (RuntimeException e) {
+            return CompletableFuture.failedFuture(e);
+        }
         return CompletableFuture.supplyAsync(() -> respond(step, request), MockThreads.newThreadPerTask(MOCK_NAME));
     }
 
     /**
      * Records the request and takes the step that answers it, in one go, so that concurrent requests get consistent
      * request numbers. A request after the last step gets a step that fails with an {@link IllegalStateException}.
+     *
+     * @throws IllegalArgumentException if the request is {@code null}; it is then not recorded
      */
     private synchronized Step take(DecisionRequest request) {
+        ensureNotNull(request, "request");
         int requestNumber = requests.add(request);
-        if (nextIndex < steps.size()) {
-            return steps.get(nextIndex++);
-        }
-        if (repeatsLastStep) {
-            return steps.get(steps.size() - 1);
-        }
-        return failing(new IllegalStateException(runOutMessage(request, requestNumber)));
+        Step step = script.next();
+        return step != null ? step : failing(new IllegalStateException(runOutMessage(request, requestNumber)));
     }
 
     private static DecisionResponse respond(Step step, DecisionRequest request) {
@@ -197,24 +189,16 @@ public class MockDecisionModel implements DecisionModel {
     }
 
     private String runOutMessage(DecisionRequest request, int requestNumber) {
-        StringBuilder message = new StringBuilder()
-                .append(MOCK_NAME)
-                .append(" received request ")
-                .append(requestNumber)
-                .append(", but its script has only ")
-                .append(steps.size())
-                .append(steps.size() == 1 ? " step. " : " steps. ")
-                .append("Script one more step, or end the script with thenRepeats() to answer every further request"
-                        + " with its last step. If the mock is shared between tests, for example as a bean, create a"
-                        + " new one for each test. The questions of request ")
+        StringBuilder questions = new StringBuilder("The questions of request ")
                 .append(requestNumber)
                 .append(":");
-        request.questions().forEach((name, question) -> message.append(" ")
+        request.questions().forEach((name, question) -> questions
+                .append(" ")
                 .append(name)
                 .append(" \"")
                 .append(shortened(question.text()))
                 .append("\""));
-        return message.toString();
+        return script.runOutMessage(requestNumber, "", questions.toString());
     }
 
     private static String shortened(String text) {
@@ -251,6 +235,8 @@ public class MockDecisionModel implements DecisionModel {
      * answer makes the request fail, see {@link MockDecisionModel}. {@link #thatAnswersQuestions(Function)} and
      * {@link #thatAnswersYesNoQuestions(ToDoubleFunction)} need no question names. Add the next steps with
      * {@code then...} methods, or answer every request with these answers: {@code thatAnswers(answers).thenRepeats()}.
+     *
+     * @throws IllegalArgumentException if the answers are empty, or if a name is blank or an answer is {@code null}
      */
     public static MockDecisionModel thatAnswers(Map<String, ? extends DecisionAnswer> answers) {
         return new MockDecisionModel(fixed(answers));
@@ -274,10 +260,11 @@ public class MockDecisionModel implements DecisionModel {
     }
 
     /**
-     * A model that answers every yes/no question of the first request with the probability computed from the
-     * question. A request with a question that is not a yes/no question fails with an {@link IllegalStateException}.
-     * Add the next steps with {@code then...} methods, or answer the questions of every request with
-     * {@code thenRepeats()}.
+     * A model that answers every yes/no question of the first request with the probability of "yes", from 0 to 1,
+     * computed from the question. A request with a question that is not a yes/no question fails with an
+     * {@link IllegalStateException}; to answer other questions, use {@link #thatAnswersQuestions(Function)} or
+     * {@link #thatAnswers(Map)}. Add the next steps with {@code then...} methods, or answer the questions of every
+     * request with {@code thenRepeats()}.
      */
     public static MockDecisionModel thatAnswersYesNoQuestions(ToDoubleFunction<YesNoQuestion> probability) {
         return new MockDecisionModel(yesNo(probability));
@@ -293,9 +280,12 @@ public class MockDecisionModel implements DecisionModel {
     }
 
     private static Step fixed(Map<String, ? extends DecisionAnswer> answers) {
-        Map<String, ? extends DecisionAnswer> copy =
-                Collections.unmodifiableMap(new LinkedHashMap<>(ensureNotNull(answers, "answers")));
-        return request -> copy;
+        // validated like the answers of a response, so that a wrong map fails here and not at the request that uses it
+        Map<String, DecisionAnswer> validated = DecisionResponse.builder()
+                .answers(ensureNotNull(answers, "answers"))
+                .build()
+                .answers();
+        return request -> validated;
     }
 
     private static Step computed(
@@ -317,7 +307,8 @@ public class MockDecisionModel implements DecisionModel {
         ensureNotNull(probability, "probability");
         return perQuestion(question -> {
             if (!(question instanceof YesNoQuestion yesNoQuestion)) {
-                throw new IllegalStateException("Expected a yes/no question, but got " + question);
+                throw new IllegalStateException("Expected a yes/no question, but got " + question
+                        + ". To answer other questions, use thatAnswersQuestions(...) or thatAnswers(...).");
             }
             return YesNoAnswer.from(probability.applyAsDouble(yesNoQuestion));
         });

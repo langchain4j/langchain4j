@@ -54,7 +54,8 @@ public class ScoringModelMock implements ScoringModel {
 
     /**
      * @param scores computes the score of a document from its text.
-     * @deprecated use {@link MockScoringModel#thatScores(ToDoubleFunction)}
+     * @deprecated use {@link MockScoringModel#thatScores(ToDoubleFunction)}. Removed together with this class, in
+     * 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock(Function<String, Double> scores) {
@@ -64,7 +65,8 @@ public class ScoringModelMock implements ScoringModel {
     /**
      * Reports the given provider from {@link #provider()}.
      *
-     * @deprecated has no replacement; with Mockito, stub the method on a spy of {@link MockScoringModel}
+     * @deprecated has no replacement; with Mockito, stub the method on a spy of {@link MockScoringModel}. Removed
+     * together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock withProvider(ModelProvider provider) {
@@ -75,7 +77,8 @@ public class ScoringModelMock implements ScoringModel {
     /**
      * Reports the given model name in {@link #defaultRequestParameters()}.
      *
-     * @deprecated has no replacement: a response of {@link MockScoringModel} reports the model name of the request
+     * @deprecated has no replacement: a response of {@link MockScoringModel} reports the model name of the request.
+     * Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock withModelName(String modelName) {
@@ -86,7 +89,8 @@ public class ScoringModelMock implements ScoringModel {
     /**
      * Reports the given token usage in every response.
      *
-     * @deprecated has no replacement; with Mockito, stub the method on a spy of {@link MockScoringModel}
+     * @deprecated has no replacement; with Mockito, stub the method on a spy of {@link MockScoringModel}. Removed
+     * together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock withTokenUsage(TokenUsage tokenUsage) {
@@ -95,7 +99,8 @@ public class ScoringModelMock implements ScoringModel {
     }
 
     /**
-     * @deprecated use {@link MockScoringModel#withListeners(ScoringModelListener...)}
+     * @deprecated use {@link MockScoringModel#withListeners(ScoringModelListener...)}. Removed together with this
+     * class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock withListeners(ScoringModelListener... listeners) {
@@ -108,7 +113,8 @@ public class ScoringModelMock implements ScoringModel {
      * {@link AsyncNotSupportedException}, like a scoring model without asynchronous
      * support.
      *
-     * @deprecated has no replacement; with Mockito, stub the method on a spy of {@link MockScoringModel}
+     * @deprecated has no replacement; with Mockito, stub the method on a spy of {@link MockScoringModel}. Removed
+     * together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock withoutAsyncSupport() {
@@ -120,7 +126,8 @@ public class ScoringModelMock implements ScoringModel {
      * Makes {@link #doScoreAsync(ScoringRequest)} return what the given supplier returns (for example a future that
      * is not completed yet, or {@code null}), or throw what it throws.
      *
-     * @deprecated has no replacement; with Mockito, stub the method on a spy of {@link MockScoringModel}
+     * @deprecated has no replacement; with Mockito, stub the method on a spy of {@link MockScoringModel}. Removed
+     * together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock withAsyncResult(Supplier<CompletableFuture<ScoringResponse>> asyncResult) {
@@ -132,7 +139,7 @@ public class ScoringModelMock implements ScoringModel {
      * Makes this mock behave like a model that implements only {@link #scoreAll(List, String)}: it scores in
      * {@link #scoreAll(List, String)} and keeps the default {@link ScoringModel#doScore(ScoringRequest)}.
      *
-     * @deprecated has no replacement
+     * @deprecated has no replacement. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock implementingOnlyScoreAll() {
@@ -144,7 +151,7 @@ public class ScoringModelMock implements ScoringModel {
      * @return the segments of each call of {@link #scoreAll(List, String)} made by a mock created with
      * {@link #implementingOnlyScoreAll()}.
      *
-     * @deprecated has no replacement
+     * @deprecated has no replacement. Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public List<List<TextSegment>> scoreAllCalls() {
@@ -213,7 +220,8 @@ public class ScoringModelMock implements ScoringModel {
     }
 
     /**
-     * @deprecated use {@link MockScoringModel#thatScores(double)}
+     * @deprecated use {@link MockScoringModel#thatScores(double)}. Removed together with this class, in 1.26.0 at the
+     * earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static ScoringModelMock thatAlwaysScores(double score) {
@@ -221,7 +229,8 @@ public class ScoringModelMock implements ScoringModel {
     }
 
     /**
-     * @deprecated use {@link MockScoringModel#thatScores(ToDoubleFunction)}
+     * @deprecated use {@link MockScoringModel#thatScores(ToDoubleFunction)}. Removed together with this class, in
+     * 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static ScoringModelMock thatScores(Function<String, Double> scores) {
@@ -229,7 +238,8 @@ public class ScoringModelMock implements ScoringModel {
     }
 
     /**
-     * @deprecated use {@link MockScoringModel#thatFails(RuntimeException)}
+     * @deprecated use {@link MockScoringModel#thatFails(RuntimeException)}. Removed together with this class, in 1.26.0
+     * at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static ScoringModelMock thatAlwaysThrowsException() {
@@ -237,7 +247,8 @@ public class ScoringModelMock implements ScoringModel {
     }
 
     /**
-     * @deprecated use {@link MockScoringModel#thatFails(RuntimeException)}
+     * @deprecated use {@link MockScoringModel#thatFails(RuntimeException)}. Removed together with this class, in 1.26.0
+     * at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static ScoringModelMock thatAlwaysThrowsExceptionWithMessage(String message) {

@@ -129,7 +129,8 @@ class MockDecisionModelTest {
         assertThat(model.decide(REQUEST).yesNo("spam").probability()).isEqualTo(0.3);
         assertThatThrownBy(() -> model.decide(withChoiceQuestion))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("Expected a yes/no question");
+                .hasMessageContaining("Expected a yes/no question")
+                .hasMessageContaining("thatAnswersQuestions(...)");
     }
 
     @Test
@@ -299,8 +300,9 @@ class MockDecisionModelTest {
         assertThat(model.decide(REQUEST).yesNo("spam").probability()).isEqualTo(0.9);
         assertThat(model.decide(REQUEST).yesNo("spam").probability()).isEqualTo(0.1);
         assertThat(model.decide(REQUEST).yesNo("spam").probability()).isEqualTo(0.1);
-        assertThat(model.decideAsync(REQUEST).join().yesNo("spam").probability())
-                .isEqualTo(0.1);
+        assertThat(model.decideAsync(REQUEST))
+                .succeedsWithin(5, SECONDS)
+                .satisfies(response -> assertThat(response.yesNo("spam").probability()).isEqualTo(0.1));
     }
 
     @Test
@@ -315,8 +317,65 @@ class MockDecisionModelTest {
         // when-then
         assertThat(model.decide(REQUEST).yesNo("spam").probability()).isEqualTo(0.1);
         assertThat(model.decide(REQUEST).yesNo("spam").probability()).isEqualTo(0.2);
-        assertThat(model.decideAsync(REQUEST).join().yesNo("spam").probability())
-                .isEqualTo(0.3);
+        assertThat(model.decideAsync(REQUEST))
+                .succeedsWithin(5, SECONDS)
+                .satisfies(response -> assertThat(response.yesNo("spam").probability()).isEqualTo(0.3));
+    }
+
+    @Test
+    void should_take_the_steps_in_the_order_of_the_async_calls() {
+
+        // given
+        CompletableFuture<Void> release = new CompletableFuture<>();
+        MockDecisionModel model = MockDecisionModel.thatAnswers(request -> {
+                    release.join();
+                    return Map.of("spam", YesNoAnswer.from(0.9));
+                })
+                .thenAnswers(Map.of("spam", YesNoAnswer.from(0.1)));
+
+        // when
+        CompletableFuture<DecisionResponse> first = model.decideAsync(REQUEST);
+        CompletableFuture<DecisionResponse> second = model.decideAsync(REQUEST);
+
+        // then
+        assertThat(model.requests()).hasSize(2);
+        assertThat(second)
+                .succeedsWithin(5, SECONDS)
+                .satisfies(response -> assertThat(response.yesNo("spam").probability()).isEqualTo(0.1));
+        release.complete(null);
+        assertThat(first)
+                .succeedsWithin(5, SECONDS)
+                .satisfies(response -> assertThat(response.yesNo("spam").probability()).isEqualTo(0.9));
+    }
+
+    @Test
+    void should_reject_invalid_answers_when_the_step_is_created() {
+
+        MockDecisionModel model = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
+        Map<String, YesNoAnswer> withNullAnswer = new HashMap<>();
+        withNullAnswer.put("spam", null);
+
+        assertThatThrownBy(() -> MockDecisionModel.thatAnswers(Map.<String, YesNoAnswer>of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("answers");
+        assertThatThrownBy(() -> model.thenAnswers(Map.of(" ", YesNoAnswer.from(0.9))))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> model.thenAnswers(withNullAnswer)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(model.decide(REQUEST).yesNo("spam").probability()).isEqualTo(0.9);
+    }
+
+    @Test
+    void should_fail_a_null_request_without_recording_it_and_without_taking_a_step() {
+
+        MockDecisionModel model = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9);
+
+        assertThatThrownBy(() -> model.doDecide(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(model.doDecideAsync(null))
+                .failsWithin(5, SECONDS)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class);
+        assertThat(model.requests()).isEmpty();
+        assertThat(model.decide(REQUEST).yesNo("spam").probability()).isEqualTo(0.9);
     }
 
     @Test

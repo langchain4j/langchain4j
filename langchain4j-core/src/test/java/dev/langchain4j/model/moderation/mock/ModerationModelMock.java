@@ -28,7 +28,8 @@ public class ModerationModelMock implements ModerationModel {
 
     /**
      * @deprecated use {@link MockModerationModel#thatModerates(Function)}:
-     * {@code MockModerationModel.thatModerates(request -> moderation)}
+     * {@code MockModerationModel.thatModerates(request -> moderation)}. Removed together with this class, in 1.26.0 at
+     * the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public ModerationModelMock(Moderation moderation) {
@@ -52,7 +53,8 @@ public class ModerationModelMock implements ModerationModel {
     }
 
     /**
-     * @deprecated use {@link MockModerationModel#thatNeverFlags()}
+     * @deprecated use {@link MockModerationModel#thatNeverFlags()}. Removed together with this class, in 1.26.0 at the
+     * earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static ModerationModelMock thatNeverFlags() {
@@ -60,7 +62,8 @@ public class ModerationModelMock implements ModerationModel {
     }
 
     /**
-     * @deprecated use {@link MockModerationModel#thatAlwaysFlags(String)}
+     * @deprecated use {@link MockModerationModel#thatAlwaysFlags(String)}. Removed together with this class, in 1.26.0
+     * at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static ModerationModelMock thatAlwaysFlags(String flaggedText) {
@@ -68,7 +71,8 @@ public class ModerationModelMock implements ModerationModel {
     }
 
     /**
-     * @deprecated use {@link MockModerationModel#thatModerates(Function)}
+     * @deprecated use {@link MockModerationModel#thatModerates(Function)}. Removed together with this class, in 1.26.0
+     * at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public static ModerationModelMock thatModerates(Function<ModerationRequest, Moderation> moderation) {
@@ -76,7 +80,8 @@ public class ModerationModelMock implements ModerationModel {
     }
 
     /**
-     * @deprecated use {@link MockModerationModel#withListeners(ModerationModelListener...)}
+     * @deprecated use {@link MockModerationModel#withListeners(ModerationModelListener...)}. Removed together with this
+     * class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public ModerationModelMock withListeners(ModerationModelListener... listeners) {

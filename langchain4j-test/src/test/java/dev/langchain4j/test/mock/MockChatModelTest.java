@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -738,6 +739,33 @@ class MockChatModelTest {
         capabilities.clear();
 
         assertThat(model.supportedCapabilities()).containsExactly(RESPONSE_FORMAT_JSON_SCHEMA);
+    }
+
+    @Test
+    void should_accept_a_repeated_capability_and_reject_null_capabilities() {
+
+        MockChatModel model = MockChatModel.thatResponds("Hi")
+                .withSupportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA, RESPONSE_FORMAT_JSON_SCHEMA);
+
+        assertThat(model.supportedCapabilities()).containsExactly(RESPONSE_FORMAT_JSON_SCHEMA);
+        assertThatThrownBy(() -> model.withSupportedCapabilities((Capability[]) null))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> model.withSupportedCapabilities((Set<Capability>) null))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void should_fail_a_null_request_without_recording_it_and_without_taking_a_step() {
+
+        MockChatModel model = MockChatModel.thatResponds("Hi");
+
+        assertThatThrownBy(() -> model.doChat(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(model.doChatAsync(null))
+                .failsWithin(5, SECONDS)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class);
+        assertThat(model.requests()).isEmpty();
+        assertThat(model.chat("Hello")).isEqualTo("Hi");
     }
 
     private static ChatResponse response(int number) {

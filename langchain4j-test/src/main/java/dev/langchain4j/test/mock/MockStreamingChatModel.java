@@ -38,7 +38,6 @@ import java.util.Set;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -75,13 +74,13 @@ import org.jspecify.annotations.Nullable;
  * An answer is streamed the way a provider streams it: first its thinking, then its text, then its tool calls, each
  * tool call as partial tool calls followed by the complete tool call. Text, thinking and tool call arguments are
  * streamed in word-like tokens, the way a tokenizer splits text before it encodes it: a word with the space before it,
- * a number, or a run of punctuation, so {@code "Hello, world!"} is streamed as {@code "Hello"}, {@code ","},
- * {@code " world"} and {@code "!"}. To stream exactly the tokens you choose, use {@link #thatStreams(String...)}.
- * The complete response reports what a provider reports: the model name of the request, and the finish reason
- * {@link FinishReason#TOOL_EXECUTION} for an answer with tool calls, otherwise {@link FinishReason#STOP}. To report
- * token usage in every response, use {@link #withTokenUsage(TokenUsage)}. To report anything else, for example
- * {@link FinishReason#LENGTH} or a different token usage per step, give the whole response:
- * {@link #thatResponds(ChatResponse)}.
+ * up to three digits of a number, a run of punctuation, or whitespace. So {@code "Hello, world!"} is streamed as
+ * {@code "Hello"}, {@code ","}, {@code " world"} and {@code "!"}, and {@code "Order 12345"} as {@code "Order"},
+ * {@code " "}, {@code "123"} and {@code "45"}. The complete response reports what a provider reports: the model name of
+ * the request, and the finish reason {@link FinishReason#TOOL_EXECUTION} for an answer with tool calls, otherwise
+ * {@link FinishReason#STOP}. To report token usage in every response, use {@link #withTokenUsage(TokenUsage)}. To
+ * report anything else, for example {@link FinishReason#LENGTH} or a different token usage per step, give the whole
+ * response: {@link #thatResponds(ChatResponse)}.
  * <p>
  * By default, the mock reports no capabilities. To test code that checks the capabilities of a model, for example a
  * {@code RoutingStreamingChatModel} that sends a request with a JSON schema response format only to the models that
@@ -277,7 +276,7 @@ public class MockStreamingChatModel implements StreamingChatModel {
      * capabilities.
      */
     public MockStreamingChatModel withSupportedCapabilities(Capability... capabilities) {
-        this.supportedCapabilities = Set.of(capabilities);
+        this.supportedCapabilities = Set.copyOf(Arrays.asList(ensureNotNull(capabilities, "capabilities")));
         return this;
     }
 
@@ -286,7 +285,7 @@ public class MockStreamingChatModel implements StreamingChatModel {
      * {@link #withSupportedCapabilities(Capability...)}.
      */
     public MockStreamingChatModel withSupportedCapabilities(Set<Capability> capabilities) {
-        this.supportedCapabilities = Set.copyOf(capabilities);
+        this.supportedCapabilities = Set.copyOf(ensureNotNull(capabilities, "capabilities"));
         return this;
     }
 
@@ -302,15 +301,16 @@ public class MockStreamingChatModel implements StreamingChatModel {
 
     /**
      * Emits {@link PartialThinking} and {@link PartialResponse} events, then {@link PartialToolCall} and
-     * {@link CompleteToolCall} events, then the {@link CompleteResponse}, on a new thread for each subscription, as many
-     * as the subscriber requested. A failure is reported with {@code onError}, never thrown.
+     * {@link CompleteToolCall} events, then the {@link CompleteResponse}. They are produced on a new thread for each
+     * subscription, and each one is delivered only after the subscriber requested it, either on that thread or, for an
+     * event that was waiting, on the thread that requests it. A failure is reported with {@code onError}, never thrown.
      */
     @Override
     public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
         return subscriber -> {
             DeliveryCounter counter = new DeliveryCounter(requireNonNull(subscriber, "subscriber"));
             ZeroPublisher.<ChatModelStreamingEvent>create(UNBOUNDED_BUFFER, tube -> {
-                        Step step = script.take(requests, chatRequest);
+                        Step step = takeStep(chatRequest);
                         MockThreads.newThreadPerTask(MOCK_NAME)
                                 .execute(() -> counter.emit(tube, () -> script.answer(step, chatRequest)));
                     })
@@ -318,19 +318,26 @@ public class MockStreamingChatModel implements StreamingChatModel {
         };
     }
 
+    private Step takeStep(ChatRequest chatRequest) {
+        try {
+            return script.take(requests, chatRequest);
+        } catch (RuntimeException e) {
+            return Step.failing(e); // a null request, reported like every other failure
+        }
+    }
+
     /**
-     * Forwards the signals of one subscription and counts the events delivered, so that a failure that follows the
-     * events of an answer is reported only after the last of them. A tube reports a failure at once, before the events
-     * it still holds for a subscriber that has not requested them yet.
+     * Forwards the signals of one subscription and gives it its terminal signal, {@code onComplete} or {@code onError},
+     * only once the last event of the answer was delivered. A tube reports a failure at once, before the events it
+     * still holds for a subscriber that has not requested them yet, and its delayed completion can be missed while
+     * another thread delivers the last event, so the mock leaves neither of them to the tube.
      */
     private static final class DeliveryCounter implements Subscriber<ChatModelStreamingEvent> {
 
         private final Subscriber<? super ChatModelStreamingEvent> subscriber;
-        private final AtomicLong delivered = new AtomicLong();
-        private final AtomicBoolean failureReported = new AtomicBoolean();
+        private final AtomicLong undelivered = new AtomicLong();
         private volatile @Nullable Tube<ChatModelStreamingEvent> tube;
-        private volatile @Nullable Throwable pendingFailure;
-        private volatile long eventsSent = -1;
+        private volatile @Nullable Throwable failure;
 
         private DeliveryCounter(Subscriber<? super ChatModelStreamingEvent> subscriber) {
             this.subscriber = subscriber;
@@ -346,25 +353,22 @@ public class MockStreamingChatModel implements StreamingChatModel {
                 tube.fail(e); // for example an AssertionError thrown by a function that computes the answer
                 return;
             }
-            this.tube = tube;
-            this.pendingFailure = step.failure();
-            events.forEach(tube::send);
-            eventsSent = events.size();
-            if (pendingFailure == null) {
-                tube.complete();
-            } else {
-                failOnceAllDelivered();
+            if (events.isEmpty()) {
+                terminate(tube, step.failure());
+                return;
             }
+            this.tube = tube;
+            this.failure = step.failure();
+            // set before the first event is sent, so that only the delivery of the last event brings it to 0
+            undelivered.set(events.size());
+            events.forEach(tube::send);
         }
 
-        private void failOnceAllDelivered() {
-            Throwable failure = pendingFailure;
-            Tube<ChatModelStreamingEvent> target = tube;
-            if (failure != null
-                    && target != null
-                    && delivered.get() == eventsSent
-                    && failureReported.compareAndSet(false, true)) {
-                target.fail(failure); // a failure needs no demand, like a provider's error response
+        private static void terminate(Tube<ChatModelStreamingEvent> tube, @Nullable Throwable failure) {
+            if (failure == null) {
+                tube.complete();
+            } else {
+                tube.fail(failure); // a failure needs no demand, like a provider's error response
             }
         }
 
@@ -376,8 +380,10 @@ public class MockStreamingChatModel implements StreamingChatModel {
         @Override
         public void onNext(ChatModelStreamingEvent event) {
             subscriber.onNext(event);
-            delivered.incrementAndGet();
-            failOnceAllDelivered();
+            Tube<ChatModelStreamingEvent> target = tube;
+            if (undelivered.decrementAndGet() == 0 && target != null) {
+                terminate(target, failure);
+            }
         }
 
         @Override
@@ -425,7 +431,7 @@ public class MockStreamingChatModel implements StreamingChatModel {
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        Step step = script.take(requests, chatRequest);
+        Step step = takeStep(chatRequest);
         MockThreads.newThreadPerTask(MOCK_NAME).execute(() -> {
             Throwable failure;
             try {
@@ -563,7 +569,8 @@ public class MockStreamingChatModel implements StreamingChatModel {
      * A model that streams the given messages in order, one per request, in word-like tokens. Add further steps
      * with {@code then...} methods.
      *
-     * @throws IllegalArgumentException if the text of a message is empty, see {@link #thatResponds(String)}
+     * @throws IllegalArgumentException if the list is empty, or if the text of a message is empty, see
+     *                                  {@link #thatResponds(String)}
      */
     public static MockStreamingChatModel thatResponds(List<AiMessage> aiMessages) {
         ensureNotEmpty(aiMessages, "aiMessages");
@@ -622,8 +629,9 @@ public class MockStreamingChatModel implements StreamingChatModel {
         if (aiMessage != null && "".equals(aiMessage.text())) {
             throw new IllegalArgumentException("The mock cannot stream the text \"\": a provider that streams no text"
                     + " completes with no text (null), not with \"\". To stream an answer without text, use"
-                    + " thatStreams() or an AiMessage without text. To complete with exactly \"\" anyway, give"
-                    + " the whole ChatResponse, for example with thatResponds(ChatResponse).");
+                    + " thatStreams() or thenStreams() without tokens, or answer with an AiMessage without text, for"
+                    + " example AiMessage.builder().build(). To complete with exactly \"\" anyway, give the whole"
+                    + " ChatResponse, for example with thatResponds(ChatResponse).");
         }
         return aiMessage;
     }

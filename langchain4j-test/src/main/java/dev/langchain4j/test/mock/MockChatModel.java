@@ -205,7 +205,7 @@ public class MockChatModel implements ChatModel {
      * requests or the answers against the capabilities.
      */
     public MockChatModel withSupportedCapabilities(Capability... capabilities) {
-        this.supportedCapabilities = Set.of(capabilities);
+        this.supportedCapabilities = Set.copyOf(Arrays.asList(ensureNotNull(capabilities, "capabilities")));
         return this;
     }
 
@@ -214,7 +214,7 @@ public class MockChatModel implements ChatModel {
      * {@link #withSupportedCapabilities(Capability...)}.
      */
     public MockChatModel withSupportedCapabilities(Set<Capability> capabilities) {
-        this.supportedCapabilities = Set.copyOf(capabilities);
+        this.supportedCapabilities = Set.copyOf(ensureNotNull(capabilities, "capabilities"));
         return this;
     }
 
@@ -298,6 +298,8 @@ public class MockChatModel implements ChatModel {
     /**
      * A model that answers with the given messages in order, one per request. Add further steps with {@code then...}
      * methods.
+     *
+     * @throws IllegalArgumentException if the list is empty
      */
     public static MockChatModel thatResponds(List<AiMessage> aiMessages) {
         ensureNotEmpty(aiMessages, "aiMessages");

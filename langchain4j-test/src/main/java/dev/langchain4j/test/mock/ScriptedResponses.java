@@ -20,8 +20,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.regex.Matcher;
+import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The steps of a mock, taken in order: one per request. A request after the last step fails, unless the script ends
@@ -32,10 +33,13 @@ import java.util.regex.Pattern;
  */
 final class ScriptedResponses {
 
-    // the pre-tokenization pattern of OpenAI's cl100k_base tokenizer
-    private static final Pattern TOKEN = Pattern.compile("(?i:'s|'t|'re|'ve|'m|'ll|'d)"
-            + "|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*"
-            + "|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+");
+    // the pre-tokenization pattern of OpenAI's cl100k_base tokenizer; its alternatives together match every character,
+    // and UNICODE_CHARACTER_CLASS makes \s match every Unicode space, as in tiktoken
+    private static final Pattern TOKEN = Pattern.compile(
+            "(?i:'s|'t|'re|'ve|'m|'ll|'d)"
+                    + "|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1,3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*"
+                    + "|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+",
+            Pattern.UNICODE_CHARACTER_CLASS);
 
     private static final int MAX_MESSAGE_LENGTH = 200;
 
@@ -50,12 +54,13 @@ final class ScriptedResponses {
      * @param given     whether the response was given whole by the test, so that it is used exactly as given
      */
     record Step(
-            ChatResponse response,
+            @Nullable ChatResponse response,
             List<String> tokens,
-            RuntimeException failure,
-            Function<ChatRequest, AiMessage> computing,
+            @Nullable RuntimeException failure,
+            @Nullable Function<ChatRequest, AiMessage> computing,
             boolean given) {
 
+        @Nullable
         AiMessage aiMessage() {
             return response == null ? null : response.aiMessage();
         }
@@ -141,82 +146,64 @@ final class ScriptedResponses {
         }
     }
 
-    private final String mockName;
-    private final List<Step> steps;
+    private final Script<Step> script;
     private final Set<String> usedToolCallIds = new HashSet<>();
-    private int nextIndex;
-    private boolean repeatsLastStep;
     private int lastToolCallId;
-    private volatile TokenUsage defaultTokenUsage;
+    private volatile @Nullable TokenUsage defaultTokenUsage;
 
     ScriptedResponses(String mockName, Collection<Step> initialSteps) {
-        this.mockName = mockName;
-        this.steps = new ArrayList<>();
+        this.script = new Script<>(mockName);
         initialSteps.forEach(this::add);
     }
 
     synchronized void add(Step step) {
-        ensureNotRepeating();
+        script.add(step);
         recordToolCallIds(step);
-        steps.add(step);
     }
 
     synchronized void failLastAfterTokens(RuntimeException failure) {
         ensureNotNull(failure, "failure");
-        ensureNotRepeating();
-        Step step = lastStep();
-        if (nextIndex == steps.size() || !step.streamsSomethingFirst()) {
+        script.ensureNotRepeating();
+        Step step = script.lastStep();
+        if (script.lastStepTaken() || !step.streamsSomethingFirst()) {
             throw new IllegalStateException("andFails(...) must follow a step that streams text or thinking, so that"
                     + " the failure comes after its tokens: the last step fails, computes its answer, has no text or"
                     + " thinking to stream, or was already taken");
         }
-        steps.set(steps.size() - 1, new Step(step.response(), step.tokens(), failure, null, step.given()));
+        script.replaceLastStep(new Step(step.response(), step.tokens(), failure, null, step.given()));
     }
 
     synchronized void repeatLastStep() {
-        ensureNotRepeating();
-        if (lastStep().callsTools()) {
+        script.ensureNotRepeating();
+        if (script.lastStep().callsTools()) {
             throw new IllegalStateException("thenRepeats() cannot repeat a step that calls a tool: an AI Service would"
                     + " call the tool again and again. Script the answer that follows the tool results first. To test a"
                     + " model that keeps calling a tool, for example the limit set with maxToolCallingRoundTrips,"
                     + " compute the answer: thatResponds(request -> AiMessage.from(MockChatModel.toolCall(...)))"
                     + ".thenRepeats()");
         }
-        repeatsLastStep = true;
+        script.repeatLastStep();
     }
 
     /**
      * Sets the token usage of every answer that is not a whole given response.
      */
-    void defaultTokenUsage(TokenUsage tokenUsage) {
+    void defaultTokenUsage(@Nullable TokenUsage tokenUsage) {
         this.defaultTokenUsage = tokenUsage;
-    }
-
-    private void ensureNotRepeating() {
-        if (repeatsLastStep) {
-            throw new IllegalStateException("thenRepeats() must be the last call of the script: the last"
-                    + " step already answers every further request");
-        }
-    }
-
-    private Step lastStep() {
-        return steps.get(steps.size() - 1);
     }
 
     /**
      * Records the request and takes the step that answers it, in one go, so that concurrent requests get consistent
      * request numbers. A request after the last step gets a step that fails with an {@link IllegalStateException}.
      * The mock answers with the step returned by {@link #answer(Step, ChatRequest)}.
+     *
+     * @throws IllegalArgumentException if the request is {@code null}; it is then not recorded
      */
     synchronized Step take(RecordedRequests<ChatRequest> requests, ChatRequest request) {
+        ensureNotNull(request, "request");
         int requestNumber = requests.add(request);
-        if (nextIndex < steps.size()) {
-            return steps.get(nextIndex++);
-        }
-        if (repeatsLastStep) {
-            return lastStep();
-        }
-        return Step.failing(new IllegalStateException(runOutMessage(request, requestNumber)));
+        Step step = script.next();
+        return step != null ? step : Step.failing(new IllegalStateException(runOutMessage(request, requestNumber)));
     }
 
     /**
@@ -295,23 +282,14 @@ final class ScriptedResponses {
     }
 
     private String runOutMessage(ChatRequest request, int requestNumber) {
-        StringBuilder message = new StringBuilder()
-                .append(mockName)
-                .append(" received request ")
-                .append(requestNumber)
-                .append(", but its script has only ")
-                .append(steps.size())
-                .append(steps.size() == 1 ? " step. " : " steps. ");
-        if (lastStep().callsTools()) {
-            message.append("The last step called a tool, so script the answer that follows the tool results. ");
-        }
-        return message.append("Script one more step, or end the script with thenRepeats() to answer every further"
-                        + " request with its last step. If the mock is shared between tests, for example as a bean,"
-                        + " create a new one for each test. The last message of request ")
-                .append(requestNumber)
-                .append(": ")
-                .append(describe(request.messages().get(request.messages().size() - 1)))
-                .toString();
+        String lastStepHint = script.lastStep().callsTools()
+                ? "The last step called a tool, so script the answer that follows the tool results. "
+                : "";
+        return script.runOutMessage(
+                requestNumber,
+                lastStepHint,
+                "The last message of request " + requestNumber + ": "
+                        + describe(request.messages().get(request.messages().size() - 1)));
     }
 
     private static String describe(ChatMessage message) {
@@ -337,26 +315,13 @@ final class ScriptedResponses {
 
     /**
      * Splits the text into tokens the way the streaming mock streams it, like the first step of a tokenizer: a word
-     * with the character before it (usually a space), a number of up to three digits, a run of punctuation, or
+     * with the character before it (usually a space), up to three digits of a number, a run of punctuation, or
      * whitespace. Together the tokens make up exactly the text.
      */
-    static List<String> splitIntoTokens(String text) {
+    static List<String> splitIntoTokens(@Nullable String text) {
         if (isNullOrEmpty(text)) {
             return List.of();
         }
-        List<String> tokens = new ArrayList<>();
-        Matcher matcher = TOKEN.matcher(text);
-        int end = 0;
-        while (matcher.find()) {
-            if (matcher.start() > end) {
-                tokens.add(text.substring(end, matcher.start()));
-            }
-            tokens.add(matcher.group());
-            end = matcher.end();
-        }
-        if (end < text.length()) {
-            tokens.add(text.substring(end));
-        }
-        return tokens;
+        return TOKEN.matcher(text).results().map(MatchResult::group).toList();
     }
 }
