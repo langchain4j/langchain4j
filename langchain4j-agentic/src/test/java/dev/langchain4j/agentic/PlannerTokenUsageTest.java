@@ -26,6 +26,7 @@ import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import dev.langchain4j.service.output.OutputParsingException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -441,6 +442,46 @@ class PlannerTokenUsageTest {
         assertThat(result).isEqualTo("The assistant said it is noon");
         assertThat(model.requests()).hasSize(3);
         assertThat(topLevelInvocation(monitor).tokenUsage()).contains(new TokenUsage(140, 27));
+    }
+
+    @Test
+    void supervisor_whose_planning_reply_cannot_be_parsed_still_reports_that_call() {
+        List<PlannerModelResponse> responses = new CopyOnWriteArrayList<>();
+        AgentMonitor monitor = new AgentMonitor();
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds("this is not an agent invocation")
+                .withModelNames("planning-model")
+                .withTokenUsage(new TokenUsage(100, 20));
+        SupervisorAgent supervisor = supervisor(
+                model,
+                SupervisorResponseStrategy.SUMMARY,
+                SupervisorContextStrategy.CHAT_MEMORY,
+                recording(responses),
+                monitor);
+
+        assertThatThrownBy(() -> supervisor.invoke("What time is it?")).isInstanceOf(OutputParsingException.class);
+
+        // the model answered and was billed, even if the supervisor could not read its reply
+        assertThat(responses).extracting(PlannerModelResponse::tokenUsage).containsExactly(new TokenUsage(100, 20));
+        AgentInvocation failed = monitor.failedExecutions().get(0).topLevelInvocations();
+        assertThat(failed.tokenUsage()).contains(new TokenUsage(100, 20));
+        assertThat(failed.modelName()).contains("planning-model");
+    }
+
+    @Test
+    void supervisor_whose_scoring_reply_cannot_be_parsed_still_reports_that_call() {
+        AgentMonitor monitor = new AgentMonitor();
+        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
+                        INVOKE_ASSISTANT, DONE, AiMessage.from("these are not scores"))
+                .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5), new TokenUsage(10, 2));
+        SupervisorAgent supervisor =
+                supervisor(model, SupervisorResponseStrategy.SCORED, SupervisorContextStrategy.CHAT_MEMORY, monitor);
+
+        assertThatThrownBy(() -> supervisor.invoke("What time is it?")).isInstanceOf(OutputParsingException.class);
+
+        // the two planning calls and the scoring call
+        assertThat(model.requests()).hasSize(3);
+        assertThat(monitor.failedExecutions().get(0).topLevelInvocations().tokenUsage())
+                .contains(new TokenUsage(140, 27));
     }
 
     @Test

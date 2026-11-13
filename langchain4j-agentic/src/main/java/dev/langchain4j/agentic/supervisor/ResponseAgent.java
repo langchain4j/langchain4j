@@ -1,15 +1,8 @@
 package dev.langchain4j.agentic.supervisor;
 
-import dev.langchain4j.Internal;
-import dev.langchain4j.service.Result;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 
-/**
- * The AI service that the supervisor asks to score its candidate responses. It returns a {@link Result} so that the
- * supervisor can report the response of the model, with its token usage, to the listeners.
- */
-@Internal
 public interface ResponseAgent {
 
     @UserMessage("""
@@ -26,5 +19,5 @@ public interface ResponseAgent {
            The first response is: '{{response1}}'.
            The second response is: '{{response2}}'.
            """)
-    Result<ResponseScore> scoreResponses(@V("request") String request, @V("response1") String response1, @V("response2") String response2);
+    ResponseScore scoreResponses(@V("request") String request, @V("response1") String response1, @V("response2") String response2);
 }

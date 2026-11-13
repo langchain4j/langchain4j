@@ -23,7 +23,6 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.ParameterNameResolver;
-import dev.langchain4j.service.Result;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
@@ -138,8 +137,10 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                 ? requestGenerator.apply(initPlanningContext.agenticScope())
                 : initPlanningContext.agenticScope().readState("request", "");
         if (responseStrategy == SupervisorResponseStrategy.SCORED) {
-            this.responseAgent =
-                    AiServices.builder(ResponseAgent.class).chatModel(chatModel).build();
+            this.responseAgent = AiServices.builder(ResponseAgent.class)
+                    .chatModel(chatModel)
+                    .registerListener(CurrentPlanningContext.modelResponseListener())
+                    .build();
         }
     }
 
@@ -369,12 +370,10 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                 ? SUPERVISOR_CONTEXT_PREFIX + "'" + agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "") + "'."
                 : "";
 
-        Result<AgentInvocation> plan = withPlanningContext(
+        AgentInvocation agentInvocation = withPlanningContext(
                 planningContext,
                 () -> planner(agenticScope)
                         .plan(agenticScope.memoryId(), agentsList, request, plannerResponse, supervisorContext));
-        planningContext.reportChatModelResponse(plan.finalResponse());
-        AgentInvocation agentInvocation = plan.content();
         LOG.info("Agent Invocation: {}", agentInvocation);
 
         if (agentInvocation.getAgentName() == null) {
@@ -396,6 +395,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
 
     /**
      * Runs a model call of the supervisor with its scope and its {@link CurrentPlanningContext} bound to the thread.
+     * The AI service making the call reports each response of its model to that planning context, through the
+     * listener registered on it, and so does the summarizer of its context.
      */
     private static <T> T withPlanningContext(PlanningContext planningContext, Supplier<T> supplier) {
         // the managed parameters of the caller are put back afterwards, since the supervisor can be invoked from
@@ -470,10 +471,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             case LAST -> lastResponse;
             case SUMMARY -> doneResponse;
             case SCORED -> {
-                Result<ResponseScore> scored = withPlanningContext(
+                ResponseScore score = withPlanningContext(
                         planningContext, () -> responseAgent.scoreResponses(request, lastResponse, doneResponse));
-                planningContext.reportChatModelResponse(scored.finalResponse());
-                ResponseScore score = scored.content();
                 LOG.info("Response scores: {}", score);
                 yield score.getScore2() > score.getScore1() ? doneResponse : lastResponse;
             }
@@ -481,7 +480,9 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     }
 
     private PlannerAgent buildPlannerAgent(AgenticScope agenticScope) {
-        var builder = AiServices.builder(PlannerAgent.class).chatModel(chatModel);
+        var builder = AiServices.builder(PlannerAgent.class)
+                .chatModel(chatModel)
+                .registerListener(CurrentPlanningContext.modelResponseListener());
         configureMemoryAndContext(agenticScope, builder);
         return builder.build();
     }

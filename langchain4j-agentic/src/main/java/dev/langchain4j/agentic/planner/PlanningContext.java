@@ -57,6 +57,10 @@ public record PlanningContext(
      * instance by the {@code AgentMonitor}: a model call that is not reported is invisible to them. Call it as soon
      * as the model returns, once for each call.
      * <p>
+     * A planner calling its model through an AI service calls this method from an
+     * {@code AiServiceResponseReceivedListener} registered on that service, which receives each response of the
+     * model before the AI service parses it: so a response that cannot be parsed is reported too.
+     * <p>
      * It does nothing when this context has no {@link #plannerAgent() planner agent} created by the agentic system,
      * or when the response is {@code null}.
      *

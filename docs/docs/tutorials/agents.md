@@ -1933,12 +1933,15 @@ public Action nextAction(PlanningContext planningContext) {
 }
 ```
 
-The `reportChatModelResponse` method takes the `ChatResponse` of a chat model, and `reportDecisionModelResponse` the `DecisionResponse` of a decision model. The token usage and the model name of each reported response are notified to the `onPlannerModelResponse` method of the [listeners](#observability) of the agent running the planner, and the [`AgentMonitor`](#monitoring) counts its tokens on the invocation of that agent, so a model call that is not reported is invisible to both. A planner calling its model through an AI Service can make the method of that service return a `Result`, and report all the model calls that the AI Service made: the `intermediateResponses()`, which are there when the AI Service calls tools, and the `finalResponse()`.
+The `reportChatModelResponse` method takes the `ChatResponse` of a chat model, and `reportDecisionModelResponse` the `DecisionResponse` of a decision model. The token usage and the model name of each reported response are notified to the `onPlannerModelResponse` method of the [listeners](#observability) of the agent running the planner, and the [`AgentMonitor`](#monitoring) counts its tokens on the invocation of that agent, so a model call that is not reported is invisible to both. A planner calling its model through an AI Service reports from a listener registered on that service, which receives each response of the model as soon as it arrives: also the ones asking for a tool, and the one that the AI Service then fails to parse into the return type of its method, which is billed like any other.
 
 ```java
-Result<String> result = researchPlanner.nextStep(request);
-result.intermediateResponses().forEach(planningContext::reportChatModelResponse);
-planningContext.reportChatModelResponse(result.finalResponse());
+AiServiceResponseReceivedListener reportResponse =
+        event -> planningContext.reportChatModelResponse(event.response());
+ResearchPlanner researchPlanner = AiServices.builder(ResearchPlanner.class)
+        .chatModel(chatModel)
+        .registerListener(reportResponse)
+        .build();
 ```
 
 Having clarified how this `Planner` abstraction works, it is now possible to create your own custom agentic patterns by implementing it. The following sections discuss the custom patterns provided in the `langchain4j-agentic-patterns` module, which can be useful in different scenarios. Other custom patterns can be created following the same approach and may be contributed back to the LangChain4j project.

@@ -1,18 +1,11 @@
 package dev.langchain4j.agentic.supervisor;
 
-import dev.langchain4j.Internal;
 import dev.langchain4j.service.MemoryId;
-import dev.langchain4j.service.Result;
 import dev.langchain4j.service.SystemMessage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 
-/**
- * The AI service that the supervisor asks which subagent to invoke next. It returns a {@link Result} so that the
- * supervisor can report the response of the model, with its token usage, to the listeners.
- */
-@Internal
 public interface PlannerAgent extends ChatMemoryAccess {
 
     @SystemMessage(
@@ -45,7 +38,7 @@ public interface PlannerAgent extends ChatMemoryAccess {
             The user request is: '{{request}}'.
             The last received response is: '{{lastResponse}}'.
             """)
-    Result<AgentInvocation> plan(
+    AgentInvocation plan(
             @MemoryId Object userId,
             @V("agents") String agents,
             @V("request") String request,
