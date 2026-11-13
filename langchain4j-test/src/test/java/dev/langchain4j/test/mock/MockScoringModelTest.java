@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.TimeoutException;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.listener.ScoringModelListener;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
@@ -236,5 +237,46 @@ class MockScoringModelTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(model.requests()).isEmpty();
         assertThat(model.score(REQUEST).scores()).containsExactly(0.5, 0.5);
+    }
+
+    @Test
+    void should_answer_with_exactly_the_given_response_including_its_metadata() {
+
+        ScoringResponse given = ScoringResponse.builder()
+                .scores(List.of(0.9, 0.1))
+                .modelName("reranker")
+                .tokenUsage(new TokenUsage(30))
+                .build();
+        MockScoringModel model = MockScoringModel.thatResponds(given).thenRepeats();
+
+        assertThat(model.score(REQUEST)).isEqualTo(given);
+        assertThat(model.scoreAll(List.of(TextSegment.from("a"), TextSegment.from("b")), "q")
+                        .tokenUsage()
+                        .inputTokenCount())
+                .isEqualTo(30);
+    }
+
+    @Test
+    void should_fail_a_request_whose_number_of_documents_does_not_match_the_given_response() {
+
+        MockScoringModel model = MockScoringModel.thatResponds(
+                ScoringResponse.builder().scores(List.of(0.9)).build());
+
+        assertThatThrownBy(() -> model.score(REQUEST))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("has 1 scores, but the request has 2 documents");
+    }
+
+    @Test
+    void should_give_the_whole_response_in_a_later_step() {
+
+        ScoringResponse given = ScoringResponse.builder().scores(List.of(0.7, 0.3)).build();
+        MockScoringModel model = MockScoringModel.thatScores(0.5).thenResponds(given);
+
+        assertThat(model.score(REQUEST).scores()).containsExactly(0.5, 0.5);
+        assertThat(model.score(REQUEST).scores()).containsExactly(0.7, 0.3);
+        assertThatThrownBy(() -> model.score(REQUEST)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> MockScoringModel.thatResponds(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> model.thenResponds(null)).isInstanceOf(IllegalArgumentException.class);
     }
 }

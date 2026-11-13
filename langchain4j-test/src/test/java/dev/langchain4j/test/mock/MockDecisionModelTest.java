@@ -4,6 +4,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
@@ -12,6 +13,7 @@ import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
+import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -412,5 +414,52 @@ class MockDecisionModelTest {
         assertThatThrownBy(model::request)
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Expected exactly 1 decision request, but received 0");
+    }
+
+    @Test
+    void should_answer_with_exactly_the_given_response_including_its_metadata() {
+
+        DecisionResponse given = DecisionResponse.builder()
+                .answer("spam", YesNoAnswer.from(0.9))
+                .modelName("decision-model")
+                .tokenUsage(new TokenUsage(20, 5))
+                .build();
+        MockDecisionModel model = MockDecisionModel.thatResponds(given).thenRepeats();
+
+        DecisionResponse response = model.decide(REQUEST);
+
+        assertThat(response.answers()).isEqualTo(given.answers());
+        assertThat(response.modelName()).isEqualTo("decision-model");
+        assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(20, 5));
+        assertThat(model.decideAsync(REQUEST))
+                .succeedsWithin(5, SECONDS)
+                .satisfies(async -> assertThat(async.tokenUsage()).isEqualTo(new TokenUsage(20, 5)));
+    }
+
+    @Test
+    void should_still_check_the_answers_of_the_given_response() {
+
+        DecisionResponse given = DecisionResponse.builder()
+                .answer("other", YesNoAnswer.from(0.9))
+                .build();
+        MockDecisionModel model = MockDecisionModel.thatResponds(given);
+
+        assertThatThrownBy(() -> model.decide(REQUEST)).isInstanceOf(InvalidDecisionResponseException.class);
+    }
+
+    @Test
+    void should_give_the_whole_response_in_a_later_step() {
+
+        DecisionResponse given = DecisionResponse.builder()
+                .answer("spam", YesNoAnswer.from(0.1))
+                .tokenUsage(new TokenUsage(7))
+                .build();
+        MockDecisionModel model = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.9).thenResponds(given);
+
+        assertThat(model.decide(REQUEST).yesNo("spam").probability()).isEqualTo(0.9);
+        assertThat(model.decide(REQUEST).tokenUsage()).isEqualTo(new TokenUsage(7));
+        assertThatThrownBy(() -> model.decide(REQUEST)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> MockDecisionModel.thatResponds(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> model.thenResponds(null)).isInstanceOf(IllegalArgumentException.class);
     }
 }

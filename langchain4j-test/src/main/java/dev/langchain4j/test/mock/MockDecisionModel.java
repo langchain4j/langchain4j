@@ -51,8 +51,13 @@ import java.util.function.ToDoubleFunction;
  * answer concurrent requests by their questions: {@code thatAnswersQuestions(question -> ...).thenRepeats()}. If the
  * function throws, the request fails with that exception, unchanged.
  * <p>
+ * Like on every mock in this package, {@code thatResponds(...)} and {@code thenResponds(...)} give a step as the whole
+ * response, here a {@link DecisionResponse}: the request is answered with exactly that response, including its
+ * metadata, for example the token usage that a cost check reads.
+ * <p>
  * The model checks its answers like a real one: a request with a question that got no answer fails with an
- * {@code InvalidDecisionResponseException}. A response reports the model name of the request.
+ * {@code InvalidDecisionResponseException}. Unless a step gives the whole response, a response reports the model name
+ * of the request.
  * {@code decideAsync(...)} completes on another thread, where a step that computes its answers also computes them.
  * <p>
  * A mock remembers which steps were taken and which requests it received, so create a new one for each test. A mock
@@ -66,11 +71,11 @@ public class MockDecisionModel implements DecisionModel {
     private static final String MOCK_NAME = "MockDecisionModel";
 
     /**
-     * One step of the script: the answers to one request, keyed by question name.
+     * One step of the script: the response to one request.
      */
     interface Step {
 
-        Map<String, ? extends DecisionAnswer> answer(DecisionRequest request);
+        DecisionResponse respond(DecisionRequest request);
     }
 
     private final Script<Step> script = new Script<>(MOCK_NAME);
@@ -118,6 +123,16 @@ public class MockDecisionModel implements DecisionModel {
      */
     public MockDecisionModel thenAnswersYesNoQuestions(ToDoubleFunction<YesNoQuestion> probability) {
         return add(yesNo(probability));
+    }
+
+    /**
+     * Adds a step: the next request is answered with exactly the given response, including its metadata, for example
+     * its token usage or model name, see {@link #thatResponds(DecisionResponse)}.
+     *
+     * @throws IllegalStateException if the script already ends with {@link #thenRepeats()}
+     */
+    public MockDecisionModel thenResponds(DecisionResponse response) {
+        return add(responding(response));
     }
 
     /**
@@ -181,8 +196,12 @@ public class MockDecisionModel implements DecisionModel {
     }
 
     private static DecisionResponse respond(Step step, DecisionRequest request) {
+        return step.respond(request);
+    }
+
+    private static DecisionResponse answered(Map<String, ? extends DecisionAnswer> answers, DecisionRequest request) {
         return DecisionResponse.builder()
-                .answers(step.answer(request))
+                .answers(answers)
                 .modelName(request.modelName())
                 .build();
     }
@@ -266,6 +285,16 @@ public class MockDecisionModel implements DecisionModel {
     }
 
     /**
+     * A model that answers the first request with exactly the given response, including its metadata, for example its
+     * token usage or model name, to test code that reads them, such as a cost check. The model still checks the answers
+     * like a real one: a request with a question that the response does not answer fails. Add the next steps with
+     * {@code then...} methods, or answer every request with this response: {@code thatResponds(response).thenRepeats()}.
+     */
+    public static MockDecisionModel thatResponds(DecisionResponse response) {
+        return new MockDecisionModel(responding(response));
+    }
+
+    /**
      * A model whose first request fails with exactly the given exception. To let every request fail, add
      * {@link #thenRepeats()}. To let later requests succeed, for example to test your own retry logic, add steps with
      * {@code then...} methods.
@@ -280,13 +309,13 @@ public class MockDecisionModel implements DecisionModel {
                 .answers(ensureNotNull(answers, "answers"))
                 .build()
                 .answers();
-        return request -> validated;
+        return request -> answered(validated, request);
     }
 
     private static Step computed(
             Function<? super DecisionRequest, ? extends Map<String, ? extends DecisionAnswer>> answers) {
         ensureNotNull(answers, "answers");
-        return answers::apply;
+        return request -> answered(answers.apply(request), request);
     }
 
     private static Step perQuestion(Function<Question, ? extends DecisionAnswer> answer) {
@@ -294,8 +323,13 @@ public class MockDecisionModel implements DecisionModel {
         return request -> {
             Map<String, DecisionAnswer> answers = new LinkedHashMap<>();
             request.questions().forEach((name, question) -> answers.put(name, answer.apply(question)));
-            return answers;
+            return answered(answers, request);
         };
+    }
+
+    private static Step responding(DecisionResponse response) {
+        ensureNotNull(response, "response");
+        return request -> response;
     }
 
     private static Step yesNo(ToDoubleFunction<YesNoQuestion> probability) {

@@ -39,8 +39,12 @@ import org.jspecify.annotations.Nullable;
  *         .thenScores(document -> document.contains("refund") ? 0.9 : 0.1)
  *         .thenRepeats();
  * }</pre>
- * A response reports the model name of the request. {@code scoreAsync(...)} completes on another thread, where a step
- * that computes its scores also computes them.
+ * Like on every mock in this package, {@code thatResponds(...)} and {@code thenResponds(...)} give a step as the whole
+ * response, here a {@link ScoringResponse}: the request is answered with exactly that response, including its
+ * metadata, for example the token usage that a cost check reads.
+ * <p>
+ * Unless a step gives the whole response, a response reports the model name of the request. {@code scoreAsync(...)}
+ * completes on another thread, where a step that computes its scores also computes them.
  * <p>
  * A mock remembers which steps were taken and which requests it received, so create a new one for each test. A mock
  * shared between tests, for example as a bean, fails with a clear message as soon as its script runs out, unless the
@@ -53,12 +57,17 @@ public class MockScoringModel implements ScoringModel {
     private static final String MOCK_NAME = "MockScoringModel";
 
     /**
-     * One step of the script: the score of each document of one request, or the failure of that request.
+     * One step of the script: the score of each document of one request, the whole response to that request, or its
+     * failure. Exactly one of the three is not {@code null}.
      *
-     * @param scores  computes the score of a document, or {@code null} for a step that fails
-     * @param failure the failure of the request, or {@code null} for a step that scores
+     * @param scores   computes the score of a document, or {@code null}
+     * @param response the whole response to the request, or {@code null}
+     * @param failure  the failure of the request, or {@code null}
      */
-    record Step(@Nullable ToDoubleFunction<String> scores, @Nullable RuntimeException failure) {}
+    record Step(
+            @Nullable ToDoubleFunction<String> scores,
+            @Nullable ScoringResponse response,
+            @Nullable RuntimeException failure) {}
 
     private final Script<Step> script = new Script<>(MOCK_NAME);
     private final RecordedRequests<ScoringRequest> requests = new RecordedRequests<>("scoring");
@@ -84,6 +93,16 @@ public class MockScoringModel implements ScoringModel {
      */
     public MockScoringModel thenScores(ToDoubleFunction<String> scores) {
         return add(computed(scores));
+    }
+
+    /**
+     * Adds a step: the next request is answered with exactly the given response, including its metadata, see
+     * {@link #thatResponds(ScoringResponse)}.
+     *
+     * @throws IllegalStateException if the script already ends with {@link #thenRepeats()}
+     */
+    public MockScoringModel thenResponds(ScoringResponse response) {
+        return add(responding(response));
     }
 
     /**
@@ -176,6 +195,16 @@ public class MockScoringModel implements ScoringModel {
         if (failure != null) {
             throw failure;
         }
+        ScoringResponse response = step.response();
+        if (response != null) {
+            int documents = request.documents().size();
+            if (response.scores().size() != documents) {
+                throw new IllegalStateException("The response of this step has " + response.scores().size()
+                        + " scores, but the request has " + documents + " documents. A provider returns one score per"
+                        + " document, so give a response with " + documents + ".");
+            }
+            return response;
+        }
         ToDoubleFunction<String> scores = ensureNotNull(step.scores(), "scores");
         return ScoringResponse.builder()
                 .scores(request.documents().stream()
@@ -241,6 +270,23 @@ public class MockScoringModel implements ScoringModel {
     }
 
     /**
+     * A model that answers the first request with exactly the given response, including its metadata, for example its
+     * token usage or model name, to test code that reads them, such as a cost check:
+     * <pre>{@code
+     * MockScoringModel model = MockScoringModel.thatResponds(ScoringResponse.builder()
+     *         .scores(List.of(0.9, 0.1))
+     *         .tokenUsage(new TokenUsage(30))
+     *         .build());
+     * }</pre>
+     * The response must have one score per document of the request, as a provider's response has: otherwise the request
+     * fails with an {@link IllegalStateException}. Add the next steps with {@code then...} methods, or answer every
+     * request with this response: {@code thatResponds(response).thenRepeats()}.
+     */
+    public static MockScoringModel thatResponds(ScoringResponse response) {
+        return new MockScoringModel(responding(response));
+    }
+
+    /**
      * A model whose first request fails with exactly the given exception, also a request without documents. To let
      * every request fail, add {@link #thenRepeats()}. To let later requests succeed, for example to test your own retry
      * logic, add steps with {@code then...} methods.
@@ -250,14 +296,18 @@ public class MockScoringModel implements ScoringModel {
     }
 
     private static Step fixed(double score) {
-        return new Step(document -> score, null);
+        return new Step(document -> score, null, null);
     }
 
     private static Step computed(ToDoubleFunction<String> scores) {
-        return new Step(ensureNotNull(scores, "scores"), null);
+        return new Step(ensureNotNull(scores, "scores"), null, null);
+    }
+
+    private static Step responding(ScoringResponse response) {
+        return new Step(null, ensureNotNull(response, "response"), null);
     }
 
     private static Step failing(RuntimeException exception) {
-        return new Step(null, ensureNotNull(exception, "exception"));
+        return new Step(null, null, ensureNotNull(exception, "exception"));
     }
 }

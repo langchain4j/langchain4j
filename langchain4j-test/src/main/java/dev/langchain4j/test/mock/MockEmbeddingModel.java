@@ -55,9 +55,13 @@ import org.jspecify.annotations.Nullable;
  * embedding model that runs in-process, for example {@code AllMiniLmL6V2QuantizedEmbeddingModel} from the module
  * {@code langchain4j-embeddings-all-minilm-l6-v2-q}.
  * <p>
+ * Like on every mock in this package, {@code thatResponds(...)} and {@code thenResponds(...)} give a step as the whole
+ * response, here an {@link EmbeddingResponse}: the request is answered with exactly that response, including its
+ * metadata, for example the token usage of an embedding call in a cost test.
+ * <p>
  * The mock accepts the per-call parameters {@code modelName} and {@code inputType}, and rejects {@code dimensions} with
- * an {@code UnsupportedFeatureException}, like a model without that parameter; a rejected request takes no step. A
- * response reports the model name of the request. {@code embedAsync(...)} completes on another thread, where a step
+ * an {@code UnsupportedFeatureException}, like a model without that parameter; a rejected request takes no step. Unless
+ * a step gives the whole response, a response reports the model name of the request. {@code embedAsync(...)} completes on another thread, where a step
  * that computes its vectors also computes them.
  * <p>
  * A mock remembers which steps were taken and which requests it received, so create a new one for each test. A mock
@@ -72,12 +76,17 @@ public class MockEmbeddingModel implements EmbeddingModel {
     private static final int MAX_TEXTS_SHOWN = 3;
 
     /**
-     * One step of the script: the vector of each text of one request, or the failure of that request.
+     * One step of the script: the vector of each text of one request, the whole response to that request, or its
+     * failure. Exactly one of the three is not {@code null}.
      *
-     * @param embeddings computes the vector of a text, or {@code null} for a step that fails
-     * @param failure    the failure of the request, or {@code null} for a step that returns vectors
+     * @param embeddings computes the vector of a text, or {@code null}
+     * @param response   the whole response to the request, or {@code null}
+     * @param failure    the failure of the request, or {@code null}
      */
-    record Step(@Nullable Function<String, float[]> embeddings, @Nullable RuntimeException failure) {}
+    record Step(
+            @Nullable Function<String, float[]> embeddings,
+            @Nullable EmbeddingResponse response,
+            @Nullable RuntimeException failure) {}
 
     private final Script<Step> script = new Script<>(MOCK_NAME);
     private final RecordedRequests<EmbeddingRequest> requests = new RecordedRequests<>("embedding");
@@ -105,6 +114,16 @@ public class MockEmbeddingModel implements EmbeddingModel {
      */
     public MockEmbeddingModel thenEmbeds(Function<String, float[]> embeddings) {
         return add(computed(embeddings));
+    }
+
+    /**
+     * Adds a step: the next request is answered with exactly the given response, including its metadata, see
+     * {@link #thatResponds(EmbeddingResponse)}.
+     *
+     * @throws IllegalStateException if the script already ends with {@link #thenRepeats()}
+     */
+    public MockEmbeddingModel thenResponds(EmbeddingResponse response) {
+        return add(responding(response));
     }
 
     /**
@@ -189,6 +208,16 @@ public class MockEmbeddingModel implements EmbeddingModel {
     }
 
     private static EmbeddingResponse respond(Step step, EmbeddingRequest request) {
+        EmbeddingResponse response = step.response();
+        if (response != null) {
+            int texts = request.inputs().size();
+            if (response.embeddings().size() != texts) {
+                throw new IllegalStateException("The response of this step has " + response.embeddings().size()
+                        + " embeddings, but the request has " + texts + " texts. A provider returns one embedding per"
+                        + " text, so give a response with " + texts + ".");
+            }
+            return response;
+        }
         Function<String, float[]> embeddings = embeddingsOf(step);
         List<Embedding> vectors = request.inputs().stream()
                 .map(input -> Embedding.from(embeddings.apply(input.text())))
@@ -224,9 +253,11 @@ public class MockEmbeddingModel implements EmbeddingModel {
 
     /**
      * Embeds the text {@code "test"} with the first step of the script that returns vectors, and returns the length of
-     * its vector. It takes no step and records no request, so the script and {@link #requests()} stay as they are. A
-     * script whose steps all fail throws the exception of its first step here too. When an embedding store asks the
-     * model for its dimension, for example while a framework starts, set the dimension of the store explicitly instead.
+     * its vector; a step that gives the whole response gives the length of its first embedding. It takes no step and
+     * records no request, so the script and {@link #requests()} stay as they are. A script without such a step throws
+     * the exception of its first step, if that step fails, or an {@link IllegalStateException}. When an embedding store
+     * asks the model for its dimension, for example while a framework starts, set the dimension of the store explicitly
+     * instead.
      */
     @Override
     public synchronized int dimension() {
@@ -236,8 +267,16 @@ public class MockEmbeddingModel implements EmbeddingModel {
             if (embeddings != null) {
                 return embeddings.apply("test").length;
             }
+            EmbeddingResponse response = step.response();
+            if (response != null && !response.embeddings().isEmpty()) {
+                return response.embeddings().get(0).dimension();
+            }
         }
-        return embeddingsOf(steps.get(0)).apply("test").length;
+        RuntimeException failure = steps.get(0).failure();
+        if (failure != null) {
+            throw failure;
+        }
+        throw new IllegalStateException("No step of the script returns an embedding, so its dimension is unknown");
     }
 
     @Override
@@ -298,6 +337,23 @@ public class MockEmbeddingModel implements EmbeddingModel {
     }
 
     /**
+     * A model that answers the first request with exactly the given response, including its metadata, for example its
+     * token usage or model name, to test code that reads them, such as a cost check:
+     * <pre>{@code
+     * MockEmbeddingModel model = MockEmbeddingModel.thatResponds(EmbeddingResponse.builder()
+     *         .embeddings(List.of(Embedding.from(new float[] {0.1f, 0.2f})))
+     *         .tokenUsage(new TokenUsage(12))
+     *         .build());
+     * }</pre>
+     * The response must have one embedding per text of the request, as a provider's response has: otherwise the
+     * request fails with an {@link IllegalStateException}. Add the next steps with {@code then...} methods, or answer
+     * every request with this response: {@code thatResponds(response).thenRepeats()}.
+     */
+    public static MockEmbeddingModel thatResponds(EmbeddingResponse response) {
+        return new MockEmbeddingModel(responding(response));
+    }
+
+    /**
      * A model whose first request fails with exactly the given exception. To let every request fail, add
      * {@link #thenRepeats()}. To let later requests succeed, for example to test your own retry logic, add steps with
      * {@code then...} methods.
@@ -313,14 +369,18 @@ public class MockEmbeddingModel implements EmbeddingModel {
                     + " dimension");
         }
         float[] copy = vector.clone();
-        return new Step(text -> copy.clone(), null);
+        return new Step(text -> copy.clone(), null, null);
     }
 
     private static Step computed(Function<String, float[]> embeddings) {
-        return new Step(ensureNotNull(embeddings, "embeddings"), null);
+        return new Step(ensureNotNull(embeddings, "embeddings"), null, null);
+    }
+
+    private static Step responding(EmbeddingResponse response) {
+        return new Step(null, ensureNotNull(response, "response"), null);
     }
 
     private static Step failing(RuntimeException exception) {
-        return new Step(null, ensureNotNull(exception, "exception"));
+        return new Step(null, null, ensureNotNull(exception, "exception"));
     }
 }

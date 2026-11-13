@@ -15,6 +15,7 @@ import dev.langchain4j.model.embedding.request.EmbeddingInputType;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.request.EmbeddingRequestParameters;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.store.embedding.CosineSimilarity;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import java.util.ArrayList;
@@ -421,5 +422,52 @@ class MockEmbeddingModelTest {
         Embedding a = model.embed(first).content();
         Embedding b = model.embed(second).content();
         return RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(a, b));
+    }
+
+    @Test
+    void should_answer_with_exactly_the_given_response_including_its_metadata() {
+
+        EmbeddingResponse given = EmbeddingResponse.builder()
+                .embeddings(List.of(Embedding.from(new float[] {0.1f, 0.2f}), Embedding.from(new float[] {0.3f, 0.4f})))
+                .modelName("embedding-model")
+                .tokenUsage(new TokenUsage(12))
+                .build();
+        MockEmbeddingModel model = MockEmbeddingModel.thatResponds(given).thenRepeats();
+
+        EmbeddingResponse response =
+                model.embed(EmbeddingRequest.builder().inputs("a", "b").build());
+
+        assertThat(response).isEqualTo(given);
+        assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(12);
+        assertThat(model.dimension()).isEqualTo(2);
+    }
+
+    @Test
+    void should_fail_a_request_whose_number_of_texts_does_not_match_the_given_response() {
+
+        EmbeddingResponse given = EmbeddingResponse.builder()
+                .embeddings(List.of(Embedding.from(new float[] {0.1f, 0.2f})))
+                .build();
+        MockEmbeddingModel model = MockEmbeddingModel.thatResponds(given);
+
+        assertThatThrownBy(() -> model.embedAll(List.of(TextSegment.from("a"), TextSegment.from("b"))))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("has 1 embeddings, but the request has 2 texts");
+    }
+
+    @Test
+    void should_give_the_whole_response_in_a_later_step() {
+
+        EmbeddingResponse given = EmbeddingResponse.builder()
+                .embeddings(List.of(Embedding.from(new float[] {0.5f})))
+                .tokenUsage(new TokenUsage(3))
+                .build();
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(0.1f).thenResponds(given);
+
+        assertThat(model.embed("a").content().vector()).containsExactly(0.1f);
+        assertThat(model.embed("b").tokenUsage().inputTokenCount()).isEqualTo(3);
+        assertThatThrownBy(() -> model.embed("c")).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> MockEmbeddingModel.thatResponds(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> model.thenResponds(null)).isInstanceOf(IllegalArgumentException.class);
     }
 }

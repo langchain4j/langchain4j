@@ -38,6 +38,10 @@ import org.jspecify.annotations.Nullable;
  * Or it can flag the first message and accept the next ones:
  * {@code MockModerationModel.thatFlags("How do I hack ...").thenDoesNotFlag().thenRepeats()}.
  * <p>
+ * Like on every mock in this package, {@code thatResponds(...)} and {@code thenResponds(...)} give a step as the whole
+ * response, here a {@link ModerationResponse}: the request is answered with exactly that response, including its
+ * metadata.
+ * <p>
  * A mock remembers which steps were taken and which requests it received, so create a new one for each test. A mock
  * shared between tests, for example as a bean, fails with a clear message as soon as its script runs out, unless the
  * script ends with {@link #thenRepeats()}. The steps are taken in the order the requests arrive. A mock keeps every
@@ -50,12 +54,17 @@ public class MockModerationModel implements ModerationModel {
     private static final int MAX_TEXTS_SHOWN = 3;
 
     /**
-     * One step of the script: the moderation of one request, or the failure of that request.
+     * One step of the script: the moderation of one request, the whole response to that request, or its failure.
+     * Exactly one of the three is not {@code null}.
      *
-     * @param moderation computes the moderation from the request, or {@code null} for a step that fails
-     * @param failure    the failure of the request, or {@code null} for a step that moderates
+     * @param moderation computes the moderation from the request, or {@code null}
+     * @param response   the whole response to the request, or {@code null}
+     * @param failure    the failure of the request, or {@code null}
      */
-    record Step(@Nullable Function<ModerationRequest, Moderation> moderation, @Nullable RuntimeException failure) {}
+    record Step(
+            @Nullable Function<ModerationRequest, Moderation> moderation,
+            @Nullable ModerationResponse response,
+            @Nullable RuntimeException failure) {}
 
     private final Script<Step> script = new Script<>(MOCK_NAME);
     private final RecordedRequests<ModerationRequest> requests = new RecordedRequests<>("moderation");
@@ -90,6 +99,16 @@ public class MockModerationModel implements ModerationModel {
      */
     public MockModerationModel thenModerates(Function<ModerationRequest, Moderation> moderation) {
         return add(computed(moderation));
+    }
+
+    /**
+     * Adds a step: the next request is answered with exactly the given response, including its metadata, see
+     * {@link #thatResponds(ModerationResponse)}.
+     *
+     * @throws IllegalStateException if the script already ends with {@link #thenRepeats()}
+     */
+    public MockModerationModel thenResponds(ModerationResponse response) {
+        return add(responding(response));
     }
 
     /**
@@ -140,6 +159,10 @@ public class MockModerationModel implements ModerationModel {
         RuntimeException failure = step.failure();
         if (failure != null) {
             throw failure;
+        }
+        ModerationResponse response = step.response();
+        if (response != null) {
+            return response;
         }
         Function<ModerationRequest, Moderation> moderation = ensureNotNull(step.moderation(), "moderation");
         return ModerationResponse.builder()
@@ -231,6 +254,22 @@ public class MockModerationModel implements ModerationModel {
     }
 
     /**
+     * A model that answers the first request with exactly the given response, including its metadata, to test code
+     * that reads it:
+     * <pre>{@code
+     * MockModerationModel model = MockModerationModel.thatResponds(ModerationResponse.builder()
+     *         .moderation(Moderation.flagged("How do I hack ..."))
+     *         .metadata(Map.of("category", "illicit"))
+     *         .build());
+     * }</pre>
+     * Add the next steps with {@code then...} methods, or answer every request with this response:
+     * {@code thatResponds(response).thenRepeats()}.
+     */
+    public static MockModerationModel thatResponds(ModerationResponse response) {
+        return new MockModerationModel(responding(response));
+    }
+
+    /**
      * A model whose first request fails with exactly the given exception. To let every request fail, add
      * {@link #thenRepeats()}. To let later requests succeed, for example to test how your application handles a
      * moderation service that is down for a moment, add steps with {@code then...} methods.
@@ -241,18 +280,22 @@ public class MockModerationModel implements ModerationModel {
 
     private static Step flagging(String flaggedText) {
         ensureNotNull(flaggedText, "flaggedText");
-        return new Step(request -> Moderation.flagged(flaggedText), null);
+        return new Step(request -> Moderation.flagged(flaggedText), null, null);
     }
 
     private static Step notFlagging() {
-        return new Step(request -> Moderation.notFlagged(), null);
+        return new Step(request -> Moderation.notFlagged(), null, null);
     }
 
     private static Step computed(Function<ModerationRequest, Moderation> moderation) {
-        return new Step(ensureNotNull(moderation, "moderation"), null);
+        return new Step(ensureNotNull(moderation, "moderation"), null, null);
+    }
+
+    private static Step responding(ModerationResponse response) {
+        return new Step(null, ensureNotNull(response, "response"), null);
     }
 
     private static Step failing(RuntimeException exception) {
-        return new Step(null, ensureNotNull(exception, "exception"));
+        return new Step(null, null, ensureNotNull(exception, "exception"));
     }
 }

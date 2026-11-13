@@ -6,9 +6,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationRequest;
+import dev.langchain4j.model.moderation.ModerationResponse;
 import dev.langchain4j.model.moderation.listener.ModerationModelListener;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.junit.jupiter.api.Test;
@@ -194,5 +196,33 @@ class MockModerationModelTest {
         assertThatThrownBy(() -> model.doModerate(null)).isInstanceOf(IllegalArgumentException.class);
         assertThat(model.requests()).isEmpty();
         assertThat(model.moderate("hello").content().flagged()).isFalse();
+    }
+
+    @Test
+    void should_answer_with_exactly_the_given_response_including_its_metadata() {
+
+        ModerationResponse given = ModerationResponse.builder()
+                .moderation(Moderation.flagged("bad"))
+                .metadata(Map.of("category", "illicit"))
+                .build();
+        MockModerationModel model = MockModerationModel.thatResponds(given).thenRepeats();
+
+        assertThat(model.moderate(ModerationRequest.builder().texts(List.of("bad")).build()))
+                .isEqualTo(given);
+        assertThat(model.moderate("bad").metadata()).containsEntry("category", "illicit");
+    }
+
+    @Test
+    void should_give_the_whole_response_in_a_later_step() {
+
+        ModerationResponse given =
+                ModerationResponse.builder().moderation(Moderation.notFlagged()).build();
+        MockModerationModel model = MockModerationModel.thatFlags("bad").thenResponds(given);
+
+        assertThat(model.moderate("first").content().flagged()).isTrue();
+        assertThat(model.moderate("second").content().flagged()).isFalse();
+        assertThatThrownBy(() -> model.moderate("third")).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> MockModerationModel.thatResponds(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> model.thenResponds(null)).isInstanceOf(IllegalArgumentException.class);
     }
 }
