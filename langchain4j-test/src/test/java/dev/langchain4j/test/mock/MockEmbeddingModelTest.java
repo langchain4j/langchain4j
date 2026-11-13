@@ -256,6 +256,8 @@ class MockEmbeddingModelTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> model.thenFails(null)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(model::thenEmbeds).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> MockEmbeddingModel.thatResponds(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> model.thenResponds(null)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -414,16 +416,6 @@ class MockEmbeddingModelTest {
         assertThatThrownBy(() -> MockEmbeddingModel.thatFails(failure).dimension()).isSameAs(failure);
     }
 
-    private static float[] vector(MockEmbeddingModel model, String text) {
-        return model.embed(text).content().vector();
-    }
-
-    private static double relevanceScore(MockEmbeddingModel model, String first, String second) {
-        Embedding a = model.embed(first).content();
-        Embedding b = model.embed(second).content();
-        return RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(a, b));
-    }
-
     @Test
     void should_answer_with_exactly_the_given_response_including_its_metadata() {
 
@@ -452,7 +444,8 @@ class MockEmbeddingModelTest {
 
         assertThatThrownBy(() -> model.embedAll(List.of(TextSegment.from("a"), TextSegment.from("b"))))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("has 1 embeddings, but the request has 2 texts");
+                .hasMessageContaining("has 1 embedding, but the request has 2 texts")
+                .hasMessageEndingWith("so give a response with 2 embeddings.");
     }
 
     @Test
@@ -467,7 +460,63 @@ class MockEmbeddingModelTest {
         assertThat(model.embed("a").content().vector()).containsExactly(0.1f);
         assertThat(model.embed("b").tokenUsage().inputTokenCount()).isEqualTo(3);
         assertThatThrownBy(() -> model.embed("c")).isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(() -> MockEmbeddingModel.thatResponds(null)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> model.thenResponds(null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void should_fail_a_request_with_the_exception_that_the_function_throws() {
+
+        RuntimeException failure = new IllegalArgumentException("unexpected text");
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(text -> {
+            throw failure;
+        });
+
+        assertThatThrownBy(() -> model.embed("a")).isSameAs(failure);
+    }
+
+    @Test
+    void should_name_the_text_when_the_function_returns_no_vector() {
+
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(text -> null).thenRepeats();
+
+        assertThatThrownBy(() -> model.embed("unknown text"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("no vector for the text \"unknown text\"");
+        assertThatThrownBy(model::dimension)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("dimension()");
+    }
+
+    @Test
+    void should_copy_the_vectors_that_the_function_returns() {
+
+        float[] cached = {1f, 2f};
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(text -> cached).thenRepeats();
+
+        model.embed("a").content().vector()[0] = 9f;
+
+        assertThat(cached).containsExactly(1f, 2f);
+        assertThat(vector(model, "b")).containsExactly(1f, 2f);
+    }
+
+    @Test
+    void should_not_know_the_dimension_when_no_step_returns_an_embedding() {
+
+        MockEmbeddingModel model = MockEmbeddingModel.thatResponds(
+                EmbeddingResponse.builder().embeddings(List.of()).build());
+
+        assertThatThrownBy(model::dimension)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("dimension is unknown");
+        assertThat(model.requests()).isEmpty();
+    }
+
+    private static float[] vector(MockEmbeddingModel model, String text) {
+        return model.embed(text).content().vector();
+    }
+
+    private static double relevanceScore(MockEmbeddingModel model, String first, String second) {
+        Embedding a = model.embed(first).content();
+        Embedding b = model.embed(second).content();
+        return RelevanceScore.fromCosineSimilarity(CosineSimilarity.between(a, b));
     }
 }

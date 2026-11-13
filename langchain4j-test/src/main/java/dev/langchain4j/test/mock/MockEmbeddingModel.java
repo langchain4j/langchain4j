@@ -21,8 +21,9 @@ import org.jspecify.annotations.Nullable;
  * requests it receives.
  * <p>
  * Script the answers step by step, one step per request. One call of {@code embed(...)}, {@code embedAll(...)} or
- * {@code embedAsync(...)} is one request, also when it embeds several texts. For example, a model that returns the same
- * vector for every text of every request:
+ * {@code embedAsync(...)} is one request, also when it embeds several texts. A call of {@code embedAll(...)} without
+ * texts returns at once, without asking the model: it takes no step and records no request. For example, a model that
+ * returns the same vector for every text of every request:
  * <pre>{@code
  * MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(0.1f, 0.2f).thenRepeats();
  * }</pre>
@@ -41,13 +42,16 @@ import org.jspecify.annotations.Nullable;
  *         .thenEmbeds(0.1f, 0.2f)
  *         .thenRepeats();
  * }</pre>
- * or let the second batch of an ingestion fail and the next batches succeed:
+ * or, when your code ingests documents in batches, with one {@code ingest(...)} or {@code embedAll(...)} call per
+ * batch, let its second batch fail and the next batches succeed:
  * <pre>{@code
  * MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(0.1f, 0.2f)
  *         .thenFails(new InternalServerException("Service unavailable"))
  *         .thenEmbeds(0.1f, 0.2f)
  *         .thenRepeats();
  * }</pre>
+ * A real model that splits one call into several requests to its provider fails the whole call when one of them fails,
+ * so one call is always one step.
  * <p>
  * Use {@link #thatEmbeds(Function)} when the test depends on which texts are close to each other, for example on the
  * ranking of retrieved segments or on a minimum score: the function in the test then says which texts are close. Use
@@ -61,8 +65,8 @@ import org.jspecify.annotations.Nullable;
  * <p>
  * The mock accepts the per-call parameters {@code modelName} and {@code inputType}, and rejects {@code dimensions} with
  * an {@code UnsupportedFeatureException}, like a model without that parameter; a rejected request takes no step. Unless
- * a step gives the whole response, a response reports the model name of the request. {@code embedAsync(...)} completes on another thread, where a step
- * that computes its vectors also computes them.
+ * a step gives the whole response, a response reports the model name of the request. {@code embedAsync(...)} completes
+ * on another thread, where a step that computes its vectors also computes them.
  * <p>
  * A mock remembers which steps were taken and which requests it received, so create a new one for each test. A mock
  * shared between tests, for example as a bean, fails with a clear message as soon as its script runs out, unless the
@@ -73,7 +77,6 @@ import org.jspecify.annotations.Nullable;
 public class MockEmbeddingModel implements EmbeddingModel {
 
     private static final String MOCK_NAME = "MockEmbeddingModel";
-    private static final int MAX_TEXTS_SHOWN = 3;
 
     /**
      * One step of the script: the vector of each text of one request, the whole response to that request, or its
@@ -212,20 +215,34 @@ public class MockEmbeddingModel implements EmbeddingModel {
         if (response != null) {
             int texts = request.inputs().size();
             if (response.embeddings().size() != texts) {
-                throw new IllegalStateException("The response of this step has " + response.embeddings().size()
-                        + " embeddings, but the request has " + texts + " texts. A provider returns one embedding per"
-                        + " text, so give a response with " + texts + ".");
+                throw new IllegalStateException("The response of this step has "
+                        + Script.counted(response.embeddings().size(), "embedding") + ", but the request has "
+                        + Script.counted(texts, "text") + ". A provider returns one embedding per text, so give a"
+                        + " response with " + Script.counted(texts, "embedding") + ".");
             }
             return response;
         }
         Function<String, float[]> embeddings = embeddingsOf(step);
         List<Embedding> vectors = request.inputs().stream()
-                .map(input -> Embedding.from(embeddings.apply(input.text())))
+                .map(input -> Embedding.from(vectorOf(embeddings, input.text())))
                 .toList();
         return EmbeddingResponse.builder()
                 .embeddings(vectors)
                 .modelName(request.modelName())
                 .build();
+    }
+
+    /**
+     * The vector that the function computes for the text, as a copy, so that changing an embedding changes no vector
+     * that the function keeps.
+     */
+    private static float[] vectorOf(Function<String, float[]> embeddings, String text) {
+        float[] vector = embeddings.apply(text);
+        if (vector == null) {
+            throw new IllegalStateException("The function of this step returned no vector for the text \""
+                    + Script.shortened(text) + "\". Return a vector for every text that the code under test embeds.");
+        }
+        return vector.clone();
     }
 
     private static Function<String, float[]> embeddingsOf(Step step) {
@@ -238,17 +255,8 @@ public class MockEmbeddingModel implements EmbeddingModel {
 
     private String runOutMessage(EmbeddingRequest request, int requestNumber) {
         List<String> texts = request.inputs().stream().map(input -> input.text()).toList();
-        StringBuilder described = new StringBuilder("The texts of request ")
-                .append(requestNumber)
-                .append(":");
-        texts.stream()
-                .limit(MAX_TEXTS_SHOWN)
-                .forEach(text ->
-                        described.append(" \"").append(Script.shortened(text)).append("\""));
-        if (texts.size() > MAX_TEXTS_SHOWN) {
-            described.append(" and ").append(texts.size() - MAX_TEXTS_SHOWN).append(" more");
-        }
-        return script.runOutMessage(requestNumber, "", described.toString());
+        return script.runOutMessage(
+                requestNumber, "", "The texts of request " + requestNumber + ":" + Script.quoted(texts));
     }
 
     /**
@@ -260,12 +268,22 @@ public class MockEmbeddingModel implements EmbeddingModel {
      * instead.
      */
     @Override
-    public synchronized int dimension() {
-        List<Step> steps = script.steps();
+    public int dimension() {
+        List<Step> steps;
+        synchronized (this) {
+            steps = script.steps();
+        }
         for (Step step : steps) {
             Function<String, float[]> embeddings = step.embeddings();
             if (embeddings != null) {
-                return embeddings.apply("test").length;
+                // outside the lock, because the function may wait for other requests
+                float[] vector = embeddings.apply("test");
+                if (vector == null) {
+                    throw new IllegalStateException("The function of this step returned no vector for the text"
+                            + " \"test\", which dimension() embeds. Return a vector for it, or set the dimension of"
+                            + " the embedding store explicitly.");
+                }
+                return vector.length;
             }
             EmbeddingResponse response = step.response();
             if (response != null && !response.embeddings().isEmpty()) {
@@ -330,7 +348,8 @@ public class MockEmbeddingModel implements EmbeddingModel {
      * }</pre>
      * two texts that both contain "refund" get a relevance score of 1, and a text with "refund" and a text without it
      * get a score of 0.5. Add the next steps with {@code then...} methods, or compute the vectors of every request with
-     * {@code thenRepeats()}, as above. If the function throws, the request fails with that exception, unchanged.
+     * {@code thenRepeats()}, as above. If the function throws, the request fails with that exception, unchanged. If it
+     * returns no vector, the request fails with an {@link IllegalStateException} that shows the text.
      */
     public static MockEmbeddingModel thatEmbeds(Function<String, float[]> embeddings) {
         return new MockEmbeddingModel(computed(embeddings));

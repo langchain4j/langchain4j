@@ -52,8 +52,9 @@ import java.util.function.ToDoubleFunction;
  * function throws, the request fails with that exception, unchanged.
  * <p>
  * Like on every mock in this package, {@code thatResponds(...)} and {@code thenResponds(...)} give a step as the whole
- * response, here a {@link DecisionResponse}: the request is answered with exactly that response, including its
- * metadata, for example the token usage that a cost check reads.
+ * response, here a {@link DecisionResponse}: the request is answered with the answers and the metadata of that
+ * response, for example the token usage that a cost check reads, checked like the answers of a real model, so a choice
+ * answer then also carries the options of its question.
  * <p>
  * The model checks its answers like a real one: a request with a question that got no answer fails with an
  * {@code InvalidDecisionResponseException}. Unless a step gives the whole response, a response reports the model name
@@ -126,7 +127,7 @@ public class MockDecisionModel implements DecisionModel {
     }
 
     /**
-     * Adds a step: the next request is answered with exactly the given response, including its metadata, for example
+     * Adds a step: the next request is answered with the answers and the metadata of the given response, for example
      * its token usage or model name, see {@link #thatResponds(DecisionResponse)}.
      *
      * @throws IllegalStateException if the script already ends with {@link #thenRepeats()}
@@ -163,7 +164,7 @@ public class MockDecisionModel implements DecisionModel {
 
     @Override
     public DecisionResponse doDecide(DecisionRequest request) {
-        return respond(take(request), request);
+        return take(request).respond(request);
     }
 
     /**
@@ -179,7 +180,7 @@ public class MockDecisionModel implements DecisionModel {
         } catch (RuntimeException e) {
             return CompletableFuture.failedFuture(e);
         }
-        return CompletableFuture.supplyAsync(() -> respond(step, request), MockThreads.newThreadPerTask(MOCK_NAME));
+        return CompletableFuture.supplyAsync(() -> step.respond(request), MockThreads.newThreadPerTask(MOCK_NAME));
     }
 
     /**
@@ -193,10 +194,6 @@ public class MockDecisionModel implements DecisionModel {
         int requestNumber = requests.add(request);
         Step step = script.next();
         return step != null ? step : failing(new IllegalStateException(runOutMessage(request, requestNumber)));
-    }
-
-    private static DecisionResponse respond(Step step, DecisionRequest request) {
-        return step.respond(request);
     }
 
     private static DecisionResponse answered(Map<String, ? extends DecisionAnswer> answers, DecisionRequest request) {
@@ -285,10 +282,11 @@ public class MockDecisionModel implements DecisionModel {
     }
 
     /**
-     * A model that answers the first request with exactly the given response, including its metadata, for example its
+     * A model that answers the first request with the answers and the metadata of the given response, for example its
      * token usage or model name, to test code that reads them, such as a cost check. The model still checks the answers
-     * like a real one: a request with a question that the response does not answer fails. Add the next steps with
-     * {@code then...} methods, or answer every request with this response: {@code thatResponds(response).thenRepeats()}.
+     * like a real one: a request with a question that the response does not answer fails, and a choice answer gets the
+     * options of its question, so the response is not exactly the given one. Add the next steps with {@code then...}
+     * methods, or answer every request with this response: {@code thatResponds(response).thenRepeats()}.
      */
     public static MockDecisionModel thatResponds(DecisionResponse response) {
         return new MockDecisionModel(responding(response));

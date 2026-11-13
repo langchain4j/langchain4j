@@ -94,6 +94,8 @@ class MockModerationModelTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> model.thenFails(null)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> model.thenFlags(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> MockModerationModel.thatResponds(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> model.thenResponds(null)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -222,7 +224,16 @@ class MockModerationModelTest {
         assertThat(model.moderate("first").content().flagged()).isTrue();
         assertThat(model.moderate("second").content().flagged()).isFalse();
         assertThatThrownBy(() -> model.moderate("third")).isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(() -> MockModerationModel.thatResponds(null)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> model.thenResponds(null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void should_fail_a_request_with_the_exception_that_the_function_throws() {
+
+        RuntimeException failure = new IllegalArgumentException("unexpected message");
+        MockModerationModel model = MockModerationModel.thatModerates(request -> {
+            throw failure;
+        });
+
+        assertThatThrownBy(() -> model.moderate("a")).isSameAs(failure);
     }
 }

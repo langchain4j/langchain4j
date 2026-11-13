@@ -327,6 +327,8 @@ public class MockStreamingChatModelTest {
         assertThat(first.tokens()).containsExactly("It", "'s", " ", "123", "45", " o", "'clock", ".\n", "Next");
         assertThat(first.response().aiMessage().text()).isEqualTo("It's 12345 o'clock.\nNext");
         assertThat(stream(model).tokens()).containsExactly("Hi");
+        // a no-break space is whitespace, as in tiktoken, not punctuation
+        assertThat(ScriptedResponses.splitIntoTokens("Hi!\u00a0\nNext")).containsExactly("Hi", "!", "\u00a0\n", "Next");
     }
 
     @Test
@@ -957,8 +959,10 @@ public class MockStreamingChatModelTest {
                     }
                 });
 
-        // nothing was requested yet, so the mock's thread produces all events, delivers none of them and ends;
-        // every event and the completion are then delivered on this thread, one request at a time
+        // this covers sequential delivery only: nothing was requested yet, so the mock's thread produces all events,
+        // delivers none of them and ends; every event and the completion are then delivered on this thread, one request
+        // at a time. The race between the mock's thread and a requesting thread, which the delivery gate avoids,
+        // cannot be forced in a deterministic test
         streamingThread.get(5, SECONDS).join(5_000);
         Flow.Subscription subscription = subscribed.get(5, SECONDS);
         subscription.request(1);
@@ -1594,7 +1598,8 @@ public class MockStreamingChatModelTest {
     }
 
     /**
-     * Subscribes to the events of the next answer, requesting all of them, and waits for the end of the stream.
+     * Subscribes to the given publisher, requesting all events, waits for the end of the stream and returns the events,
+     * followed by the failure, if any.
      */
     private static List<Object> signals(Flow.Publisher<ChatModelStreamingEvent> publisher) {
         List<Object> signals = new CopyOnWriteArrayList<>();
@@ -1626,6 +1631,9 @@ public class MockStreamingChatModelTest {
         return signals;
     }
 
+    /**
+     * Subscribes to the events of the next answer, requesting all of them, and waits for the end of the stream.
+     */
     private static void subscribe(MockStreamingChatModel model, List<Object> signals) {
         CompletableFuture<Void> done = new CompletableFuture<>();
         model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build())

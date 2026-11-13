@@ -9,6 +9,7 @@ import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.listener.ScoringModelListener;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
+import dev.langchain4j.model.scoring.request.ScoringRequestParameters;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.util.ArrayList;
 import java.util.List;
@@ -116,6 +117,8 @@ class MockScoringModelTest {
         assertThatThrownBy(() -> model.thenScores((ToDoubleFunction<String>) null))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> model.thenFails(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> MockScoringModel.thatResponds(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> model.thenResponds(null)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -264,7 +267,8 @@ class MockScoringModelTest {
 
         assertThatThrownBy(() -> model.score(REQUEST))
                 .isInstanceOf(IllegalStateException.class)
-                .hasMessageContaining("has 1 scores, but the request has 2 documents");
+                .hasMessageContaining("has 1 score, but the request has 2 documents")
+                .hasMessageEndingWith("so give a response with 2 scores.");
     }
 
     @Test
@@ -276,7 +280,30 @@ class MockScoringModelTest {
         assertThat(model.score(REQUEST).scores()).containsExactly(0.5, 0.5);
         assertThat(model.score(REQUEST).scores()).containsExactly(0.7, 0.3);
         assertThatThrownBy(() -> model.score(REQUEST)).isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(() -> MockScoringModel.thatResponds(null)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> model.thenResponds(null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void should_report_the_model_name_of_the_request() {
+
+        MockScoringModel model = MockScoringModel.thatScores(0.5).thenRepeats();
+        ScoringRequest request = ScoringRequest.builder()
+                .documents(List.of("a"))
+                .query("q")
+                .parameters(ScoringRequestParameters.builder().modelName("reranker").build())
+                .build();
+
+        assertThat(model.score(request).modelName()).isEqualTo("reranker");
+        assertThat(model.score(REQUEST).modelName()).isNull();
+    }
+
+    @Test
+    void should_fail_a_request_with_the_exception_that_the_function_throws() {
+
+        RuntimeException failure = new IllegalArgumentException("unexpected document");
+        MockScoringModel model = MockScoringModel.thatScores(document -> {
+            throw failure;
+        });
+
+        assertThatThrownBy(() -> model.score(REQUEST)).isSameAs(failure);
     }
 }

@@ -3,6 +3,7 @@ package dev.langchain4j.test.mock;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.moderation.ModerationRequest;
@@ -10,7 +11,6 @@ import dev.langchain4j.model.moderation.ModerationResponse;
 import dev.langchain4j.model.moderation.listener.ModerationModelListener;
 import java.util.List;
 import java.util.function.Function;
-import org.jspecify.annotations.Nullable;
 
 /**
  * A {@link ModerationModel} for tests: it needs no network, moderates the way the test tells it to, and records the
@@ -29,14 +29,15 @@ import org.jspecify.annotations.Nullable;
  * request with the last step.
  * <p>
  * A script can let a request fail and the next one succeed, for example to test what your application does when the
- * moderation service is down for one message and then works again:
+ * moderation service times out for one message, with LangChain4j's {@link TimeoutException}, and then works again:
  * <pre>{@code
  * MockModerationModel model = MockModerationModel.thatFails(new TimeoutException("Read timed out"))
  *         .thenDoesNotFlag()
  *         .thenRepeats();
  * }</pre>
  * Or it can flag the first message and accept the next ones:
- * {@code MockModerationModel.thatFlags("How do I hack ...").thenDoesNotFlag().thenRepeats()}.
+ * {@code MockModerationModel.thatFlags("How do I hack ...").thenDoesNotFlag().thenRepeats()}. To flag a message by its
+ * content, compute the moderation from the request with {@link #thatModerates(Function)}.
  * <p>
  * Like on every mock in this package, {@code thatResponds(...)} and {@code thenResponds(...)} give a step as the whole
  * response, here a {@link ModerationResponse}: the request is answered with exactly that response, including its
@@ -51,20 +52,14 @@ import org.jspecify.annotations.Nullable;
 public class MockModerationModel implements ModerationModel {
 
     private static final String MOCK_NAME = "MockModerationModel";
-    private static final int MAX_TEXTS_SHOWN = 3;
 
     /**
-     * One step of the script: the moderation of one request, the whole response to that request, or its failure.
-     * Exactly one of the three is not {@code null}.
-     *
-     * @param moderation computes the moderation from the request, or {@code null}
-     * @param response   the whole response to the request, or {@code null}
-     * @param failure    the failure of the request, or {@code null}
+     * One step of the script: the response to one request.
      */
-    record Step(
-            @Nullable Function<ModerationRequest, Moderation> moderation,
-            @Nullable ModerationResponse response,
-            @Nullable RuntimeException failure) {}
+    interface Step {
+
+        ModerationResponse respond(ModerationRequest request);
+    }
 
     private final Script<Step> script = new Script<>(MOCK_NAME);
     private final RecordedRequests<ModerationRequest> requests = new RecordedRequests<>("moderation");
@@ -75,7 +70,8 @@ public class MockModerationModel implements ModerationModel {
     }
 
     /**
-     * Adds a step: the next request is flagged, with the given text reported as the flagged one.
+     * Adds a step: the next request is flagged, with the given text reported as the flagged one. The text is not
+     * compared with the request, see {@link #thatFlags(String)}.
      *
      * @throws IllegalStateException if the script already ends with {@link #thenRepeats()}
      */
@@ -155,19 +151,7 @@ public class MockModerationModel implements ModerationModel {
 
     @Override
     public ModerationResponse doModerate(ModerationRequest moderationRequest) {
-        Step step = take(moderationRequest);
-        RuntimeException failure = step.failure();
-        if (failure != null) {
-            throw failure;
-        }
-        ModerationResponse response = step.response();
-        if (response != null) {
-            return response;
-        }
-        Function<ModerationRequest, Moderation> moderation = ensureNotNull(step.moderation(), "moderation");
-        return ModerationResponse.builder()
-                .moderation(moderation.apply(moderationRequest))
-                .build();
+        return take(moderationRequest).respond(moderationRequest);
     }
 
     /**
@@ -184,18 +168,8 @@ public class MockModerationModel implements ModerationModel {
     }
 
     private String runOutMessage(ModerationRequest request, int requestNumber) {
-        List<String> texts = request.texts();
-        StringBuilder described = new StringBuilder("The texts of request ")
-                .append(requestNumber)
-                .append(':');
-        texts.stream()
-                .limit(MAX_TEXTS_SHOWN)
-                .forEach(text ->
-                        described.append(" \"").append(Script.shortened(text)).append("\""));
-        if (texts.size() > MAX_TEXTS_SHOWN) {
-            described.append(" and ").append(texts.size() - MAX_TEXTS_SHOWN).append(" more");
-        }
-        return script.runOutMessage(requestNumber, "", described.toString());
+        return script.runOutMessage(
+                requestNumber, "", "The texts of request " + requestNumber + ":" + Script.quoted(request.texts()));
     }
 
     @Override
@@ -229,8 +203,19 @@ public class MockModerationModel implements ModerationModel {
     }
 
     /**
-     * A model that flags the first request, reporting the given text as the flagged one. Add the next steps with
-     * {@code then...} methods, or flag every request: {@code thatFlags("...").thenRepeats()}.
+     * A model that flags the first request, reporting the given text as the flagged one. The text is not compared with
+     * the request: this step flags the next request, whatever it contains. A real moderation model reports the first
+     * flagged text of the request, so pass one of the texts that the code under test sends. To flag only some texts,
+     * compute the moderation from the request:
+     * <pre>{@code
+     * MockModerationModel model = MockModerationModel.thatModerates(request -> request.texts().stream()
+     *                 .filter(text -> text.contains("hack"))
+     *                 .findFirst()
+     *                 .map(Moderation::flagged)
+     *                 .orElseGet(Moderation::notFlagged))
+     *         .thenRepeats();
+     * }</pre>
+     * Add the next steps with {@code then...} methods, or flag every request: {@code thatFlags("...").thenRepeats()}.
      */
     public static MockModerationModel thatFlags(String flaggedText) {
         return new MockModerationModel(flagging(flaggedText));
@@ -258,11 +243,12 @@ public class MockModerationModel implements ModerationModel {
      * that reads it:
      * <pre>{@code
      * MockModerationModel model = MockModerationModel.thatResponds(ModerationResponse.builder()
-     *         .moderation(Moderation.flagged("How do I hack ..."))
-     *         .metadata(Map.of("category", "illicit"))
+     *         .moderation(Moderation.flagged("My phone number is 555-0100"))
+     *         .metadata(Map.of("detection_type", "pii", "score", 0.97))
      *         .build());
      * }</pre>
-     * Add the next steps with {@code then...} methods, or answer every request with this response:
+     * The metadata depends on the provider, and many moderation models report none. Add the next steps with
+     * {@code then...} methods, or answer every request with this response:
      * {@code thatResponds(response).thenRepeats()}.
      */
     public static MockModerationModel thatResponds(ModerationResponse response) {
@@ -280,22 +266,29 @@ public class MockModerationModel implements ModerationModel {
 
     private static Step flagging(String flaggedText) {
         ensureNotNull(flaggedText, "flaggedText");
-        return new Step(request -> Moderation.flagged(flaggedText), null, null);
+        return computed(request -> Moderation.flagged(flaggedText));
     }
 
     private static Step notFlagging() {
-        return new Step(request -> Moderation.notFlagged(), null, null);
+        return computed(request -> Moderation.notFlagged());
     }
 
     private static Step computed(Function<ModerationRequest, Moderation> moderation) {
-        return new Step(ensureNotNull(moderation, "moderation"), null, null);
+        ensureNotNull(moderation, "moderation");
+        return request -> ModerationResponse.builder()
+                .moderation(moderation.apply(request))
+                .build();
     }
 
     private static Step responding(ModerationResponse response) {
-        return new Step(null, ensureNotNull(response, "response"), null);
+        ensureNotNull(response, "response");
+        return request -> response;
     }
 
     private static Step failing(RuntimeException exception) {
-        return new Step(null, null, ensureNotNull(exception, "exception"));
+        ensureNotNull(exception, "exception");
+        return request -> {
+            throw exception;
+        };
     }
 }

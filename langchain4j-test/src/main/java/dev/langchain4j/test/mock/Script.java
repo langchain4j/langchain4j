@@ -14,6 +14,7 @@ import org.jspecify.annotations.Nullable;
 final class Script<S> {
 
     private static final int MAX_TEXT_LENGTH = 200;
+    private static final int MAX_TEXTS_SHOWN = 3;
 
     private final String mockName;
     private final List<S> steps = new ArrayList<>();
@@ -104,5 +105,27 @@ final class Script<S> {
      */
     static String shortened(String text) {
         return text.length() > MAX_TEXT_LENGTH ? text.substring(0, MAX_TEXT_LENGTH) + "..." : text;
+    }
+
+    /**
+     * The count with its noun, for example {@code 1 embedding} or {@code 2 embeddings}.
+     */
+    static String counted(int count, String noun) {
+        return count + " " + noun + (count == 1 ? "" : "s");
+    }
+
+    /**
+     * The first three texts in quotes, each cut to 200 characters, and how many more there are, for an error message,
+     * for example {@code  "a" "b" "c" and 2 more}.
+     */
+    static String quoted(List<String> texts) {
+        StringBuilder quoted = new StringBuilder();
+        texts.stream()
+                .limit(MAX_TEXTS_SHOWN)
+                .forEach(text -> quoted.append(" \"").append(shortened(text)).append('"'));
+        if (texts.size() > MAX_TEXTS_SHOWN) {
+            quoted.append(" and ").append(texts.size() - MAX_TEXTS_SHOWN).append(" more");
+        }
+        return quoted.toString();
     }
 }

@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.model.scoring.listener.ScoringModelListener;
@@ -12,7 +13,6 @@ import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.ToDoubleFunction;
-import org.jspecify.annotations.Nullable;
 
 /**
  * A {@link ScoringModel} for tests: it needs no network, scores each document the way the test tells it to, and records
@@ -33,7 +33,7 @@ import org.jspecify.annotations.Nullable;
  * with the last step.
  * <p>
  * A script can let a request fail and the next one succeed, for example to test how your application handles a
- * re-ranking model that times out once and then recovers:
+ * re-ranking model that times out once, with LangChain4j's {@link TimeoutException}, and then recovers:
  * <pre>{@code
  * MockScoringModel model = MockScoringModel.thatFails(new TimeoutException("Read timed out"))
  *         .thenScores(document -> document.contains("refund") ? 0.9 : 0.1)
@@ -57,17 +57,12 @@ public class MockScoringModel implements ScoringModel {
     private static final String MOCK_NAME = "MockScoringModel";
 
     /**
-     * One step of the script: the score of each document of one request, the whole response to that request, or its
-     * failure. Exactly one of the three is not {@code null}.
-     *
-     * @param scores   computes the score of a document, or {@code null}
-     * @param response the whole response to the request, or {@code null}
-     * @param failure  the failure of the request, or {@code null}
+     * One step of the script: the response to one request.
      */
-    record Step(
-            @Nullable ToDoubleFunction<String> scores,
-            @Nullable ScoringResponse response,
-            @Nullable RuntimeException failure) {}
+    interface Step {
+
+        ScoringResponse respond(ScoringRequest request);
+    }
 
     private final Script<Step> script = new Script<>(MOCK_NAME);
     private final RecordedRequests<ScoringRequest> requests = new RecordedRequests<>("scoring");
@@ -158,7 +153,7 @@ public class MockScoringModel implements ScoringModel {
 
     @Override
     public ScoringResponse doScore(ScoringRequest request) {
-        return respond(take(request), request);
+        return take(request).respond(request);
     }
 
     /**
@@ -174,7 +169,7 @@ public class MockScoringModel implements ScoringModel {
         } catch (RuntimeException e) {
             return CompletableFuture.failedFuture(e);
         }
-        return CompletableFuture.supplyAsync(() -> respond(step, request), MockThreads.newThreadPerTask(MOCK_NAME));
+        return CompletableFuture.supplyAsync(() -> step.respond(request), MockThreads.newThreadPerTask(MOCK_NAME));
     }
 
     /**
@@ -188,30 +183,6 @@ public class MockScoringModel implements ScoringModel {
         int requestNumber = requests.add(request);
         Step step = script.next();
         return step != null ? step : failing(new IllegalStateException(runOutMessage(request, requestNumber)));
-    }
-
-    private static ScoringResponse respond(Step step, ScoringRequest request) {
-        RuntimeException failure = step.failure();
-        if (failure != null) {
-            throw failure;
-        }
-        ScoringResponse response = step.response();
-        if (response != null) {
-            int documents = request.documents().size();
-            if (response.scores().size() != documents) {
-                throw new IllegalStateException("The response of this step has " + response.scores().size()
-                        + " scores, but the request has " + documents + " documents. A provider returns one score per"
-                        + " document, so give a response with " + documents + ".");
-            }
-            return response;
-        }
-        ToDoubleFunction<String> scores = ensureNotNull(step.scores(), "scores");
-        return ScoringResponse.builder()
-                .scores(request.documents().stream()
-                        .map(scores::applyAsDouble)
-                        .toList())
-                .modelName(request.modelName())
-                .build();
     }
 
     private String runOutMessage(ScoringRequest request, int requestNumber) {
@@ -296,18 +267,35 @@ public class MockScoringModel implements ScoringModel {
     }
 
     private static Step fixed(double score) {
-        return new Step(document -> score, null, null);
+        return computed(document -> score);
     }
 
     private static Step computed(ToDoubleFunction<String> scores) {
-        return new Step(ensureNotNull(scores, "scores"), null, null);
+        ensureNotNull(scores, "scores");
+        return request -> ScoringResponse.builder()
+                .scores(request.documents().stream().map(scores::applyAsDouble).toList())
+                .modelName(request.modelName())
+                .build();
     }
 
     private static Step responding(ScoringResponse response) {
-        return new Step(null, ensureNotNull(response, "response"), null);
+        ensureNotNull(response, "response");
+        return request -> {
+            int documents = request.documents().size();
+            if (response.scores().size() != documents) {
+                throw new IllegalStateException("The response of this step has "
+                        + Script.counted(response.scores().size(), "score") + ", but the request has "
+                        + Script.counted(documents, "document") + ". A provider returns one score per document, so"
+                        + " give a response with " + Script.counted(documents, "score") + ".");
+            }
+            return response;
+        };
     }
 
     private static Step failing(RuntimeException exception) {
-        return new Step(null, null, ensureNotNull(exception, "exception"));
+        ensureNotNull(exception, "exception");
+        return request -> {
+            throw exception;
+        };
     }
 }

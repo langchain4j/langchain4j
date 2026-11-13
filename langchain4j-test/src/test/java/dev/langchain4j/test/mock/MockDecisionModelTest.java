@@ -193,6 +193,8 @@ class MockDecisionModelTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> model.thenAnswersQuestions(null)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> model.thenAnswersYesNoQuestions(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> MockDecisionModel.thatResponds(null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> model.thenResponds(null)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> model.thenFails(null)).isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -459,7 +461,5 @@ class MockDecisionModelTest {
         assertThat(model.decide(REQUEST).yesNo("spam").probability()).isEqualTo(0.9);
         assertThat(model.decide(REQUEST).tokenUsage()).isEqualTo(new TokenUsage(7));
         assertThatThrownBy(() -> model.decide(REQUEST)).isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(() -> MockDecisionModel.thatResponds(null)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> model.thenResponds(null)).isInstanceOf(IllegalArgumentException.class);
     }
 }

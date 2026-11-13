@@ -35,10 +35,11 @@ import java.util.function.ToDoubleFunction;
  * {@code langchain4j-test} module. Unlike this class, it answers one request per scripted step and fails when the
  * script runs out; end the script with {@link MockScoringModel#thenRepeats()} to answer every further request with its
  * last step. {@code withListeners(...)} has the same name. A response reports the model name of the request, and
- * asynchronous calls complete on another thread. {@code withProvider(...)}, {@code withModelName(...)},
- * {@code withTokenUsage(...)}, {@code withoutAsyncSupport()}, {@code withAsyncResult(...)},
- * {@code implementingOnlyScoreAll()} and {@code scoreAllCalls()} have no replacement. This class will be removed in
- * 1.26.0 at the earliest.
+ * asynchronous calls complete on another thread. Instead of {@code withModelName(...)} and {@code withTokenUsage(...)},
+ * give a step the whole response, with one score per document: {@link MockScoringModel#thatResponds(ScoringResponse)};
+ * for scores computed from the documents, a fixed token usage has no replacement. {@code withProvider(...)},
+ * {@code withoutAsyncSupport()}, {@code withAsyncResult(...)}, {@code implementingOnlyScoreAll()} and
+ * {@code scoreAllCalls()} have no replacement. This class will be removed in 1.26.0 at the earliest.
  */
 @Experimental
 @Deprecated(since = "1.24.0", forRemoval = true)
@@ -79,7 +80,9 @@ public class ScoringModelMock implements ScoringModel {
     /**
      * Reports the given model name in {@link #defaultRequestParameters()}.
      *
-     * @deprecated has no replacement: a response of {@link MockScoringModel} reports the model name of the request.
+     * @deprecated a response of {@link MockScoringModel} reports the model name of the request; for another model
+     * name, give a step the whole response, with one score per document:
+     * {@link MockScoringModel#thatResponds(ScoringResponse)}, followed by {@link MockScoringModel#thenRepeats()}.
      * Removed together with this class, in 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
@@ -91,8 +94,10 @@ public class ScoringModelMock implements ScoringModel {
     /**
      * Reports the given token usage in every response.
      *
-     * @deprecated has no replacement; with Mockito, stub the method on a spy of {@link MockScoringModel}. Removed
-     * together with this class, in 1.26.0 at the earliest.
+     * @deprecated give a step the whole response, with its token usage and one score per document:
+     * {@link MockScoringModel#thatResponds(ScoringResponse)}, followed by {@link MockScoringModel#thenRepeats()}; for
+     * scores computed from the documents, a fixed token usage has no replacement. Removed together with this class, in
+     * 1.26.0 at the earliest.
      */
     @Deprecated(since = "1.24.0", forRemoval = true)
     public ScoringModelMock withTokenUsage(TokenUsage tokenUsage) {
