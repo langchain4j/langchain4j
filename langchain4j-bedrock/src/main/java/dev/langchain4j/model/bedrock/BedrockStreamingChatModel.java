@@ -1,5 +1,7 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
+import static dev.langchain4j.internal.InternalFlowUtils.failedPublisher;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -99,8 +101,14 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
 
     @Override
     public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
-        validate(chatRequest.parameters());
-        ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(chatRequest);
+        ConverseStreamRequest converseStreamRequest;
+        try {
+            validate(chatRequest.parameters());
+            converseStreamRequest = buildConverseStreamRequest(chatRequest);
+        } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
+            return failedPublisher(error);
+        }
 
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)

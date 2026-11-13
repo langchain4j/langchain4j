@@ -84,6 +84,51 @@ class AnthropicStreamingChatModelPublisherTest {
     }
 
     @Test
+    void publisher_hook_should_signal_an_unsupported_parameter_instead_of_throwing() {
+        // the hook never throws: an invalid request reaches onError after onSubscribe, and nothing is sent
+        AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .apiKey("dummy-key")
+                .baseUrl(baseUrl)
+                .modelName(AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001)
+                .maxTokens(10)
+                .build();
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("Hi"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .modelName(AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001.toString())
+                        .maxOutputTokens(10)
+                        .frequencyPenalty(0.5)
+                        .build())
+                .build();
+
+        List<String> signals = new CopyOnWriteArrayList<>();
+        model.doChat(request).subscribe(new Flow.Subscriber<>() {
+
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                signals.add("onSubscribe");
+            }
+
+            @Override
+            public void onNext(ChatModelStreamingEvent event) {
+                signals.add("onNext");
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                signals.add("onError: " + error.getClass().getSimpleName());
+            }
+
+            @Override
+            public void onComplete() {
+                signals.add("onComplete");
+            }
+        });
+
+        assertThat(signals).containsExactly("onSubscribe", "onError: UnsupportedFeatureException");
+    }
+
+    @Test
     void should_stream_events_through_reactive_publisher() throws Exception {
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .apiKey("dummy-key")
