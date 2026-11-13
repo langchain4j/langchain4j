@@ -128,7 +128,7 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     .topK(64)
     .seed(42)
     .maxOutputTokens(8192)
-    .timeout(Duration.ofSeconds(60))
+    .timeout(Duration.ofSeconds(60)) // limits each HTTP request as a whole (when streaming: the complete stream); default: 20 minutes
     .maxRetries(2)
     .stopSequences(List.of(...))
     .safetySettings(List.of(...))

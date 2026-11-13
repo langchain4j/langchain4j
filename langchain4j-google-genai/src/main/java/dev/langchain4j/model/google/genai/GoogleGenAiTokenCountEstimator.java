@@ -3,6 +3,7 @@ package dev.langchain4j.model.google.genai;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.google.genai.GoogleGenAiClientFactory.DEFAULT_TIMEOUT;
 import static java.util.Collections.singletonList;
 
 import com.google.auth.oauth2.GoogleCredentials;
@@ -38,7 +39,7 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
                         builder.googleCredentials,
                         builder.projectId,
                         builder.location,
-                        builder.timeout,
+                        getOrDefault(builder.timeout, DEFAULT_TIMEOUT),
                         builder.customHeaders,
                         builder.apiEndpoint);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
@@ -153,6 +154,16 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
             return this;
         }
 
+        /**
+         * Sets the timeout of each HTTP request to the Google GenAI API.
+         * It limits the whole request: connecting, waiting for the server and receiving the response.
+         * A request that times out is retried (see {@link #maxRetries(Integer)}), and each retry gets the full timeout.
+         * Defaults to 20 minutes.
+         * Ignored when {@link #client(Client)} is set.
+         *
+         * @param timeout the timeout
+         * @return {@code this}
+         */
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
