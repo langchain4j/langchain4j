@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
@@ -16,6 +17,12 @@ import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.guardrail.ToolInputGuardrail;
+import dev.langchain4j.guardrail.ToolInputGuardrailRequest;
+import dev.langchain4j.guardrail.ToolInputGuardrailResult;
+import dev.langchain4j.guardrail.ToolOutputGuardrail;
+import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
+import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -31,6 +38,8 @@ import dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.RetrievalAugmentedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
+import dev.langchain4j.observability.api.event.ToolInputGuardrailExecutedEvent;
+import dev.langchain4j.observability.api.event.ToolOutputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCancelledListener;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.AiServiceErrorListener;
@@ -43,6 +52,8 @@ import dev.langchain4j.observability.api.listener.InputGuardrailExecutedListener
 import dev.langchain4j.observability.api.listener.OutputGuardrailExecutedListener;
 import dev.langchain4j.observability.api.listener.RetrievalAugmentedListener;
 import dev.langchain4j.observability.api.listener.ToolExecutedEventListener;
+import dev.langchain4j.observability.api.listener.ToolInputGuardrailExecutedListener;
+import dev.langchain4j.observability.api.listener.ToolOutputGuardrailExecutedListener;
 import java.lang.ref.WeakReference;
 import java.time.Duration;
 import java.util.List;
@@ -156,6 +167,40 @@ class DefaultAiServiceListenerRegistrarTests {
                     .duration(Duration.ofMillis(50))
                     .build();
 
+    private static final GuardrailRequestParams TOOL_GUARDRAIL_REQUEST_PARAMS = GuardrailRequestParams.builder()
+            .userMessageTemplate("")
+            .variables(Map.of())
+            .invocationContext(DEFAULT_INVOCATION_CONTEXT)
+            .aiServiceListenerRegistrar(REGISTRAR)
+            .build();
+
+    private static final ToolInputGuardrailExecutedEvent TOOL_INPUT_GUARDRAIL_EXECUTED_EVENT =
+            ToolInputGuardrailExecutedEvent.builder()
+                    .invocationContext(DEFAULT_INVOCATION_CONTEXT)
+                    .guardrailClass(TIG.class)
+                    .request(ToolInputGuardrailRequest.builder()
+                            .toolExecutionRequest(
+                                    ToolExecutionRequest.builder().name("tool").build())
+                            .requestParams(TOOL_GUARDRAIL_REQUEST_PARAMS)
+                            .build())
+                    .result(ToolInputGuardrailResult.success())
+                    .duration(Duration.ofMillis(10))
+                    .build();
+
+    private static final ToolOutputGuardrailExecutedEvent TOOL_OUTPUT_GUARDRAIL_EXECUTED_EVENT =
+            ToolOutputGuardrailExecutedEvent.builder()
+                    .invocationContext(DEFAULT_INVOCATION_CONTEXT)
+                    .guardrailClass(TOG.class)
+                    .request(ToolOutputGuardrailRequest.builder()
+                            .toolExecutionRequest(
+                                    ToolExecutionRequest.builder().name("tool").build())
+                            .resultContents(List.of(TextContent.from("result")))
+                            .requestParams(TOOL_GUARDRAIL_REQUEST_PARAMS)
+                            .build())
+                    .result(ToolOutputGuardrailResult.success())
+                    .duration(Duration.ofMillis(20))
+                    .build();
+
     private static final ToolExecutedEvent TOOL_EXECUTED_EVENT = ToolExecutedEvent.builder()
             .invocationContext(DEFAULT_INVOCATION_CONTEXT)
             .request(ToolExecutionRequest.builder().build())
@@ -170,6 +215,8 @@ class DefaultAiServiceListenerRegistrarTests {
             INVOCATION_STARTED_EVENT,
             OUTPUT_GUARDRAIL_EXECUTED_EVENT,
             INPUT_GUARDRAIL_EXECUTED_EVENT,
+            TOOL_INPUT_GUARDRAIL_EXECUTED_EVENT,
+            TOOL_OUTPUT_GUARDRAIL_EXECUTED_EVENT,
             TOOL_EXECUTED_EVENT);
 
     // Create 2 instances of each listener
@@ -177,6 +224,8 @@ class DefaultAiServiceListenerRegistrarTests {
             .mapToObj(i -> List.of(
                     new TestInputGuardrailListener(),
                     new TestOutputGuardrailListener(),
+                    new TestToolInputGuardrailListener(),
+                    new TestToolOutputGuardrailListener(),
                     new TestInvocationStartedListener(),
                     new TestInvocationCompletedListener(),
                     new TestInvocationErrorListener(),
@@ -262,6 +311,44 @@ class DefaultAiServiceListenerRegistrarTests {
     }
 
     @Test
+    void shouldNotNotifyAiServiceGuardrailListenersOfToolGuardrailEvents() {
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        var inputListener = new TestInputGuardrailListener();
+        var outputListener = new TestOutputGuardrailListener();
+        var toolInputListener = new TestToolInputGuardrailListener();
+        var toolOutputListener = new TestToolOutputGuardrailListener();
+        List.of(inputListener, outputListener, toolInputListener, toolOutputListener)
+                .forEach(registrar::register);
+
+        registrar.fireEvent(TOOL_INPUT_GUARDRAIL_EXECUTED_EVENT);
+        registrar.fireEvent(TOOL_OUTPUT_GUARDRAIL_EXECUTED_EVENT);
+
+        assertThat(inputListener.count()).isZero();
+        assertThat(outputListener.count()).isZero();
+        assertThat(toolInputListener.lastEvent()).isSameAs(TOOL_INPUT_GUARDRAIL_EXECUTED_EVENT);
+        assertThat(toolOutputListener.lastEvent()).isSameAs(TOOL_OUTPUT_GUARDRAIL_EXECUTED_EVENT);
+    }
+
+    @Test
+    void shouldIncludeToolGuardrailEventsInTheInvocationSummaryEvent() {
+        var registrar = AiServiceListenerRegistrar.newInstance();
+        var listener = new TestAiServiceInvocationSummaryListener();
+        registrar.register(listener);
+
+        registrar.fireEvent(INVOCATION_STARTED_EVENT);
+        registrar.fireEvent(TOOL_INPUT_GUARDRAIL_EXECUTED_EVENT);
+        registrar.fireEvent(TOOL_OUTPUT_GUARDRAIL_EXECUTED_EVENT);
+        registrar.fireEvent(INVOCATION_COMPLETED_EVENT);
+
+        assertThat(listener.lastEvent().events())
+                .containsExactly(
+                        INVOCATION_STARTED_EVENT,
+                        TOOL_INPUT_GUARDRAIL_EXECUTED_EVENT,
+                        TOOL_OUTPUT_GUARDRAIL_EXECUTED_EVENT,
+                        INVOCATION_COMPLETED_EVENT);
+    }
+
+    @Test
     void shouldFireInvocationSummaryEventOnError() {
         // From https://github.com/langchain4j/langchain4j/issues/4207
         var registrar = AiServiceListenerRegistrar.newInstance();
@@ -320,7 +407,9 @@ class DefaultAiServiceListenerRegistrarTests {
         registrar.fireEvent(RESPONSE_RECEIVED_EVENT);
 
         assertThat(listener)
-                .extracting(TestAiServiceInvocationSummaryListener::count, TestAiServiceInvocationSummaryListener::lastEvent)
+                .extracting(
+                        TestAiServiceInvocationSummaryListener::count,
+                        TestAiServiceInvocationSummaryListener::lastEvent)
                 .containsExactly(0, null);
     }
 
@@ -495,8 +584,8 @@ class DefaultAiServiceListenerRegistrarTests {
         assertThat(summaries)
                 .hasSize(invocationCount)
                 .allSatisfy(summary -> assertThat(summary.events())
-                        .allSatisfy(event ->
-                                assertThat(event.invocationContext()).isEqualTo(summary.invocationContext()))
+                        .allSatisfy(
+                                event -> assertThat(event.invocationContext()).isEqualTo(summary.invocationContext()))
                         .<Class<?>>map(AiServiceEvent::eventClass)
                         .containsExactly(
                                 AiServiceStartedEvent.class,
@@ -723,7 +812,7 @@ class DefaultAiServiceListenerRegistrarTests {
     private static void assertListenersNotExecuted() {
         assertThat(ALL_LISTENERS)
                 .isNotNull()
-                .hasSize(8 * 2)
+                .hasSize(10 * 2)
                 .allSatisfy(l -> assertThat(l)
                         .isNotNull()
                         .satisfies(
@@ -762,6 +851,14 @@ class DefaultAiServiceListenerRegistrarTests {
     private static class TestOutputGuardrailListener extends AbstractTestEventListener<OutputGuardrailExecutedEvent>
             implements OutputGuardrailExecutedListener {}
 
+    private static class TestToolInputGuardrailListener
+            extends AbstractTestEventListener<ToolInputGuardrailExecutedEvent>
+            implements ToolInputGuardrailExecutedListener {}
+
+    private static class TestToolOutputGuardrailListener
+            extends AbstractTestEventListener<ToolOutputGuardrailExecutedEvent>
+            implements ToolOutputGuardrailExecutedListener {}
+
     private static class TestInvocationStartedListener extends AbstractTestEventListener<AiServiceStartedEvent>
             implements AiServiceStartedListener {}
 
@@ -781,10 +878,25 @@ class DefaultAiServiceListenerRegistrarTests {
     private static class TestToolExecutedListener extends AbstractTestEventListener<ToolExecutedEvent>
             implements ToolExecutedEventListener {}
 
-    private static class TestAiServiceInvocationSummaryListener extends AbstractTestEventListener<AiServiceInvocationSummaryEvent>
+    private static class TestAiServiceInvocationSummaryListener
+            extends AbstractTestEventListener<AiServiceInvocationSummaryEvent>
             implements AiServiceInvocationSummaryListener {}
 
     private static class IG implements InputGuardrail {}
 
     private static class OG implements OutputGuardrail {}
+
+    private static class TIG implements ToolInputGuardrail {
+        @Override
+        public ToolInputGuardrailResult validate(ToolInputGuardrailRequest request) {
+            return success();
+        }
+    }
+
+    private static class TOG implements ToolOutputGuardrail {
+        @Override
+        public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
+            return success();
+        }
+    }
 }
