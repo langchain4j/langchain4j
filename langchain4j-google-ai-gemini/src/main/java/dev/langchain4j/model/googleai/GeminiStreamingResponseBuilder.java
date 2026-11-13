@@ -75,6 +75,11 @@ class GeminiStreamingResponseBuilder {
         }
 
         updatePromptFeedback(partialResponse);
+        // These come from the response itself, so they are kept even when it has no candidates
+        // (e.g. a blocked prompt, or a trailing chunk that only reports usage).
+        updateId(partialResponse);
+        updateModelName(partialResponse);
+        updateTokenUsage(partialResponse.usageMetadata());
 
         List<GeminiCandidate> candidates = partialResponse.candidates();
         if (candidates == null || candidates.isEmpty()) {
@@ -83,10 +88,7 @@ class GeminiStreamingResponseBuilder {
 
         GeminiCandidate firstCandidate = candidates.get(0);
 
-        updateId(partialResponse);
-        updateModelName(partialResponse);
         updateFinishReason(firstCandidate);
-        updateTokenUsage(partialResponse.usageMetadata());
         updateSafetyRatings(firstCandidate);
         updateGroundingMetadata(partialResponse, firstCandidate);
         updateUrlContextMetadata(firstCandidate);
