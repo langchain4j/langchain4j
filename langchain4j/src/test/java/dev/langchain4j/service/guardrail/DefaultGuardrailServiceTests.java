@@ -201,9 +201,8 @@ class DefaultGuardrailServiceTests {
     @Test
     void builderConfigTakesPrecedenceOverAnnotationConfig() {
         var guardrailService = (DefaultGuardrailService) GuardrailService.builder(ClassAndMethodLevelAssistant.class)
-                .outputGuardrailsConfig(OutputGuardrailsConfig.builder()
-                        .maxRetries(5)
-                        .build())
+                .outputGuardrailsConfig(
+                        OutputGuardrailsConfig.builder().maxRetries(5).build())
                 .build();
 
         // the guardrails still come from the annotations
