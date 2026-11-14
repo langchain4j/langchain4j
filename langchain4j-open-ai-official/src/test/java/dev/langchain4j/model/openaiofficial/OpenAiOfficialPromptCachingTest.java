@@ -13,12 +13,14 @@ import com.openai.models.responses.ResponseInputItem;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -318,6 +320,31 @@ class OpenAiOfficialPromptCachingTest {
     }
 
     @Test
+    void should_send_breakpoint_on_trailing_pdf_of_responses_tool_execution_result_message() {
+        List<ResponseInputItem> input = responsesInput(
+                UserMessage.from("Get the report"),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("call_123")
+                        .name("getReport")
+                        .arguments("{}")
+                        .build()),
+                ToolExecutionResultMessage.builder()
+                        .id("call_123")
+                        .toolName("getReport")
+                        .contents(
+                                TextContent.from("Here is the report"),
+                                PdfFileContent.from(URI.create("https://example.com/report.pdf")))
+                        .attributes(breakpointAttributes())
+                        .build());
+
+        var outputItems =
+                input.get(input.size() - 1).asFunctionCallOutput().output().asResponseFunctionCallOutputItemList();
+        assertThat(outputItems).hasSize(2);
+        assertThat(outputItems.get(0).asInputText().promptCacheBreakpoint()).isEmpty();
+        assertThat(outputItems.get(1).asInputFile().promptCacheBreakpoint()).isPresent();
+    }
+
+    @Test
     void should_fail_when_breakpoint_is_set_on_responses_ai_message() {
         AiMessage aiMessage = AiMessage.builder()
                 .text("Hello!")
@@ -407,7 +434,8 @@ class OpenAiOfficialPromptCachingTest {
 
     @Test
     void should_mark_every_supported_message_type() {
-        assertThat(OpenAiOfficialPromptCacheBreakpoint.mark(SystemMessage.from("text")).attributes())
+        assertThat(OpenAiOfficialPromptCacheBreakpoint.mark(SystemMessage.from("text"))
+                        .attributes())
                 .containsEntry(
                         OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY,
                         OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT);
