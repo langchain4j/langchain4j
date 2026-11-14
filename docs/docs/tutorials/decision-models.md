@@ -212,8 +212,9 @@ the model provider: convert them to a `Map` that holds only what the decision ne
 ### Images
 
 The input can also be a list of contents, such as text and images, if the decision model supports them
-(for example [OpenAI](/integrations/decision-models/open-ai), or [Ollama](/integrations/decision-models/ollama) with
-a vision model such as Clef):
+(for example [OpenAI](/integrations/decision-models/open-ai), [Google GenAI](/integrations/decision-models/google-genai),
+which also takes PDFs, audio and video, or [Ollama](/integrations/decision-models/ollama) with a vision model such as
+Clef):
 
 ```java
 DecisionRequest request = DecisionRequest.builder()

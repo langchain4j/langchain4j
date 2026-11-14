@@ -49,7 +49,7 @@ public final class GoogleGenAiCaches {
     /**
      * Creates a context cache for the given model from the supplied messages.
      *
-     * @param modelName the model the cache is bound to (e.g. {@code "gemini-2.5-flash"})
+     * @param modelName the model the cache is bound to (e.g. {@code "gemini-3.8-flash"})
      * @param messages  the messages to cache; a {@code SystemMessage} becomes the cached system
      *                  instruction, the rest become cached contents
      * @param ttl       optional time-to-live for the cache (e.g. {@code Duration.ofHours(1)}); may be
