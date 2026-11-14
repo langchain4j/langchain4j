@@ -1,5 +1,6 @@
 package dev.langchain4j.model.anthropic;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
@@ -135,6 +136,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .httpParameters(commonParameters.httpParameters())
                 .cacheSystemMessages(getOrDefault(builder.cacheSystemMessages, anthropicDefaults.cacheSystemMessages()))
                 .cacheTools(getOrDefault(builder.cacheTools, anthropicDefaults.cacheTools()))
                 .cacheAutomatically(getOrDefault(builder.cacheAutomatically, anthropicDefaults.cacheAutomatically()))
@@ -927,7 +929,11 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         ensureNotNull(handler, "handler");
         AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
         AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
-        client.createMessage(anthropicRequest, toOptions(parameters), handler);
+        if (customHeadersOf(parameters).isEmpty()) {
+            client.createMessage(anthropicRequest, toOptions(parameters), handler);
+        } else {
+            client.createMessage(anthropicRequest, toOptions(parameters), parameters.httpParameters(), handler);
+        }
     }
 
     @Override
@@ -935,7 +941,10 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
         AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
         AnthropicCreateMessageOptions options = toOptions(parameters);
-        return client.createMessagePublisher(anthropicRequest, options, streamingBufferSize);
+        return customHeadersOf(parameters).isEmpty()
+                ? client.createMessagePublisher(anthropicRequest, options, streamingBufferSize)
+                : client.createMessagePublisher(
+                        anthropicRequest, options, streamingBufferSize, parameters.httpParameters());
     }
 
     private AnthropicCreateMessageRequest toAnthropicRequest(

@@ -299,6 +299,9 @@ params with the builder pattern:
 | `supportedCapabilities`    | Set of model capabilities used by `AiServices` API (only `OllamaChatModel` supported)                                                                                             | `Set<Capability>`         | RESPONSE_FORMAT_JSON_SCHEMA |
 | `maxRetries`               | The maximum number of retries in case of API call failure.                                                                                                                        | `Integer`                 |                             |
 
+To send HTTP headers with a single request (for example a correlation ID), see
+[Per-request HTTP headers](/tutorials/chat-and-language-models#per-request-http-headers).
+
 #### Usage Example
 ```java
 OllamaChatModel ollamaChatModel = OllamaChatModel.builder()

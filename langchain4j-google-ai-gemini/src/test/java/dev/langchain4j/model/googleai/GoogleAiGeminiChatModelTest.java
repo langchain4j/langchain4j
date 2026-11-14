@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -48,7 +49,7 @@ class GoogleAiGeminiChatModelTest {
         void shouldSendChatRequest() {
             // Given
             var expectedResponse = createGeminiResponse("Hello, how can I help you?");
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(expectedResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -64,14 +65,14 @@ class GoogleAiGeminiChatModelTest {
 
             // Then
             assertThat(chatResponse.aiMessage().text()).isEqualTo("Hello, how can I help you?");
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class));
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap());
         }
 
         @Test
         void shouldReturnCorrectChatResponse() {
             // Given
             var expectedResponse = createGeminiResponse("Test response");
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(expectedResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -103,7 +104,7 @@ class GoogleAiGeminiChatModelTest {
         void shouldSendCorrectRequestToGeminiService() {
             // Given
             var expectedResponse = createGeminiResponse("Response");
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(expectedResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -122,14 +123,14 @@ class GoogleAiGeminiChatModelTest {
             subject.chat(chatRequest);
 
             // Then
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class));
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap());
         }
 
         @Test
         void shouldHandleMultipleMessages() {
             // Given
             var expectedResponse = createGeminiResponse("I understand your question");
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(expectedResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -149,14 +150,14 @@ class GoogleAiGeminiChatModelTest {
 
             // Then
             assertThat(chatResponse.aiMessage().text()).isEqualTo("I understand your question");
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class));
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap());
         }
 
         @Test
         void shouldHandleEmptyResponse() {
             // Given
             var expectedResponse = createGeminiResponse("");
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(expectedResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -203,7 +204,7 @@ class GoogleAiGeminiChatModelTest {
             var geminiResponse = new GeminiGenerateContentResponse(
                     "token-response-id", "gemini-pro-v1", List.of(candidate), usageMetadata, null, null);
 
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(geminiResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -253,7 +254,7 @@ class GoogleAiGeminiChatModelTest {
             GeminiGenerateContentResponse geminiResponse = new GeminiGenerateContentResponse(
                     "cache-thinking-id", "gemini-2.5-pro", List.of(candidate), usageMetadata, null, null);
 
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(geminiResponse);
 
             GoogleAiGeminiChatModel subject = GoogleAiGeminiChatModel.builder()
@@ -298,7 +299,7 @@ class GoogleAiGeminiChatModelTest {
                     null,
                     null);
 
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(geminiResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -339,7 +340,7 @@ class GoogleAiGeminiChatModelTest {
                     null,
                     null);
 
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(geminiResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -368,7 +369,7 @@ class GoogleAiGeminiChatModelTest {
         void shouldSendRequestWithAllParameters() {
             // Given
             var expectedResponse = createGeminiResponse("Response");
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(expectedResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -400,7 +401,7 @@ class GoogleAiGeminiChatModelTest {
             subject.chat(chatRequest);
 
             // Then
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
 
             var request = requestCaptor.getValue();
             assertThat(request.contents()).isNotEmpty();
@@ -423,7 +424,7 @@ class GoogleAiGeminiChatModelTest {
         void shouldSendImageConfigWhenConfigured() {
             // Given
             var expectedResponse = createGeminiResponse("Response");
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(expectedResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -441,7 +442,7 @@ class GoogleAiGeminiChatModelTest {
             subject.chat(chatRequest);
 
             // Then
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
             var request = requestCaptor.getValue();
 
             assertThat(request.generationConfig()).isNotNull();
@@ -456,7 +457,7 @@ class GoogleAiGeminiChatModelTest {
         void shouldUseRequestLevelImageConfigWhenProvided() {
             // Given
             var expectedResponse = createGeminiResponse("Response");
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(expectedResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -478,7 +479,7 @@ class GoogleAiGeminiChatModelTest {
             subject.chat(chatRequest);
 
             // Then
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
             var request = requestCaptor.getValue();
 
             assertThat(request.generationConfig()).isNotNull();
@@ -493,7 +494,7 @@ class GoogleAiGeminiChatModelTest {
         void shouldFallbackToBuilderImageConfigWhenRequestLevelNotProvided() {
             // Given
             var expectedResponse = createGeminiResponse("Response");
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(expectedResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -512,7 +513,7 @@ class GoogleAiGeminiChatModelTest {
             subject.chat(chatRequest);
 
             // Then
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
             var request = requestCaptor.getValue();
 
             assertThat(request.generationConfig()).isNotNull();
@@ -543,7 +544,7 @@ class GoogleAiGeminiChatModelTest {
                     .build());
 
             // Then
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
 
             var generationConfig = requestCaptor.getValue().generationConfig();
             assertThat(generationConfig.responseJsonSchema()).isNull();
@@ -564,7 +565,7 @@ class GoogleAiGeminiChatModelTest {
                     .build());
 
             // Then
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
 
             var generationConfig = requestCaptor.getValue().generationConfig();
             assertThat(generationConfig.responseSchema()).isNull();
@@ -591,7 +592,7 @@ class GoogleAiGeminiChatModelTest {
                     .build());
 
             // Then
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
 
             var generationConfig = requestCaptor.getValue().generationConfig();
             assertThat(generationConfig.responseSchema()).isNull();
@@ -599,7 +600,7 @@ class GoogleAiGeminiChatModelTest {
         }
 
         private GoogleAiGeminiChatModel modelReturning(String text) {
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(createGeminiResponse(text));
 
             return GoogleAiGeminiChatModel.builder()
@@ -628,7 +629,7 @@ class GoogleAiGeminiChatModelTest {
         void shouldSendValidatedModeInRequest() {
             // Given
             var expectedResponse = createGeminiResponse("Response");
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(expectedResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -647,7 +648,7 @@ class GoogleAiGeminiChatModelTest {
             subject.chat(chatRequest);
 
             // Then
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
             var request = requestCaptor.getValue();
             assertThat(request.toolConfig()).isNotNull();
             assertThat(request.toolConfig().functionCallingConfig().getMode()).isEqualTo(GeminiMode.VALIDATED);
@@ -657,7 +658,7 @@ class GoogleAiGeminiChatModelTest {
         void shouldSendValidatedModeWithAllowedFunctionNames() {
             // Given
             var expectedResponse = createGeminiResponse("Response");
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(expectedResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -676,7 +677,7 @@ class GoogleAiGeminiChatModelTest {
             subject.chat(chatRequest);
 
             // Then
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
             var request = requestCaptor.getValue();
             assertThat(request.toolConfig()).isNotNull();
             assertThat(request.toolConfig().functionCallingConfig().getMode()).isEqualTo(GeminiMode.VALIDATED);
@@ -688,7 +689,7 @@ class GoogleAiGeminiChatModelTest {
         void shouldSendAutoModeInRequest() {
             // Given
             var expectedResponse = createGeminiResponse("Response");
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(expectedResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -707,7 +708,7 @@ class GoogleAiGeminiChatModelTest {
             subject.chat(chatRequest);
 
             // Then
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
             var request = requestCaptor.getValue();
             assertThat(request.toolConfig()).isNotNull();
             assertThat(request.toolConfig().functionCallingConfig().getMode()).isEqualTo(GeminiMode.AUTO);
@@ -717,7 +718,7 @@ class GoogleAiGeminiChatModelTest {
         void shouldSendAnyModeWithAllowedFunctionNamesInRequest() {
             // Given
             var expectedResponse = createGeminiResponse("Response");
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(expectedResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -737,7 +738,7 @@ class GoogleAiGeminiChatModelTest {
             subject.chat(chatRequest);
 
             // Then
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
             var request = requestCaptor.getValue();
             assertThat(request.toolConfig()).isNotNull();
             assertThat(request.toolConfig().functionCallingConfig().getMode()).isEqualTo(GeminiMode.ANY);
@@ -749,7 +750,7 @@ class GoogleAiGeminiChatModelTest {
         void shouldSendNoneModeInRequest() {
             // Given
             var expectedResponse = createGeminiResponse("Response");
-            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class)))
+            when(mockGeminiService.generateContent(eq(TEST_MODEL_NAME), any(GeminiGenerateContentRequest.class), anyMap()))
                     .thenReturn(expectedResponse);
 
             var subject = GoogleAiGeminiChatModel.builder()
@@ -768,7 +769,7 @@ class GoogleAiGeminiChatModelTest {
             subject.chat(chatRequest);
 
             // Then
-            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+            verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
             var request = requestCaptor.getValue();
             assertThat(request.toolConfig()).isNotNull();
             assertThat(request.toolConfig().functionCallingConfig().getMode()).isEqualTo(GeminiMode.NONE);

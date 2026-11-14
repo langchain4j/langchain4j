@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import static com.azure.core.http.policy.AddHeadersFromContextPolicy.AZURE_REQUEST_HTTP_HEADERS_KEY;
 import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -47,12 +48,15 @@ import com.azure.core.credential.KeyCredential;
 import com.azure.core.credential.TokenCredential;
 import com.azure.core.http.HttpClient;
 import com.azure.core.http.HttpClientProvider;
+import com.azure.core.http.HttpHeaders;
 import com.azure.core.http.ProxyOptions;
 import com.azure.core.http.policy.ExponentialBackoffOptions;
 import com.azure.core.http.policy.HttpLogDetailLevel;
 import com.azure.core.http.policy.HttpLogOptions;
 import com.azure.core.http.policy.RetryOptions;
+import com.azure.core.http.rest.RequestOptions;
 import com.azure.core.util.BinaryData;
+import com.azure.core.util.Context;
 import com.azure.core.util.Header;
 import com.azure.core.util.HttpClientOptions;
 import dev.langchain4j.Internal;
@@ -189,7 +193,8 @@ class InternalAzureOpenAiHelper {
                 .httpClient(httpClient)
                 .clientOptions(clientOptions)
                 .httpLogOptions(httpLogOptions)
-                .retryOptions(retryOptions);
+                .retryOptions(retryOptions)
+                .addPolicy(new PerRequestHeadersPolicy());
 
         if (credential instanceof String) {
             openAIClientBuilder.credential(new AzureKeyCredential((String) credential));
@@ -221,6 +226,18 @@ class InternalAzureOpenAiHelper {
                             + "or provide a custom HttpClientProvider via .httpClientProvider() on the builder.",
                     e);
         }
+    }
+
+    /**
+     * Per-request custom HTTP headers are passed through the {@link Context} of the call.
+     * The {@link PerRequestHeadersPolicy} added to the clients built by LangChain4j applies them after
+     * all other headers, so that they win over headers with the same name (a {@code User-Agent} is appended).
+     * Clients that are not built by LangChain4j apply them with the Azure SDK's own context header policy.
+     */
+    static RequestOptions toRequestOptions(Map<String, String> customHeaders) {
+        RequestOptions requestOptions = new RequestOptions();
+        requestOptions.setContext(new Context(AZURE_REQUEST_HTTP_HEADERS_KEY, new HttpHeaders(customHeaders)));
+        return requestOptions;
     }
 
     static RetryOptions resolveRetryOptions(Integer maxRetries, RetryOptions retryOptions) {

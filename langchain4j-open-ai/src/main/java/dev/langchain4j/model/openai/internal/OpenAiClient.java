@@ -1,8 +1,13 @@
 package dev.langchain4j.model.openai.internal;
 
 
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
+import static dev.langchain4j.internal.CustomHeadersUtils.perRequestCustomHeadersNotSupported;
+
 import dev.langchain4j.Experimental;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechRequest;
 import dev.langchain4j.model.openai.internal.audio.texttospeech.OpenAiTextToSpeechResponse;
@@ -31,6 +36,8 @@ import java.util.concurrent.Flow.Publisher;
 
 import java.util.function.Supplier;
 import org.slf4j.Logger;
+import dev.langchain4j.model.HttpParameters;
+import org.jspecify.annotations.Nullable;
 
 public abstract class OpenAiClient {
 
@@ -45,6 +52,26 @@ public abstract class OpenAiClient {
     public abstract SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(ChatCompletionRequest request);
 
     /**
+     * Like {@link #chatCompletion(ChatCompletionRequest)}, but also sends the given per-request HTTP parameters
+     * (custom HTTP headers) with this request only. A custom header wins over all other headers with the same name
+     * (ignoring case), except {@code User-Agent}: its value is appended to the existing one, separated by a space.
+     * <p>
+     * Implementations that cannot send per-request HTTP parameters keep this default:
+     * it fails with an {@link UnsupportedFeatureException} when there are headers to send.
+     *
+     * @param httpParameters the per-request HTTP parameters; {@code null} means none
+     * @since 1.24.0
+     */
+    @Experimental
+    public SyncOrAsyncOrStreaming<ChatCompletionResponse> chatCompletion(
+            ChatCompletionRequest request, @Nullable HttpParameters httpParameters) {
+        if (customHeadersOf(httpParameters).isEmpty()) {
+            return chatCompletion(request);
+        }
+        throw perRequestCustomHeadersNotSupported(getClass());
+    }
+
+    /**
      * @return a cold {@link Publisher} that streams the chat completion as {@link ChatModelStreamingEvent}s.
      * @since 1.20.0
      */
@@ -52,6 +79,27 @@ public abstract class OpenAiClient {
     public Publisher<ChatModelStreamingEvent> chatCompletionPublisher(
             ChatCompletionRequest request, ChatCompletionOptions options) {
         throw new UnsupportedOperationException("Not implemented");
+    }
+
+    /**
+     * Like {@link #chatCompletionPublisher(ChatCompletionRequest, ChatCompletionOptions)}, but also sends the given
+     * per-request HTTP parameters (custom HTTP headers) with this request only. A custom header wins over all other
+     * headers with the same name (ignoring case), except {@code User-Agent}: its value is appended to the existing one,
+     * separated by a space.
+     * <p>
+     * Implementations that cannot send per-request HTTP parameters keep this default: when there are headers to send,
+     * it returns a {@link Publisher} that fails with an {@link UnsupportedFeatureException}.
+     *
+     * @param httpParameters the per-request HTTP parameters; {@code null} means none
+     * @since 1.24.0
+     */
+    @Experimental
+    public Publisher<ChatModelStreamingEvent> chatCompletionPublisher(
+            ChatCompletionRequest request, ChatCompletionOptions options, @Nullable HttpParameters httpParameters) {
+        if (customHeadersOf(httpParameters).isEmpty()) {
+            return chatCompletionPublisher(request, options);
+        }
+        return AsyncNotSupported.failingPublisher(perRequestCustomHeadersNotSupported(getClass()));
     }
 
     public abstract SyncOrAsync<EmbeddingResponse> embedding(EmbeddingRequest request);

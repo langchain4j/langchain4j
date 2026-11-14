@@ -6,6 +6,8 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import dev.langchain4j.model.HttpParameters;
+import java.util.Map;
 
 class JitLLMChatModelBuilderTest {
 
@@ -48,4 +50,19 @@ class JitLLMChatModelBuilderTest {
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("modelName");
     }
+
+    @Test
+    void should_fail_when_default_request_parameters_have_http_parameters() {
+        assertThatThrownBy(() -> JitLLMChatModel.builder()
+                        .modelPath(MODEL_PATH)
+                        .defaultRequestParameters(ChatRequestParameters.builder()
+                                .httpParameters(HttpParameters.builder()
+                                        .customHeaders(Map.of("X-Correlation-Id", "123"))
+                                        .build())
+                                .build())
+                        .build())
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .hasMessageContaining("httpParameters");
+    }
 }
+

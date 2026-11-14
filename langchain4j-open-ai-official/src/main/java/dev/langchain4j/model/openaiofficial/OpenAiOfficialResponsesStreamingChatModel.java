@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.userAgentHeaderOf;
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.addPerRequestHeaders;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialThinking;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialToolCall;
@@ -127,6 +129,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     static final String ENCRYPTED_REASONING_KEY = "encrypted_reasoning";
 
     private final OpenAIClient client;
+    private final Map<String, String> clientUserAgentHeader;
     private final Executor executor;
     private final OpenAiOfficialResponsesChatRequestParameters defaultRequestParameters;
     private final List<ChatModelListener> listeners;
@@ -149,6 +152,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                         builder.maxRetries,
                         builder.proxy,
                         builder.customHeaders);
+        this.clientUserAgentHeader = userAgentHeaderOf(this.client);
         this.executor = getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutor);
 
         ChatRequestParameters commonParameters;
@@ -172,6 +176,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .httpParameters(commonParameters.httpParameters())
                 .previousResponseId(getOrDefault(builder.previousResponseId, responsesParameters.previousResponseId()))
                 .maxToolCalls(getOrDefault(builder.maxToolCalls, responsesParameters.maxToolCalls()))
                 .parallelToolCalls(getOrDefault(builder.parallelToolCalls, responsesParameters.parallelToolCalls()))
@@ -218,7 +223,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         Future<?> streamingFuture = null;
 
         try {
-            var params = buildRequestParams(chatRequest, parameters);
+            var params = buildRequestParams(chatRequest, parameters, clientUserAgentHeader);
             var streamResponse = client.responses().createStreaming(params);
 
             ResponsesStreamingHandle streamingHandle = new ResponsesStreamingHandle(() -> {
@@ -423,6 +428,13 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
     static ResponseCreateParams buildRequestParams(
             ChatRequest chatRequest, OpenAiOfficialResponsesChatRequestParameters parameters) {
+        return buildRequestParams(chatRequest, parameters, Map.of());
+    }
+
+    static ResponseCreateParams buildRequestParams(
+            ChatRequest chatRequest,
+            OpenAiOfficialResponsesChatRequestParameters parameters,
+            Map<String, String> clientUserAgentHeader) {
         var paramsBuilder = ResponseCreateParams.builder()
                 .model(ResponsesModel.ofChat(ChatModel.of(parameters.modelName())))
                 .store(parameters.store());
@@ -514,6 +526,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         if (textConfig != null) {
             paramsBuilder.text(textConfig);
         }
+
+        addPerRequestHeaders(clientUserAgentHeader, parameters, paramsBuilder::replaceAdditionalHeaders);
 
         return paramsBuilder.build();
     }

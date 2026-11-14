@@ -108,6 +108,7 @@ class BaseGeminiChatModel {
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(getOrDefault(toToolChoice(functionCallingConfig), commonParameters.toolChoice()))
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .httpParameters(commonParameters.httpParameters())
                 // Gemini-specific parameters
                 .aspectRatio(getOrDefault(builder.aspectRatio, geminiParameters.aspectRatio()))
                 .imageSize(getOrDefault(builder.imageSize, geminiParameters.imageSize()))

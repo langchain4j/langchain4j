@@ -556,4 +556,36 @@ class HttpRequestTest {
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Header name cannot be null");
     }
+
+    @Test
+    void add_header_should_replace_header_with_same_name_in_any_case() {
+
+        HttpRequest request = HttpRequest.builder()
+                .method(POST)
+                .url("http://example.com")
+                .addHeader("User-Agent", "LangChain4j")
+                .addHeader("Content-Type", "application/json")
+                .addHeader("user-agent", "my-app")
+                .build();
+
+        assertThat(request.headers())
+                .containsOnlyKeys("user-agent", "Content-Type")
+                .containsEntry("user-agent", List.of("my-app"));
+    }
+
+    @Test
+    void add_headers_should_replace_headers_with_same_name_in_any_case() {
+
+        HttpRequest request = HttpRequest.builder()
+                .method(POST)
+                .url("http://example.com")
+                .addHeader("Authorization", "Bearer model-key")
+                .addHeaders(Map.of("AUTHORIZATION", "Bearer request-key", "X-Correlation-Id", "123"))
+                .build();
+
+        assertThat(request.headers())
+                .containsOnlyKeys("AUTHORIZATION", "X-Correlation-Id")
+                .containsEntry("AUTHORIZATION", List.of("Bearer request-key"));
+    }
 }
+

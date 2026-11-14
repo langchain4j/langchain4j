@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.addPerRequestHeaders;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -93,11 +94,13 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
         OpenAiOfficialChatRequestParameters parameters = (OpenAiOfficialChatRequestParameters) chatRequest.parameters();
         InternalOpenAiOfficialHelper.validate(parameters);
 
-        ChatCompletionCreateParams chatCompletionCreateParams = toOpenAiChatCompletionCreateParams(
+        ChatCompletionCreateParams.Builder chatCompletionCreateParamsBuilder = toOpenAiChatCompletionCreateParams(
                         chatRequest, parameters, strictTools, strictJsonSchema)
                 .streamOptions(
-                        ChatCompletionStreamOptions.builder().includeUsage(true).build())
-                .build();
+                        ChatCompletionStreamOptions.builder().includeUsage(true).build());
+        addPerRequestHeaders(
+                clientUserAgentHeader, parameters, chatCompletionCreateParamsBuilder::replaceAdditionalHeaders);
+        ChatCompletionCreateParams chatCompletionCreateParams = chatCompletionCreateParamsBuilder.build();
 
         if (this.modelProvider.equals(ModelProvider.MICROSOFT_FOUNDRY)
                 || this.modelProvider.equals(ModelProvider.GITHUB_MODELS)) {

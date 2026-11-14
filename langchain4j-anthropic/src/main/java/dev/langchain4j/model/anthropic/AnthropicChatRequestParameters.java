@@ -205,6 +205,7 @@ public class AnthropicChatRequestParameters extends DefaultChatRequestParameters
                 + ", toolSpecifications=" + toolSpecifications()
                 + ", toolChoice=" + toolChoice()
                 + ", responseFormat=" + responseFormat()
+                + ", httpParameters=" + httpParameters()
                 + ", cacheSystemMessages=" + cacheSystemMessages
                 + ", cacheTools=" + cacheTools
                 + ", cacheAutomatically=" + cacheAutomatically

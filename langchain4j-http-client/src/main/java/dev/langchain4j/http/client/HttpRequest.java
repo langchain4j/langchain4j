@@ -141,26 +141,37 @@ public class HttpRequest {
             return this;
         }
 
+        /**
+         * Adds a header. It replaces a header added earlier with the same name, ignoring case,
+         * as HTTP header names are case-insensitive.
+         */
         public Builder addHeader(String name, String... values) {
             ensureNotBlank(name, "name");
             ensureNotEmpty(values, "values");
 
-            if (this.headers == null) {
-                this.headers = new HashMap<>();
-            }
-            this.headers.put(name, asList(values));
+            putHeader(name, asList(values));
             return this;
         }
 
+        /**
+         * Adds the headers. Each one replaces a header added earlier with the same name, ignoring case,
+         * as HTTP header names are case-insensitive.
+         */
         public Builder addHeaders(Map<String, String> headers) {
             if (isNullOrEmpty(headers)) {
                 return this;
             }
+            headers.forEach((name, value) -> putHeader(name, List.of(value)));
+            return this;
+        }
+
+        private void putHeader(String name, List<String> values) {
             if (this.headers == null) {
                 this.headers = new HashMap<>();
+            } else {
+                this.headers.keySet().removeIf(existingName -> existingName.equalsIgnoreCase(name));
             }
-            headers.forEach((name, value) -> this.headers.put(name, List.of(value)));
-            return this;
+            this.headers.put(name, values);
         }
 
         public Builder headers(Map<String, List<String>> headers) {

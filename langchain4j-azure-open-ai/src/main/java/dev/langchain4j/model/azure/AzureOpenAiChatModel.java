@@ -1,6 +1,7 @@
 package dev.langchain4j.model.azure;
 
 import static com.azure.ai.openai.models.CompletionsFinishReason.CONTENT_FILTERED;
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -12,6 +13,7 @@ import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.finishReason
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupSyncClient;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toAzureOpenAiResponseFormat;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toOpenAiMessages;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toRequestOptions;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolChoice;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefinitions;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.tokenUsageFrom;
@@ -159,6 +161,7 @@ public class AzureOpenAiChatModel implements ChatModel {
                 .toolSpecifications(parameters.toolSpecifications())
                 .toolChoice(parameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, parameters.responseFormat()))
+                .httpParameters(parameters.httpParameters())
                 .build();
 
         this.logitBias = copy(builder.logitBias);
@@ -213,8 +216,13 @@ public class AzureOpenAiChatModel implements ChatModel {
             options.setToolChoice(toToolChoice(parameters.toolChoice()));
         }
 
+        Map<String, String> customHeaders = customHeadersOf(parameters);
         ChatCompletions chatCompletions = AzureOpenAiExceptionMapper.INSTANCE.withExceptionMapper(
-                () -> client.getChatCompletions(parameters.modelName(), options));
+                () -> customHeaders.isEmpty()
+                        ? client.getChatCompletions(parameters.modelName(), options)
+                        : client.getChatCompletionsWithResponse(
+                                        parameters.modelName(), options, toRequestOptions(customHeaders))
+                                .getValue());
 
         if (isNullOrEmpty(chatCompletions.getChoices())) {
             throw new InternalServerException("Chat completion failed: no choices returned in response");
@@ -483,6 +491,8 @@ public class AzureOpenAiChatModel implements ChatModel {
 
         /**
          * Sets the Azure OpenAI client. This is an optional parameter, if you need more flexibility than using the endpoint, serviceVersion, apiKey, deploymentName parameters.
+         * With a client set here, per-request custom HTTP headers are still sent, but the client's own headers
+         * with the same name win over them.
          *
          * @param openAIClient The Azure OpenAI client.
          * @return builder

@@ -1,5 +1,7 @@
 package dev.langchain4j.model.localai;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.ChatRequestValidationUtils.validateNoHttpParameters;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -97,6 +99,12 @@ public class LocalAiStreamingChatModel implements StreamingChatModel {
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ChatRequestParameters parameters = chatRequest.parameters();
+        try {
+            validateNoHttpParameters(parameters);
+        } catch (UnsupportedFeatureException e) {
+            withLoggingExceptions(() -> handler.onError(e));
+            return;
+        }
         ChatRequestValidationUtils.validateParameters(parameters);
         ChatRequestValidationUtils.validate(parameters.responseFormat());
 

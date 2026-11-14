@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.Map;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -330,7 +331,7 @@ class GeminiServiceTest {
             StringBuilder partialResponses = new StringBuilder();
 
             // When
-            subject.generateContentStream(TEST_MODEL_NAME, request, false, null, new StreamingChatResponseHandler() {
+            subject.generateContentStream(TEST_MODEL_NAME, request, Map.of(), false, null, new StreamingChatResponseHandler() {
                 @Override
                 public void onPartialResponse(String partialResponse) {
                     partialResponses.append(partialResponse);
@@ -378,7 +379,7 @@ class GeminiServiceTest {
             List<Object> rawEvents = new ArrayList<>();
 
             // When
-            subject.generateContentStream(TEST_MODEL_NAME, request, false, null, new StreamingChatResponseHandler() {
+            subject.generateContentStream(TEST_MODEL_NAME, request, Map.of(), false, null, new StreamingChatResponseHandler() {
                 @Override
                 public void onPartialResponse(String partialResponse) {
                     partialResponses.append(partialResponse);
@@ -428,7 +429,7 @@ class GeminiServiceTest {
             CompletableFuture<Void> futureComplete = new CompletableFuture<>();
 
             // When
-            subject.generateContentStream(TEST_MODEL_NAME, request, false, null, new StreamingChatResponseHandler() {
+            subject.generateContentStream(TEST_MODEL_NAME, request, Map.of(), false, null, new StreamingChatResponseHandler() {
                 @Override
                 public void onCompleteResponse(ChatResponse completeResponse) {
                     futureComplete.complete(null);

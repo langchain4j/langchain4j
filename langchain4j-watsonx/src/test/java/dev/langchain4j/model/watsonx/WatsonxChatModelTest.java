@@ -1258,4 +1258,27 @@ public class WatsonxChatModelTest {
             action.run();
         }
     }
+
+    @Test
+    void should_reject_per_request_custom_headers() {
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .build();
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("hello"))
+                    .customHeaders(Map.of("X-Correlation-Id", "123"))
+                    .build();
+
+            var exception = assertThrows(UnsupportedFeatureException.class, () -> chatModel.chat(chatRequest));
+            assertTrue(exception.getMessage().contains("httpParameters"));
+            verify(mockChatService, never()).chat(any(com.ibm.watsonx.ai.chat.ChatRequest.class));
+        });
+    }
 }
+

@@ -1,5 +1,7 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.perRequestHeaders;
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
@@ -107,12 +109,18 @@ class OllamaClient {
     }
 
     OllamaChatResponse chat(OllamaChatRequest request) {
+        return chat(request, Map.of());
+    }
 
+    OllamaChatResponse chat(OllamaChatRequest request, Map<String, String> customHeaders) {
+
+        Map<String, String> builderHeaders = buildRequestHeaders();
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "api/chat")
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(buildRequestHeaders())
+                .addHeaders(builderHeaders)
+                .addHeaders(perRequestHeaders(builderHeaders, customHeaders))
                 .body(toJson(request))
                 .build();
 
@@ -192,11 +200,13 @@ class OllamaClient {
 
         OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(request, true);
 
+        Map<String, String> builderHeaders = buildRequestHeaders();
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "api/chat")
                 .addHeader("Content-Type", "application/json")
-                .addHeaders(buildRequestHeaders())
+                .addHeaders(builderHeaders)
+                .addHeaders(perRequestHeaders(builderHeaders, customHeadersOf(request.parameters())))
                 .body(toJson(ollamaChatRequest))
                 .build();
 

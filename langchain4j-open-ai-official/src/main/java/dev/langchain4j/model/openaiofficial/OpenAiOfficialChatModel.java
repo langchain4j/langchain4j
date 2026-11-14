@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.addPerRequestHeaders;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.aiMessageFrom;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.finishReasonFrom;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.toOpenAiChatCompletionCreateParams;
@@ -75,9 +76,11 @@ public class OpenAiOfficialChatModel extends OpenAiOfficialBaseChatModel impleme
         OpenAiOfficialChatRequestParameters parameters = (OpenAiOfficialChatRequestParameters) chatRequest.parameters();
         InternalOpenAiOfficialHelper.validate(parameters);
 
-        ChatCompletionCreateParams chatCompletionCreateParams = toOpenAiChatCompletionCreateParams(
-                        chatRequest, parameters, strictTools, strictJsonSchema)
-                .build();
+        ChatCompletionCreateParams.Builder chatCompletionCreateParamsBuilder =
+                toOpenAiChatCompletionCreateParams(chatRequest, parameters, strictTools, strictJsonSchema);
+        addPerRequestHeaders(
+                clientUserAgentHeader, parameters, chatCompletionCreateParamsBuilder::replaceAdditionalHeaders);
+        ChatCompletionCreateParams chatCompletionCreateParams = chatCompletionCreateParamsBuilder.build();
 
         if (modelProvider.equals(ModelProvider.MICROSOFT_FOUNDRY)
                 || modelProvider.equals(ModelProvider.GITHUB_MODELS)) {

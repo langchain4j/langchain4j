@@ -1,5 +1,6 @@
 package dev.langchain4j.model.anthropic;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
@@ -133,6 +134,7 @@ public class AnthropicChatModel implements ChatModel {
                 .toolSpecifications(getOrDefault(builder.toolSpecifications, commonParameters.toolSpecifications()))
                 .toolChoice(getOrDefault(builder.toolChoice, commonParameters.toolChoice()))
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .httpParameters(commonParameters.httpParameters())
                 .cacheSystemMessages(getOrDefault(builder.cacheSystemMessages, anthropicDefaults.cacheSystemMessages()))
                 .cacheTools(getOrDefault(builder.cacheTools, anthropicDefaults.cacheTools()))
                 .cacheAutomatically(getOrDefault(builder.cacheAutomatically, anthropicDefaults.cacheAutomatically()))
@@ -929,8 +931,12 @@ public class AnthropicChatModel implements ChatModel {
 
         AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
 
-        ParsedAndRawResponse response =
-                withRetryMappingExceptions(() -> client.createMessageWithRawResponse(anthropicRequest), maxRetries);
+        boolean noCustomHeaders = customHeadersOf(parameters).isEmpty();
+        ParsedAndRawResponse response = withRetryMappingExceptions(
+                () -> noCustomHeaders
+                        ? client.createMessageWithRawResponse(anthropicRequest)
+                        : client.createMessageWithRawResponse(anthropicRequest, parameters.httpParameters()),
+                maxRetries);
 
         return createChatResponse(response, getOrDefault(parameters.returnThinking(), false));
     }
@@ -943,8 +949,12 @@ public class AnthropicChatModel implements ChatModel {
         AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
         boolean returnThinking = getOrDefault(parameters.returnThinking(), false);
 
+        boolean noCustomHeaders = customHeadersOf(parameters).isEmpty();
         CompletableFuture<ParsedAndRawResponse> rawFuture = withRetryMappingExceptionsAsync(
-                () -> client.createMessageWithRawResponseAsync(anthropicRequest), maxRetries);
+                () -> noCustomHeaders
+                        ? client.createMessageWithRawResponseAsync(anthropicRequest)
+                        : client.createMessageWithRawResponseAsync(anthropicRequest, parameters.httpParameters()),
+                maxRetries);
 
         CompletableFuture<ChatResponse> result =
                 rawFuture.thenApply(response -> createChatResponse(response, returnThinking));

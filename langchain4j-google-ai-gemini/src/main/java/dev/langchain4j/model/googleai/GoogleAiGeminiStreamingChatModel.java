@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
 
 import dev.langchain4j.model.ModelProvider;
@@ -32,7 +33,12 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
     public void doChat(ChatRequest request, StreamingChatResponseHandler handler) {
         GeminiGenerateContentRequest geminiRequest = createGenerateContentRequest(request);
         geminiService.generateContentStream(
-                request.modelName(), geminiRequest, includeCodeExecutionOutput, returnThinking, handler);
+                request.modelName(),
+                geminiRequest,
+                customHeadersOf(request.parameters()),
+                includeCodeExecutionOutput,
+                returnThinking,
+                handler);
     }
 
     @Override

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.OLLAMA;
@@ -38,7 +39,8 @@ public class OllamaChatModel extends OllamaBaseChatModel implements ChatModel {
 
         OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(chatRequest, false);
         OllamaChatResponse ollamaChatResponse =
-                withRetryMappingExceptions(() -> client.chat(ollamaChatRequest), maxRetries);
+                withRetryMappingExceptions(
+                        () -> client.chat(ollamaChatRequest, customHeadersOf(chatRequest.parameters())), maxRetries);
 
         return ChatResponse.builder()
                 .aiMessage(aiMessageFrom(ollamaChatResponse.getMessage(), this.returnThinking))

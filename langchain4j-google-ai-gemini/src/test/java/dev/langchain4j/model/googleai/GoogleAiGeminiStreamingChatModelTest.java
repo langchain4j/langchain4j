@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCharSequence;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -86,7 +87,7 @@ class GoogleAiGeminiStreamingChatModelTest {
                     handler);
 
             verify(geminiService)
-                    .generateContentStream(eq("ModelName"), requestCaptor.capture(), eq(false), eq(null), any());
+                    .generateContentStream(eq("ModelName"), requestCaptor.capture(), anyMap(), eq(false), eq(null), any());
 
             assertThat(requestCaptor.getValue().generationConfig().imageConfig())
                     .isEqualTo(GeminiImageConfig.builder()
@@ -116,7 +117,7 @@ class GoogleAiGeminiStreamingChatModelTest {
             chatModel.chat(chatRequest, handler);
 
             verify(geminiService)
-                    .generateContentStream(eq("ModelName"), requestCaptor.capture(), eq(false), eq(null), any());
+                    .generateContentStream(eq("ModelName"), requestCaptor.capture(), anyMap(), eq(false), eq(null), any());
 
             assertThat(requestCaptor.getValue().generationConfig().imageConfig())
                     .isEqualTo(GeminiImageConfig.builder()
@@ -137,7 +138,7 @@ class GoogleAiGeminiStreamingChatModelTest {
             chatModel.chat(ChatRequest.builder().messages(new UserMessage("Hi")).build(), handler);
 
             verify(geminiService)
-                    .generateContentStream(eq("ModelName"), requestCaptor.capture(), eq(false), eq(null), any());
+                    .generateContentStream(eq("ModelName"), requestCaptor.capture(), anyMap(), eq(false), eq(null), any());
 
             assertThat(requestCaptor.getValue().cachedContent()).isEqualTo("cachedContents/abc123");
             assertThatCharSequence(Json.toJson(requestCaptor.getValue()))
@@ -175,7 +176,7 @@ class GoogleAiGeminiStreamingChatModelTest {
             chatModel.chat(chatRequest, handler);
 
             verify(geminiService)
-                    .generateContentStream(eq("ModelName"), requestCaptor.capture(), eq(false), eq(null), any());
+                    .generateContentStream(eq("ModelName"), requestCaptor.capture(), anyMap(), eq(false), eq(null), any());
 
             assertThat(requestCaptor.getValue().cachedContent()).isEqualTo("cachedContents/per-request");
         }

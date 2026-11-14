@@ -1,5 +1,7 @@
 package dev.langchain4j.model.gpullama3;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.ChatRequestValidationUtils.validateNoHttpParameters;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Objects.requireNonNull;
 
@@ -11,6 +13,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.nio.file.Path;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 
 /**
  * GPULlama3 implementation of the langchain4j StreamingChatModel interface.
@@ -56,6 +59,12 @@ public class GPULlama3StreamingChatModel extends GPULlama3BaseModel implements S
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ChatRequestValidationUtils.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
+        try {
+            validateNoHttpParameters(parameters);
+        } catch (UnsupportedFeatureException e) {
+            withLoggingExceptions(() -> handler.onError(e));
+            return;
+        }
         ChatRequestValidationUtils.validateParameters(parameters);
         ChatRequestValidationUtils.validate(parameters.toolChoice());
         ChatRequestValidationUtils.validate(parameters.responseFormat());

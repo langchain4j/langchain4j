@@ -108,9 +108,43 @@ import software.amazon.awssdk.services.bedrockruntime.model.ToolInputSchema;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolResultBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolResultContentBlock;
 import software.amazon.awssdk.services.bedrockruntime.model.ToolUseBlock;
+import software.amazon.awssdk.awscore.AwsRequestOverrideConfiguration;
+import software.amazon.awssdk.core.ApiName;
 
 @Internal
 abstract class AbstractBedrockChatModel {
+
+    private static final String USER_AGENT = "User-Agent";
+
+    /**
+     * Adds per-request custom HTTP headers to the request's override configuration.
+     * A per-request {@code User-Agent} is not sent as a header, as the AWS SDK would then drop its own
+     * {@code User-Agent}: each of its {@code name/version} tokens is added as an API name instead,
+     * which the AWS SDK appends to its own {@code User-Agent}.
+     */
+    static void addPerRequestHeaders(AwsRequestOverrideConfiguration.Builder config, Map<String, String> headers) {
+        headers.forEach((name, value) -> {
+            if (USER_AGENT.equalsIgnoreCase(name)) {
+                for (String token : value.trim().split("\\s+")) {
+                    if (!token.isEmpty()) {
+                        config.addApiName(toApiName(token));
+                    }
+                }
+            } else {
+                config.putHeader(name, value);
+            }
+        });
+    }
+
+    private static ApiName toApiName(String token) {
+        int slash = token.indexOf('/');
+        return slash < 0
+                ? ApiName.builder().name(token).version("").build()
+                : ApiName.builder()
+                        .name(token.substring(0, slash))
+                        .version(token.substring(slash + 1))
+                        .build();
+    }
 
     private static final Logger log = LoggerFactory.getLogger(AbstractBedrockChatModel.class);
 
@@ -183,6 +217,7 @@ abstract class AbstractBedrockChatModel {
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(commonParameters.responseFormat())
+                .httpParameters(commonParameters.httpParameters())
                 // Bedrock-specific parameters
                 .additionalModelRequestFields(bedrockParameters.additionalModelRequestFields())
                 .promptCaching(bedrockParameters.cachePointPlacement(), bedrockParameters.cacheTtl())

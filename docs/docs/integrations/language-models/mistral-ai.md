@@ -441,6 +441,9 @@ ChatRequest chatRequest = ChatRequest.builder()
 ChatResponse chatResponse = model.chat(chatRequest);
 ```
 
+To send HTTP headers with a single request (for example a correlation ID), see
+[Per-request HTTP headers](/tutorials/chat-and-language-models#per-request-http-headers).
+
 ## Thinking / Reasoning
 
 Both `MistralAiChatModel` and `MistralAiStreamingChatModel` support
