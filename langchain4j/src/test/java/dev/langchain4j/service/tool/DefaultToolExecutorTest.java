@@ -337,6 +337,43 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .withMessageContaining("has non-integer value");
     }
 
+    @Test
+    void coerce_argument_to_char() {
+        // char and Character parameters are published to the LLM as a JSON string
+        assertThat(coerceArgument("a", "arg", char.class, null)).isEqualTo('a');
+        assertThat(coerceArgument("a", "arg", Character.class, null)).isEqualTo('a');
+        assertThat(coerceArgument("7", "arg", char.class, null)).isEqualTo('7');
+        assertThat(coerceArgument("7", "arg", Character.class, null)).isEqualTo('7');
+
+        assertThatExceptionOfType(RuntimeException.class)
+                .isThrownBy(() -> coerceArgument("ab", "arg", char.class, null))
+                .withMessageContaining("'ab'");
+    }
+
+    private static class CharTool {
+
+        @Tool
+        public int countLetter(String word, char letter) {
+            return (int) word.chars().filter(c -> c == letter).count();
+        }
+    }
+
+    @Test
+    void should_execute_tool_with_char_parameter() throws NoSuchMethodException {
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("countLetter")
+                .arguments("{ \"arg0\": \"strawberry\", \"arg1\": \"r\" }")
+                .build();
+
+        DefaultToolExecutor toolExecutor = new DefaultToolExecutor(
+                new CharTool(), CharTool.class.getDeclaredMethod("countLetter", String.class, char.class));
+
+        String result = toolExecutor.execute(request, "DEFAULT");
+
+        assertThat(result).isEqualTo("3");
+    }
+
     private static class TestTool {
 
         @Tool
