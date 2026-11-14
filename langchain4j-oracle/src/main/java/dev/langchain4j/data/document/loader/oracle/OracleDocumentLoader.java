@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -41,7 +42,8 @@ import org.jsoup.select.Elements;
  */
 public class OracleDocumentLoader {
 
-    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder().build());
+    private static final Json.JsonCodec CODEC =
+            ProviderJson.codec(ProviderJsonSpec.builder().build());
 
     private final Connection conn;
 
@@ -82,19 +84,23 @@ public class OracleDocumentLoader {
             DirectoryPreference dirPref = CODEC.fromJson(pref, DirectoryPreference.class);
             String dir = dirPref.getDirectory();
             Path root = Paths.get(dir);
-            Files.walk(root).forEach(path -> {
-                if (path.toFile().isFile()) {
-                    Document doc = null;
-                    try {
-                        doc = loadDocument(path.toFile().toString(), pref);
-                        if (doc != null) {
-                            documents.add(doc);
+            // the stream holds the directories being walked open until it is closed, and an exception
+            // thrown while loading a file ends the walk before it can release them by itself
+            try (Stream<Path> paths = Files.walk(root)) {
+                paths.forEach(path -> {
+                    if (path.toFile().isFile()) {
+                        Document doc = null;
+                        try {
+                            doc = loadDocument(path.toFile().toString(), pref);
+                            if (doc != null) {
+                                documents.add(doc);
+                            }
+                        } catch (IOException | SQLException ex) {
+                            throw new RuntimeException("cannot load document", ex);
                         }
-                    } catch (IOException | SQLException ex) {
-                        throw new RuntimeException("cannot load document", ex);
                     }
-                }
-            });
+                });
+            }
         } else if (rootNode.containsKey("tablename")) {
             ensureOnlyKnownProperties(rootNode, "table", Set.of("owner", "tablename", "colname"));
             TablePreference tablePref = CODEC.fromJson(pref, TablePreference.class);
@@ -217,5 +223,4 @@ public class OracleDocumentLoader {
             }
         }
     }
-
 }
