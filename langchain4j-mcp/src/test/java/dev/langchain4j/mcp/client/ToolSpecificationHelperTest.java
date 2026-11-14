@@ -1717,4 +1717,92 @@ class ToolSpecificationHelperTest {
         assertThat(parameters.properties()).containsOnlyKeys("title");
         assertThat(parameters.properties().get("title")).isInstanceOf(JsonStringSchema.class);
     }
+
+    @Test
+    void toolWithOneOfAndStringConst() throws JsonProcessingException {
+        String text =
+                // language=json
+                """
+                [ {
+                      "name" : "sing_and_pet",
+                      "inputSchema" : {
+                        "type" : "object",
+                        "properties" : {
+                          "note" : {
+                            "description" : "Musical note",
+                            "oneOf" : [
+                              { "title" : "A deer", "description" : "A female deer", "type" : "string", "const" : "Do" },
+                              { "description" : "A drop of golden sun", "type" : "string", "const" : "Re" },
+                              { "description" : "A name I call myself", "type" : "string", "const" : "Mi" }
+                            ]
+                          },
+                          "pet" : {
+                            "oneOf" : [
+                              { "$ref" : "#/$defs/Cat" },
+                              { "$ref" : "#/$defs/Dog" }
+                            ],
+                            "discriminator" : {
+                              "propertyName" : "pet_type",
+                              "mapping" : { "cat" : "#/$defs/Cat", "dog" : "#/$defs/Dog" }
+                            }
+                          }
+                        },
+                        "required" : [ "note", "pet" ],
+                        "$defs" : {
+                          "Cat" : {
+                            "type" : "object",
+                            "properties" : {
+                              "pet_type" : { "const" : "cat", "type" : "string" },
+                              "meows" : { "type" : "integer" }
+                            },
+                            "required" : [ "pet_type", "meows" ]
+                          },
+                          "Dog" : {
+                            "type" : "object",
+                            "properties" : {
+                              "pet_type" : { "const" : "dog" },
+                              "barks" : { "type" : "number" }
+                            },
+                            "required" : [ "pet_type", "barks" ]
+                          }
+                        }
+                      }
+                } ]
+                """;
+        List<Map<String, Object>> json = toolList(text);
+        ToolSpecification toolSpecification = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json)
+                .get(0);
+        JsonObjectSchema parameters = toolSpecification.parameters();
+
+        assertThat(parameters.properties().get("note")).isInstanceOf(JsonAnyOfSchema.class);
+        JsonAnyOfSchema note = (JsonAnyOfSchema) parameters.properties().get("note");
+        assertThat(note.description()).isEqualTo("Musical note");
+        assertThat(note.anyOf()).hasSize(3);
+        assertThat(note.anyOf().get(0)).isEqualTo(JsonEnumSchema.builder()
+                .description("A female deer")
+                .enumValues("Do")
+                .build());
+        assertThat(note.anyOf().get(1)).isEqualTo(JsonEnumSchema.builder()
+                .description("A drop of golden sun")
+                .enumValues("Re")
+                .build());
+        assertThat(note.anyOf().get(2)).isEqualTo(JsonEnumSchema.builder()
+                .description("A name I call myself")
+                .enumValues("Mi")
+                .build());
+
+        assertThat(parameters.properties().get("pet")).isInstanceOf(JsonAnyOfSchema.class);
+        JsonAnyOfSchema pet = (JsonAnyOfSchema) parameters.properties().get("pet");
+        assertThat(pet.anyOf()).containsExactly(
+                JsonReferenceSchema.builder().reference("Cat").build(),
+                JsonReferenceSchema.builder().reference("Dog").build());
+
+        JsonObjectSchema cat = (JsonObjectSchema) parameters.definitions().get("Cat");
+        assertThat(cat.properties().get("pet_type"))
+                .isEqualTo(JsonEnumSchema.builder().enumValues("cat").build());
+
+        JsonObjectSchema dog = (JsonObjectSchema) parameters.definitions().get("Dog");
+        assertThat(dog.properties().get("pet_type"))
+                .isEqualTo(JsonEnumSchema.builder().enumValues("dog").build());
+    }
 }
