@@ -65,6 +65,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     private final boolean accumulateToolCallId;
     private final boolean useInputImageFormat;
     private final List<ChatModelListener> listeners;
+    private final int maxRetries;
 
     public OpenAiStreamingChatModel(OpenAiStreamingChatModelBuilder builder) {
         this.client = OpenAiClient.builder()
@@ -133,6 +134,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         this.accumulateToolCallId = getOrDefault(builder.accumulateToolCallId, true);
         this.useInputImageFormat = getOrDefault(builder.useInputImageFormat, false);
         this.listeners = copy(builder.listeners);
+        this.maxRetries = getOrDefault(builder.maxRetries, 0);
     }
 
     @Override
@@ -215,6 +217,11 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
     }
 
     @Override
+    public int maxRetries() {
+        return maxRetries;
+    }
+
+    @Override
     public ModelProvider provider() {
         return OPEN_AI;
     }
@@ -271,6 +278,7 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
         private Map<String, Object> customParameters;
         private List<ChatModelListener> listeners;
         private Integer streamingBufferSize;
+        private Integer maxRetries;
 
         public OpenAiStreamingChatModelBuilder() {
             // This is public so it can be extended
@@ -606,6 +614,19 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
         public OpenAiStreamingChatModelBuilder listeners(ChatModelListener... listeners) {
             return listeners(asList(listeners));
+        }
+
+        /**
+         * Sets the maximum number of times a failed request is retried, as long as nothing has been streamed
+         * to the handler yet. Default: {@code 0} (no retries), unlike the non-streaming model, which retries twice.
+         *
+         * @param maxRetries the maximum number of retries
+         * @return {@code this}
+         * @see StreamingChatModel#maxRetries()
+         */
+        public OpenAiStreamingChatModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
         }
 
         public OpenAiStreamingChatModel build() {
