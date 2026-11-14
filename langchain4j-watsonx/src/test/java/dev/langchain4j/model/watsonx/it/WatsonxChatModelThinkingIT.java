@@ -63,7 +63,23 @@ public class WatsonxChatModelThinkingIT {
     }
 
     @Test
-    public void should_return_thinking_using_gpt_oss() {
+    public void should_return_thinking_using_gpt_oss_low_effort() {
+        var chatModel = WatsonxChatModel.builder()
+                .baseUrl(URL)
+                .apiKey(API_KEY)
+                .projectId(PROJECT_ID)
+                .modelName("openai/gpt-oss-120b")
+                .timeout(Duration.ofSeconds(30))
+                .thinking(ThinkingEffort.LOW)
+                .build();
+
+        var aiMessage = chatModel.chat(UserMessage.from("Hello!")).aiMessage();
+        assertThat(aiMessage.text()).isNotBlank();
+        assertThat(aiMessage.thinking()).isNotBlank();
+    }
+
+    @Test
+    public void should_return_thinking_using_gpt_oss_medium_effort() {
         var chatModel = WatsonxChatModel.builder()
                 .baseUrl(URL)
                 .apiKey(API_KEY)

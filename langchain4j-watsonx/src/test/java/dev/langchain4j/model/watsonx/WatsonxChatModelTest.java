@@ -301,6 +301,9 @@ public class WatsonxChatModelTest {
                     UserMessage.text("Hello"),
                     chatRequestCaptor.getValue().messages().get(0));
             assertNotNull(chatRequestCaptor.getValue().thinking());
+            assertEquals(
+                    ThinkingEffort.LOW, chatRequestCaptor.getValue().thinking().thinkingEffort());
+            assertEquals(true, chatRequestCaptor.getValue().thinking().includeReasoning());
         });
 
         withChatServiceMock(() -> {
@@ -399,6 +402,9 @@ public class WatsonxChatModelTest {
                     UserMessage.text("Hello"),
                     chatRequestCaptor.getValue().messages().get(0));
             assertNotNull(chatRequestCaptor.getValue().thinking());
+            assertEquals(
+                    ThinkingEffort.LOW, chatRequestCaptor.getValue().thinking().thinkingEffort());
+            assertEquals(true, chatRequestCaptor.getValue().thinking().includeReasoning());
         });
 
         withChatServiceMock(() -> {
