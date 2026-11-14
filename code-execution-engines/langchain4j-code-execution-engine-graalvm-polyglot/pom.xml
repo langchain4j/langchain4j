@@ -14,7 +14,7 @@
     <description>Implementation of JavaScript and Python code execution engines and tools using GraalVM Polyglot/Truffle</description>
 
     <properties>
-        <graalvm.version>24.1.1</graalvm.version>
+        <graalvm.version>25.0.5.0.3</graalvm.version>
     </properties>
 
     <dependencies>
