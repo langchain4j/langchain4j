@@ -265,6 +265,10 @@ public class VertexAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
     @Override
     protected Integer knownDimension() {
+        if (outputDimensionality != null) {
+            return outputDimensionality;
+        }
+
         return VertexAiEmbeddingModelName.knownDimension(endpointName.getModel());
     }
 
