@@ -17,7 +17,7 @@
         https://playwright.dev/</description>
 
     <properties>
-        <playwright.version>1.57.0</playwright.version>
+        <playwright.version>1.64.0</playwright.version>
     </properties>
 
     <dependencies>
@@ -49,9 +49,8 @@
         </dependency>
 
         <dependency>
-            <groupId>io.orange-buffalo</groupId>
-            <artifactId>testcontainers-playwright</artifactId>
-            <version>0.12.0</version>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
             <scope>test</scope>
         </dependency>
 
