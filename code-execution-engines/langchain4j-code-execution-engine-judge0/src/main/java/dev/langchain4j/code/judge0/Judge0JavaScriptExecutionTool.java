@@ -92,7 +92,8 @@ public class Judge0JavaScriptExecutionTool {
      */
     @Tool("MUST be used for accurate calculations: math, sorting, filtering, aggregating, string processing, etc")
     public String executeJavaScriptCode(
-            @P("JavaScript code to execute, result MUST be printed to console") String javaScriptCode) {
+            @P(name = "javaScriptCode", description = "JavaScript code to execute, result MUST be printed to console")
+                    String javaScriptCode) {
         if (isNullOrBlank(javaScriptCode)) {
             throw new IllegalArgumentException("JavaScript code must not be null or empty");
         }
