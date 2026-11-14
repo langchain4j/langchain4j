@@ -596,10 +596,22 @@ class GoogleGenAiContentMapperTest {
         assertThat(GoogleGenAiContentMapper.mapFinishReason(new FinishReason(Known.SAFETY)))
                 .isEqualTo(CONTENT_FILTER);
 
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(new FinishReason(Known.ESCALATION)))
+                .isEqualTo(CONTENT_FILTER);
+
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(new FinishReason(Known.MODEL_ARMOR)))
+                .isEqualTo(CONTENT_FILTER);
+
         assertThat(GoogleGenAiContentMapper.mapFinishReason(new FinishReason(Known.OTHER)))
                 .isEqualTo(OTHER);
 
         assertThat(GoogleGenAiContentMapper.mapFinishReason(new FinishReason(Known.TOO_MANY_TOOL_CALLS)))
+                .isEqualTo(OTHER);
+
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(new FinishReason(Known.MISSING_THOUGHT_SIGNATURE)))
+                .isEqualTo(OTHER);
+
+        assertThat(GoogleGenAiContentMapper.mapFinishReason(new FinishReason(Known.PUP_LIMITED_DISABLED)))
                 .isEqualTo(OTHER);
     }
 

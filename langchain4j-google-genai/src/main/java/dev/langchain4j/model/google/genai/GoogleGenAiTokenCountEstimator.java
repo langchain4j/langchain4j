@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
 
@@ -40,7 +41,7 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
                         builder.location,
                         builder.timeout,
                         builder.customHeaders,
-                        builder.apiEndpoint);
+                        builder.apiEndpoint, builder.apiVersion);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
     }
@@ -126,6 +127,7 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
         private Boolean logRequests;
         private Boolean logResponses;
         private String apiEndpoint;
+        private @Nullable String apiVersion;
         private Map<String, String> customHeaders;
 
         public Builder client(Client client) {
@@ -180,6 +182,17 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
 
         public Builder apiEndpoint(String apiEndpoint) {
             this.apiEndpoint = apiEndpoint;
+            return this;
+        }
+
+        /**
+         * The version of the API to call, for example {@code v1beta} or {@code v1}. When not set ({@code null}), the
+         * version set in the {@code GOOGLE_GENAI_API_VERSION} environment variable is used, otherwise {@code v1beta}
+         * on the Gemini Developer API and the default of the Google GenAI SDK on Vertex AI. Ignored when a client is
+         * set with {@code client(...)}.
+         */
+        public Builder apiVersion(@Nullable String apiVersion) {
+            this.apiVersion = apiVersion;
             return this;
         }
 

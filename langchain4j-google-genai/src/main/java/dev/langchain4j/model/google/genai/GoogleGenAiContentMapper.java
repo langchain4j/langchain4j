@@ -641,6 +641,8 @@ class GoogleGenAiContentMapper {
             case IMAGE_SAFETY:
             case IMAGE_PROHIBITED_CONTENT:
             case IMAGE_RECITATION:
+            case ESCALATION:
+            case MODEL_ARMOR:
                 return FinishReason.CONTENT_FILTER;
             case TOO_MANY_TOOL_CALLS:
             default:

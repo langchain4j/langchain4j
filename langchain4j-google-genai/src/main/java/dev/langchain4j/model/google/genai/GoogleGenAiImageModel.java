@@ -31,6 +31,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +65,7 @@ public class GoogleGenAiImageModel implements ImageModel {
                         builder.location,
                         builder.timeout,
                         builder.customHeaders,
-                        builder.apiEndpoint);
+                        builder.apiEndpoint, builder.apiVersion);
 
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
@@ -254,6 +255,7 @@ public class GoogleGenAiImageModel implements ImageModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private String apiEndpoint;
+        private @Nullable String apiVersion;
         private Map<String, String> customHeaders;
         private Map<String, String> labels;
 
@@ -340,6 +342,17 @@ public class GoogleGenAiImageModel implements ImageModel {
 
         public Builder apiEndpoint(String apiEndpoint) {
             this.apiEndpoint = apiEndpoint;
+            return this;
+        }
+
+        /**
+         * The version of the API to call, for example {@code v1beta} or {@code v1}. When not set ({@code null}), the
+         * version set in the {@code GOOGLE_GENAI_API_VERSION} environment variable is used, otherwise {@code v1beta}
+         * on the Gemini Developer API and the default of the Google GenAI SDK on Vertex AI. Ignored when a client is
+         * set with {@code client(...)}.
+         */
+        public Builder apiVersion(@Nullable String apiVersion) {
+            this.apiVersion = apiVersion;
             return this;
         }
 
