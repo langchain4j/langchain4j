@@ -213,9 +213,7 @@ class DefaultGuardrailServiceTests {
                 .satisfiesExactly(
                         guardrail -> assertThat(guardrail).isInstanceOf(IG1.class),
                         guardrail -> assertThat(guardrail).isInstanceOf(IG2.class));
-        assertThat(guardrailService.getInputGuardrails("chat2"))
-                .singleElement()
-                .isExactlyInstanceOf(IG1.class);
+        assertThat(guardrailService.getInputGuardrails("chat2")).singleElement().isExactlyInstanceOf(IG1.class);
         assertThat(guardrailService.getOutputGuardrails("chat"))
                 .satisfiesExactly(
                         guardrail -> assertThat(guardrail).isInstanceOf(OG1.class),
