@@ -537,6 +537,79 @@ class HttpRequestTest {
     }
 
     @Test
+    void should_not_fail_when_adding_header_after_headers_with_immutable_map() {
+
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder()
+                .method(GET)
+                .url("http://example.com/api")
+                .headers(Map.of("Accept", List.of("application/json")));
+
+        // when
+        builder.addHeader("X-Request-Id", "request-id");
+
+        // then
+        assertThat(builder.build().headers())
+                .containsEntry("Accept", List.of("application/json"))
+                .containsEntry("X-Request-Id", List.of("request-id"));
+    }
+
+    @Test
+    void should_not_fail_when_adding_headers_from_map_after_headers_with_immutable_map() {
+
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder()
+                .method(GET)
+                .url("http://example.com/api")
+                .headers(Map.of("Accept", List.of("application/json")));
+
+        // when
+        builder.addHeaders(Map.of("X-Request-Id", "request-id"));
+
+        // then
+        assertThat(builder.build().headers())
+                .containsEntry("Accept", List.of("application/json"))
+                .containsEntry("X-Request-Id", List.of("request-id"));
+    }
+
+    @Test
+    void should_not_mutate_source_headers_map_when_adding_headers() {
+
+        // given
+        Map<String, List<String>> headers = new LinkedHashMap<>();
+        headers.put("Accept", List.of("application/json"));
+        HttpRequest.Builder builder = HttpRequest.builder()
+                .method(GET)
+                .url("http://example.com/api")
+                .headers(headers);
+
+        // when
+        builder.addHeader("X-Request-Id", "request-id");
+
+        // then
+        assertThat(headers).containsOnlyKeys("Accept");
+        assertThat(builder.build().headers())
+                .containsEntry("Accept", List.of("application/json"))
+                .containsEntry("X-Request-Id", List.of("request-id"));
+    }
+
+    @Test
+    void should_clear_headers_when_headers_map_is_null() {
+
+        // given
+        HttpRequest.Builder builder = HttpRequest.builder()
+                .method(GET)
+                .url("http://example.com/api")
+                .addHeader("Accept", "application/json");
+
+        // when
+        builder.headers(null);
+
+        // then
+        assertThat(builder.build().headers()).isEmpty();
+    }
+
+    @Test
     void should_return_empty_headers_when_not_set() {
         HttpRequest request =
                 HttpRequest.builder().method(GET).url("http://example.com/api").build();
