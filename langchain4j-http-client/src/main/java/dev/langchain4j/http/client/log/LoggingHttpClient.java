@@ -1,5 +1,9 @@
 package dev.langchain4j.http.client.log;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClient;
@@ -11,17 +15,15 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Flow;
-
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 /**
  * An {@link HttpClient} decorator that logs requests and responses.
+ * <p>
+ * Asynchronous request cancellation is forwarded to the delegate future regardless of the logging options.
  * <p>
  * <b>Streaming response logging is blocking IO on the delivery thread.</b> For the streaming paths
  * ({@link #execute(HttpRequest, ServerSentEventListener)},
@@ -82,18 +84,19 @@ public class LoggingHttpClient implements HttpClient {
             HttpRequestLogger.log(log, request);
         }
 
-        CompletableFuture<SuccessfulHttpResponse> future =
-                delegateHttpClient.executeAsync(request);
+        CompletableFuture<SuccessfulHttpResponse> future = delegateHttpClient.executeAsync(request);
 
         if (!logResponses) {
             return future;
         }
 
-        return future.whenComplete((response, throwable) -> {
+        CompletableFuture<SuccessfulHttpResponse> result = future.whenComplete((response, throwable) -> {
             if (response != null) {
                 HttpResponseLogger.log(log, response);
             }
         });
+        propagateCancellation(result, future);
+        return result;
     }
 
     @Override
