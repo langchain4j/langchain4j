@@ -26,12 +26,28 @@ class CosineSimilarityTest implements WithAssertions {
     }
 
     @Test
+    void should_return_zero_when_only_one_embedding_is_zero() {
+        Embedding zero = Embedding.from(new float[] {0f, 0f});
+        Embedding nonzero = Embedding.from(new float[] {1f, 0f});
+
+        assertThat(CosineSimilarity.between(zero, nonzero)).isZero();
+        assertThat(CosineSimilarity.between(nonzero, zero)).isZero();
+    }
+
+    @Test
     void should_calculate_cosine_similarity() {
         Embedding embeddingA = Embedding.from(new float[] {1, -1, 1});
         Embedding embeddingB = Embedding.from(new float[] {-1, 1, -1});
 
         assertThat(CosineSimilarity.between(embeddingA, embeddingA)).isCloseTo(1, withPercentage(1));
         assertThat(CosineSimilarity.between(embeddingA, embeddingB)).isCloseTo(-1, withPercentage(1));
+    }
+
+    @Test
+    void should_return_one_for_a_small_nonzero_embedding_compared_with_itself() {
+        Embedding embedding = Embedding.from(new float[] {1e-5f, 0f});
+
+        assertThat(CosineSimilarity.between(embedding, embedding)).isCloseTo(1, withPercentage(1));
     }
 
     @Test
