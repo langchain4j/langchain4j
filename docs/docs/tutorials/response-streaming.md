@@ -101,6 +101,37 @@ model.chat(userMessage, new StreamingChatResponseHandler() {
 });
 ```
 
+:::note
+`chat(...)` does not block: it returns as soon as the request is sent, and the handler is called later
+from another thread. In a plain `main` method (or a test), wait until `onCompleteResponse` or `onError`
+is called, otherwise the JVM can exit before the response arrives. With the default JDK HTTP client this
+happens silently, because its threads do not keep the JVM alive:
+
+```java
+CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+
+model.chat(userMessage, new StreamingChatResponseHandler() {
+
+    @Override
+    public void onPartialResponse(String partialResponse) {
+        System.out.print(partialResponse);
+    }
+
+    @Override
+    public void onCompleteResponse(ChatResponse completeResponse) {
+        futureResponse.complete(completeResponse);
+    }
+
+    @Override
+    public void onError(Throwable error) {
+        futureResponse.completeExceptionally(error);
+    }
+});
+
+futureResponse.join();
+```
+:::
+
 A more compact way to stream the response is to use the `LambdaStreamingResponseHandler` class.
 This utility class provides static methods to create a `StreamingChatResponseHandler` using lambda expressions.
 The way to use lambdas to stream the response is quite simple. 
