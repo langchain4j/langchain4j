@@ -15,19 +15,23 @@ import java.util.*;
 
 class OnnxScoringBertCrossEncoder implements AutoCloseable {
 
+    private static final int TOKEN_LENGTH_TOLERANCE = 2;
+
     private final OrtEnvironment environment;
     private final OrtSession session;
     private final Set<String> expectedInputs;
     private final HuggingFaceTokenizer tokenizer;
     private final boolean normalize;
     private boolean closed;
+    private int tokenLengthTolerance;
 
     public OnnxScoringBertCrossEncoder(
             String modelPath,
             OrtSession.SessionOptions options,
             String pathToTokenizer,
             int modelMaxLength,
-            boolean normalize) {
+            boolean normalize,
+            int tokenLengthTolerance) {
         OrtSession initializedSession = null;
         HuggingFaceTokenizer initializedTokenizer = null;
         try (options) { // properly release parent session at the end of this block to prevent leaks
@@ -57,6 +61,16 @@ class OnnxScoringBertCrossEncoder implements AutoCloseable {
         }
         this.session = initializedSession;
         this.tokenizer = initializedTokenizer;
+        this.tokenLengthTolerance = tokenLengthTolerance;
+    }
+
+    public OnnxScoringBertCrossEncoder(
+            String modelPath,
+            OrtSession.SessionOptions options,
+            String pathToTokenizer,
+            int modelMaxLength,
+            boolean normalize) {
+        this(modelPath, options, pathToTokenizer, modelMaxLength, normalize, TOKEN_LENGTH_TOLERANCE);
     }
 
     private static void closeOnFailure(AutoCloseable resource, Throwable failure) {
@@ -112,17 +126,58 @@ class OnnxScoringBertCrossEncoder implements AutoCloseable {
     }
 
     ScoringAndTokenCount scoreAll(String query, List<String> documents) {
+        if (documents == null || documents.isEmpty()) {
+            return new ScoringAndTokenCount(Collections.emptyList(), 0);
+        }
+        int numDocs = documents.size();
+        int[] tokenLengths = new int[numDocs];
+        Integer[] indices = new Integer[numDocs];
+        for (int i = 0; i < numDocs; i++) {
+            tokenLengths[i] = this.tokenizer.tokenize(documents.get(i)).size();
+            indices[i] = i;
+        }
+        Arrays.sort(indices, Comparator.comparingInt(idx -> tokenLengths[idx]));
+        int totalTokenCount = 0;
+        Double[] finalScoresArray = new Double[numDocs];
+        int i = 0;
+        while (i < numDocs) {
+            int currentLength = tokenLengths[indices[i]];
+            int end = i + 1;
+            while (end < numDocs && tokenLengths[indices[end]] - currentLength <= tokenLengthTolerance) {
+                end++;
+            }
+            PairList<String, String> pairs = new PairList<>();
+            for (int j = i; j < end; j++) {
+                pairs.add(query, documents.get(indices[j]));
+            }
+            Encoding[] encodings = this.tokenizer.batchEncode(pairs);
+            totalTokenCount += this.countTokens(encodings);
+            List<Double> batchScores;
+            try (Result result = this.encode(encodings)) {
+                batchScores = this.toScore(result);
+            } catch (OrtException e) {
+                throw new RuntimeException(e);
+            }
+            for (int j = 0; j < batchScores.size(); j++) {
+                finalScoresArray[indices[i + j]] = batchScores.get(j);
+            }
+            i = end;
+            if (i < numDocs) {
+                currentLength = tokenLengths[indices[i]];
+            }
+        }
+        return new ScoringAndTokenCount(Arrays.asList(finalScoresArray), totalTokenCount);
+    }
+
+    ScoringAndTokenCount scoreAllSingleBatch(String query, List<String> documents) {
         List<Double> scores;
-        int tokenCount = 0;
-        int queryTokenCount = tokenizer.tokenize(query).size() - 2;
         PairList<String, String> pairs = new PairList<>();
         for (String document : documents) {
             pairs.add(query, document);
-            tokenCount += queryTokenCount
-                    + tokenizer.tokenize(document).size()
-                    - 2; // do not count special tokens [CLS] and [SEP]
         }
-        try (Result result = this.encode(pairs)) {
+        Encoding[] encodings = this.tokenizer.batchEncode(pairs);
+        int tokenCount = countTokens(encodings);
+        try (Result result = this.encode(encodings)) {
             scores = this.toScore(result);
         } catch (OrtException e) {
             throw new RuntimeException(e);
@@ -130,8 +185,28 @@ class OnnxScoringBertCrossEncoder implements AutoCloseable {
         return new ScoringAndTokenCount(scores, tokenCount);
     }
 
-    private Result encode(PairList<String, String> pairs) throws OrtException {
-        Encoding[] encodings = this.tokenizer.batchEncode(pairs);
+    private int countTokens(Encoding[] encodings) {
+        if (encodings == null || encodings.length == 0) {
+            return 0;
+        }
+        int tokenCount = 0;
+        for (Encoding encoding : encodings) {
+            long[] specialTokenMask = encoding.getSpecialTokenMask();
+            if (specialTokenMask != null && specialTokenMask.length > 0) {
+                for (long mask : specialTokenMask) {
+                    // mask == 0 denotes regular tokens; mask == 1 denotes special tokens ([CLS], [SEP])
+                    if (mask == 0) {
+                        tokenCount++;
+                    }
+                }
+            } else {
+                tokenCount += Math.max(0, encoding.getIds().length - 3);
+            }
+        }
+        return tokenCount;
+    }
+
+    private Result encode(Encoding[] encodings) throws OrtException {
         long[][] inputIds = new long[encodings.length][];
         long[][] attentionMask = new long[encodings.length][];
         long[][] tokenTypeIds = new long[encodings.length][];
