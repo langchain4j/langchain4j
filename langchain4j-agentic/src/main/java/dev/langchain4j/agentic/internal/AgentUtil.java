@@ -43,6 +43,8 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -532,6 +534,10 @@ public class AgentUtil {
                 case "float", "java.lang.Float" -> n.floatValue();
                 case "short", "java.lang.Short" -> n.shortValue();
                 case "byte", "java.lang.Byte" -> n.byteValue();
+                // through the decimal string of the number, so that a double like 0.1 becomes 0.1 and not its
+                // binary approximation, and a BigInteger or BigDecimal keeps all its digits
+                case "java.math.BigDecimal" -> new BigDecimal(n.toString());
+                case "java.math.BigInteger" -> new BigDecimal(n.toString()).toBigInteger();
                 default -> value;
             };
         }
