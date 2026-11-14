@@ -3,15 +3,15 @@ package dev.langchain4j.service.guardrail;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.exception.AsyncNotSupportedException;
-import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.guardrail.spi.GuardrailServiceBuilderFactory;
 import java.lang.reflect.Method;
@@ -162,7 +162,8 @@ public interface GuardrailService {
      * @since 1.20.0
      */
     @Experimental
-    default <MethodKey, T> CompletableFuture<T> executeGuardrailsAsync(MethodKey method, OutputGuardrailRequest request) {
+    default <MethodKey, T> CompletableFuture<T> executeGuardrailsAsync(
+            MethodKey method, OutputGuardrailRequest request) {
         CompletableFuture<OutputGuardrailResult> guardrailFuture = executeOutputGuardrailsAsync(method, request);
         CompletableFuture<T> result = guardrailFuture.thenApply(r -> r.response(request));
         propagateCancellation(result, guardrailFuture);
@@ -307,10 +308,15 @@ public interface GuardrailService {
 
         /**
          * Builds and returns an instance of {@link GuardrailService}.
-         * This method configures input and output guardrails at the service level
-         * using the provided class-level or method-level annotations. If no
-         * method-level annotations are present, it defers to class-level annotations,
-         * and if those are absent, it uses the settings defined in the builder.
+         * This method configures input and output guardrails for each method of the service.
+         * Guardrails set in the builder take precedence. If none are set, it uses the
+         * method-level annotations, and if those are absent, the class-level annotations.
+         * <p>
+         * The guardrails and their configuration are resolved independently of each other, and separately for input
+         * and output guardrails. Only the first source found is used: guardrails set in the builder, on the method and
+         * on the class are not combined. Guardrails set in the builder count only when there is at least one:
+         * {@code null} or an empty list does not disable the guardrails declared in annotations. Guardrail instances
+         * and guardrail classes set in the builder are both used: the instances first, then the classes.
          *
          * @return an instance of {@link GuardrailService} configured with appropriate
          * input and output guardrails.
