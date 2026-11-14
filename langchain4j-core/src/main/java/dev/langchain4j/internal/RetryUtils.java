@@ -8,6 +8,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -248,7 +249,7 @@ public final class RetryUtils {
          *                        what the returned future fails with.
          * @param <T>             the result type.
          * @return a future completing with the first successful attempt, or failing with the mapped exception of the
-         *         last attempt.
+         *         last attempt, or with the rejection if the configured executor rejects a retry.
          * @since 1.20.0
          */
         public <T> CompletableFuture<T> withRetryAsync(
@@ -297,8 +298,16 @@ public final class RetryUtils {
                         "A retriable exception occurred. Remaining retries: %s of %s"
                                 .formatted(maxRetries - retry, maxRetries),
                         mapped);
-                Executor delayed = CompletableFuture.delayedExecutor(
-                        jitterDelayMillis(retry), TimeUnit.MILLISECONDS, DefaultExecutorProvider.getDefaultExecutor());
+                Executor executor = DefaultExecutorProvider.getDefaultExecutor();
+                Executor delayed =
+                        CompletableFuture.delayedExecutor(jitterDelayMillis(retry), TimeUnit.MILLISECONDS, command -> {
+                            try {
+                                executor.execute(command);
+                            } catch (RejectedExecutionException e) {
+                                // Keep user completion callbacks off the shared CompletableFuture timer.
+                                CompletableFuture.runAsync(() -> result.completeExceptionally(e));
+                            }
+                        });
                 delayed.execute(() -> attemptAsync(action, maxRetries, exceptionMapper, retry + 1, result));
             });
         }
