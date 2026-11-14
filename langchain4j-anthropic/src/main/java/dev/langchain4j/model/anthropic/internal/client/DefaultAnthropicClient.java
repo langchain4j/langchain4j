@@ -46,6 +46,7 @@ import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.anthropic.AnthropicChatResponseMetadata;
+import dev.langchain4j.model.anthropic.AnthropicModelLifecycle;
 import dev.langchain4j.model.anthropic.AnthropicServerToolResult;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicBatch;
@@ -751,19 +752,37 @@ public class DefaultAnthropicClient extends AnthropicClient {
     }
 
     /**
-     * Lists available models from the Anthropic API.
+     * Lists one page of the available models from the Anthropic API.
      *
      * <p>Sends a GET request to the {@code /models} endpoint to retrieve
      * information about available Claude models.</p>
      *
-     * @return the response containing the list of available models
+     * @param limit the maximum number of models per page, or {@code null} for the API default
+     * @param afterId the ID of the last model of the previous page, or {@code null} for the first page
+     * @param lifecycles the lifecycle stages to list, or {@code null} for the API default
+     * @return the response containing the page of available models
      * @throws RuntimeException if the HTTP request fails or the response cannot be parsed
      */
     @Override
-    public AnthropicModelsListResponse listModels() {
+    public AnthropicModelsListResponse listModels(
+            Integer limit, String afterId, List<AnthropicModelLifecycle> lifecycles) {
+        List<String> queryParams = new ArrayList<>();
+        if (lifecycles != null) {
+            lifecycles.forEach(lifecycle -> queryParams.add("lifecycle%5B%5D=" + lifecycle));
+        }
+        if (limit != null) {
+            queryParams.add("limit=" + limit);
+        }
+        if (isNotNullOrBlank(afterId)) {
+            queryParams.add("after_id=" + afterId);
+        }
+        StringBuilder path = new StringBuilder("models");
+        if (!queryParams.isEmpty()) {
+            path.append('?').append(String.join("&", queryParams));
+        }
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(GET)
-                .url(baseUrl, "models")
+                .url(baseUrl, path.toString())
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
                 .addHeaders(customHeadersSupplier.get())
