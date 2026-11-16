@@ -1018,6 +1018,131 @@ class HelperObjectsTest {
         assertThat(STATIC_SUPPLIED_LISTENER.invokedAgents).containsExactly("sign", "shout");
     }
 
+    // ── Subagents provided as instances by the subAgentResolver: the helper objects of their type are added ──
+
+    /**
+     * The configurator of an integration providing the subagent of the given type as an instance, with the given
+     * helper objects for that type.
+     */
+    static AgentConfigurator resolvedSubagent(Class<?> declaredType, Object instance, Object... helperObjects) {
+        return AgentConfigurator.builder()
+                .subAgentResolver(type -> type == declaredType ? instance : null)
+                .helperObjectsResolver(type -> type == declaredType ? List.of(helperObjects) : List.of())
+                .build();
+    }
+
+    public static class ListenerHelpers {
+        final RecordingListener listener = new RecordingListener();
+
+        @AgentListenerSupplier
+        AgentListener suppliedListener() {
+            return listener;
+        }
+    }
+
+    public interface InstanceGreeting {
+
+        @SequenceAgent(outputKey = "greeting", subAgents = InstanceGreeter.class)
+        String run(@V("name") String name);
+    }
+
+    @Test
+    void resolved_non_ai_subagent_notifies_the_listener_of_the_helper_object_of_its_type() {
+        register(Formatter.class, new Formatter());
+        register(Policy.class, new Policy("Voldemort"));
+        ListenerHelpers helpers = new ListenerHelpers();
+
+        InstanceGreeting greeting = AgenticServices.createAgenticSystem(
+                InstanceGreeting.class, resolvedSubagent(InstanceGreeter.class, new InstanceGreeter(), helpers));
+
+        assertThat(greeting.run("Mario")).isEqualTo("HELLO MARIO");
+        assertThat(helpers.listener.invokedAgents).containsExactly("greet");
+    }
+
+    public interface InstanceConfirmation {
+
+        @SequenceAgent(outputKey = "confirmation", subAgents = Confirmation.class)
+        String run(@V("name") String name);
+    }
+
+    @Test
+    void resolved_human_in_the_loop_subagent_notifies_the_listener_of_the_helper_object_of_its_type() {
+        register(Console.class, new Console());
+        register(Policy.class, new Policy("Voldemort"));
+        ListenerHelpers helpers = new ListenerHelpers();
+
+        InstanceConfirmation confirmation = AgenticServices.createAgenticSystem(
+                InstanceConfirmation.class, resolvedSubagent(Confirmation.class, new Confirmation(), helpers));
+
+        assertThat(confirmation.run("Mario")).isEqualTo("Confirm Mario? yes");
+        assertThat(helpers.listener.invokedAgents).containsExactly("ask");
+    }
+
+    public interface ListenedGreeting {
+
+        @SequenceAgent(outputKey = "greeting", subAgents = ListenedGreeter.class)
+        String run(@V("name") String name);
+    }
+
+    @Test
+    void resolved_subagent_gets_the_activation_condition_of_the_helper_object_of_its_type() {
+        register(Policy.class, new Policy("Voldemort"));
+        ListenedGreeter greeter = new ListenedGreeter();
+
+        ListenedGreeting greeting = AgenticServices.createAgenticSystem(
+                ListenedGreeting.class, resolvedSubagent(ListenedGreeter.class, greeter, new GreetingGate()));
+
+        assertThat(greeting.run("Mario")).isEqualTo("Hello Mario");
+        assertThat(greeting.run("Voldemort")).isNull();
+        assertThat(resolvedMethods()).contains("allowed");
+        // the listener of the instance is not notified of an agent that its activation condition skips
+        assertThat(greeter.listener.invokedAgents).containsExactly("greet");
+    }
+
+    @Test
+    void helper_object_that_is_the_resolved_subagent_itself_is_counted_once() {
+        // the shape of a container bean with an instance agent method: both resolvers return it
+        ListenedGreeter greeter = new ListenedGreeter();
+
+        ListenedGreeting greeting = AgenticServices.createAgenticSystem(
+                ListenedGreeting.class, resolvedSubagent(ListenedGreeter.class, greeter, greeter));
+
+        assertThat(greeting.run("Mario")).isEqualTo("Hello Mario");
+        assertThat(greeter.listener.invokedAgents).containsExactly("greet");
+    }
+
+    @Test
+    void resolved_subagent_and_helper_object_of_its_type_with_the_same_annotation_are_rejected() {
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(
+                        ListenedGreeting.class,
+                        resolvedSubagent(ListenedGreeter.class, new ListenedGreeter(), new ListenerHelpers())))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("@AgentListenerSupplier")
+                .hasMessageContaining(ListenedGreeter.class.getName() + ".listener()")
+                .hasMessageContaining(ListenerHelpers.class.getName() + ".suppliedListener()");
+    }
+
+    @Test
+    void helper_objects_resolver_is_not_called_for_a_subagent_resolved_already_built() {
+        Rephraser rephraser = AgenticServices.agentBuilder(Rephraser.class)
+                .chatModel(scriptedModel("ciao"))
+                .build();
+        List<Class<?>> resolvedTypes = new CopyOnWriteArrayList<>();
+        var configurator = AgentConfigurator.builder()
+                .subAgentResolver(type -> type == Rephraser.class ? rephraser : null)
+                .helperObjectsResolver(type -> {
+                    resolvedTypes.add(type);
+                    return List.of();
+                })
+                .build();
+
+        Rephrasing rephrasing = AgenticServices.createAgenticSystem(Rephrasing.class, configurator);
+
+        assertThat(rephrasing.run("hello")).isEqualTo("ciao");
+        // the helper objects of the root agent only: the subagent was built elsewhere, with its own helpers
+        assertThat(resolvedTypes).containsExactly(Rephrasing.class);
+    }
+
     // ── Class-based workflow agents with an agentInstanceFactory: the contract an integration relies on ──
 
     /**

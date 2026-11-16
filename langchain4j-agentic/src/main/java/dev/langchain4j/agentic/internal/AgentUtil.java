@@ -43,6 +43,7 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -51,6 +52,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 public class AgentUtil {
@@ -103,6 +105,16 @@ public class AgentUtil {
     }
 
     public static AgentExecutor agentToExecutor(Object agent) {
+        return agentToExecutor(agent, List::of);
+    }
+
+    /**
+     * Creates the executor of the given agent, as {@link #agentToExecutor(Object)} does. The given supplier provides
+     * the helper objects of the declared type of the agent in a declarative agentic system, and is called only when
+     * the agent is an instance with an agent method, a non-AI agent or a human-in-the-loop object: any other agent
+     * was built already, with its own helpers.
+     */
+    public static AgentExecutor agentToExecutor(Object agent, Supplier<List<Object>> helperObjectsOfDeclaredType) {
         if (agent instanceof AgentExecutor executor) {
             return executor;
         }
@@ -120,8 +132,12 @@ public class AgentUtil {
             return agentToExecutor(internalAgent);
         }
         // an agent passed as an instance is its own helper object: its activation condition and listener can be
-        // instance methods, and the parameters of its agent method can be provided by a SupplierParameterResolver
-        AgentHelpers helpers = AgentHelpers.of(agent.getClass(), List.of(agent));
+        // instance methods, and the parameters of its agent method can be provided by a SupplierParameterResolver.
+        // In a declarative system the helper objects of its declared type come next to it
+        List<Object> helperObjects = new ArrayList<>();
+        helperObjects.add(agent);
+        helperObjects.addAll(helperObjectsOfDeclaredType.get());
+        AgentHelpers helpers = AgentHelpers.of(agent.getClass(), helperObjects);
         Method agentMethod = validateAgentClass(agent.getClass(), true, HumanInTheLoop.class);
         if (agentMethod.isAnnotationPresent(HumanInTheLoop.class)) {
             return humanInTheLoopExecutor(agentMethod, agent, helpers);

@@ -440,6 +440,12 @@ public class AgenticServices {
      * an agent without helper objects. It is how a dependency injection container provides the helpers of an agent
      * as methods of a managed bean, typically an instance of the agent type itself.
      * <p>
+     * A subagent that the {@code subAgentResolver} provides as an instance, a non-AI agent or a human-in-the-loop
+     * object, has that instance as its first helper object, followed by the ones that the
+     * {@code helperObjectsResolver} returns for its type, the one listed among the subagents. For a subagent that
+     * the {@code subAgentResolver} provides already built, the {@code helperObjectsResolver} is not called: its
+     * helpers belong to whoever built it.
+     * <p>
      * The resolver is called once for each agent, when the agentic system is built. The returned objects are then
      * shared by all the invocations of the agent, also by the ones running at the same time, so they must be
      * thread-safe, or be proxies finding the current instance at each call, like the client proxies of the
@@ -934,7 +940,7 @@ public class AgenticServices {
         if (agentConfigurator.subAgentResolver() != null) {
             Object subagent = agentConfigurator.subAgentResolver().apply(subgentClass);
             if (subagent != null) {
-                return agentToExecutor(subagent);
+                return agentToExecutor(subagent, () -> agentConfigurator.helperObjects(subgentClass));
             }
         }
 
