@@ -47,8 +47,8 @@ public class OnnxBertBiEncoder {
             this.environment = OrtEnvironment.getEnvironment();
             this.session = environment.createSession(loadModel(model));
             this.expectedInputs = session.getInputNames();
-            this.tokenizer = HuggingFaceTokenizer.newInstance(
-                    tokenizer, Map.of("padding", "false", "truncation", "false"));
+            this.tokenizer =
+                    HuggingFaceTokenizer.newInstance(tokenizer, Map.of("padding", "false", "truncation", "false"));
             this.poolingMode = ensureNotNull(poolingMode, "poolingMode");
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -61,8 +61,8 @@ public class OnnxBertBiEncoder {
             this.environment = environment;
             this.session = session;
             this.expectedInputs = session.getInputNames();
-            this.tokenizer = HuggingFaceTokenizer.newInstance(
-                    tokenizer, Map.of("padding", "false", "truncation", "false"));
+            this.tokenizer =
+                    HuggingFaceTokenizer.newInstance(tokenizer, Map.of("padding", "false", "truncation", "false"));
             this.poolingMode = ensureNotNull(poolingMode, "poolingMode");
         } catch (Exception e) {
             throw new RuntimeException(e);
