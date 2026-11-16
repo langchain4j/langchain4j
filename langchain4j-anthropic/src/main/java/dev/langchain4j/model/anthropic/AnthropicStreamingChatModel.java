@@ -71,6 +71,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     private final AnthropicClient client;
     private final String thinkingDisplay;
     private final List<ChatModelListener> listeners;
+    private final int maxRetries;
     private final AnthropicChatRequestParameters defaultRequestParameters;
     private final List<AnthropicServerTool> serverTools;
     private final boolean returnServerToolResults;
@@ -99,6 +100,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
                 .build();
 
         this.listeners = copy(builder.listeners);
+        this.maxRetries = getOrDefault(builder.maxRetries, 0);
         this.returnServerToolResults = getOrDefault(builder.returnServerToolResults, false);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
         this.streamingBufferSize = ensureGreaterThanZero(
@@ -191,6 +193,7 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
         private Boolean logResponses;
         private Logger logger;
         private List<ChatModelListener> listeners;
+        private Integer maxRetries;
         private ChatRequestParameters defaultRequestParameters;
         private ToolChoice toolChoice;
         private String toolChoiceName;
@@ -917,6 +920,19 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
             return this;
         }
 
+        /**
+         * Sets the maximum number of times a failed request is retried, as long as nothing has been streamed
+         * to the handler yet. Default: {@code 0} (no retries), unlike the non-streaming model, which retries twice.
+         *
+         * @param maxRetries the maximum number of retries
+         * @return {@code this}
+         * @see StreamingChatModel#maxRetries()
+         */
+        public AnthropicStreamingChatModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
+            return this;
+        }
+
         public AnthropicStreamingChatModel build() {
             return new AnthropicStreamingChatModel(this);
         }
@@ -971,6 +987,11 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
     @Override
     public List<ChatModelListener> listeners() {
         return listeners;
+    }
+
+    @Override
+    public int maxRetries() {
+        return maxRetries;
     }
 
     @Override

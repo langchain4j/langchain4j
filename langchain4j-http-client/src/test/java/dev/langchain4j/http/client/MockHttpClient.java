@@ -31,6 +31,8 @@ public class MockHttpClient implements HttpClient, AutoCloseable {
     private final SuccessfulHttpResponse response;
     private final List<ServerSentEvent> events;
     private RuntimeException failure;
+    private RuntimeException streamingFailure;
+    private final AtomicInteger remainingStreamingFailures = new AtomicInteger();
     private boolean scriptedStreaming;
     private Supplier<?> contextProbe = () -> null;
     private final BlockingQueue<StreamExchange> exchanges = new LinkedBlockingQueue<>();
@@ -94,6 +96,10 @@ public class MockHttpClient implements HttpClient, AutoCloseable {
         requests.add(request);
         if (scriptedStreaming) {
             throw new IllegalStateException("This client only supports stream(request, parser)");
+        }
+        if (remainingStreamingFailures.getAndUpdate(remaining -> Math.max(0, remaining - 1)) > 0) {
+            listener.onError(streamingFailure);
+            return;
         }
 
         listener.onOpen(response);
@@ -185,6 +191,19 @@ public class MockHttpClient implements HttpClient, AutoCloseable {
     public static MockHttpClient thatAlwaysFails(RuntimeException failure) {
         MockHttpClient client = new MockHttpClient();
         client.failure = ensureNotNull(failure, "failure");
+        return client;
+    }
+
+    /**
+     * Creates a client whose first {@code failures} streaming requests fail with the given exception
+     * (passed to {@link ServerSentEventListener#onError(Throwable)}, as a real client does for a non-2xx response,
+     * for example {@code new HttpException(503, "...")}), and whose later streaming requests stream the given events.
+     */
+    public static MockHttpClient thatFailsAndThenResponds(
+            int failures, RuntimeException failure, List<ServerSentEvent> events) {
+        MockHttpClient client = new MockHttpClient(events);
+        client.streamingFailure = ensureNotNull(failure, "failure");
+        client.remainingStreamingFailures.set(failures);
         return client;
     }
 

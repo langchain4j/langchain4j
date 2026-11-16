@@ -1,5 +1,6 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.OLLAMA;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
@@ -20,8 +21,11 @@ import java.util.Set;
  */
 public class OllamaStreamingChatModel extends OllamaBaseChatModel implements StreamingChatModel {
 
+    private final int maxRetries;
+
     public OllamaStreamingChatModel(OllamaStreamingChatModelBuilder builder) {
         init(builder);
+        this.maxRetries = getOrDefault(builder.maxRetries, 0);
     }
 
     @Override
@@ -38,6 +42,11 @@ public class OllamaStreamingChatModel extends OllamaBaseChatModel implements Str
     @Override
     public List<ChatModelListener> listeners() {
         return listeners;
+    }
+
+    @Override
+    public int maxRetries() {
+        return maxRetries;
     }
 
     @Override
@@ -61,12 +70,27 @@ public class OllamaStreamingChatModel extends OllamaBaseChatModel implements Str
     public static class OllamaStreamingChatModelBuilder
             extends Builder<OllamaStreamingChatModel, OllamaStreamingChatModelBuilder> {
 
+        private Integer maxRetries;
+
         public OllamaStreamingChatModelBuilder() {
             // This is public so it can be extended
         }
 
         @Override
         protected OllamaStreamingChatModelBuilder self() {
+            return this;
+        }
+
+        /**
+         * Sets the maximum number of times a failed request is retried, as long as nothing has been streamed
+         * to the handler yet. Default: {@code 0} (no retries), unlike the non-streaming model, which retries twice.
+         *
+         * @param maxRetries the maximum number of retries
+         * @return {@code this}
+         * @see StreamingChatModel#maxRetries()
+         */
+        public OllamaStreamingChatModelBuilder maxRetries(Integer maxRetries) {
+            this.maxRetries = maxRetries;
             return this;
         }
 

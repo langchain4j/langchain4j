@@ -254,3 +254,37 @@ model.chat(userMessage, new StreamingChatResponseHandler() {
 
 When `StreamingHandle.cancel()` is called, LangChain4j will close the connection and stop the streaming.
 Once `StreamingHandle.cancel()` has been called, `StreamingChatResponseHandler` will not receive any further callbacks.
+
+## Retries
+
+A streaming request can fail before the model sends anything, for example with a rate limit (HTTP 429),
+an overloaded server (HTTP 5xx) or a dropped connection.
+Set `maxRetries` on the model builder to retry such requests automatically:
+```java
+StreamingChatModel model = OpenAiStreamingChatModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName("gpt-4o-mini")
+        .maxRetries(2)
+        .build();
+```
+
+A failed request is retried only while nothing has been delivered to the `StreamingChatResponseHandler`:
+- If the request fails before `onPartialResponse`, `onPartialThinking`, `onPartialToolCall`, `onCompleteToolCall`
+  or `onCompleteResponse` was called, it is retried. The handler sees nothing from the failed attempt.
+- If any of these callbacks was already called, the request is not retried and `onError` is called as usual,
+  because the user may already have seen part of the response, or a tool may already be running.
+- Errors that retrying cannot fix, such as `AuthenticationException` or `InvalidRequestException`
+  (all subclasses of `NonRetriableException`), are not retried.
+
+Notes:
+- Retries are disabled by default (`maxRetries` is `0`), unlike the non-streaming models, which retry twice by default.
+- `onUnmappedRawEvent` does not prevent a retry, because some providers send raw events before any content.
+  So the handler may receive raw events from a failed attempt.
+- Retries are spaced with an exponential backoff (500 ms, 750 ms, 1125 ms, ... plus jitter) and do not block a thread.
+  A retried request runs on the default executor (see `ExecutorProvider`), not on the thread that called `chat(...)`.
+- `ChatModelListener`s are notified once per `chat(...)` call, not once per attempt.
+- Retries apply to `chat(..., StreamingChatResponseHandler)`; the [reactive API](#reactive-api) does not retry.
+- `maxRetries` is currently available on `OpenAiStreamingChatModel`, `AnthropicStreamingChatModel`,
+  `GoogleAiGeminiStreamingChatModel` and `OllamaStreamingChatModel`.
+  `OpenAiOfficialStreamingChatModel` and `AzureOpenAiStreamingChatModel` already retry failed HTTP requests
+  inside their SDKs, configured with their own `maxRetries`.
