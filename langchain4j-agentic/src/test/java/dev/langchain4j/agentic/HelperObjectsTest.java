@@ -1143,6 +1143,93 @@ class HelperObjectsTest {
         assertThat(resolvedTypes).containsExactly(Rephrasing.class);
     }
 
+    @Test
+    void helper_objects_resolver_is_not_called_for_a_human_in_the_loop_subagent_resolved_already_built() {
+        ListenerHelpers helpers = new ListenerHelpers();
+        List<Class<?>> resolvedTypes = new CopyOnWriteArrayList<>();
+        var configurator = AgentConfigurator.builder()
+                .subAgentResolver(type -> type == Confirmation.class
+                        ? AgenticServices.humanInTheLoopBuilder()
+                                .outputKey("confirmation")
+                                .responseProvider(() -> "yes")
+                                .build()
+                        : null)
+                .helperObjectsResolver(type -> {
+                    resolvedTypes.add(type);
+                    return type == Confirmation.class ? List.of(helpers) : List.of();
+                })
+                .build();
+
+        InstanceConfirmation confirmation =
+                AgenticServices.createAgenticSystem(InstanceConfirmation.class, configurator);
+
+        assertThat(confirmation.run("Mario")).isEqualTo("yes");
+        assertThat(resolvedTypes).containsExactly(InstanceConfirmation.class);
+        assertThat(helpers.listener.invokedAgents).isEmpty();
+    }
+
+    /** Shaped like the proxy of a container bean: a subclass of the subagent type listed in the workflow. */
+    public static class InstanceGreeterProxy extends InstanceGreeter {}
+
+    @Test
+    void helper_objects_of_a_resolved_subagent_are_the_ones_of_its_listed_type_not_of_its_class() {
+        register(Formatter.class, new Formatter());
+        register(Policy.class, new Policy("Voldemort"));
+        ListenerHelpers helpers = new ListenerHelpers();
+        List<Class<?>> resolvedTypes = new CopyOnWriteArrayList<>();
+        var configurator = AgentConfigurator.builder()
+                .subAgentResolver(type -> type == InstanceGreeter.class ? new InstanceGreeterProxy() : null)
+                .helperObjectsResolver(type -> {
+                    resolvedTypes.add(type);
+                    return type == InstanceGreeter.class ? List.of(helpers) : List.of();
+                })
+                .build();
+
+        InstanceGreeting greeting = AgenticServices.createAgenticSystem(InstanceGreeting.class, configurator);
+
+        assertThat(greeting.run("Mario")).isEqualTo("HELLO MARIO");
+        assertThat(helpers.listener.invokedAgents).containsExactly("greet");
+        assertThat(resolvedTypes).containsExactly(InstanceGreeting.class, InstanceGreeter.class);
+    }
+
+    @Test
+    void resolved_subagent_without_a_helper_objects_resolver_is_its_own_and_only_helper_object() {
+        ListenedGreeter greeter = new ListenedGreeter();
+        var configurator = AgentConfigurator.builder()
+                .subAgentResolver(type -> type == ListenedGreeter.class ? greeter : null)
+                .build();
+
+        ListenedGreeting greeting = AgenticServices.createAgenticSystem(ListenedGreeting.class, configurator);
+
+        assertThat(greeting.run("Mario")).isEqualTo("Hello Mario");
+        assertThat(greeter.listener.invokedAgents).containsExactly("greet");
+    }
+
+    @Test
+    void another_instance_of_the_class_of_the_resolved_subagent_is_a_second_helper_object() {
+        // helper objects are compared by identity, so a container returning a new instance at each lookup gives two
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(
+                        ListenedGreeting.class,
+                        resolvedSubagent(ListenedGreeter.class, new ListenedGreeter(), new ListenedGreeter())))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("@AgentListenerSupplier")
+                .hasMessageContaining(ListenedGreeter.class.getName() + ".listener()");
+    }
+
+    @Test
+    void null_helper_object_of_a_resolved_subagent_is_reported_for_its_listed_type() {
+        var configurator = AgentConfigurator.builder()
+                .subAgentResolver(type -> type == InstanceGreeter.class ? new InstanceGreeterProxy() : null)
+                .helperObjectsResolver(
+                        type -> type == InstanceGreeter.class ? Arrays.asList((Object) null) : List.of())
+                .build();
+
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(InstanceGreeting.class, configurator))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The helperObjectsResolver returned a null helper object for the agent "
+                        + InstanceGreeter.class.getName());
+    }
+
     // ── Class-based workflow agents with an agentInstanceFactory: the contract an integration relies on ──
 
     /**

@@ -88,6 +88,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.function.Consumer;
@@ -433,21 +434,15 @@ public class AgenticServices {
      * but never of the events of the agents containing it, like the model calls that a supervisor makes to choose
      * its subagents.
      * <p>
-     * The {@code helperObjectsResolver} is called with the type of every agent of the system, the root agent and
-     * each nested agent, and returns its <em>helper objects</em>: the objects whose instance methods, annotated with
-     * the declarative annotations like {@code @ExitCondition} or {@code @ChatModelSupplier}, configure the agent
+     * The {@code helperObjectsResolver} is called with the type of every agent that the system builds, the root agent
+     * and each nested agent, and returns its <em>helper objects</em>: the objects whose instance methods, annotated
+     * with the declarative annotations like {@code @ExitCondition} or {@code @ChatModelSupplier}, configure the agent
      * instead of, or next to, the static methods of the agent type. It can return {@code null} or an empty list for
      * an agent without helper objects. It is how a dependency injection container provides the helpers of an agent
      * as methods of a managed bean, typically an instance of the agent type itself.
      * <p>
-     * A subagent that the {@code subAgentResolver} provides as an instance, a non-AI agent or a human-in-the-loop
-     * object, has that instance as its first helper object, followed by the ones that the
-     * {@code helperObjectsResolver} returns for its type, the one listed among the subagents. For a subagent that
-     * the {@code subAgentResolver} provides already built, the {@code helperObjectsResolver} is not called: its
-     * helpers belong to whoever built it.
-     * <p>
-     * The resolver is called once for each agent, when the agentic system is built. The returned objects are then
-     * shared by all the invocations of the agent, also by the ones running at the same time, so they must be
+     * The {@code helperObjectsResolver} is called once for each agent, when the agentic system is built.
+     * The returned objects are then shared by all the invocations of the agent, also by the ones running at the same time, so they must be
      * thread-safe, or be proxies finding the current instance at each call, like the client proxies of the
      * normal-scoped beans of a CDI container. Their annotated methods are found and invoked through reflection, on the
      * class of each object, its superclasses and its interfaces. They can have any visibility but private, and cannot
@@ -456,6 +451,17 @@ public class AgenticServices {
      * final class. A helper method declared by the agent type itself that is
      * not static needs one of the helper objects to be invoked on, an instance of its declaring class, typically the
      * agent bean: the agentic system fails to build otherwise, instead of skipping the helper silently.
+     * <p>
+     * The {@code subAgentResolver} is called with each type listed among the subagents of a declarative agent, and
+     * returns the subagent to use for it, or {@code null} to let the system build it from that type. When it returns
+     * an instance of a class with an {@code @Agent} or {@code @HumanInTheLoop} method, a non-AI agent or a
+     * human-in-the-loop object, the helper objects of the subagent are that instance followed by the ones that the
+     * {@code helperObjectsResolver} returns for the listed type, not for the class of the instance, which can be the
+     * proxy of a container bean. Helper objects are compared by identity: an object returned by both resolvers, like
+     * the bean of a container, counts once, while another instance of the same class is a second helper object, whose
+     * helpers conflict with the ones of the first. When the {@code subAgentResolver} returns an agent that is built
+     * already, like one created by an agent builder or by {@code AgenticServices.humanInTheLoopBuilder()}, the
+     * {@code helperObjectsResolver} is not called for it: its helpers belong to whoever built it.
      * <p>
      * Create a configurator with {@link #builder()}, setting only the hooks needed: the constructors are kept, but
      * each hook added to the record adds a positional component to them.
@@ -508,7 +514,14 @@ public class AgenticServices {
                 return List.of();
             }
             List<?> helperObjects = helperObjectsResolver.apply(agentType);
-            return helperObjects == null ? List.of() : new ArrayList<>(helperObjects);
+            if (helperObjects == null) {
+                return List.of();
+            }
+            if (helperObjects.stream().anyMatch(Objects::isNull)) {
+                throw new IllegalArgumentException(
+                        "The helperObjectsResolver returned a null helper object for the agent " + agentType.getName());
+            }
+            return new ArrayList<>(helperObjects);
         }
 
         public static final class Builder {

@@ -110,9 +110,10 @@ public class AgentUtil {
 
     /**
      * Creates the executor of the given agent, as {@link #agentToExecutor(Object)} does. The given supplier provides
-     * the helper objects of the declared type of the agent in a declarative agentic system, and is called only when
-     * the agent is an instance with an agent method, a non-AI agent or a human-in-the-loop object: any other agent
-     * was built already, with its own helpers.
+     * the helper objects of the declared type of the agent in a declarative agentic system. It is called only when
+     * the agent is an instance of a class with an agent method, a non-AI agent or a human-in-the-loop object, whose
+     * helper objects are then the agent itself followed by the supplied ones, and not for any other kind of agent,
+     * like one created by a builder.
      */
     public static AgentExecutor agentToExecutor(Object agent, Supplier<List<Object>> helperObjectsOfDeclaredType) {
         if (agent instanceof AgentExecutor executor) {
@@ -131,9 +132,12 @@ public class AgentUtil {
         if (agent instanceof InternalAgent internalAgent) {
             return agentToExecutor(internalAgent);
         }
+        if (agent instanceof AgentSpecsProvider) {
+            // a human-in-the-loop agent created by its builder, which sets its listener and activation condition
+            return nonAiAgentToExecutor(agent, validateAgentClass(agent.getClass()));
+        }
         // an agent passed as an instance is its own helper object: its activation condition and listener can be
-        // instance methods, and the parameters of its agent method can be provided by a SupplierParameterResolver.
-        // In a declarative system the helper objects of its declared type come next to it
+        // instance methods, and the parameters of its agent method can be provided by a SupplierParameterResolver
         List<Object> helperObjects = new ArrayList<>();
         helperObjects.add(agent);
         helperObjects.addAll(helperObjectsOfDeclaredType.get());
