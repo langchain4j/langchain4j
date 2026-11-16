@@ -33,6 +33,12 @@ import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.URI;
+import java.net.URL;
+import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Period;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -568,8 +574,16 @@ public class JsonSchemaElementUtils {
         return type == String.class
                 || type == char.class
                 || type == Character.class
-                || CharSequence.class.isAssignableFrom(type)
-                || type == UUID.class;
+                || type == UUID.class
+                || type == URI.class
+                || type == URL.class
+                || type == Path.class
+                || type == Duration.class
+                || type == Period.class
+                || type == ZoneId.class
+                || type == Currency.class
+                || type == Locale.class
+                || CharSequence.class.isAssignableFrom(type);
     }
 
     static boolean isJsonArray(Class<?> type) {
