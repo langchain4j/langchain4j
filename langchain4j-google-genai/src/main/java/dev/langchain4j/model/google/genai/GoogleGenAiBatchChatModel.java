@@ -350,7 +350,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         }
 
         /**
-         * The thinking budget to use. This is a legacy parameter. For Gemini 3.x
+         * The thinking budget to use. This is a legacy parameter. For Gemini 3 and later
          * models, use {@link #thinkingLevel(String)} instead.
          */
         public Builder thinkingBudget(Integer thinkingBudget) {
@@ -359,7 +359,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         }
 
         /**
-         * The thinking level to use. This is the recommended parameter for Gemini 3.x
+         * The thinking level to use. This is the recommended parameter for Gemini 3 and later
          * models.
          * Allowed values are {@code "MINIMAL"}, {@code "LOW"}, {@code "MEDIUM"},
          * {@code "HIGH"}.

@@ -16,7 +16,7 @@ class GoogleGenAiChatModelThinkingIT {
     private static final String MODEL_NAME = "gemini-3.8-flash";
 
     // not every model returns a thought signature on parts that carry no function call; this one does
-    private static final String THOUGHT_SIGNATURE_MODEL_NAME = "gemini-3.1-pro-preview";
+    private static final String THOUGHT_SIGNATURE_MODEL_NAME = "gemini-4-hydrogen";
 
     private static final UserMessage QUESTION = UserMessage.from(
             "Plan a 3-stop San Francisco itinerary starting at the Golden Gate Bridge that minimizes travel time between stops. Think it through carefully.");
@@ -37,7 +37,7 @@ class GoogleGenAiChatModelThinkingIT {
                 .modelName(THOUGHT_SIGNATURE_MODEL_NAME)
                 .includeThoughts(true)
                 .returnThinking(true)
-                .timeout(ofMinutes(2)); // this preview model sometimes stalls for minutes, the call is then retried
+                .timeout(ofMinutes(2));
     }
 
     @Test

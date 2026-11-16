@@ -31,7 +31,7 @@ https://github.com/googleapis/java-genai
 - [Custom Labels](#custom-labels)
 - [File API](#file-api)
 - [Cached Content Support](#cached-content-support)
-- [Thinking Models (Gemini 3.0+)](#thinking-models-gemini-30)
+- [Thinking Models](#thinking-models)
 - [Token Usage](#token-usage)
 - [Multimodality (Audio, Video, PDF)](#multimodality-audio-video-pdf)
 - [Audio Transcription](#audio-transcription)
@@ -67,7 +67,7 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     // .googleCredentials(...) // Optional: explicitly provide credentials
     .projectId("your-google-cloud-project-id")
     .location("us-central1")
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .build();
 ```
 
@@ -75,13 +75,14 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
 
 Check the list of [available models](https://ai.google.dev/gemini-api/docs/models/gemini) in the documentation.
 
-* `gemini-3.1-pro-preview`
+* `gemini-4-hydrogen`
+* `gemini-4-carbon`
+* `gemini-4-argon`
+* `gemini-3.8-flash`
 * `gemini-3.1-flash-lite`
-* `gemini-3-pro-preview`
-* `gemini-3-flash-preview`
-* `gemini-2.5-pro`
-* `gemini-2.5-flash`
-* `gemini-2.5-flash-lite`
+
+The Gemini 4 models are available on the Gemini Developer API only, not on Vertex AI, and do not support explicit caching.
+Their thinking differs from the Gemini 3 models (see [Thinking Models](#thinking-models)).
 
 (See the [official documentation](https://ai.google.dev/gemini-api/docs/models) for the full list of specialized preview models like `-image`, `-tts`, and `-live`).
 
@@ -92,7 +93,7 @@ The usual `chat(...)` methods are available:
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .build();
 
 String response = gemini.chat("Hello Gemini!");
@@ -103,7 +104,7 @@ As well as the `ChatResponse chat(ChatRequest req)` method:
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .build();
 
 ChatResponse chatResponse = gemini.chat(ChatRequest.builder()
@@ -122,7 +123,7 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     // or .googleCredentials(...)
     .projectId(...)
     .location(...)
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .temperature(1.0)
     .topP(0.95)
     .topK(64)
@@ -155,7 +156,7 @@ ones while the per-request tools and system instruction are preserved.
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .generateContentConfigCustomizer(config -> config.responseLogprobs(true).logprobs(5))
     .build();
 ```
@@ -171,7 +172,7 @@ To capture these logs, configure `.logRequests(true)`, `.logResponses(true)` (or
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .logRequests(true)
     .logResponses(true)
     // Or: .logRequestsAndResponses(true)
@@ -265,7 +266,7 @@ The response must be handled by a `StreamingChatResponseHandler`.
 ```java
 StreamingChatModel gemini = GoogleGenAiStreamingChatModel.builder()
         .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-        .modelName("gemini-2.5-flash")
+        .modelName("gemini-3.8-flash")
         .build();
 
 CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
@@ -304,7 +305,7 @@ ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor(); // or yo
 
 StreamingChatModel gemini = GoogleGenAiStreamingChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .executor(executor)
     .build();
 ```
@@ -329,7 +330,7 @@ WeatherForecastService weatherForecastService = new WeatherForecastService();
 
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .temperature(0.0)
     .build();
 
@@ -415,7 +416,7 @@ interface WeatherForecastAssistant {
 
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .build();
 
 WeatherForecastAssistant forecastAssistant = AiServices.builder(WeatherForecastAssistant.class)
@@ -440,11 +441,11 @@ Once you have created the cached content using the official Google Gen AI SDK or
 
 ```java
 // Pass your cached content URI here
-String cachedContentUri = "projects/123456/locations/us-central1/cachedContents/my-cached-content-789";
+String cachedContentUri = "cachedContents/my-cached-content-789";
 
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-pro")
+    .modelName("gemini-3.8-flash")
     .cachedContent(cachedContentUri)
     .build();
 
@@ -452,6 +453,7 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
 String response = gemini.chat("Summarize the cached document in 3 bullet points.");
 ```
 
+The model must be the one the cache was created with.
 This feature is available on `GoogleGenAiChatModel`, `GoogleGenAiStreamingChatModel`, and `GoogleGenAiBatchChatModel`.
 
 ### Creating and managing caches
@@ -465,7 +467,7 @@ GoogleGenAiCaches caches = GoogleGenAiCaches.builder()
 
 // Cache a large, reusable context (a system instruction plus a long document)
 CachedContent cache = caches.createCache(
-    "gemini-2.5-flash",
+    "gemini-3.8-flash",
     List.of(
         SystemMessage.from("You are a precise assistant answering questions about the attached document."),
         UserMessage.from(longDocumentText)),
@@ -474,7 +476,7 @@ CachedContent cache = caches.createCache(
 // Reuse it across many requests via cachedContent
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .cachedContent(cache.name().orElseThrow())
     .build();
 
@@ -488,21 +490,25 @@ caches.deleteCache(cache.name().orElseThrow());
 
 > Note: explicit context caching requires a paid tier; it is not available on the free tier.
 
-## Thinking Models (Gemini 3.0+)
+## Thinking Models
 
-Gemini 3.0 models (like `gemini-3.0-pro` and `gemini-3.0-flash`) support advanced reasoning (thinking) capabilities. 
+Gemini 3 and later models (like `gemini-4-hydrogen` and `gemini-3.8-flash`) support advanced reasoning (thinking) capabilities. 
 You can enable this by specifying a `thinkingLevel` during model configuration. The supported values are `"MINIMAL"`, `"LOW"`, `"MEDIUM"`, and `"HIGH"`:
 
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-3.0-pro")
+    .modelName("gemini-4-hydrogen")
     .thinkingLevel("MEDIUM")
     .build();
 ```
 
 > [!NOTE]
 > Previously, thinking was configured using a token-based `thinkingBudget`. The `thinkingBudget` parameter is now considered legacy, though still supported. You cannot specify both `thinkingLevel` and `thinkingBudget` at the same time.
+>
+> `gemini-4-argon` and `gemini-4-carbon` do not think with a `thinkingBudget` or with `"LOW"`: use `"MEDIUM"` or `"HIGH"`.
+> `gemini-4-hydrogen` always thinks, even with `thinkingBudget(0)`, so leave room for thinking in `maxOutputTokens`.
+> It also accepts `"XHIGH"`.
 
 > [!TIP]
 > The LangChain4j `google-genai` integration seamlessly manages the complex state required for multi-turn tool execution with thinking models. It automatically persists and injects the necessary hidden `thought_signature` tokens across conversation turns, ensuring robust and uninterrupted agentic workflows!
@@ -516,7 +522,7 @@ and `returnThinking(true)` to have them mapped to `AiMessage.thinking()`:
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-3.1-pro-preview")
+    .modelName("gemini-4-hydrogen")
     .thinkingLevel("MEDIUM")
     .includeThoughts(true)
     .returnThinking(true)
@@ -569,7 +575,7 @@ via `GoogleGenAiChatRequestParameters`:
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .automaticContinuation(false)
     .build();
 ```
@@ -620,7 +626,7 @@ The `GoogleGenAiImageModel` allows you to generate images from text prompts. It 
 ```java
 ImageModel imageModel = GoogleGenAiImageModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-3.1-flash-image-preview")
+    .modelName("gemini-3.1-flash-image")
     .aspectRatio("16:9")
     .build();
 
@@ -684,7 +690,7 @@ You can create batch jobs inline or from an uploaded file on Google Cloud.
 ```java
 GoogleGenAiBatchChatModel batchChatModel = GoogleGenAiBatchChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .build();
 
 BatchResponse<ChatResponse> batchResponse = batchChatModel.submit(
@@ -707,7 +713,7 @@ If you enable Google Search grounding or use a Vertex AI Search datastore, the G
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .enableGoogleSearch(true)
     .build();
 
@@ -740,7 +746,7 @@ You can apply custom key-value labels to your Google Gen AI requests, which can 
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .labels(Map.of("environment", "production", "team", "backend"))
     .build();
 ```
@@ -774,7 +780,7 @@ String uploadedFileUri = fileApi.uploadFile(
 // You can now use this URI in your chat requests
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .build();
 
 ChatResponse response = gemini.chat(ChatRequest.builder()
@@ -792,7 +798,7 @@ The integration fully supports LangChain4j's multimodal content types. The under
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .build();
 
 ChatResponse response = gemini.chat(ChatRequest.builder()
@@ -929,7 +935,7 @@ You can accurately estimate the number of tokens in your prompts and messages us
 ```java
 TokenCountEstimator estimator = GoogleGenAiTokenCountEstimator.builder()
     .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
+    .modelName("gemini-3.8-flash")
     .build();
 
 int tokenCount = estimator.estimateTokenCount("How many tokens is this sentence?");
@@ -951,3 +957,8 @@ availableModels.forEach(model -> {
     System.out.println("Supported Generation Methods: " + model.supportedGenerationMethods());
 });
 ```
+
+## Decision Models
+
+The Gemini Decisions API answers yes/no, choice and scale questions with calibrated probabilities, see
+[Google GenAI decision models](/integrations/decision-models/google-genai).

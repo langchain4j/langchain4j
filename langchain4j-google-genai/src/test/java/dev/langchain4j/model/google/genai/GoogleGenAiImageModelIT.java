@@ -19,8 +19,8 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 class GoogleGenAiImageModelIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
-    private static final String MODEL_NAME = "gemini-3.1-flash-image-preview";
-    private static final String NANO_BANANA_PRO = "gemini-3-pro-image-preview";
+    private static final String MODEL_NAME = "gemini-3.1-flash-image";
+    private static final String NANO_BANANA_PRO = "gemini-3-pro-image";
     private static final Path OUTPUT_DIR = Paths.get("target", "test-images");
 
     @BeforeAll

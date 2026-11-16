@@ -3,11 +3,14 @@ package dev.langchain4j.model.google.genai;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
 import com.google.genai.types.HttpOptions;
+import com.google.genai.types.HttpRetryOptions;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
 class GoogleGenAiClientFactory {
+
+    private static final String GEMINI_API_VERSION = "v1beta";
 
     static Client createClient(
             String apiKey,
@@ -17,6 +20,18 @@ class GoogleGenAiClientFactory {
             Duration timeout,
             Map<String, String> customHeaders,
             String apiEndpoint) {
+        return createClient(apiKey, googleCredentials, projectId, location, timeout, customHeaders, apiEndpoint, null);
+    }
+
+    static Client createClient(
+            String apiKey,
+            GoogleCredentials googleCredentials,
+            String projectId,
+            String location,
+            Duration timeout,
+            Map<String, String> customHeaders,
+            String apiEndpoint,
+            Integer maxRetries) {
 
         HttpOptions.Builder httpOptions = HttpOptions.builder();
 
@@ -35,9 +50,18 @@ class GoogleGenAiClientFactory {
             httpOptions.baseUrl(apiEndpoint);
         }
 
-        Client.Builder clientBuilder = Client.builder().httpOptions(httpOptions.build());
+        if (maxRetries != null) {
+            httpOptions.retryOptions(
+                    HttpRetryOptions.builder().attempts(maxRetries + 1).build());
+        }
 
         boolean isVertex = googleCredentials != null || (projectId != null && location != null);
+
+        if (!isVertex) {
+            httpOptions.apiVersion(GEMINI_API_VERSION);
+        }
+
+        Client.Builder clientBuilder = Client.builder().httpOptions(httpOptions.build());
 
         if (isVertex) {
             clientBuilder.vertexAI(true);

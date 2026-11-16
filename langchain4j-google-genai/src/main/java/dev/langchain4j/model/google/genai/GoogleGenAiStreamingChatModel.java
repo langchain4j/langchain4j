@@ -498,7 +498,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         /**
          * Sets the model to use for streaming chat completions.
          * <p>
-         * Examples: {@code "gemini-2.0-flash"}, {@code "gemini-2.5-pro"}.
+         * Examples: {@code "gemini-3.8-flash"}, {@code "gemini-4-hydrogen"}.
          *
          * @param modelName the model name
          * @return {@code this}
@@ -590,7 +590,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * The thinking budget to use. This is a legacy parameter. For Gemini 3.x models, use {@link #thinkingLevel(String)} instead.
+         * The thinking budget to use. This is a legacy parameter. For Gemini 3 and later models, use {@link #thinkingLevel(String)} instead.
          */
         public Builder thinkingBudget(Integer thinkingBudget) {
             this.thinkingBudget = thinkingBudget;
@@ -598,7 +598,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * The thinking level to use. This is the recommended parameter for Gemini 3.x models.
+         * The thinking level to use. This is the recommended parameter for Gemini 3 and later models.
          * Allowed values are {@code "MINIMAL"}, {@code "LOW"}, {@code "MEDIUM"}, {@code "HIGH"}.
          * Note that this cannot be used together with {@link #thinkingBudget(Integer)}.
          */
