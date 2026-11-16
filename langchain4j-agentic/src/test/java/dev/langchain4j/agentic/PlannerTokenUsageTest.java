@@ -17,20 +17,22 @@ import dev.langchain4j.agentic.supervisor.SupervisorContextStrategy;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.output.OutputParsingException;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 class PlannerTokenUsageTest {
@@ -111,13 +113,35 @@ class PlannerTokenUsageTest {
         }
     }
 
-    private static ChatModelMock plannerModel() {
-        return ChatModelMock.thatAlwaysResponds("go on");
+    private static MockChatModel plannerModel() {
+        return MockChatModel.thatResponds("go on").thenRepeats();
+    }
+
+    private static ChatResponse reply(String text, @Nullable String modelName, @Nullable TokenUsage tokenUsage) {
+        return reply(AiMessage.from(text), modelName, tokenUsage);
+    }
+
+    private static ChatResponse reply(
+            AiMessage aiMessage, @Nullable String modelName, @Nullable TokenUsage tokenUsage) {
+        return ChatResponse.builder()
+                .aiMessage(aiMessage)
+                .modelName(modelName)
+                .tokenUsage(tokenUsage)
+                .build();
+    }
+
+    /** A decision model answering the question of the {@link DecisionModelPlanner} once. */
+    private static MockDecisionModel decisionModel() {
+        return MockDecisionModel.thatResponds(DecisionResponse.builder()
+                .answer("invoke", YesNoAnswer.builder().probability(0.9).build())
+                .modelName("decision-model")
+                .tokenUsage(new TokenUsage(40, 2))
+                .build());
     }
 
     private static Assistant assistant() {
         return AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("It is noon").withTokenUsage(new TokenUsage(7, 1)))
+                .chatModel(MockChatModel.thatResponds("It is noon").thenRepeats().withTokenUsage(new TokenUsage(7, 1)))
                 .build();
     }
 
@@ -147,9 +171,8 @@ class PlannerTokenUsageTest {
     @Test
     void planner_reports_each_response_of_its_chat_model_to_the_listeners_of_its_agent() {
         List<PlannerModelResponse> responses = new CopyOnWriteArrayList<>();
-        ChatModelMock model = plannerModel()
-                .withModelNames("planning-model", "planning-model")
-                .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5));
+        MockChatModel model = MockChatModel.thatResponds(reply("go on", "planning-model", new TokenUsage(100, 20)))
+                .thenResponds(reply("go on", "planning-model", new TokenUsage(30, 5)));
 
         pattern(new ChatModelPlanner(model), recording(responses)).run("what time is it?");
 
@@ -167,10 +190,7 @@ class PlannerTokenUsageTest {
     @Test
     void planner_reports_the_response_of_its_decision_model_to_the_listeners_of_its_agent() {
         List<PlannerModelResponse> responses = new CopyOnWriteArrayList<>();
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(
-                        Map.of("invoke", YesNoAnswer.builder().probability(0.9).build()))
-                .withModelName("decision-model")
-                .withTokenUsage(new TokenUsage(40, 2));
+        MockDecisionModel model = decisionModel();
 
         pattern(new DecisionModelPlanner(model), recording(responses)).run("what time is it?");
 
@@ -201,7 +221,8 @@ class PlannerTokenUsageTest {
     @Test
     void monitor_counts_the_model_calls_of_a_planner_on_its_own_invocation_and_not_those_of_its_subagents() {
         AgentMonitor monitor = new AgentMonitor();
-        ChatModelMock model = plannerModel().withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5));
+        MockChatModel model = MockChatModel.thatResponds(reply("go on", null, new TokenUsage(100, 20)))
+                .thenResponds(reply("go on", null, new TokenUsage(30, 5)));
 
         pattern(new ChatModelPlanner(model), monitor).run("what time is it?");
 
@@ -216,10 +237,7 @@ class PlannerTokenUsageTest {
     @Test
     void monitor_counts_the_decision_calls_of_a_planner_without_reporting_a_decision_response() {
         AgentMonitor monitor = new AgentMonitor();
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(
-                        Map.of("invoke", YesNoAnswer.builder().probability(0.9).build()))
-                .withModelName("decision-model")
-                .withTokenUsage(new TokenUsage(40, 2));
+        MockDecisionModel model = decisionModel();
 
         pattern(new DecisionModelPlanner(model), monitor).run("what time is it?");
 
@@ -233,7 +251,8 @@ class PlannerTokenUsageTest {
     @Test
     void planner_whose_model_calls_used_the_same_model_reports_that_model() {
         AgentMonitor monitor = new AgentMonitor();
-        ChatModelMock model = plannerModel().withModelNames("planning-model", "planning-model");
+        MockChatModel model = MockChatModel.thatResponds(reply("go on", "planning-model", null))
+                .thenResponds(reply("go on", "planning-model", null));
 
         pattern(new ChatModelPlanner(model), monitor).run("what time is it?");
 
@@ -243,9 +262,8 @@ class PlannerTokenUsageTest {
     @Test
     void planner_whose_model_calls_used_different_models_reports_its_tokens_without_a_model() {
         AgentMonitor monitor = new AgentMonitor();
-        ChatModelMock model = plannerModel()
-                .withModelNames("first-model", "second-model")
-                .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5));
+        MockChatModel model = MockChatModel.thatResponds(reply("go on", "first-model", new TokenUsage(100, 20)))
+                .thenResponds(reply("go on", "second-model", new TokenUsage(30, 5)));
 
         pattern(new ChatModelPlanner(model), monitor).run("what time is it?");
 
@@ -268,7 +286,8 @@ class PlannerTokenUsageTest {
     @Test
     void planner_nested_in_a_workflow_keeps_its_tokens_on_its_own_invocation() {
         AgentMonitor monitor = new AgentMonitor();
-        ChatModelMock model = plannerModel().withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5));
+        MockChatModel model = MockChatModel.thatResponds(reply("go on", null, new TokenUsage(100, 20)))
+                .thenResponds(reply("go on", null, new TokenUsage(30, 5)));
         Pattern pattern = pattern(new ChatModelPlanner(model), null);
 
         AgenticServices.sequenceBuilder(Workflow.class)
@@ -303,14 +322,8 @@ class PlannerTokenUsageTest {
     void planner_failing_after_a_model_call_keeps_the_tokens_it_spent_in_the_monitor() {
         List<PlannerModelResponse> responses = new CopyOnWriteArrayList<>();
         AgentMonitor monitor = new AgentMonitor();
-        ChatModelMock model = ChatModelMock.thatResponds(request -> {
-                    if (!responses.isEmpty()) {
-                        throw new IllegalStateException("model failed");
-                    }
-                    return AiMessage.from("go on");
-                })
-                .withModelNames("planning-model")
-                .withTokenUsage(new TokenUsage(100, 20));
+        MockChatModel model = MockChatModel.thatResponds(reply("go on", "planning-model", new TokenUsage(100, 20)))
+                .thenFails(new IllegalStateException("model failed"));
         Pattern pattern = AgenticServices.plannerBuilder(Pattern.class)
                 .name("pattern")
                 .subAgents(assistant())
@@ -337,9 +350,10 @@ class PlannerTokenUsageTest {
     @Test
     void planner_whose_subagent_fails_keeps_the_tokens_it_spent_in_the_monitor() {
         AgentMonitor monitor = new AgentMonitor();
-        ChatModelMock model = plannerModel().withTokenUsage(new TokenUsage(100, 20));
+        MockChatModel model = plannerModel().withTokenUsage(new TokenUsage(100, 20));
         Assistant failingAssistant = AgenticServices.agentBuilder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysThrowsException())
+                .chatModel(MockChatModel.thatFails(new RuntimeException("assistant failed"))
+                        .thenRepeats())
                 .build();
         Pattern pattern = AgenticServices.plannerBuilder(Pattern.class)
                 .name("pattern")
@@ -391,9 +405,9 @@ class PlannerTokenUsageTest {
     @Test
     void supervisor_reports_each_planning_call_to_its_listeners() {
         List<PlannerModelResponse> responses = new CopyOnWriteArrayList<>();
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(INVOKE_ASSISTANT, DONE)
-                .withModelNames("planning-model", "planning-model")
-                .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5));
+        MockChatModel model = MockChatModel.thatResponds(
+                        reply(INVOKE_ASSISTANT, "planning-model", new TokenUsage(100, 20)))
+                .thenResponds(reply(DONE, "planning-model", new TokenUsage(30, 5)));
 
         supervisor(model, SupervisorResponseStrategy.SUMMARY, SupervisorContextStrategy.CHAT_MEMORY, recording(responses))
                 .invoke("What time is it?");
@@ -409,9 +423,9 @@ class PlannerTokenUsageTest {
     @Test
     void monitor_counts_the_planning_calls_of_a_supervisor_and_not_the_calls_of_its_subagents() {
         AgentMonitor monitor = new AgentMonitor();
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(INVOKE_ASSISTANT, DONE)
-                .withModelNames("planning-model", "planning-model")
-                .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5));
+        MockChatModel model = MockChatModel.thatResponds(
+                        reply(INVOKE_ASSISTANT, "planning-model", new TokenUsage(100, 20)))
+                .thenResponds(reply(DONE, "planning-model", new TokenUsage(30, 5)));
 
         String result = supervisor(
                         model, SupervisorResponseStrategy.SUMMARY, SupervisorContextStrategy.CHAT_MEMORY, monitor)
@@ -429,10 +443,11 @@ class PlannerTokenUsageTest {
     @Test
     void supervisor_scoring_its_responses_counts_the_scoring_call() {
         AgentMonitor monitor = new AgentMonitor();
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(INVOKE_ASSISTANT, DONE, AiMessage.from("""
+        MockChatModel model = MockChatModel.thatResponds(reply(INVOKE_ASSISTANT, null, new TokenUsage(100, 20)))
+                .thenResponds(reply(DONE, null, new TokenUsage(30, 5)))
+                .thenResponds(reply("""
                         {"score1": 0.2, "score2": 0.9}
-                        """))
-                .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5), new TokenUsage(10, 2));
+                        """, null, new TokenUsage(10, 2)));
 
         String result = supervisor(
                         model, SupervisorResponseStrategy.SCORED, SupervisorContextStrategy.CHAT_MEMORY, monitor)
@@ -448,9 +463,8 @@ class PlannerTokenUsageTest {
     void supervisor_whose_planning_reply_cannot_be_parsed_still_reports_that_call() {
         List<PlannerModelResponse> responses = new CopyOnWriteArrayList<>();
         AgentMonitor monitor = new AgentMonitor();
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("this is not an agent invocation")
-                .withModelNames("planning-model")
-                .withTokenUsage(new TokenUsage(100, 20));
+        MockChatModel model = MockChatModel.thatResponds(
+                reply("this is not an agent invocation", "planning-model", new TokenUsage(100, 20)));
         SupervisorAgent supervisor = supervisor(
                 model,
                 SupervisorResponseStrategy.SUMMARY,
@@ -470,9 +484,9 @@ class PlannerTokenUsageTest {
     @Test
     void supervisor_whose_scoring_reply_cannot_be_parsed_still_reports_that_call() {
         AgentMonitor monitor = new AgentMonitor();
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(
-                        INVOKE_ASSISTANT, DONE, AiMessage.from("these are not scores"))
-                .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5), new TokenUsage(10, 2));
+        MockChatModel model = MockChatModel.thatResponds(reply(INVOKE_ASSISTANT, null, new TokenUsage(100, 20)))
+                .thenResponds(reply(DONE, null, new TokenUsage(30, 5)))
+                .thenResponds(reply("these are not scores", null, new TokenUsage(10, 2)));
         SupervisorAgent supervisor =
                 supervisor(model, SupervisorResponseStrategy.SCORED, SupervisorContextStrategy.CHAT_MEMORY, monitor);
 
@@ -490,8 +504,9 @@ class PlannerTokenUsageTest {
         AgentMonitor monitor = new AgentMonitor();
         AiMessage summary = AiMessage.from("The assistant told the time");
         // the context is empty at the first step, so it is summarized only before the second planning call
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(INVOKE_ASSISTANT, summary, DONE)
-                .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(10, 2), new TokenUsage(30, 5));
+        MockChatModel model = MockChatModel.thatResponds(reply(INVOKE_ASSISTANT, null, new TokenUsage(100, 20)))
+                .thenResponds(reply(summary, null, new TokenUsage(10, 2)))
+                .thenResponds(reply(DONE, null, new TokenUsage(30, 5)));
 
         supervisor(
                         model,
@@ -523,8 +538,8 @@ class PlannerTokenUsageTest {
         List<PlannerModelResponse> responses = new CopyOnWriteArrayList<>();
         AgentMonitor monitor = new AgentMonitor();
         // the first call of this model summarizes the context, the second one is the call of the agent itself
-        ChatModelMock recapperModel = ChatModelMock.thatAlwaysResponds("recap")
-                .withTokenUsages(new TokenUsage(10, 2), new TokenUsage(30, 5));
+        MockChatModel recapperModel = MockChatModel.thatResponds(reply("recap", null, new TokenUsage(10, 2)))
+                .thenResponds(reply("recap", null, new TokenUsage(30, 5)));
         Recapper recapper = AgenticServices.agentBuilder(Recapper.class)
                 .chatModel(recapperModel)
                 .summarizedContext("answer")

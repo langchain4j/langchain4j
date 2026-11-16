@@ -11,8 +11,10 @@ import dev.langchain4j.agentic.declarative.K;
 import dev.langchain4j.agentic.declarative.TypedKey;
 import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.output.OutputParsingException;
 import java.util.Map;
@@ -191,11 +193,18 @@ class P2PPlannerTest {
 
     // ── Token usage ──
 
+    /** The reply of the model extracting the variables, with its model name and token usage. */
+    private static ChatResponse extractionReply(String text) {
+        return ChatResponse.builder()
+                .aiMessage(AiMessage.from(text))
+                .modelName("extraction-model")
+                .tokenUsage(new TokenUsage(50, 8))
+                .build();
+    }
+
     @Test
     void should_count_the_variables_extraction_call_on_the_p2p_agent() {
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("{\"pong\": \"seed\"}")
-                .withModelNames("extraction-model")
-                .withTokenUsage(new TokenUsage(50, 8));
+        MockChatModel model = MockChatModel.thatResponds(extractionReply("{\"pong\": \"seed\"}"));
         AgentMonitor monitor = new AgentMonitor();
         P2PAgent system = AgenticServices.plannerBuilder(P2PAgent.class)
                 .subAgents(pingAgent, pongAgent)
@@ -214,9 +223,7 @@ class P2PPlannerTest {
 
     @Test
     void should_count_the_variables_extraction_call_also_when_its_reply_cannot_be_parsed() {
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("these are not variables")
-                .withModelNames("extraction-model")
-                .withTokenUsage(new TokenUsage(50, 8));
+        MockChatModel model = MockChatModel.thatResponds(extractionReply("these are not variables"));
         AgentMonitor monitor = new AgentMonitor();
         P2PAgent system = AgenticServices.plannerBuilder(P2PAgent.class)
                 .subAgents(pingAgent, pongAgent)
@@ -236,7 +243,8 @@ class P2PPlannerTest {
 
     @Test
     void should_count_no_tokens_when_there_is_no_request_to_extract_the_variables_from() {
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds("unused").withTokenUsage(new TokenUsage(50, 8));
+        // a model with tokens, so that a call that should not happen would be counted
+        MockChatModel model = MockChatModel.thatResponds("unused").withTokenUsage(new TokenUsage(50, 8));
         AgentMonitor monitor = new AgentMonitor();
         UntypedAgent system = AgenticServices.plannerBuilder()
                 .subAgents(pingAgent, pongAgent)

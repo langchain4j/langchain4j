@@ -33,10 +33,12 @@ import dev.langchain4j.agentic.planner.AgenticSystemConfigurationException;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockDecisionModel;
+import dev.langchain4j.model.decision.request.Question;
 import dev.langchain4j.model.decision.request.ScaleQuestion;
+import dev.langchain4j.model.decision.response.DecisionAnswer;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.decision.Decide;
@@ -58,8 +60,8 @@ import org.junit.jupiter.api.Test;
 
 class DeclarativeDecisionAgentTest {
 
-    static final DecisionModelMock LEGAL_MODEL = choosing("LEGAL", 0.9);
-    static final DecisionModelMock MEDICAL_MODEL = choosing("MEDICAL", 0.9);
+    static final MockDecisionModel LEGAL_MODEL = choosing("LEGAL", 0.9);
+    static final MockDecisionModel MEDICAL_MODEL = choosing("MEDICAL", 0.9);
     static final AtomicInteger FIXED_SUPPLIER_CALLS = new AtomicInteger();
     static final AtomicInteger DYNAMIC_SUPPLIER_CALLS = new AtomicInteger();
     static final AgentMonitor MONITOR = new AgentMonitor();
@@ -318,13 +320,15 @@ class DeclarativeDecisionAgentTest {
 
         @DecisionModelSupplier
         static DecisionModel decisionModel() {
-            return DecisionModelMock.thatAnswersQuestions(question -> DecisionMocks.scaleAnswer(
-                    (ScaleQuestion) question, SCORES.get(Math.min(SCORED.getAndIncrement(), SCORES.size() - 1)), 1.0));
+            return styleScores;
         }
     }
 
-    static final List<String> SCORES = List.of("POOR", "FAIR", "EXCELLENT");
-    static final AtomicInteger SCORED = new AtomicInteger();
+    static MockDecisionModel styleScores;
+
+    private static DecisionAnswer scale(Question question, String level) {
+        return DecisionMocks.scaleAnswer((ScaleQuestion) question, level, 1.0);
+    }
 
     public static class StyleEditor {
 
@@ -351,14 +355,16 @@ class DeclarativeDecisionAgentTest {
 
     @Test
     void should_drive_the_exit_condition_of_a_loop() {
-        SCORED.set(0);
+        styleScores = MockDecisionModel.thatAnswersQuestions(question -> scale(question, "POOR"))
+                .thenAnswersQuestions(question -> scale(question, "FAIR"))
+                .thenAnswersQuestions(question -> scale(question, "EXCELLENT"));
         StyleLoop loop = AgenticServices.createAgenticSystem(StyleLoop.class);
 
         String story = loop.improve("Once upon a time", "fairy tale");
 
         // POOR and FAIR are below the bar, EXCELLENT ends the loop before the third edit
         assertThat(story).isEqualTo("Once upon a time!!");
-        assertThat(SCORED).hasValue(3);
+        assertThat(styleScores.requests()).hasSize(3);
     }
 
     public interface TicketTriage {
@@ -408,7 +414,7 @@ class DeclarativeDecisionAgentTest {
 
         @ChatModelSupplier
         static ChatModel chatModel() {
-            return ChatModelMock.thatAlwaysResponds("LEGAL");
+            return MockChatModel.thatResponds("LEGAL");
         }
     }
 
@@ -436,7 +442,7 @@ class DeclarativeDecisionAgentTest {
 
         @ChatModelSupplier
         static ChatModel chatModel() {
-            return ChatModelMock.thatAlwaysResponds("no");
+            return MockChatModel.thatResponds("no");
         }
 
         @DecisionThresholdSupplier
@@ -582,7 +588,7 @@ class DeclarativeDecisionAgentTest {
 
     @Test
     void should_use_a_prebuilt_decision_agent_from_the_subagent_resolver() {
-        DecisionModelMock technicalModel = choosing("TECHNICAL", 0.9);
+        MockDecisionModel technicalModel = choosing("TECHNICAL", 0.9);
         // a prebuilt agent of another type, since the supplier of DynamicCategoryRouter would also apply
         DecisionAgents.CategoryRouter prebuilt = AgenticServices.decisionAgentBuilder(
                         DecisionAgents.CategoryRouter.class)
