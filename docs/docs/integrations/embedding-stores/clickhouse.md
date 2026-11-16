@@ -51,4 +51,4 @@ ClickHouseEmbeddingStore embeddingStore = ClickHouseEmbeddingStore.builder()
 
 ## Examples
 
-- [ClickHouseEmbeddingStoreIT](https://github.com/langchain4j/langchain4j-community/blob/main/langchain4j-community-clickhouse/src/test/java/dev/langchain4j/community/store/embedding/clickhouse/ClickHouseEmbeddingStoreIT.java)
+- [ClickHouseEmbeddingStoreIT](https://github.com/langchain4j/langchain4j-community/blob/main/embedding-stores/langchain4j-community-clickhouse/src/test/java/dev/langchain4j/community/store/embedding/clickhouse/ClickHouseEmbeddingStoreIT.java)

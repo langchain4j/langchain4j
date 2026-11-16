@@ -165,4 +165,4 @@ VearchEmbeddingStore embeddingStore = VearchEmbeddingStore.builder()
 
 ## Examples
 
-- [VearchEmbeddingStoreIT](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-vearch/src/test/java/dev/langchain4j/store/embedding/vearch/VearchEmbeddingStoreIT.java)
+- [VearchEmbeddingStoreIT](https://github.com/langchain4j/langchain4j-community/blob/main/embedding-stores/langchain4j-community-vearch/src/test/java/dev/langchain4j/community/store/embedding/vearch/VearchEmbeddingStoreIT.java)
