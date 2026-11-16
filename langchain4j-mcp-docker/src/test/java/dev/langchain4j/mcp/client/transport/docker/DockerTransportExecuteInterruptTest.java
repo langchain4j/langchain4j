@@ -36,12 +36,6 @@ import org.junit.jupiter.api.Test;
  * issues the real blocking calls. The interrupt flag is observed on the calling thread right after
  * {@code sendMessage} returns, which is exactly when {@code execute} has finished its
  * catch/finally processing on that same thread.
- *
- * <p>Note on the class name: these tests execute the real {@link DockerResultCallback} code path,
- * which binds its static {@code LOG} field on first use. {@code DockerResultCallbackTest} relies on
- * mocking {@code LoggerFactory} while the class is still uninitialized, so it must run first — and
- * with the default class-name ordering, "DockerTransport..." sorts after "DockerResultCallback..."
- * while "DockerMcpTransport..." would not.
  */
 class DockerTransportExecuteInterruptTest {
 
