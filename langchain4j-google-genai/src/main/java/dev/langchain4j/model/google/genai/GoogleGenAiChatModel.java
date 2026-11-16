@@ -195,7 +195,7 @@ public class GoogleGenAiChatModel implements ChatModel {
                     "Request:\n- model: {}\n- messages: {}\n- config: {}",
                     chatRequest.modelName(),
                     chatRequest.messages(),
-                    config);
+                    GoogleGenAiConfigBuilder.withMaskedHttpHeaders(config));
         }
 
         return config;

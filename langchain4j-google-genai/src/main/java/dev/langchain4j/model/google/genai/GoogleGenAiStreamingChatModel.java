@@ -187,7 +187,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     "Request:\n- model: {}\n- messages: {}\n- config: {}",
                     chatRequest.modelName(),
                     chatRequest.messages(),
-                    config);
+                    GoogleGenAiConfigBuilder.withMaskedHttpHeaders(config));
         }
 
         MappingTrackingStreamingChatResponseHandler trackingHandler =
