@@ -96,12 +96,15 @@ public class OpenAiStreamingResponseBuilder {
             ServerSentEvent rawServerSentEvent = parsedAndRawResponse.rawServerSentEvent();
             if (rawServerSentEvent != null) {
                 rawServerSentEvents.add(rawServerSentEvent);
-                ChatCompletionResponse parsedResponse = parsedAndRawResponse.parsedResponse();
-                if (parsedResponse == null || isNullOrEmpty(parsedResponse.choices())) {
-                    String errorMessage = providerErrorMessageFrom(rawServerSentEvent.data());
-                    if (errorMessage != null) {
-                        providerErrorMessage.compareAndSet(null, errorMessage);
-                    }
+                // Some OpenAI-compatible providers (e.g. OpenRouter, vLLM, LiteLLM, DeepSeek) report
+                // errors with HTTP 200 inside the stream. The error can arrive as a bare
+                // {"error": {...}} event or as a regular chunk carrying a top-level "error" object
+                // (e.g. with finish_reason "error"), so every event's raw payload is inspected,
+                // mirroring the official OpenAI SDKs, which raise an API error for any streamed
+                // chunk with an "error" key.
+                String errorMessage = providerErrorMessageFrom(rawServerSentEvent.data());
+                if (errorMessage != null) {
+                    providerErrorMessage.compareAndSet(null, errorMessage);
                 }
             }
 
