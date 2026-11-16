@@ -1828,9 +1828,17 @@ class AiServiceCaptureTest {
                     .streamingChatModel(MockStreamingChatModel.thatFails(new RuntimeException("stream failed")).thenRepeats())
                     .build();
             List<Throwable> errors = new CopyOnWriteArrayList<>();
+            CountDownLatch errorHandled = new CountDownLatch(1);
 
-            assertThatThrownBy(() -> capture(() -> assistant.chat("Hi").onError(errors::add).start()))
+            assertThatThrownBy(() -> capture(() -> assistant.chat("Hi")
+                            .onError(error -> {
+                                errors.add(error);
+                                errorHandled.countDown();
+                            })
+                            .start()))
                     .hasMessage("stream failed");
+            // the invocation finishes before the onError handler has run, so capture(...) can return before it
+            await(errorHandled);
             assertThat(errors).singleElement().satisfies(error -> assertThat(error).hasMessage("stream failed"));
 
             AiServiceInvocation invocation = captureExpectingFailure(() -> assistant.chat("Hi").ignoreErrors().start())
