@@ -192,12 +192,17 @@ class ToolSpecificationHelper {
         } else if (typeNode instanceof String) {
             String nodeType = (String) typeNode;
             if (nodeType.equals("string")) {
-                if (node.containsKey("enum")) {
+                // only the string values of an enum apply to a string: a nullable enum also lists null
+                List<String> enumValues = array(node.get("enum")).stream()
+                        .filter(String.class::isInstance)
+                        .map(String.class::cast)
+                        .toList();
+                if (!enumValues.isEmpty()) {
                     JsonEnumSchema.Builder builder = JsonEnumSchema.builder();
                     if (node.containsKey("description")) {
                         builder.description(string(node.get("description")));
                     }
-                    builder.enumValues(toStringArray(node.get("enum")));
+                    builder.enumValues(enumValues);
                     return builder.build();
                 } else {
                     JsonStringSchema.Builder builder = JsonStringSchema.builder();
@@ -246,7 +251,7 @@ class ToolSpecificationHelper {
                 throw new IllegalArgumentException("Unknown element type: " + nodeType);
             }
         } else {
-            // this represents an array with multiple allowed types for items
+            // this represents a node with multiple allowed types
             // for example:
             // "type": "array",
             //  "items": {
@@ -269,9 +274,13 @@ class ToolSpecificationHelper {
             //       }
             //   ]
             // }
+            //
+            // Each type is converted like a single "type", so it keeps the keywords that apply to it:
+            // the Go and Rust MCP SDKs generate {"type": ["null", "array"], "items": {...}} for slices,
+            // and ["null", "object"] with "properties" for pointers.
             JsonAnyOfSchema.Builder anyOf = JsonAnyOfSchema.builder();
             JsonSchemaElement[] types = array(typeNode).stream()
-                    .map(ToolSpecificationHelper::toTypeElement)
+                    .map(type -> jsonNodeToJsonSchemaElement(singleTypeNode(node, type), definitions, resolvingRefs))
                     .toArray(JsonSchemaElement[]::new);
             anyOf.anyOf(types);
             if (node.containsKey("description")) {
@@ -354,28 +363,22 @@ class ToolSpecificationHelper {
         return "object".equals(node.get("type"));
     }
 
-    private static JsonSchemaElement toTypeElement(Object node) {
-        if (!(node instanceof String)) {
-            throw new IllegalArgumentException(node + " is not a string");
+    /**
+     * Narrows a node whose "type" lists several types to one of them. The description stays on the
+     * enclosing anyOf, and items that accept any value ({} or true, as generated for []any or
+     * Vec<serde_json::Value>) are left out, so that the array keeps accepting any item.
+     */
+    private static Map<String, Object> singleTypeNode(Map<String, Object> node, Object type) {
+        if (!(type instanceof String)) {
+            throw new IllegalArgumentException(type + " is not a string");
         }
-        switch ((String) node) {
-            case "string":
-                return JsonStringSchema.builder().build();
-            case "number":
-                return JsonNumberSchema.builder().build();
-            case "integer":
-                return JsonIntegerSchema.builder().build();
-            case "boolean":
-                return JsonBooleanSchema.builder().build();
-            case "array":
-                return JsonArraySchema.builder().build();
-            case "object":
-                return JsonObjectSchema.builder().build();
-            case "null":
-                return new JsonNullSchema();
-            default:
-                throw new IllegalArgumentException("Unsupported type: " + node);
+        Map<String, Object> singleTypeNode = new LinkedHashMap<>(node);
+        singleTypeNode.put("type", type);
+        singleTypeNode.remove("description");
+        if ("array".equals(type) && object(node.get("items")).isEmpty()) {
+            singleTypeNode.remove("items");
         }
+        return singleTypeNode;
     }
 
     /**

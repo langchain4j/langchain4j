@@ -10,6 +10,7 @@ import static dev.langchain4j.mcp.client.McpToolMetadataKeys.READ_ONLY_HINT;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.TITLE;
 import static dev.langchain4j.mcp.client.McpToolMetadataKeys.TITLE_ANNOTATION;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -276,6 +277,167 @@ class ToolSpecificationHelperTest {
         JsonObjectSchema parameters = toolSpecifications.get(0).parameters();
         JsonAnyOfSchema status = (JsonAnyOfSchema) parameters.properties().get("status");
         assertThat(status.description()).isEqualTo("Filter by status (nullable)");
+    }
+
+    @Test
+    void arrayTypeKeepsTheKeywordsOfEachType() throws JsonProcessingException {
+        // The Go and Rust MCP SDKs generate a type array with "null" for slices, pointers and
+        // Option<Vec<T>>. Each listed type keeps the keywords that apply to it, as a single type does.
+        String text = """
+                [{
+                  "name": "write_files",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "files": {
+                        "type": ["null", "array"],
+                        "description": "Files to write",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "path": {"type": "string"},
+                            "content": {"type": "string"}
+                          },
+                          "required": ["path", "content"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "options": {
+                        "type": ["null", "object"],
+                        "properties": {
+                          "overwrite": {"type": "boolean"}
+                        },
+                        "required": ["overwrite"],
+                        "additionalProperties": false
+                      },
+                      "order": {
+                        "type": ["string", "null"],
+                        "enum": ["asc", "desc", null]
+                      },
+                      "nothing": {
+                        "type": ["string", "null"],
+                        "enum": [null]
+                      },
+                      "mode": {
+                        "type": ["string", "boolean"],
+                        "enum": ["auto", true, false]
+                      }
+                    }
+                  }
+                }]
+                """;
+        List<Map<String, Object>> json = toolList(text);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        Map<String, JsonSchemaElement> properties =
+                toolSpecifications.get(0).parameters().properties();
+
+        JsonAnyOfSchema files = (JsonAnyOfSchema) properties.get("files");
+        assertThat(files.description()).isEqualTo("Files to write");
+        assertThat(files.anyOf())
+                .containsExactly(
+                        new JsonNullSchema(),
+                        JsonArraySchema.builder()
+                                .items(JsonObjectSchema.builder()
+                                        .addStringProperty("path")
+                                        .addStringProperty("content")
+                                        .required("path", "content")
+                                        .additionalProperties(false)
+                                        .build())
+                                .build());
+
+        JsonAnyOfSchema options = (JsonAnyOfSchema) properties.get("options");
+        assertThat(options.anyOf())
+                .containsExactly(
+                        new JsonNullSchema(),
+                        JsonObjectSchema.builder()
+                                .addBooleanProperty("overwrite")
+                                .required("overwrite")
+                                .additionalProperties(false)
+                                .build());
+
+        JsonAnyOfSchema order = (JsonAnyOfSchema) properties.get("order");
+        assertThat(order.anyOf())
+                .containsExactly(
+                        JsonEnumSchema.builder().enumValues("asc", "desc").build(), new JsonNullSchema());
+
+        JsonAnyOfSchema nothing = (JsonAnyOfSchema) properties.get("nothing");
+        assertThat(nothing.anyOf()).containsExactly(JsonStringSchema.builder().build(), new JsonNullSchema());
+
+        JsonAnyOfSchema mode = (JsonAnyOfSchema) properties.get("mode");
+        assertThat(mode.anyOf())
+                .containsExactly(
+                        JsonEnumSchema.builder().enumValues("auto").build(),
+                        JsonBooleanSchema.builder().build());
+    }
+
+    @Test
+    void arrayItemsThatAcceptAnyValueStayUnset() throws JsonProcessingException {
+        // {} and true accept any item; the Go SDK generates the former for []any,
+        // schemars the latter for Vec<serde_json::Value>.
+        String text = """
+                [{
+                  "name": "query",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "goParams": {"type": ["null", "array"], "items": {}},
+                      "rustParams": {"type": ["array", "null"], "items": true}
+                    }
+                  }
+                }]
+                """;
+        List<Map<String, Object>> json = toolList(text);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        Map<String, JsonSchemaElement> properties =
+                toolSpecifications.get(0).parameters().properties();
+
+        assertThat(((JsonAnyOfSchema) properties.get("goParams")).anyOf())
+                .containsExactly(new JsonNullSchema(), JsonArraySchema.builder().build());
+        assertThat(((JsonAnyOfSchema) properties.get("rustParams")).anyOf())
+                .containsExactly(JsonArraySchema.builder().build(), new JsonNullSchema());
+    }
+
+    @Test
+    void stringEnumWithNullKeepsItsStringValues() throws JsonProcessingException {
+        String text = """
+                [{
+                  "name": "query",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "enum": ["fast", "slow", null]
+                      }
+                    }
+                  }
+                }]
+                """;
+        List<Map<String, Object>> json = toolList(text);
+        List<ToolSpecification> toolSpecifications = ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json);
+        assertThat(toolSpecifications.get(0).parameters().properties().get("mode"))
+                .isEqualTo(JsonEnumSchema.builder().enumValues("fast", "slow").build());
+    }
+
+    @Test
+    void arrayTypeWithNonStringEntryIsRejected() throws JsonProcessingException {
+        String text = """
+                [{
+                  "name": "query",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "status": {
+                        "type": ["string", 1]
+                      }
+                    }
+                  }
+                }]
+                """;
+        List<Map<String, Object>> json = toolList(text);
+        assertThatThrownBy(() -> ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("1 is not a string");
     }
 
     @Test
