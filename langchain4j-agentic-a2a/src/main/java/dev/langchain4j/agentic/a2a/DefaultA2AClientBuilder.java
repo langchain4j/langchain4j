@@ -66,6 +66,9 @@ import org.a2aproject.sdk.client.MessageEvent;
 import org.a2aproject.sdk.client.TaskEvent;
 import org.a2aproject.sdk.client.TaskUpdateEvent;
 import org.a2aproject.sdk.client.http.A2ACardResolver;
+import org.a2aproject.sdk.client.http.A2AHttpClient;
+import org.a2aproject.sdk.client.http.A2AHttpClientConfiguration;
+import org.a2aproject.sdk.client.http.A2AHttpClientFactory;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
 import org.a2aproject.sdk.spec.A2AClientError;
@@ -108,6 +111,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     Duration resolutionTimeout;
     private volatile Client a2aClient;
     private Consumer<ClientBuilder> clientCustomizer;
+    private Supplier<Map<String, String>> agentCardHeaders;
 
     private String name;
     private String agentId;
@@ -133,8 +137,16 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         this.tenant = (tenant != null && !tenant.isEmpty()) ? tenant : null;
         // The URL is validated now, so that a configuration error still fails when the agent is built,
         // but the card itself is fetched only when first needed
-        A2ACardResolver cardResolver = cardResolver(a2aServerUrl, this.tenant);
-        this.cardResolution = new LazyResolution<>(this::describeCard, cardResolver::getAgentCard);
+        String cardTenant = this.tenant;
+        A2AHttpClient httpClient = A2AHttpClientFactory.create(A2AHttpClientConfiguration.DEFAULT);
+        A2ACardResolver cardResolver = cardResolver(a2aServerUrl, cardTenant, null, httpClient);
+        this.cardResolution = new LazyResolution<>(this::describeCard, () -> {
+            Supplier<Map<String, String>> headers = agentCardHeaders;
+            return headers == null
+                    ? cardResolver.getAgentCard()
+                    : cardResolver(a2aServerUrl, cardTenant, headers.get(), httpClient)
+                            .getAgentCard();
+        });
         this.clientFactory = this::buildClient;
     }
 
@@ -160,17 +172,20 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         this.clientFactory = clientFactory != null ? clientFactory : this::buildClient;
     }
 
-    private static A2ACardResolver cardResolver(String a2aServerUrl, String tenant) {
+    private static A2ACardResolver cardResolver(
+            String a2aServerUrl, String tenant, Map<String, String> headers, A2AHttpClient httpClient) {
         A2ACardResolver cardResolver;
         try {
             cardResolver = A2ACardResolver.builder()
+                    .httpClient(httpClient)
                     .baseUrl(a2aServerUrl)
                     .agentCardPath(null)
                     .tenant(tenant)
-                    .authHeaders(null)
+                    .authHeaders(headers)
                     .build();
         } catch (A2AClientError | IllegalArgumentException e) {
-            String invalidValue = "A2A server URL '" + a2aServerUrl + "'" + (tenant != null ? " or tenant '" + tenant + "'" : "");
+            String invalidValue =
+                    "A2A server URL '" + a2aServerUrl + "'" + (tenant != null ? " or tenant '" + tenant + "'" : "");
             throw new AgenticSystemConfigurationException("Invalid " + invalidValue + ": " + e.getMessage(), e);
         }
         URI uri = URI.create(a2aServerUrl);
@@ -259,7 +274,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         resolutionTimeout = getOrDefault(resolutionTimeout, DEFAULT_RESOLUTION_TIMEOUT);
 
         if (description == null) {
-            description = agentMethod().map(DefaultA2AClientBuilder::annotatedDescription).orElse(null);
+            description = agentMethod()
+                    .map(DefaultA2AClientBuilder::annotatedDescription)
+                    .orElse(null);
         }
         // The local name, and the agent id derived from it, are fixed before the proxy is handed out
         agentId();
@@ -694,6 +711,12 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         if (clientCustomizer != null) {
             this.clientCustomizer = (Consumer<ClientBuilder>) clientCustomizer;
         }
+        return this;
+    }
+
+    @Override
+    public DefaultA2AClientBuilder<T> agentCardHeaders(Supplier<Map<String, String>> headers) {
+        this.agentCardHeaders = headers;
         return this;
     }
 
