@@ -781,9 +781,12 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration combine.children="append">
-                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
+                    <!-- see tinylog.level below -->
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -Dtinylog.level@dev.langchain4j=debug</argLine>
                     <systemPropertyVariables>
-                        <tinylog.level>debug</tinylog.level>
+                        <!-- Third-party libraries stay at info: at debug, HTTP and gRPC clients print request headers,
+                             including the real API keys used by the integration tests. LangChain4j itself logs at debug. -->
+                        <tinylog.level>info</tinylog.level>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -793,8 +796,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration combine.children="append">
+                    <!-- see tinylog.level in the surefire configuration above -->
+                    <argLine>@{argLine} -Dtinylog.level@dev.langchain4j=debug</argLine>
                     <systemPropertyVariables>
-                        <tinylog.level>debug</tinylog.level>
+                        <tinylog.level>info</tinylog.level>
                     </systemPropertyVariables>
                 </configuration>
                 <executions>
