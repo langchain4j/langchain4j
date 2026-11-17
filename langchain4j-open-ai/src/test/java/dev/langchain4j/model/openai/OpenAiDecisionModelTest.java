@@ -7,6 +7,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AudioContent;
+import dev.langchain4j.data.message.ChatMessageDeserializer;
+import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
@@ -15,6 +18,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
@@ -29,7 +33,9 @@ import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.time.Duration;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
@@ -525,7 +531,7 @@ class OpenAiDecisionModelTest {
         assertThat(OBJECT_MAPPER.readTree(httpClient.request().body()).get("input").get(0).get("content"))
                 .isEqualTo(OBJECT_MAPPER.readTree(
                         """
-                        [{"type": "input_image", "image_url": "https://example.com/package.png", "detail": "low"}]
+                        [{"type": "input_image", "image_url": "https://example.com/package.png"}]
                         """));
     }
 
@@ -852,6 +858,124 @@ class OpenAiDecisionModelTest {
         assertThatThrownBy(() -> model.decide(REQUEST))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("The model name must be set");
+    }
+
+    @Test
+    void should_reject_audio_and_pdf_in_conversation_without_calling_the_api() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        OpenAiDecisionModel model = model(httpClient);
+
+        List.of(AudioContent.from("YXVkaW8=", "audio/wav"), PdfFileContent.from("JVBERi0=", "application/pdf"))
+                .forEach(content -> {
+                    DecisionRequest request = DecisionRequest.builder()
+                            .inputMessages(UserMessage.from(TextContent.from("See attached."), content))
+                            .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                            .build();
+
+                    // when-then
+                    assertThatThrownBy(() -> model.decide(request))
+                            .isInstanceOf(UnsupportedFeatureException.class)
+                            .hasMessage("The OpenAI Decisions API supports only text and images in a conversation, but it "
+                                    + "contains " + content.type());
+                    assertThat(model.decideAsync(request))
+                            .failsWithin(Duration.ZERO)
+                            .withThrowableOfType(ExecutionException.class)
+                            .withCauseInstanceOf(UnsupportedFeatureException.class);
+                });
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void do_decide_async_should_return_failed_future_instead_of_throwing() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        OpenAiDecisionModel model = model(httpClient);
+        // doDecideAsync is called directly, so the model name of the builder is not applied
+        DecisionRequest withoutModelName = DecisionRequest.builder()
+                .input("Hi")
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                .build();
+        DecisionRequest withCustomInput = DecisionRequest.builder()
+                .input(() -> DecisionInputType.TEXT)
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                .parameters(DecisionRequestParameters.builder().modelName("gpt-6-luna").build())
+                .build();
+
+        // when
+        CompletableFuture<DecisionResponse> missingModelName = model.doDecideAsync(withoutModelName);
+        CompletableFuture<DecisionResponse> customInput = model.doDecideAsync(withCustomInput);
+
+        // then
+        assertThat(missingModelName)
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseExactlyInstanceOf(IllegalArgumentException.class);
+        assertThat(customInput)
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(UnsupportedFeatureException.class);
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = ImageContent.DetailLevel.class, names = {"LOW", "HIGH", "AUTO"})
+    void should_send_image_detail_level_only_when_it_was_set(ImageContent.DetailLevel detailLevel) throws Exception {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(DAMAGED_RESPONSE));
+
+        // when
+        model(httpClient).decide(damagedRequest(ImageContent.from("iVBORw0KGgo=", "image/png", detailLevel)));
+        model(httpClient).decide(damagedRequest(ImageContent.from("iVBORw0KGgo=", "image/png")));
+
+        // then
+        assertThat(imagePart(httpClient.requests().get(0)).get("detail").asText())
+                .isEqualTo(detailLevel.name().toLowerCase(Locale.ROOT));
+        assertThat(imagePart(httpClient.requests().get(1)).has("detail")).isFalse();
+    }
+
+    @Test
+    void should_send_detail_level_of_image_read_from_json() throws Exception {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(DAMAGED_RESPONSE));
+        // an image read from JSON, for example from a chat memory, counts as having its detail level set, also when
+        // it was not set before it was written (it is then LOW)
+        ImageContent high = readFromJson(ImageContent.from("iVBORw0KGgo=", "image/png", ImageContent.DetailLevel.HIGH));
+        ImageContent notSet = readFromJson(ImageContent.from("iVBORw0KGgo=", "image/png"));
+
+        // when
+        model(httpClient).decide(damagedRequest(high));
+        model(httpClient).decide(damagedRequest(notSet));
+
+        // then
+        assertThat(imagePart(httpClient.requests().get(0)).get("detail").asText()).isEqualTo("high");
+        assertThat(imagePart(httpClient.requests().get(1)).get("detail").asText()).isEqualTo("low");
+    }
+
+    private static final String DAMAGED_RESPONSE =
+            """
+            {"model": "gpt-6-luna", "answers": [{"type": "predicate", "name": "damaged", "probability": 0.95}]}
+            """;
+
+    private static DecisionRequest damagedRequest(ImageContent image) {
+        return DecisionRequest.builder()
+                .inputContents(List.of(image))
+                .question("damaged", YesNoQuestion.from("Is the item damaged?"))
+                .build();
+    }
+
+    private static JsonNode imagePart(HttpRequest request) throws Exception {
+        return OBJECT_MAPPER.readTree(request.body()).get("input").get(0).get("content").get(0);
+    }
+
+    private static ImageContent readFromJson(ImageContent image) {
+        UserMessage message = (UserMessage) ChatMessageDeserializer.messageFromJson(
+                ChatMessageSerializer.messageToJson(UserMessage.from(image)));
+        return (ImageContent) message.contents().get(0);
     }
 
     private static OpenAiDecisionModel model(MockHttpClient httpClient) {

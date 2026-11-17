@@ -4,6 +4,8 @@ import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -16,11 +18,13 @@ import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -44,6 +48,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -205,6 +211,39 @@ class GeminiService {
     Void deleteCachedContent(String name) {
         String url = String.format("%s/%s", baseUrl, name);
         return sendRequest(url, apiKey, null, Void.class, DELETE);
+    }
+
+    GeminiDecisionResponse decide(GeminiDecisionRequest request) {
+        try {
+            return sendRequest(baseUrl + "/decisions", apiKey, request, GeminiDecisionResponse.class);
+        } catch (HttpException error) {
+            GeminiDecisionResponse blockedResponse = GeminiDecisionMapper.toBlockedResponse(error);
+            if (blockedResponse == null) {
+                throw error;
+            }
+            return blockedResponse;
+        }
+    }
+
+    CompletableFuture<GeminiDecisionResponse> decideAsync(GeminiDecisionRequest request) {
+        HttpRequest httpRequest = buildHttpRequest(baseUrl + "/decisions", apiKey, request, POST);
+        CompletableFuture<SuccessfulHttpResponse> httpFuture = httpClient.executeAsync(httpRequest);
+        CompletableFuture<GeminiDecisionResponse> result = httpFuture.handle((response, error) -> {
+            if (error == null) {
+                return fromJson(response.body(), GeminiDecisionResponse.class);
+            }
+            if (unwrapCompletionException(error) instanceof HttpException httpError) {
+                GeminiDecisionResponse blockedResponse = GeminiDecisionMapper.toBlockedResponse(httpError);
+                if (blockedResponse != null) {
+                    return blockedResponse;
+                }
+            }
+            throw error instanceof CompletionException completionException
+                    ? completionException
+                    : new CompletionException(error);
+        });
+        propagateCancellation(result, httpFuture);
+        return result;
     }
 
     void generateContentStream(

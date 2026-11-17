@@ -152,7 +152,8 @@ public final class DecisionMapper {
         } else if (content instanceof ImageContent image) {
             part.type = "input_image";
             part.imageUrl = toImageUrl(image.image());
-            part.detail = toDetail(image.detailLevel());
+            // without a chosen detail level, OpenAI's default applies
+            part.detail = image.detailLevelSpecified() ? toDetail(image.detailLevel()) : null;
         } else {
             throw new UnsupportedFeatureException(
                     "The OpenAI Decisions API supports only text and image input, but the input contains "
