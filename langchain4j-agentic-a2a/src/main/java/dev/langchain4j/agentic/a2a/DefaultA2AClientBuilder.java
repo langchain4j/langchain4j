@@ -31,6 +31,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.output.ServiceOutputParser;
+import dev.langchain4j.spi.ServiceHelper;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -41,6 +42,7 @@ import java.lang.reflect.Type;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -112,6 +114,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private volatile Client a2aClient;
     private Consumer<ClientBuilder> clientCustomizer;
     private Supplier<Map<String, String>> agentCardHeaders;
+    private final Collection<A2AClientConfigurer> configurers = ServiceHelper.loadFactories(A2AClientConfigurer.class);
 
     private String name;
     private String agentId;
@@ -140,11 +143,10 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         String cardTenant = this.tenant;
         A2AHttpClient httpClient = A2AHttpClientFactory.create(A2AHttpClientConfiguration.DEFAULT);
         cardResolver(a2aServerUrl, cardTenant, null, httpClient);
-        this.cardResolution = new LazyResolution<>(this::describeCard, () -> {
-            Supplier<Map<String, String>> headers = agentCardHeaders;
-            return cardResolver(a2aServerUrl, cardTenant, headers == null ? null : headers.get(), httpClient)
-                    .getAgentCard();
-        });
+        this.cardResolution = new LazyResolution<>(
+                this::describeCard,
+                () -> cardResolver(a2aServerUrl, cardTenant, cardHeaders(), httpClient)
+                        .getAgentCard());
         this.clientFactory = this::buildClient;
     }
 
@@ -193,6 +195,22 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     + "': it must be an absolute http or https URL, like http://localhost:8080");
         }
         return cardResolver;
+    }
+
+    private Map<String, String> cardHeaders() {
+        Map<String, String> headers = new HashMap<>();
+        for (A2AClientConfigurer configurer : configurers) {
+            Map<String, String> configured = configurer.agentCardHeaders(a2aServerUrl);
+            if (configured != null) {
+                headers.putAll(configured);
+            }
+        }
+        Supplier<Map<String, String>> own = agentCardHeaders;
+        Map<String, String> ownHeaders = own == null ? null : own.get();
+        if (ownHeaders != null) {
+            headers.putAll(ownHeaders);
+        }
+        return headers.isEmpty() ? null : headers;
     }
 
     private String describeCard() {
@@ -252,10 +270,14 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private Client buildClient(AgentCard card) {
         try {
             ClientBuilder cb = Client.builder(card);
+            if (clientCustomizer == null) {
+                cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder());
+            }
+            for (A2AClientConfigurer configurer : configurers) {
+                configurer.customize(a2aServerUrl, card, cb);
+            }
             if (clientCustomizer != null) {
                 clientCustomizer.accept(cb);
-            } else {
-                cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder());
             }
             return cb.build();
         } catch (A2AClientException e) {
