@@ -260,6 +260,12 @@
             "enabled": false
         },
         {
+            // 1.9.0+ is built with Kotlin 2 and needs kotlin-stdlib 2.x, but langchain4j-kotlin stays on Kotlin 1.9
+            // (kotlin.version) so that projects on Kotlin 1.9 can use it; lift this cap when it moves to Kotlin 2
+            "matchPackageNames": ["org.jetbrains.kotlinx:kotlinx-coroutines-*"],
+            "allowedVersions": "(,1.9)"
+        },
+        {
             // the Milvus tests pin one image per server major version; a new major gets its own entry instead
             "matchDatasources": ["docker"],
             "matchPackageNames": ["milvusdb/milvus"],
