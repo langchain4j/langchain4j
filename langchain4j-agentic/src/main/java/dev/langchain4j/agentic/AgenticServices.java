@@ -24,6 +24,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.agent.DecisionAgentBuilder;
 import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
+import dev.langchain4j.agentic.declarative.A2AAgentCardHeaders;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
 import dev.langchain4j.agentic.declarative.A2AClientCustomizer;
 import dev.langchain4j.agentic.declarative.A2AServerUrlSupplier;
@@ -1100,6 +1101,13 @@ public class AgenticServices {
                 .map(helper -> ResolvedParameters.of(agentServiceClass, helper)
                         .checkFrameworkParameters(Object.class)
                         .resolvedNow());
+        Optional<ResolvedParameters> cardHeaders = helpers.select(A2AAgentCardHeaders.class)
+                .map(helper -> {
+                    checkReturnType(helper.method(), Map.class);
+                    return ResolvedParameters.of(agentServiceClass, helper)
+                            .checkAllResolved()
+                            .resolvedNow();
+                });
         var a2aClientBuilder = a2aBuilder(a2aServerUrl, a2aClient.tenant(), agentServiceClass);
 
         a2aClientBuilder
@@ -1117,6 +1125,7 @@ public class AgenticServices {
                     a2aActivationCondition.description(), a2aActivationCondition.predicate());
         }
         customizer.ifPresent(parameters -> a2aClientBuilder.clientCustomizer(cb -> parameters.invoke(cb)));
+        cardHeaders.ifPresent(parameters -> a2aClientBuilder.agentCardHeaders(parameters::invoke));
 
         buildListener(helpers, a2aClientBuilder::listener);
 
