@@ -43,6 +43,7 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -51,6 +52,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 public class AgentUtil {
@@ -103,6 +105,17 @@ public class AgentUtil {
     }
 
     public static AgentExecutor agentToExecutor(Object agent) {
+        return agentToExecutor(agent, List::of);
+    }
+
+    /**
+     * Creates the executor of the given agent, as {@link #agentToExecutor(Object)} does. The given supplier provides
+     * the helper objects of the declared type of the agent in a declarative agentic system. It is called only when
+     * the agent is an instance of a class with an agent method, a non-AI agent or a human-in-the-loop object, whose
+     * helper objects are then the agent itself followed by the supplied ones, and not for any other kind of agent,
+     * like one created by a builder.
+     */
+    public static AgentExecutor agentToExecutor(Object agent, Supplier<List<Object>> helperObjectsOfDeclaredType) {
         if (agent instanceof AgentExecutor executor) {
             return executor;
         }
@@ -119,13 +132,21 @@ public class AgentUtil {
         if (agent instanceof InternalAgent internalAgent) {
             return agentToExecutor(internalAgent);
         }
+        if (agent instanceof AgentSpecsProvider) {
+            // a human-in-the-loop agent created by its builder, which sets its listener and activation condition
+            return nonAiAgentToExecutor(agent, validateAgentClass(agent.getClass()));
+        }
         // an agent passed as an instance is its own helper object: its activation condition and listener can be
         // instance methods, and the parameters of its agent method can be provided by a SupplierParameterResolver
-        AgentHelpers helpers = AgentHelpers.of(agent.getClass(), List.of(agent));
+        List<Object> helperObjects = new ArrayList<>();
+        helperObjects.add(agent);
+        helperObjects.addAll(helperObjectsOfDeclaredType.get());
+        AgentHelpers helpers = AgentHelpers.of(agent.getClass(), helperObjects);
         Method agentMethod = validateAgentClass(agent.getClass(), true, HumanInTheLoop.class);
         if (agentMethod.isAnnotationPresent(HumanInTheLoop.class)) {
             return humanInTheLoopExecutor(agentMethod, agent, helpers);
         }
+        checkNoDecisionSuppliers(helpers);
         return nonAiAgentToExecutor(agent, agentMethod, helpers);
     }
 
