@@ -95,7 +95,7 @@ public class DockerMcpTransport implements McpTransport {
     @Override
     public void start(McpOperationHandler messageHandler) {
         this.messageHandler = messageHandler;
-        log.debug("Starting docker container with host: {}, image: {}, command: {}", dockerHost, image, command);
+        log.debug("Starting docker container with image: {} (with {} command arguments)", image, command.size());
         DockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder()
                 .withDockerHost(dockerHost)
                 .withDockerConfig(dockerConfig)

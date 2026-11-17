@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.a2a;
 
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.compose;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.composeWithInherited;
+import static dev.langchain4j.internal.SecretMasking.withoutCredentials;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
@@ -182,14 +183,14 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     .authHeaders(headers)
                     .build();
         } catch (A2AClientError | IllegalArgumentException e) {
-            String invalidValue =
-                    "A2A server URL '" + a2aServerUrl + "'" + (tenant != null ? " or tenant '" + tenant + "'" : "");
+            String invalidValue = "A2A server URL '" + withoutCredentials(a2aServerUrl) + "'"
+                    + (tenant != null ? " or tenant '" + tenant + "'" : "");
             throw new AgenticSystemConfigurationException("Invalid " + invalidValue + ": " + e.getMessage(), e);
         }
         URI uri = URI.create(a2aServerUrl);
         boolean httpScheme = "http".equalsIgnoreCase(uri.getScheme()) || "https".equalsIgnoreCase(uri.getScheme());
         if (!httpScheme || uri.getHost() == null) {
-            throw new AgenticSystemConfigurationException("Invalid A2A server URL '" + a2aServerUrl
+            throw new AgenticSystemConfigurationException("Invalid A2A server URL '" + withoutCredentials(a2aServerUrl)
                     + "': it must be an absolute http or https URL, like http://localhost:8080");
         }
         return cardResolver;
@@ -853,7 +854,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     return placeholder.toString();
                 }
             } catch (IllegalArgumentException e) {
-                LOG.debug("Cannot derive a name from the A2A server URL {}", a2aServerUrl, e);
+                LOG.debug("Cannot derive a name from the A2A server URL {}", withoutCredentials(a2aServerUrl));
             }
         }
         return "a2a-agent";

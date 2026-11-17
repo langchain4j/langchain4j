@@ -430,6 +430,21 @@ class A2ALazyAgentCardTest {
     }
 
     @Test
+    void an_invalid_a2a_server_url_is_reported_without_its_credentials() {
+        assertThatThrownBy(() -> AgenticServices.a2aBuilder(
+                        "ftp://user:secret-password@remote-host:21/agents?token=secret-token", Fixer.class))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("'ftp://remote-host:21/agents'")
+                .hasMessageContaining("http or https")
+                .hasMessageNotContaining("secret");
+        assertThatThrownBy(() -> AgenticServices.a2aBuilder(
+                        "http://user:secret-password@remote-host:8080/my agents?token=secret-token", Fixer.class))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("'http://remote-host:8080/my agents'")
+                .hasMessageNotContaining("secret");
+    }
+
+    @Test
     void a_never_activated_a2a_subagent_never_fetches_the_card() {
         CardSource cardSource = new CardSource(REMOTE_FIXER_CARD);
         useLazyA2AService(cardSource, replying("fixed"));

@@ -57,3 +57,43 @@ langchain4j.open-ai.chat-model.log-requests = true
 langchain4j.open-ai.chat-model.log-responses = true
 logging.level.dev.langchain4j = DEBUG
 ```
+
+## Sensitive data in logs
+
+Request and response logs can contain credentials.
+When an integration sends its requests through LangChain4j's own HTTP client
+(for example OpenAI, Anthropic, Google AI Gemini, Mistral AI and Ollama),
+`logRequests` and `logResponses` mask the most common ones:
+
+- Headers of requests and responses: the value of every header whose name contains
+`auth`, `key`, `token`, `secret`, `password`, `credential`, `cookie`, `signature` or `session`
+(for example `Authorization` or `x-api-key`), ignoring case.
+A value of 20 or more characters is shown as its first 5 and last 2 characters (`sk-pr...Xy`),
+a shorter value is replaced by `...`.
+- Request URL: the user info (`https://user:password@host` is logged as `https://***@host`)
+and the value of every query parameter whose name contains one of the words above, as well as `sig` and `code`.
+- Request body: the values of the JSON string fields and form fields `api_key`, `apikey`, `api-key`, `password`,
+`secret`, `client_secret`, `token`, `access_token`, `refresh_token` and `id_token`.
+
+Body field names are matched as a whole and ignoring case,
+so `apiKey` is masked, but `max_tokens` is not.
+Everything else, including your prompts and the model's answers, is logged as is.
+The Amazon Bedrock integration masks request and response headers with the same name rule
+and logs `[REDACTED]` instead of their values.
+
+The libraries that some integrations use to talk to remote services have their own logging,
+which can print credentials (for example API keys in headers or URLs).
+Wherever real keys are used, keep these loggers at `INFO` or above and leave these settings off:
+
+- Apache HttpClient 4: `org.apache.http.headers` and `org.apache.http.wire`
+- Apache HttpClient 5: `org.apache.hc.client5.http.headers` and `org.apache.hc.client5.http.wire`
+(the Docker MCP transport uses it and sends Docker registry credentials in a request header)
+- gRPC with Netty: `io.grpc.netty`
+- JDK `HttpClient`: the system property `-Djdk.httpclient.HttpClient.log=headers` (or `all`)
+- google-http-client: `com.google.api.client.http.HttpTransport` at the `java.util.logging` level `CONFIG` or finer
+- Spring `WebClient`: `spring.http.codecs.log-request-details=true`
+(`spring.codec.log-request-details` before Spring Boot 3.5), which logs headers at `TRACE`
+- AWS SDK for Java: wire logging, that is the Apache HttpClient loggers above,
+or `io.netty.handler.logging` and `io.netty.handler.codec.http2` for its Netty-based client
+- OpenAI Java SDK: the environment variable `OPENAI_LOG=debug`
+(it hides only the standard authentication headers, not custom ones)
