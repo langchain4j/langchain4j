@@ -66,8 +66,7 @@ You can also pass a preconfigured `com.google.genai.Client` with `.client(client
 `HttpRetryOptions.builder().attempts(1).httpStatusCodes(List.of())` on it, or `.maxRetries(0)` on the model builder,
 to avoid stacking SDK and LangChain4j retries), or customize
 `timeout`, `maxRetries`, `customHeaders`, `customParameters` (see [Custom parameters](#custom-parameters)),
-`yesWhenPrefix` and `noWhenPrefix` (see [Questions and answers](#questions-and-answers)), `apiEndpoint`, `apiVersion`,
-`logRequests`, `logResponses`, and `listeners`. By default, each call is limited to
+`apiEndpoint`, `apiVersion`, `logRequests`, `logResponses`, `logRequestsAndResponses`, and `listeners`. By default, each call is limited to
 20 minutes (`timeout(...)`), and each retry gets the full timeout.
 Both `decide()` and `decideAsync()` are supported.
 
@@ -132,32 +131,12 @@ is rejected with an `IllegalArgumentException` before calling the API. A `Custom
 
 | `DecisionModel` | Gemini Decisions API | Notes |
 |---|---|---|
-| `YesNoQuestion` | `noul` | `yesWhen` and `noWhen` are sent as described below |
+| `YesNoQuestion` | `noul` | `yesWhen` and `noWhen` are sent as Gemini's criteria |
 | `ChoiceQuestion` | `choice` | option names and descriptions map to `criteria` |
 | `ScaleQuestion` | `score` | levels are sent as `label`, or `label: description` when they have a description |
 
-When a yes/no question has both `yesWhen` and `noWhen`, they are sent as Gemini's criteria (`true_description` and
-`false_description`). When it has only one of them, it is added to the question text on a new line, after the text
-"Also answer yes when: " or "Also answer no when: ":
-
-```
-Is this a return request?
-Also answer yes when: The customer wants to exchange an item for another size.
-```
-
-A `yesWhen` on its own is one reason to answer yes, not the only one: when it does not hold, the question itself
-decides (see [Yes/no questions](/tutorials/decision-models#yesno-questions)). Without "Also", Gemini tends to answer
-"no" whenever the `yesWhen` does not hold. To use another text, set it with `yesWhenPrefix(...)` and
-`noWhenPrefix(...)` on the builder:
-
-```java
-DecisionModel decisionModel = GoogleGenAiDecisionModel.builder()
-        .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-        .modelName("gemini-decision-1")
-        .yesWhenPrefix("Answer yes also if: ")
-        .noWhenPrefix("Answer no also if: ")
-        .build();
-```
+The `yesWhen` and `noWhen` of a yes/no question are sent as Gemini's criteria, `true_description` and
+`false_description`. A criterion that is not set is not sent.
 
 Yes/no answers include the probability of "yes" (Gemini reports `noul` between `0.01` and `0.99`, so
 `isYes(threshold)` with a threshold above `0.99` never returns `true`). Choice and scale answers include calibrated

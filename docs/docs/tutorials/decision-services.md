@@ -260,8 +260,8 @@ If a name is not available, `build()` fails and explains both options.
 
 ### Images
 
-Parameters of type `Image` or of a `Content` type, such as `ImageContent`, or collections or arrays of them, are
-sent as contents, for example images, if the decision model supports them
+Parameters of type `Image`, `Audio`, `Video` or `PdfFile`, or of a `Content` type, such as `ImageContent`, or
+collections or arrays of them, are sent as contents, for example images, if the decision model supports them
 (for example [OpenAI](/integrations/decision-models/open-ai), or [Ollama](/integrations/decision-models/ollama) with
 a vision model such as Clef):
 
@@ -273,13 +273,15 @@ interface DamageInspector {
 }
 ```
 
-`AudioContent`, `VideoContent` and `PdfFileContent` parameters are sent the same way, to decision models that take
-them, such as [Google AI Gemini](/integrations/decision-models/google-ai-gemini).
+Audio, video and PDF files are sent the same way, as `AudioContent`, `VideoContent` and `PdfFileContent` parameters
+or as `Audio`, `Video` and `PdfFile` parameters, to decision models that take them, such as
+[Google AI Gemini](/integrations/decision-models/google-ai-gemini).
 
 Like the other parameters, contents are sent under the names of their parameters (see
 [Images](/tutorials/decision-models#images)), and each decision model sends them in the form its API expects.
 `Image`s are sent as `ImageContent`s with the `AUTO` detail level, so that the model provider chooses it; to choose
-another detail level, pass an `ImageContent`.
+another detail level, pass an `ImageContent`. `Audio`, `Video` and `PdfFile` are sent as `AudioContent`, `VideoContent`
+and `PdfFileContent`.
 A decision model that does not support a kind of content throws an `UnsupportedFeatureException` without calling the
 model.
 

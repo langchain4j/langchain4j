@@ -94,8 +94,7 @@ class GoogleGenAiDecisionMapper {
 
     private GoogleGenAiDecisionMapper() {}
 
-    static CreateDecisionRequest toCreateDecisionRequest(
-            DecisionRequest request, String yesWhenPrefix, String noWhenPrefix) {
+    static CreateDecisionRequest toCreateDecisionRequest(DecisionRequest request) {
         if (isNullOrBlank(request.modelName())) {
             throw new IllegalArgumentException("The model name must be set, either with "
                     + "GoogleGenAiDecisionModel.builder().modelName(...) or on the request with "
@@ -114,7 +113,7 @@ class GoogleGenAiDecisionMapper {
         Map<String, com.google.genai.gaos.models.decisions.Question> questions = new LinkedHashMap<>();
         questionNamesByKey(request)
                 .forEach((key, name) ->
-                        questions.put(key, toQuestion(request.questions().get(name), yesWhenPrefix, noWhenPrefix)));
+                        questions.put(key, toQuestion(request.questions().get(name))));
 
         Input input = toInput(request.input());
         if (customParameters.isEmpty()) {
@@ -380,10 +379,17 @@ class GoogleGenAiDecisionMapper {
             @Nullable String uri,
             @Nullable String mimeType) {}
 
-    private static com.google.genai.gaos.models.decisions.Question toQuestion(
-            Question question, String yesWhenPrefix, String noWhenPrefix) {
+    private static com.google.genai.gaos.models.decisions.Question toQuestion(Question question) {
         if (question instanceof YesNoQuestion yesNo) {
-            return toNoulQuestion(yesNo, yesWhenPrefix, noWhenPrefix);
+            NoulQuestion.Builder builder =
+                    NoulQuestion.builder().instructions(NoulQuestionInstructions.of(yesNo.text()));
+            if (yesNo.yesWhen() != null || yesNo.noWhen() != null) {
+                builder.criteria(NoulCriteria.builder()
+                        .trueDescription(yesNo.yesWhen())
+                        .falseDescription(yesNo.noWhen())
+                        .build());
+            }
+            return builder.build();
         }
         if (question instanceof ChoiceQuestion choice) {
             return com.google.genai.gaos.models.decisions.ChoiceQuestion.builder()
@@ -405,34 +411,6 @@ class GoogleGenAiDecisionMapper {
         }
         throw new UnsupportedFeatureException(
                 PROVIDER_NAME + " does not support " + question.getClass().getName() + " questions");
-    }
-
-    /**
-     * A one-sided criterion is one reason for its answer, not the only one, but Gemini reads a lone
-     * {@code true_description} as the only reason to answer yes. Added to the instructions after a prefix such as
-     * "Also answer yes when: ", it is read as one reason among others.
-     */
-    private static NoulQuestion toNoulQuestion(YesNoQuestion question, String yesWhenPrefix, String noWhenPrefix) {
-        String yesWhen = question.yesWhen();
-        String noWhen = question.noWhen();
-        if (yesWhen != null && noWhen != null) {
-            return NoulQuestion.builder()
-                    .instructions(NoulQuestionInstructions.of(question.text()))
-                    .criteria(NoulCriteria.builder()
-                            .trueDescription(yesWhen)
-                            .falseDescription(noWhen)
-                            .build())
-                    .build();
-        }
-        String instructions = question.text();
-        if (yesWhen != null) {
-            instructions += "\n" + yesWhenPrefix + yesWhen;
-        } else if (noWhen != null) {
-            instructions += "\n" + noWhenPrefix + noWhen;
-        }
-        return NoulQuestion.builder()
-                .instructions(NoulQuestionInstructions.of(instructions))
-                .build();
     }
 
     /**

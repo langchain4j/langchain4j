@@ -203,32 +203,7 @@ class GoogleAiGeminiDecisionModelTest {
     }
 
     @Test
-    void should_send_one_sided_yes_no_criterion_in_instructions() {
-
-        // given
-        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(answers(
-                "\"q0\": {\"type\": \"noul\", \"noul\": 0.9}",
-                "\"q1\": {\"type\": \"noul\", \"noul\": 0.9}",
-                "\"q2\": {\"type\": \"noul\", \"noul\": 0.9}")));
-
-        // when
-        model(httpClient).decide(oneSidedCriteriaRequest());
-
-        // then
-        Map<String, Object> questions = questions(httpClient.request());
-        assertThat(questions.get("q0"))
-                .isEqualTo(map(
-                        "type",
-                        "noul",
-                        "instructions",
-                        "Do they want a refund?\nAlso answer yes when: They ask for their money back"));
-        assertThat(questions.get("q1"))
-                .isEqualTo(map("type", "noul", "instructions", "Is it a complaint?\nAlso answer no when: Only a question"));
-        assertThat(questions.get("q2")).isEqualTo(map("type", "noul", "instructions", "Is it spam?"));
-    }
-
-    @Test
-    void should_send_one_sided_yes_no_criterion_with_custom_prefixes() {
+    void should_send_only_the_given_yes_no_criteria() {
 
         // given
         MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(answers(
@@ -236,50 +211,7 @@ class GoogleAiGeminiDecisionModelTest {
                 "\"q1\": {\"type\": \"noul\", \"noul\": 0.9}",
                 "\"q2\": {\"type\": \"noul\", \"noul\": 0.9}",
                 "\"q3\": {\"type\": \"noul\", \"noul\": 0.9}")));
-        GoogleAiGeminiDecisionModel model = GoogleAiGeminiDecisionModel.builder()
-                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
-                .modelName(MODEL_NAME)
-                .yesWhenPrefix("Yes in any case if: ")
-                .noWhenPrefix("No in any case if: ")
-                .build();
         DecisionRequest request = DecisionRequest.builder()
-                .input("I want my money back.")
-                .questions(oneSidedCriteriaRequest().questions())
-                .question(
-                        "urgent",
-                        YesNoQuestion.builder()
-                                .text("Is it urgent?")
-                                .yesWhen("Money is not reaching the customer")
-                                .noWhen("Only a question")
-                                .build())
-                .build();
-
-        // when
-        model.decide(request);
-
-        // then
-        Map<String, Object> questions = questions(httpClient.request());
-        assertThat(questions.get("q0"))
-                .isEqualTo(map(
-                        "type",
-                        "noul",
-                        "instructions",
-                        "Do they want a refund?\nYes in any case if: They ask for their money back"));
-        assertThat(questions.get("q1"))
-                .isEqualTo(map("type", "noul", "instructions", "Is it a complaint?\nNo in any case if: Only a question"));
-        assertThat(questions.get("q2")).isEqualTo(map("type", "noul", "instructions", "Is it spam?"));
-        assertThat(questions.get("q3"))
-                .isEqualTo(map(
-                        "type", "noul",
-                        "instructions", "Is it urgent?",
-                        "criteria",
-                                map(
-                                        "true_description", "Money is not reaching the customer",
-                                        "false_description", "Only a question")));
-    }
-
-    private static DecisionRequest oneSidedCriteriaRequest() {
-        return DecisionRequest.builder()
                 .input("I want my money back.")
                 .question(
                         "refund",
@@ -293,8 +225,40 @@ class GoogleAiGeminiDecisionModelTest {
                                 .text("Is it a complaint?")
                                 .noWhen("Only a question")
                                 .build())
+                .question(
+                        "urgent",
+                        YesNoQuestion.builder()
+                                .text("Is it urgent?")
+                                .yesWhen("Money is not reaching the customer")
+                                .noWhen("Only a question")
+                                .build())
                 .question("spam", YesNoQuestion.from("Is it spam?"))
                 .build();
+
+        // when
+        model(httpClient).decide(request);
+
+        // then
+        Map<String, Object> questions = questions(httpClient.request());
+        assertThat(questions.get("q0"))
+                .isEqualTo(map(
+                        "type", "noul",
+                        "instructions", "Do they want a refund?",
+                        "criteria", map("true_description", "They ask for their money back")));
+        assertThat(questions.get("q1"))
+                .isEqualTo(map(
+                        "type", "noul",
+                        "instructions", "Is it a complaint?",
+                        "criteria", map("false_description", "Only a question")));
+        assertThat(questions.get("q2"))
+                .isEqualTo(map(
+                        "type", "noul",
+                        "instructions", "Is it urgent?",
+                        "criteria",
+                                map(
+                                        "true_description", "Money is not reaching the customer",
+                                        "false_description", "Only a question")));
+        assertThat(questions.get("q3")).isEqualTo(map("type", "noul", "instructions", "Is it spam?"));
     }
 
     @Test
