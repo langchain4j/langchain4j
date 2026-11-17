@@ -1,8 +1,8 @@
 package dev.langchain4j.test.service;
 
-import static dev.langchain4j.test.service.TestResponses.responseWithTokenUsage;
 import static dev.langchain4j.test.service.AiServiceCapture.capture;
 import static dev.langchain4j.test.service.AiServiceCapture.captureExpectingFailure;
+import static dev.langchain4j.test.service.TestResponses.responseWithTokenUsage;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
@@ -12,15 +12,6 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 
-import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.test.mock.MockEmbeddingModel;
-import dev.langchain4j.test.mock.MockScoringModel;
-import dev.langchain4j.rag.content.aggregator.ReRankingContentAggregator;
-import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
-import dev.langchain4j.rag.query.Query;
-import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -29,15 +20,15 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.test.mock.MockChatModel;
-import dev.langchain4j.test.mock.MockStreamingChatModel;
-import dev.langchain4j.test.mock.MockModerationModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
@@ -47,14 +38,23 @@ import dev.langchain4j.observability.api.event.AiServiceStartedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.rag.DefaultRetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.service.AiServiceStreamingEvent.FinalResponseEvent;
+import dev.langchain4j.rag.content.aggregator.ReRankingContentAggregator;
+import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.service.AiServiceStreamingEvent;
+import dev.langchain4j.service.AiServiceStreamingEvent.FinalResponseEvent;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.IllegalConfigurationException;
+import dev.langchain4j.service.Moderate;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.TokenStream;
-import dev.langchain4j.service.Moderate;
+import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
 import dev.langchain4j.test.LangChain4jAssertions;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockEmbeddingModel;
+import dev.langchain4j.test.mock.MockModerationModel;
+import dev.langchain4j.test.mock.MockScoringModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,13 +70,12 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.reactivestreams.FlowAdapters;
-import org.junit.jupiter.api.Nested;
 
 class AiServiceCaptureTest {
-
 
     interface Assistant {
 
@@ -292,8 +291,7 @@ class AiServiceCaptureTest {
     }
 
     private static String lastUserMessage(ChatRequest request) {
-        return ((UserMessage) request.messages().get(request.messages().size() - 1))
-                .singleText();
+        return ((UserMessage) request.messages().get(request.messages().size() - 1)).singleText();
     }
 
     private static void await(CountDownLatch latch) {
@@ -325,7 +323,6 @@ class AiServiceCaptureTest {
 
     @Nested
     class Output {
-
 
         // output() and outputText(): what the AI Service produced
 
@@ -376,7 +373,8 @@ class AiServiceCaptureTest {
                     .streamingChatModel(MockStreamingChatModel.thatStreams("Hel", "lo"))
                     .build();
 
-            AiServiceCapture capture = capture(() -> assistant.chat("Hi").ignoreErrors().start());
+            AiServiceCapture capture =
+                    capture(() -> assistant.chat("Hi").ignoreErrors().start());
 
             assertThat(capture.output()).isEqualTo("Hello");
             assertThat(capture.outputText()).isEqualTo("Hello");
@@ -393,8 +391,14 @@ class AiServiceCaptureTest {
 
             assertThat(capture.output()).isEqualTo("Hello");
             assertThat(capture.outputText()).isEqualTo("Hello");
-            assertThat(capture.lambdaOutputItems()).isNotEmpty().allSatisfy(item -> assertThat(item).isInstanceOf(String.class));
-            assertThat(String.join("", capture.lambdaOutputItems().stream().map(String.class::cast).toList()))
+            assertThat(capture.lambdaOutputItems())
+                    .isNotEmpty()
+                    .allSatisfy(item -> assertThat(item).isInstanceOf(String.class));
+            assertThat(String.join(
+                            "",
+                            capture.lambdaOutputItems().stream()
+                                    .map(String.class::cast)
+                                    .toList()))
                     .isEqualTo("Hello");
         }
 
@@ -506,10 +510,11 @@ class AiServiceCaptureTest {
                     .hasMessageEndingWith("Use invocations() to choose one.");
             assertThatThrownBy(() -> capture.output(Integer.class))
                     .isInstanceOf(AssertionError.class)
-                    .hasMessage(("Expected a single top-level AI Service invocation that produced a value of type Integer,"
-                                    + " but none did. The top-level invocations produced: %s.extract -> Booking, %s.chat ->"
-                                    + " String")
-                            .formatted(BookingExtractor.class.getName(), Assistant.class.getName()));
+                    .hasMessage(
+                            ("Expected a single top-level AI Service invocation that produced a value of type Integer,"
+                                            + " but none did. The top-level invocations produced: %s.extract -> Booking, %s.chat ->"
+                                            + " String")
+                                    .formatted(BookingExtractor.class.getName(), Assistant.class.getName()));
         }
 
         @Test
@@ -536,7 +541,8 @@ class AiServiceCaptureTest {
                     .chatModel(MockChatModel.thatResponds("{\"bookingNumber\":\"MS-777\"}"))
                     .build();
             Assistant outer = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatResponds(callToolThenAnswer("extractBooking", "{\"text\":\"MS-777\"}")).thenRepeats())
+                    .chatModel(MockChatModel.thatResponds(callToolThenAnswer("extractBooking", "{\"text\":\"MS-777\"}"))
+                            .thenRepeats())
                     .tools(new ExtractorTool(inner))
                     .build();
 
@@ -568,7 +574,8 @@ class AiServiceCaptureTest {
                     .hasMessageStartingWith("The lambda returns nothing");
             assertThatThrownBy(capture::lambdaOutputItems)
                     .isInstanceOf(AssertionError.class)
-                    .hasMessageStartingWith("The lambda returned nothing, not a stream such as a Flux, Multi or Flow.Publisher");
+                    .hasMessageStartingWith(
+                            "The lambda returned nothing, not a stream such as a Flux, Multi or Flow.Publisher");
         }
 
         @Test
@@ -633,7 +640,6 @@ class AiServiceCaptureTest {
         }
     }
 
-
     @Nested
     class Invocations {
 
@@ -643,7 +649,8 @@ class AiServiceCaptureTest {
                     .chatModel(MockChatModel.thatResponds("answer").thenRepeats())
                     .build();
             BookingExtractor extractor = AiServices.builder(BookingExtractor.class)
-                    .chatModel(MockChatModel.thatResponds("{\"bookingNumber\":\"MS-777\"}").thenRepeats())
+                    .chatModel(MockChatModel.thatResponds("{\"bookingNumber\":\"MS-777\"}")
+                            .thenRepeats())
                     .build();
 
             AiServiceCapture capture = capture(() -> {
@@ -664,7 +671,6 @@ class AiServiceCaptureTest {
                     .hasMessageStartingWith("Expected a single top-level invocation of " + Notifier.class.getName()
                             + ", but there was none.");
         }
-
 
         // invocation(), invocations() and invocations()
 
@@ -692,7 +698,8 @@ class AiServiceCaptureTest {
         @Test
         void invocation_should_fail_when_several_were_recorded() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatResponds(request -> AiMessage.from("answer")).thenRepeats())
+                    .chatModel(MockChatModel.thatResponds(request -> AiMessage.from("answer"))
+                            .thenRepeats())
                     .build();
 
             AiServiceCapture capture = capture(() -> {
@@ -718,7 +725,8 @@ class AiServiceCaptureTest {
                     .chatModel(MockChatModel.thatResponds("expert answer"))
                     .build();
             Assistant outer = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatResponds(callToolThenAnswer("askExpert", "{\"question\":\"why?\"}")).thenRepeats())
+                    .chatModel(MockChatModel.thatResponds(callToolThenAnswer("askExpert", "{\"question\":\"why?\"}"))
+                            .thenRepeats())
                     .tools(new ExpertTool(expert))
                     .build();
             Assistant last = AiServices.builder(Assistant.class)
@@ -761,7 +769,8 @@ class AiServiceCaptureTest {
         @Test
         void should_capture_nothing_after_a_capture_that_failed() {
             Assistant failing = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatFails(new RuntimeException("model unavailable")).thenRepeats())
+                    .chatModel(MockChatModel.thatFails(new RuntimeException("model unavailable"))
+                            .thenRepeats())
                     .build();
             Assistant assistant = AiServices.builder(Assistant.class)
                     .chatModel(MockChatModel.thatResponds("answer").thenRepeats())
@@ -771,14 +780,19 @@ class AiServiceCaptureTest {
             assistant.chat("not captured");
 
             assertThat(capture(() -> {}).invocations()).isEmpty();
-            assertThat(capture(() -> assistant.chat("recorded")).invocation().invocationContext().parentInvocationId())
+            assertThat(capture(() -> assistant.chat("recorded"))
+                            .invocation()
+                            .invocationContext()
+                            .parentInvocationId())
                     .isNull();
         }
 
         @Test
         void should_capture_several_invocations_in_order() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatResponds(request -> AiMessage.from("answer " + request.messages().size())).thenRepeats())
+                    .chatModel(MockChatModel.thatResponds(request -> AiMessage.from(
+                                    "answer " + request.messages().size()))
+                            .thenRepeats())
                     .build();
 
             AiServiceCapture invocations = capture(() -> {
@@ -787,7 +801,8 @@ class AiServiceCaptureTest {
             });
 
             assertThat(invocations.invocations())
-                    .extracting(invocation -> invocation.invocationContext().methodArguments().get(0))
+                    .extracting(invocation ->
+                            invocation.invocationContext().methodArguments().get(0))
                     .containsExactly("first", "second");
             assertThatThrownBy(invocations::invocation)
                     .isInstanceOf(AssertionError.class)
@@ -813,7 +828,8 @@ class AiServiceCaptureTest {
         @Test
         void should_keep_recordings_of_parallel_threads_apart() throws Exception {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatResponds(request -> AiMessage.from(lastUserMessage(request))).thenRepeats())
+                    .chatModel(MockChatModel.thatResponds(request -> AiMessage.from(lastUserMessage(request)))
+                            .thenRepeats())
                     .build();
             ExecutorService executor = Executors.newFixedThreadPool(8);
             try {
@@ -832,23 +848,22 @@ class AiServiceCaptureTest {
         }
     }
 
-
     @Nested
     class OwnChatModelCallsAndTokens {
-
 
         // ownChatModelCalls() and lastResponse()
 
         @Test
         void should_capture_each_own_chat_model_call_with_its_request_and_response() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatResponds(
-                                    responseWithTokenUsage(AiMessage.from(cancelBookingCall()), new TokenUsage(100, 10)))
+                    .chatModel(MockChatModel.thatResponds(responseWithTokenUsage(
+                                    AiMessage.from(cancelBookingCall()), new TokenUsage(100, 10)))
                             .thenResponds(responseWithTokenUsage(AiMessage.from("answer"), new TokenUsage(150, 20))))
                     .tools(new BookingTools())
                     .build();
 
-            AiServiceInvocation invocation = capture(() -> assistant.chat("Cancel MS-777")).invocation();
+            AiServiceInvocation invocation =
+                    capture(() -> assistant.chat("Cancel MS-777")).invocation();
 
             assertThat(invocation.ownChatModelCalls()).hasSize(2);
             ChatModelCall first = invocation.ownChatModelCalls().get(0);
@@ -864,7 +879,9 @@ class AiServiceCaptureTest {
             assertThat(second.response().aiMessage().text()).isEqualTo("answer");
             assertThat(invocation.lastResponse()).isSameAs(second.response());
             assertThat(invocation.tokenUsage()).isEqualTo(new TokenUsage(250, 30));
-            LangChain4jAssertions.assertThat(invocation).hasOwnChatModelCallCount(2).hasOwnChatModelCallCountAtMost(2);
+            LangChain4jAssertions.assertThat(invocation)
+                    .hasOwnChatModelCallCount(2)
+                    .hasOwnChatModelCallCountAtMost(2);
         }
 
         @Test
@@ -875,10 +892,15 @@ class AiServiceCaptureTest {
                     .tools(new BookingTools())
                     .build();
 
-            AiServiceInvocation invocation = capture(() -> assistant.chat("Cancel MS-777").ignoreErrors().start()).invocation();
+            AiServiceInvocation invocation = capture(
+                            () -> assistant.chat("Cancel MS-777").ignoreErrors().start())
+                    .invocation();
 
-            LangChain4jAssertions.assertThat(invocation).hasOwnChatModelCallCount(2).hasToolExecuted("cancelBooking");
-            assertThat(invocation.ownChatModelCalls()).allSatisfy(call -> assertThat(call.request()).isNotNull());
+            LangChain4jAssertions.assertThat(invocation)
+                    .hasOwnChatModelCallCount(2)
+                    .hasToolExecuted("cancelBooking");
+            assertThat(invocation.ownChatModelCalls())
+                    .allSatisfy(call -> assertThat(call.request()).isNotNull());
             assertThat(invocation.outputText()).isEqualTo("answer");
         }
 
@@ -896,10 +918,13 @@ class AiServiceCaptureTest {
                     .tools(new BookingTools())
                     .build();
 
-            AiServiceInvocation invocation = capture(() -> assistant.chat("Cancel MS-777").ignoreErrors().start()).invocation();
+            AiServiceInvocation invocation = capture(
+                            () -> assistant.chat("Cancel MS-777").ignoreErrors().start())
+                    .invocation();
 
             assertThat(invocation.lastResponse().tokenUsage()).isEqualTo(new TokenUsage(150, 20));
-            assertThat(invocation.lastResponse()).isSameAs(invocation.ownChatModelCalls().get(1).response());
+            assertThat(invocation.lastResponse())
+                    .isSameAs(invocation.ownChatModelCalls().get(1).response());
             assertThat(invocation.tokenUsage()).isEqualTo(new TokenUsage(250, 30));
             assertThat(invocation.outputText()).isEqualTo("answer");
         }
@@ -907,17 +932,21 @@ class AiServiceCaptureTest {
         @Test
         void should_return_the_first_and_last_request_and_the_last_response() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("cancelBooking")).thenRepeats())
+                    .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("cancelBooking"))
+                            .thenRepeats())
                     .tools(new BookingTools())
                     .build();
 
             AiServiceCapture capture = capture(() -> assistant.chat("Cancel MS-777"));
 
             AiServiceInvocation invocation = capture.invocation();
-            assertThat(invocation.firstRequest()).isSameAs(invocation.ownChatModelCalls().get(0).request());
-            assertThat(invocation.lastRequest()).isSameAs(invocation.ownChatModelCalls().get(1).request());
+            assertThat(invocation.firstRequest())
+                    .isSameAs(invocation.ownChatModelCalls().get(0).request());
+            assertThat(invocation.lastRequest())
+                    .isSameAs(invocation.ownChatModelCalls().get(1).request());
             assertThat(invocation.lastRequest().messages()).last().isInstanceOf(ToolExecutionResultMessage.class);
-            assertThat(invocation.lastResponse()).isSameAs(invocation.ownChatModelCalls().get(1).response());
+            assertThat(invocation.lastResponse())
+                    .isSameAs(invocation.ownChatModelCalls().get(1).response());
             assertThat(capture.firstRequest()).isSameAs(invocation.firstRequest());
             assertThat(capture.lastRequest()).isSameAs(invocation.lastRequest());
             assertThat(capture.lastResponse()).isSameAs(invocation.lastResponse());
@@ -933,21 +962,24 @@ class AiServiceCaptureTest {
 
             assertThatThrownBy(capture::firstRequest)
                     .isInstanceOf(AssertionError.class)
-                    .hasMessageStartingWith("The chat model did not respond to the AI Service invocation: it failed with")
+                    .hasMessageStartingWith(
+                            "The chat model did not respond to the AI Service invocation: it failed with")
                     .hasMessageContaining("model unavailable");
             assertThatThrownBy(capture::lastRequest)
                     .isInstanceOf(AssertionError.class)
                     .hasMessageStartingWith("The chat model did not respond to the AI Service invocation");
             assertThatThrownBy(capture::lastResponse)
                     .isInstanceOf(AssertionError.class)
-                    .hasMessageStartingWith("The chat model did not respond to the AI Service invocation: it failed with")
+                    .hasMessageStartingWith(
+                            "The chat model did not respond to the AI Service invocation: it failed with")
                     .hasMessageContaining("model unavailable");
         }
 
         @Test
         void own_chat_model_call_count_assertions_should_fail_with_the_actual_count() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("getBookingDetails", "cancelBooking")).thenRepeats())
+                    .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("getBookingDetails", "cancelBooking"))
+                            .thenRepeats())
                     .tools(new BookingTools())
                     .build();
 
@@ -960,10 +992,12 @@ class AiServiceCaptureTest {
                     .hasMessageContaining("cancelBooking");
             assertThatThrownBy(() -> LangChain4jAssertions.assertThat(capture).hasOwnChatModelCallCountAtMost(2))
                     .isInstanceOf(AssertionError.class)
-                    .hasMessageContaining("Expected at most 2 call(s) of the AI Service to its chat model, but there were 3");
+                    .hasMessageContaining(
+                            "Expected at most 2 call(s) of the AI Service to its chat model, but there were 3");
             assertThatThrownBy(() -> LangChain4jAssertions.assertThat(capture).hasOwnChatModelCallCountAtMost(0))
                     .isInstanceOf(AssertionError.class)
-                    .hasMessageContaining("Expected at most 0 call(s) of the AI Service to its chat model, but there were 3");
+                    .hasMessageContaining(
+                            "Expected at most 0 call(s) of the AI Service to its chat model, but there were 3");
             assertThatThrownBy(() -> LangChain4jAssertions.assertThat(capture).hasOwnChatModelCallCountAtMost(-1))
                     .isInstanceOf(IllegalArgumentException.class);
             assertThatThrownBy(() -> LangChain4jAssertions.assertThat(capture).hasOwnChatModelCallCount(-1))
@@ -989,13 +1023,14 @@ class AiServiceCaptureTest {
         @Test
         void should_capture_token_usage_and_finish_reason_summed_over_model_calls() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatResponds(
-                                    responseWithTokenUsage(AiMessage.from(cancelBookingCall()), new TokenUsage(100, 10)))
+                    .chatModel(MockChatModel.thatResponds(responseWithTokenUsage(
+                                    AiMessage.from(cancelBookingCall()), new TokenUsage(100, 10)))
                             .thenResponds(responseWithTokenUsage(AiMessage.from("answer"), new TokenUsage(100, 10))))
                     .tools(new FailingBookingDetailsTools())
                     .build();
 
-            AiServiceInvocation invocation = capture(() -> assistant.chat("Cancel booking MS-777")).invocation();
+            AiServiceInvocation invocation =
+                    capture(() -> assistant.chat("Cancel booking MS-777")).invocation();
 
             assertThat(invocation.tokenUsage()).isEqualTo(new TokenUsage(200, 20));
             LangChain4jAssertions.assertThat(invocation).hasFinishReason(FinishReason.STOP);
@@ -1010,7 +1045,9 @@ class AiServiceCaptureTest {
                     .outputGuardrails(new OutputGuardrail() {
                         @Override
                         public OutputGuardrailResult validate(AiMessage responseFromLLM) {
-                            return responseFromLLM.text().equals("short") ? success() : reprompt("too long", "Be shorter");
+                            return responseFromLLM.text().equals("short")
+                                    ? success()
+                                    : reprompt("too long", "Be shorter");
                         }
                     })
                     .build();
@@ -1032,7 +1069,8 @@ class AiServiceCaptureTest {
                             .build()))
                     .build();
 
-            AiServiceInvocation invocation = capture(() -> assistant.chat("Hi").ignoreErrors().start()).invocation();
+            AiServiceInvocation invocation =
+                    capture(() -> assistant.chat("Hi").ignoreErrors().start()).invocation();
 
             LangChain4jAssertions.assertThat(invocation).hasFinishReason(FinishReason.STOP);
             assertThat(invocation.tokenUsage()).isEqualTo(new TokenUsage(10, 2));
@@ -1066,12 +1104,12 @@ class AiServiceCaptureTest {
             AiServiceInvocation invocation = capture(() -> assistant.chat("Hi")).invocation();
 
             assertThat(invocation.tokenUsage()).isNull();
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation).hasFinishReason(FinishReason.STOP))
+            assertThatThrownBy(
+                            () -> LangChain4jAssertions.assertThat(invocation).hasFinishReason(FinishReason.STOP))
                     .isInstanceOf(AssertionError.class)
                     .hasMessage("[Assistant.chat] Expected finish reason <STOP>, but the model did not report it");
         }
     }
-
 
     @Nested
     class ToolsAndSources {
@@ -1093,13 +1131,13 @@ class AiServiceCaptureTest {
             LangChain4jAssertions.assertThat(capture.lastRequest()).hasUserMessageContaining("MS-777");
         }
 
-
         // tool assertions
 
         @Test
         void should_check_how_many_times_a_tool_was_executed() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("getBookingDetails", "getBookingDetails")).thenRepeats())
+                    .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("getBookingDetails", "getBookingDetails"))
+                            .thenRepeats())
                     .tools(new BookingTools())
                     .build();
 
@@ -1108,10 +1146,13 @@ class AiServiceCaptureTest {
             LangChain4jAssertions.assertThat(capture)
                     .hasToolExecutedTimes("getBookingDetails", 2)
                     .hasToolExecutedTimes("cancelBooking", 0);
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(capture).hasToolExecutedTimes("getBookingDetails", 1))
+            assertThatThrownBy(() ->
+                            LangChain4jAssertions.assertThat(capture).hasToolExecutedTimes("getBookingDetails", 1))
                     .isInstanceOf(AssertionError.class)
-                    .hasMessageContaining("Expected tool <getBookingDetails> to be executed successfully 1 time(s), but it was 2 time(s)");
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(capture).hasToolExecutedTimes("getBookingDetails", -1))
+                    .hasMessageContaining(
+                            "Expected tool <getBookingDetails> to be executed successfully 1 time(s), but it was 2 time(s)");
+            assertThatThrownBy(() ->
+                            LangChain4jAssertions.assertThat(capture).hasToolExecutedTimes("getBookingDetails", -1))
                     .isInstanceOf(IllegalArgumentException.class);
         }
 
@@ -1119,7 +1160,8 @@ class AiServiceCaptureTest {
         void should_check_the_order_of_tool_executions() {
             Assistant assistant = AiServices.builder(Assistant.class)
                     .chatModel(MockChatModel.thatResponds(
-                            callToolsThenAnswer("getBookingDetails", "getBookingDetails", "cancelBooking")).thenRepeats())
+                                    callToolsThenAnswer("getBookingDetails", "getBookingDetails", "cancelBooking"))
+                            .thenRepeats())
                     .tools(new BookingTools())
                     .build();
 
@@ -1133,7 +1175,8 @@ class AiServiceCaptureTest {
             assertThatThrownBy(() -> LangChain4jAssertions.assertThat(capture)
                             .hasToolsExecutedInOrder("cancelBooking", "getBookingDetails"))
                     .isInstanceOf(AssertionError.class)
-                    .hasMessageContaining("Expected these tools to be executed successfully in this order: [cancelBooking, getBookingDetails]")
+                    .hasMessageContaining(
+                            "Expected these tools to be executed successfully in this order: [cancelBooking, getBookingDetails]")
                     .hasMessageContaining("1. getBookingDetails")
                     .hasMessageContaining("3. cancelBooking");
             assertThatThrownBy(() -> LangChain4jAssertions.assertThat(capture)
@@ -1152,17 +1195,20 @@ class AiServiceCaptureTest {
                     .chatModel(MockChatModel.thatResponds("answer").thenRepeats())
                     .build();
 
-            LangChain4jAssertions.assertThat(capture(() -> assistant.chat("What is the weather?"))).hasNoRetrievedSources();
+            LangChain4jAssertions.assertThat(capture(() -> assistant.chat("What is the weather?")))
+                    .hasNoRetrievedSources();
 
             retrieved.add(Content.from("Bookings can be cancelled up to 7 days in advance."));
             AiServiceCapture withSources = capture(() -> assistant.chat("Can I cancel?"));
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(withSources).hasNoRetrievedSources())
+            assertThatThrownBy(
+                            () -> LangChain4jAssertions.assertThat(withSources).hasNoRetrievedSources())
                     .isInstanceOf(AssertionError.class)
                     .hasMessageContaining("Expected no retrieved sources, but these were retrieved:")
                     .hasMessageContaining("7 days");
 
             AiServiceCapture notCaptured = capture(() -> withoutRetrieval.chat("Hi"));
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(notCaptured).hasNoRetrievedSources())
+            assertThatThrownBy(
+                            () -> LangChain4jAssertions.assertThat(notCaptured).hasNoRetrievedSources())
                     .isInstanceOf(AssertionError.class)
                     .hasMessageContaining("no sources were captured");
         }
@@ -1170,11 +1216,14 @@ class AiServiceCaptureTest {
         @Test
         void should_capture_tool_executions_of_ai_service_returning_string() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatResponds(callToolThenAnswer("cancelBooking", "{\"bookingNumber\":\"MS-777\"}")).thenRepeats())
+                    .chatModel(MockChatModel.thatResponds(
+                                    callToolThenAnswer("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"))
+                            .thenRepeats())
                     .tools(new FailingBookingDetailsTools())
                     .build();
 
-            AiServiceInvocation invocation = capture(() -> assistant.chat("Cancel booking MS-777")).invocation();
+            AiServiceInvocation invocation =
+                    capture(() -> assistant.chat("Cancel booking MS-777")).invocation();
 
             LangChain4jAssertions.assertThat(invocation)
                     .hasToolsExecutedExactlyInAnyOrder("cancelBooking")
@@ -1189,25 +1238,31 @@ class AiServiceCaptureTest {
         void should_capture_failed_tool_execution() {
             Assistant assistant = AiServices.builder(Assistant.class)
                     .chatModel(MockChatModel.thatResponds(
-                            callToolThenAnswer("getBookingDetails", "{\"bookingNumber\":\"MS-777\"}")).thenRepeats())
+                                    callToolThenAnswer("getBookingDetails", "{\"bookingNumber\":\"MS-777\"}"))
+                            .thenRepeats())
                     .tools(new FailingBookingDetailsTools())
                     .build();
 
-            AiServiceInvocation invocation = capture(() -> assistant.chat("Show booking MS-777")).invocation();
+            AiServiceInvocation invocation =
+                    capture(() -> assistant.chat("Show booking MS-777")).invocation();
 
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation).hasNoFailedToolExecutions())
+            assertThatThrownBy(
+                            () -> LangChain4jAssertions.assertThat(invocation).hasNoFailedToolExecutions())
                     .isInstanceOf(AssertionError.class)
-                    .hasMessageContaining("getBookingDetails({\"bookingNumber\":\"MS-777\"}) -> Booking not found (FAILED)");
+                    .hasMessageContaining(
+                            "getBookingDetails({\"bookingNumber\":\"MS-777\"}) -> Booking not found (FAILED)");
         }
 
         @Test
         void should_capture_retrieved_sources() {
             Assistant assistant = AiServices.builder(Assistant.class)
                     .chatModel(MockChatModel.thatResponds("answer"))
-                    .contentRetriever(query -> List.of(Content.from("Bookings can be cancelled up to 7 days in advance.")))
+                    .contentRetriever(
+                            query -> List.of(Content.from("Bookings can be cancelled up to 7 days in advance.")))
                     .build();
 
-            AiServiceInvocation invocation = capture(() -> assistant.chat("Can I cancel?")).invocation();
+            AiServiceInvocation invocation =
+                    capture(() -> assistant.chat("Can I cancel?")).invocation();
 
             LangChain4jAssertions.assertThat(invocation).hasRetrievedSourceContaining("7 days");
             assertThat(invocation.sources()).hasSize(1);
@@ -1218,13 +1273,14 @@ class AiServiceCaptureTest {
             ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
                     .streamingChatModel(MockStreamingChatModel.thatResponds("answer"))
                     .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
-                            .contentRetriever(
-                                    query -> List.of(Content.from("Bookings can be cancelled up to 7 days in advance.")))
+                            .contentRetriever(query ->
+                                    List.of(Content.from("Bookings can be cancelled up to 7 days in advance.")))
                             .offloadBlocking(true)
                             .build())
                     .build();
 
-            AiServiceInvocation invocation = capture(() -> assistant.chat("Can I cancel?")).invocation();
+            AiServiceInvocation invocation =
+                    capture(() -> assistant.chat("Can I cancel?")).invocation();
 
             LangChain4jAssertions.assertThat(invocation).hasRetrievedSourceContaining("7 days");
         }
@@ -1233,10 +1289,13 @@ class AiServiceCaptureTest {
         void should_capture_retrieved_sources_of_token_stream() {
             StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                     .streamingChatModel(MockStreamingChatModel.thatResponds("answer"))
-                    .contentRetriever(query -> List.of(Content.from("Bookings can be cancelled up to 7 days in advance.")))
+                    .contentRetriever(
+                            query -> List.of(Content.from("Bookings can be cancelled up to 7 days in advance.")))
                     .build();
 
-            AiServiceInvocation invocation = capture(() -> assistant.chat("Can I cancel?").ignoreErrors().start()).invocation();
+            AiServiceInvocation invocation = capture(
+                            () -> assistant.chat("Can I cancel?").ignoreErrors().start())
+                    .invocation();
 
             LangChain4jAssertions.assertThat(invocation).hasRetrievedSourceContaining("7 days");
         }
@@ -1247,12 +1306,14 @@ class AiServiceCaptureTest {
                     .chatModel(MockChatModel.thatResponds("answer"))
                     .build();
 
-            AiServiceInvocation invocation = capture(() -> assistant.chat("Can I cancel?")).invocation();
+            AiServiceInvocation invocation =
+                    capture(() -> assistant.chat("Can I cancel?")).invocation();
 
             assertThatThrownBy(invocation::sources)
                     .isInstanceOf(AssertionError.class)
                     .hasMessageContaining("has no retrieval augmentor");
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation).hasRetrievedSourceContaining("7 days"))
+            assertThatThrownBy(
+                            () -> LangChain4jAssertions.assertThat(invocation).hasRetrievedSourceContaining("7 days"))
                     .isInstanceOf(AssertionError.class)
                     .hasMessageContaining("no sources were captured");
         }
@@ -1289,19 +1350,21 @@ class AiServiceCaptureTest {
                     .invocation();
 
             LangChain4jAssertions.assertThat(invocation).executedToolNames().containsExactly("cancelBooking");
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation).hasToolExecuted("cancelBooking"))
+            assertThatThrownBy(
+                            () -> LangChain4jAssertions.assertThat(invocation).hasToolExecuted("cancelBooking"))
                     .isInstanceOf(AssertionError.class)
                     .hasMessageContaining("to be executed successfully, but the AI Service did not report whether its "
                             + "tool executions failed");
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation).hasToolExecutionFailed("cancelBooking"))
+            assertThatThrownBy(
+                            () -> LangChain4jAssertions.assertThat(invocation).hasToolExecutionFailed("cancelBooking"))
                     .isInstanceOf(AssertionError.class)
                     .hasMessageContaining("did not report whether its tool executions failed");
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation).hasNoFailedToolExecutions())
+            assertThatThrownBy(
+                            () -> LangChain4jAssertions.assertThat(invocation).hasNoFailedToolExecutions())
                     .isInstanceOf(AssertionError.class)
                     .hasMessageContaining("the AI Service did not report whether its tool executions failed");
         }
     }
-
 
     @Nested
     class Streaming {
@@ -1316,8 +1379,8 @@ class AiServiceCaptureTest {
                     .tools(new BookingTools())
                     .build();
 
-            AiServiceCapture capture =
-                    capture(() -> assistant.chat("Cancel booking MS-777").ignoreErrors().start());
+            AiServiceCapture capture = capture(
+                    () -> assistant.chat("Cancel booking MS-777").ignoreErrors().start());
 
             LangChain4jAssertions.assertThat(capture)
                     .hasToolExecutedWith("cancelBooking", Map.of("bookingNumber", "MS-777"));
@@ -1354,9 +1417,9 @@ class AiServiceCaptureTest {
             AiServiceCapture capture = captureExpectingFailure(
                     () -> assistant.chat("Cancel booking MS-777").ignoreErrors().start());
 
-            assertThat(capture.invocation().error()).hasMessageContaining("script the answer that follows the tool results");
+            assertThat(capture.invocation().error())
+                    .hasMessageContaining("script the answer that follows the tool results");
         }
-
 
         // streaming
 
@@ -1369,7 +1432,8 @@ class AiServiceCaptureTest {
                     .tools(new BookingTools())
                     .build();
 
-            AiServiceCapture capture = capture(() -> assistant.chat("Cancel MS-777").ignoreErrors().start());
+            AiServiceCapture capture =
+                    capture(() -> assistant.chat("Cancel MS-777").ignoreErrors().start());
 
             assertThat(capture.outputText()).isEqualTo("Ok");
             LangChain4jAssertions.assertThat(capture)
@@ -1385,7 +1449,8 @@ class AiServiceCaptureTest {
                     .build();
             List<String> tokens = new CopyOnWriteArrayList<>();
 
-            AiServiceInvocation invocation = capture(() -> assistant.chat("Hi")
+            AiServiceInvocation invocation = capture(() -> assistant
+                            .chat("Hi")
                             .onPartialResponse(tokens::add)
                             .onError(error -> {})
                             .start())
@@ -1432,10 +1497,15 @@ class AiServiceCaptureTest {
             assertThat(capture.lambdaOutputItems())
                     .extracting(item -> item.getClass().getSimpleName())
                     .containsSubsequence(
-                            "BeforeToolExecutionEvent", "AfterToolExecutionEvent", "PartialResponseEvent", "FinalResponseEvent");
+                            "BeforeToolExecutionEvent",
+                            "AfterToolExecutionEvent",
+                            "PartialResponseEvent",
+                            "FinalResponseEvent");
             assertThat(capture.lambdaOutputItems()).last().isInstanceOf(FinalResponseEvent.class);
             assertThat(capture.outputText()).isEqualTo("Cancelled");
-            LangChain4jAssertions.assertThat(capture).hasToolExecuted("cancelBooking").hasOwnChatModelCallCount(2);
+            LangChain4jAssertions.assertThat(capture)
+                    .hasToolExecuted("cancelBooking")
+                    .hasOwnChatModelCallCount(2);
         }
 
         @Test
@@ -1444,8 +1514,8 @@ class AiServiceCaptureTest {
                     .streamingChatModel(MockStreamingChatModel.thatStreams("Hel", "lo", "!"))
                     .build();
 
-            AiServiceCapture capture = capture(() -> (Flow.Publisher<String>) subscriber -> assistant.chat("Hi")
-                    .subscribe(new CancelAfterFirstItem(subscriber)));
+            AiServiceCapture capture = capture(() -> (Flow.Publisher<String>)
+                    subscriber -> assistant.chat("Hi").subscribe(new CancelAfterFirstItem(subscriber)));
 
             assertThat(capture.invocation().isCancelled()).isTrue();
             assertThat(capture.lambdaOutputItems()).containsExactly("Hel");
@@ -1454,11 +1524,14 @@ class AiServiceCaptureTest {
         @Test
         void should_capture_each_of_several_token_streams_in_their_own_invocation() {
             StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                    .streamingChatModel(MockStreamingChatModel.thatStreams("Hel", "lo").thenRepeats())
+                    .streamingChatModel(
+                            MockStreamingChatModel.thatStreams("Hel", "lo").thenRepeats())
                     .build();
 
-            AiServiceCapture first = capture(() -> assistant.chat("Hi").ignoreErrors().start());
-            AiServiceCapture second = capture(() -> assistant.chat("Hi again").ignoreErrors().start());
+            AiServiceCapture first =
+                    capture(() -> assistant.chat("Hi").ignoreErrors().start());
+            AiServiceCapture second =
+                    capture(() -> assistant.chat("Hi again").ignoreErrors().start());
 
             assertThat(first.outputText()).isEqualTo("Hello");
             assertThat(second.outputText()).isEqualTo("Hello");
@@ -1479,7 +1552,10 @@ class AiServiceCaptureTest {
                             executor.execute(() -> {
                                 // starts the stream only once the lambda is about to return, so capture(...) must wait
                                 await(lambdaEnding, 10_000);
-                                tokenStream.onPartialResponse(token -> {}).onError(error -> {}).start();
+                                tokenStream
+                                        .onPartialResponse(token -> {})
+                                        .onError(error -> {})
+                                        .start();
                             });
                             lambdaEnding.countDown();
                         })
@@ -1499,18 +1575,21 @@ class AiServiceCaptureTest {
 
             AiServiceInvocation invocation = capture(() -> assistant
                             .chat("Hi")
-                            .onPartialResponseWithContext(
-                                    (partialResponse, context) -> context.streamingHandle().cancel())
+                            .onPartialResponseWithContext((partialResponse, context) ->
+                                    context.streamingHandle().cancel())
                             .onError(error -> {})
                             .start())
                     .invocation();
 
             assertThat(invocation.isCancelled()).isTrue();
-            assertThatThrownBy(invocation::outputText).hasMessage("The AI Service invocation was cancelled, so it has no output");
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation).hasNoToolExecutions())
+            assertThatThrownBy(invocation::outputText)
+                    .hasMessage("The AI Service invocation was cancelled, so it has no output");
+            assertThatThrownBy(
+                            () -> LangChain4jAssertions.assertThat(invocation).hasNoToolExecutions())
                     .isInstanceOf(AssertionError.class)
                     .hasMessageContaining("Expected the invocation to succeed, but it was cancelled");
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation).hasFailedWithMessageContaining("x"))
+            assertThatThrownBy(
+                            () -> LangChain4jAssertions.assertThat(invocation).hasFailedWithMessageContaining("x"))
                     .isInstanceOf(AssertionError.class)
                     .hasMessageContaining("but it did not fail (it was cancelled)");
         }
@@ -1520,9 +1599,10 @@ class AiServiceCaptureTest {
             CountDownLatch release = new CountDownLatch(1);
             AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
                     .chatModel(MockChatModel.thatResponds(request -> {
-                        await(release);
-                        return AiMessage.from("answer");
-                    }).thenRepeats())
+                                await(release);
+                                return AiMessage.from("answer");
+                            })
+                            .thenRepeats())
                     .build();
 
             AiServiceInvocation invocation = capture(() -> {
@@ -1535,7 +1615,6 @@ class AiServiceCaptureTest {
             assertThat(invocation.outputText()).isEqualTo("answer");
         }
     }
-
 
     @Nested
     class Failures {
@@ -1550,9 +1629,9 @@ class AiServiceCaptureTest {
             AiServiceCapture capture = captureExpectingFailure(() -> assistant.chat("Cancel booking MS-777"));
 
             assertThat(capture.invocation().toolExecutions()).hasSize(1);
-            assertThat(capture.invocation().error()).hasMessageContaining("script the answer that follows the tool results");
+            assertThat(capture.invocation().error())
+                    .hasMessageContaining("script the answer that follows the tool results");
         }
-
 
         // hasSucceeded() and hasNoRetrievedSources()
 
@@ -1565,7 +1644,8 @@ class AiServiceCaptureTest {
                     .chatModel(MockChatModel.thatFails(new RuntimeException("model unavailable")))
                     .build();
 
-            LangChain4jAssertions.assertThat(capture(() -> assistant.chat("Hi"))).hasSucceeded();
+            LangChain4jAssertions.assertThat(capture(() -> assistant.chat("Hi")))
+                    .hasSucceeded();
             AiServiceCapture failed = captureExpectingFailure(() -> failing.chat("Hi"));
             assertThatThrownBy(() -> LangChain4jAssertions.assertThat(failed).hasSucceeded())
                     .isInstanceOf(AssertionError.class)
@@ -1579,8 +1659,8 @@ class AiServiceCaptureTest {
                     .streamingChatModel(MockStreamingChatModel.thatStreams("Hel", "lo", "!"))
                     .build();
 
-            AiServiceCapture capture = capture(() -> (Flow.Publisher<String>) subscriber -> assistant.chat("Hi")
-                    .subscribe(new CancelAfterFirstItem(subscriber)));
+            AiServiceCapture capture = capture(() -> (Flow.Publisher<String>)
+                    subscriber -> assistant.chat("Hi").subscribe(new CancelAfterFirstItem(subscriber)));
 
             assertThat(capture.invocation().isCancelled()).isTrue();
             assertThatThrownBy(() -> LangChain4jAssertions.assertThat(capture).hasSucceeded())
@@ -1589,14 +1669,16 @@ class AiServiceCaptureTest {
         }
 
         @Test
-        void capture_expecting_failure_should_fail_with_the_exception_of_the_lambda_as_cause_when_nothing_was_captured() {
+        void
+                capture_expecting_failure_should_fail_with_the_exception_of_the_lambda_as_cause_when_nothing_was_captured() {
             IllegalStateException thrown = new IllegalStateException("not an AI Service failure");
 
             assertThatThrownBy(() -> captureExpectingFailure(() -> {
                         throw thrown;
                     }))
                     .isInstanceOf(AssertionError.class)
-                    .hasMessageStartingWith("Expected an AI Service invocation to fail. No AI Service invocation was captured.")
+                    .hasMessageStartingWith(
+                            "Expected an AI Service invocation to fail. No AI Service invocation was captured.")
                     .hasMessageContaining("The lambda threw " + thrown)
                     .hasCause(thrown);
         }
@@ -1604,10 +1686,12 @@ class AiServiceCaptureTest {
         @Test
         void should_check_failure_type() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatFails(new RuntimeException("outer", new IllegalStateException("root cause"))))
+                    .chatModel(MockChatModel.thatFails(
+                            new RuntimeException("outer", new IllegalStateException("root cause"))))
                     .build();
 
-            AiServiceInvocation invocation = captureExpectingFailure(() -> assistant.chat("Hello")).invocation();
+            AiServiceInvocation invocation =
+                    captureExpectingFailure(() -> assistant.chat("Hello")).invocation();
 
             LangChain4jAssertions.assertThat(invocation)
                     .hasFailedWith(IllegalStateException.class)
@@ -1615,7 +1699,8 @@ class AiServiceCaptureTest {
             assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation)
                             .hasFailedWith(UnsupportedOperationException.class))
                     .isInstanceOf(AssertionError.class)
-                    .hasMessageContaining("Expected the invocation to fail with <java.lang.UnsupportedOperationException>");
+                    .hasMessageContaining(
+                            "Expected the invocation to fail with <java.lang.UnsupportedOperationException>");
         }
 
         @Test
@@ -1624,21 +1709,25 @@ class AiServiceCaptureTest {
                     .streamingChatModel(throwingFromChat(new RuntimeException("Cannot connect")))
                     .build();
 
-            AiServiceInvocation invocation =
-                    captureExpectingFailure(() -> assistant.chat("Hi").ignoreErrors().start()).invocation();
+            AiServiceInvocation invocation = captureExpectingFailure(
+                            () -> assistant.chat("Hi").ignoreErrors().start())
+                    .invocation();
 
             LangChain4jAssertions.assertThat(invocation).hasFailedWithMessageContaining("Cannot connect");
-            assertThatThrownBy(() -> capture(() -> assistant.chat("Hi").ignoreErrors().start()))
+            assertThatThrownBy(() ->
+                            capture(() -> assistant.chat("Hi").ignoreErrors().start()))
                     .hasMessage("Cannot connect");
         }
 
         @Test
         void should_match_failure_message_of_a_cause() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatFails(new RuntimeException("outer", new IllegalStateException("root cause"))))
+                    .chatModel(MockChatModel.thatFails(
+                            new RuntimeException("outer", new IllegalStateException("root cause"))))
                     .build();
 
-            AiServiceInvocation invocation = captureExpectingFailure(() -> assistant.chat("Hello")).invocation();
+            AiServiceInvocation invocation =
+                    captureExpectingFailure(() -> assistant.chat("Hello")).invocation();
 
             LangChain4jAssertions.assertThat(invocation).hasFailedWithMessageContaining("root cause");
         }
@@ -1671,11 +1760,13 @@ class AiServiceCaptureTest {
         @Test
         void should_return_failed_invocation_when_failure_is_expected() {
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatResponds(callToolThenFail("getBookingDetails")).thenRepeats())
+                    .chatModel(MockChatModel.thatResponds(callToolThenFail("getBookingDetails"))
+                            .thenRepeats())
                     .tools(new FailingBookingDetailsTools())
                     .build();
 
-            AiServiceInvocation invocation = captureExpectingFailure(() -> assistant.chat("Hello")).invocation();
+            AiServiceInvocation invocation =
+                    captureExpectingFailure(() -> assistant.chat("Hello")).invocation();
 
             LangChain4jAssertions.assertThat(invocation)
                     .hasFailedWithMessageContaining("model unavailable")
@@ -1690,7 +1781,8 @@ class AiServiceCaptureTest {
 
             assertThatThrownBy(() -> captureExpectingFailure(() -> assistant.chat("Hello")))
                     .isInstanceOf(AssertionError.class)
-                    .hasMessageStartingWith("Expected an AI Service invocation to fail. None of the captured invocations failed");
+                    .hasMessageStartingWith(
+                            "Expected an AI Service invocation to fail. None of the captured invocations failed");
             assertThatThrownBy(() -> captureExpectingFailure(() -> {}))
                     .isInstanceOf(AssertionError.class)
                     .hasMessageStartingWith(
@@ -1703,7 +1795,8 @@ class AiServiceCaptureTest {
                     .chatModel(MockChatModel.thatFails(new RuntimeException("expert unavailable")))
                     .build();
             Assistant outer = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatResponds(callToolThenAnswer("askExpert", "{\"question\":\"why?\"}")).thenRepeats())
+                    .chatModel(MockChatModel.thatResponds(callToolThenAnswer("askExpert", "{\"question\":\"why?\"}"))
+                            .thenRepeats())
                     .tools(new ExpertTool(inner))
                     .build();
 
@@ -1721,14 +1814,17 @@ class AiServiceCaptureTest {
                     .chatModel(MockChatModel.thatFails(new RuntimeException("model unavailable")))
                     .build();
 
-            AiServiceInvocation invocation = captureExpectingFailure(() -> assistant.chat("Hello")).invocation();
+            AiServiceInvocation invocation =
+                    captureExpectingFailure(() -> assistant.chat("Hello")).invocation();
 
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation).hasNoToolExecutions())
+            assertThatThrownBy(
+                            () -> LangChain4jAssertions.assertThat(invocation).hasNoToolExecutions())
                     .isInstanceOf(AssertionError.class)
                     .hasMessageContaining("Expected the invocation to succeed, but it failed with:")
                     .hasMessageContaining("model unavailable")
                     .hasMessageContaining("hasFailedWithMessageContaining");
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation).hasModelCallCount(1))
+            assertThatThrownBy(
+                            () -> LangChain4jAssertions.assertThat(invocation).hasModelCallCount(1))
                     .isInstanceOf(AssertionError.class)
                     .hasMessageContaining("but it failed with");
             assertThatThrownBy(invocation::outputText)
@@ -1747,9 +1843,11 @@ class AiServiceCaptureTest {
                     .chatModel(MockChatModel.thatResponds("answer"))
                     .build();
 
-            AiServiceInvocation invocation = capture(() -> assistant.chat("Hello")).invocation();
+            AiServiceInvocation invocation =
+                    capture(() -> assistant.chat("Hello")).invocation();
 
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation).hasFailedWithMessageContaining("x"))
+            assertThatThrownBy(
+                            () -> LangChain4jAssertions.assertThat(invocation).hasFailedWithMessageContaining("x"))
                     .isInstanceOf(AssertionError.class)
                     .hasMessageContaining("but it did not fail");
         }
@@ -1769,9 +1867,11 @@ class AiServiceCaptureTest {
                     .streamingChatModel(MockStreamingChatModel.thatStreams("Hel", "lo"))
                     .build();
 
-            assertThatThrownBy(() -> capture(() -> assistant.chat("Hi").onPartialResponse(token -> {}).ignoreErrors()))
+            assertThatThrownBy(() -> capture(() ->
+                            assistant.chat("Hi").onPartialResponse(token -> {}).ignoreErrors()))
                     .isInstanceOf(IllegalStateException.class)
-                    .hasMessage("The TokenStream returned by " + StreamingAssistant.class.getName() + ".chat was not started."
+                    .hasMessage("The TokenStream returned by " + StreamingAssistant.class.getName()
+                            + ".chat was not started."
                             + " Set the handlers your TokenStream needs and call start() in the lambda, for example:"
                             + " capture(() -> assistant.chat(\"Hi\").ignoreErrors().start()). If start() was called, the"
                             + " framework that implements the AI Service does not report the events of its TokenStream"
@@ -1785,8 +1885,8 @@ class AiServiceCaptureTest {
                     .streamingChatModel(MockStreamingChatModel.thatStreams("Hel", "lo"))
                     .build();
 
-            AiServiceCapture streamed =
-                    capture(() -> assistant.chat(UserMessage.from("Hi")).ignoreErrors().start());
+            AiServiceCapture streamed = capture(
+                    () -> assistant.chat(UserMessage.from("Hi")).ignoreErrors().start());
             AiServiceCapture told = capture(() -> assistant.tell("Hi"));
 
             assertThat(streamed.invocation().output()).isEqualTo("Hello");
@@ -1801,9 +1901,12 @@ class AiServiceCaptureTest {
                     .streamingChatModel(MockStreamingChatModel.thatResponds("Hello"))
                     .build();
 
-            assertThatThrownBy(() -> withSystemProperty(Capturer.STREAM_START_GRACE_PROPERTY, "100", () -> capture(() -> {
-                        assistant.chat("Hi");
-                    })))
+            assertThatThrownBy(() -> withSystemProperty(
+                            Capturer.STREAM_START_GRACE_PROPERTY,
+                            "100",
+                            () -> capture(() -> {
+                                assistant.chat("Hi");
+                            })))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageContaining("The TokenStream returned by")
                     .hasMessageContaining("StreamingAssistant.chat was not started");
@@ -1816,7 +1919,8 @@ class AiServiceCaptureTest {
                     .build();
             List<String> tokens = new CopyOnWriteArrayList<>();
 
-            assertThatThrownBy(() -> capture(() -> assistant.chat("Hi").onPartialResponse(tokens::add).start()))
+            assertThatThrownBy(() -> capture(() ->
+                            assistant.chat("Hi").onPartialResponse(tokens::add).start()))
                     .isInstanceOf(IllegalConfigurationException.class)
                     .hasMessageContaining("One of [onError, ignoreErrors] must be invoked");
             assertThat(tokens).isEmpty();
@@ -1825,7 +1929,8 @@ class AiServiceCaptureTest {
         @Test
         void should_rethrow_error_of_failed_token_stream() {
             StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                    .streamingChatModel(MockStreamingChatModel.thatFails(new RuntimeException("stream failed")).thenRepeats())
+                    .streamingChatModel(MockStreamingChatModel.thatFails(new RuntimeException("stream failed"))
+                            .thenRepeats())
                     .build();
             List<Throwable> errors = new CopyOnWriteArrayList<>();
             CompletableFuture<Void> errorDelivered = new CompletableFuture<>();
@@ -1839,9 +1944,12 @@ class AiServiceCaptureTest {
                             .start()))
                     .hasMessage("stream failed");
             assertThat(errorDelivered).succeedsWithin(5, TimeUnit.SECONDS);
-            assertThat(errors).singleElement().satisfies(error -> assertThat(error).hasMessage("stream failed"));
+            assertThat(errors)
+                    .singleElement()
+                    .satisfies(error -> assertThat(error).hasMessage("stream failed"));
 
-            AiServiceInvocation invocation = captureExpectingFailure(() -> assistant.chat("Hi").ignoreErrors().start())
+            AiServiceInvocation invocation = captureExpectingFailure(
+                            () -> assistant.chat("Hi").ignoreErrors().start())
                     .invocation();
             LangChain4jAssertions.assertThat(invocation).hasFailedWithMessageContaining("stream failed");
         }
@@ -1850,8 +1958,9 @@ class AiServiceCaptureTest {
         void should_rethrow_error_thrown_in_a_mock_right_away() {
             Assistant assistant = AiServices.builder(Assistant.class)
                     .chatModel(MockChatModel.thatResponds(request -> {
-                        throw new AssertionError("unexpected request");
-                    }).thenRepeats())
+                                throw new AssertionError("unexpected request");
+                            })
+                            .thenRepeats())
                     .build();
 
             assertThatThrownBy(() -> capture(() -> assistant.chat("Hello")))
@@ -1893,7 +2002,8 @@ class AiServiceCaptureTest {
         @Test
         void should_rethrow_error_of_failed_async_invocation() {
             AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                    .chatModel(MockChatModel.thatFails(new RuntimeException("model unavailable")).thenRepeats())
+                    .chatModel(MockChatModel.thatFails(new RuntimeException("model unavailable"))
+                            .thenRepeats())
                     .build();
 
             assertThatThrownBy(() -> capture(() -> assistant.chat("Hi"))).hasMessage("model unavailable");
@@ -1902,7 +2012,8 @@ class AiServiceCaptureTest {
                     }))
                     .hasMessage("model unavailable");
 
-            AiServiceInvocation invocation = captureExpectingFailure(() -> assistant.chat("Hi")).invocation();
+            AiServiceInvocation invocation =
+                    captureExpectingFailure(() -> assistant.chat("Hi")).invocation();
 
             LangChain4jAssertions.assertThat(invocation).hasFailedWithMessageContaining("model unavailable");
         }
@@ -1910,41 +2021,43 @@ class AiServiceCaptureTest {
         @Test
         void should_rethrow_error_of_failed_reactive_invocation() {
             ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                    .streamingChatModel(MockStreamingChatModel.thatFails(new RuntimeException("stream failed")).thenRepeats())
+                    .streamingChatModel(MockStreamingChatModel.thatFails(new RuntimeException("stream failed"))
+                            .thenRepeats())
                     .build();
 
             assertThatThrownBy(() -> capture(() -> assistant.chat("Hi"))).hasMessage("stream failed");
 
-            AiServiceInvocation invocation = captureExpectingFailure(() -> assistant.chat("Hi")).invocation();
+            AiServiceInvocation invocation =
+                    captureExpectingFailure(() -> assistant.chat("Hi")).invocation();
 
             LangChain4jAssertions.assertThat(invocation).hasFailedWithMessageContaining("stream failed");
         }
     }
 
-
     @Nested
     class EndOfInvocations {
-
 
         @Test
         void should_fail_when_returned_value_ended_but_invocation_did_not_report_its_end() {
             // simulates a framework that reports the start of an invocation, but not its end
-            assertThatThrownBy(() -> withSystemProperty(Capturer.END_REPORT_GRACE_PROPERTY, "200", () -> capture(() -> {
-                        AiServiceListenerRegistrar.newInstance()
-                                .fireEvent(AiServiceStartedEvent.builder()
-                                        .invocationContext(InvocationContext.builder()
-                                                .invocationId(UUID.randomUUID())
-                                                .interfaceName("com.example.Assistant")
-                                                .methodName("chat")
-                                                .timestampNow()
-                                                .build())
-                                        .userMessage(UserMessage.from("Hi"))
-                                        .build());
-                        return CompletableFuture.failedFuture(new IllegalStateException("stream cancelled"));
-                    })))
+            assertThatThrownBy(() -> withSystemProperty(
+                            Capturer.END_REPORT_GRACE_PROPERTY,
+                            "200",
+                            () -> capture(() -> {
+                                AiServiceListenerRegistrar.newInstance()
+                                        .fireEvent(AiServiceStartedEvent.builder()
+                                                .invocationContext(InvocationContext.builder()
+                                                        .invocationId(UUID.randomUUID())
+                                                        .interfaceName("com.example.Assistant")
+                                                        .methodName("chat")
+                                                        .timestampNow()
+                                                        .build())
+                                                .userMessage(UserMessage.from("Hi"))
+                                                .build());
+                                return CompletableFuture.failedFuture(new IllegalStateException("stream cancelled"));
+                            })))
                     .isInstanceOf(IllegalStateException.class)
-                    .hasMessageContaining(
-                            "the AI Service invocation com.example.Assistant.chat (id")
+                    .hasMessageContaining("the AI Service invocation com.example.Assistant.chat (id")
                     .hasMessageContaining("did not report its end")
                     .hasRootCauseMessage("stream cancelled");
         }
@@ -1953,22 +2066,26 @@ class AiServiceCaptureTest {
         @Timeout(10)
         void should_fail_when_lambda_returned_but_blocking_invocation_did_not_report_its_end() {
             // simulates a framework that reports the start of a blocking invocation, but not its end
-            assertThatThrownBy(() -> withSystemProperty(Capturer.END_REPORT_GRACE_PROPERTY, "200", () -> capture(() -> {
-                        AiServiceListenerRegistrar.newInstance()
-                                .fireEvent(AiServiceStartedEvent.builder()
-                                        .invocationContext(InvocationContext.builder()
-                                                .invocationId(UUID.randomUUID())
-                                                .interfaceName(Assistant.class.getName())
-                                                .methodName("chat")
-                                                .methodArguments(List.of("Hi"))
-                                                .timestampNow()
-                                                .build())
-                                        .userMessage(UserMessage.from("Hi"))
-                                        .build());
-                        return "answer";
-                    })))
+            assertThatThrownBy(() -> withSystemProperty(
+                            Capturer.END_REPORT_GRACE_PROPERTY,
+                            "200",
+                            () -> capture(() -> {
+                                AiServiceListenerRegistrar.newInstance()
+                                        .fireEvent(AiServiceStartedEvent.builder()
+                                                .invocationContext(InvocationContext.builder()
+                                                        .invocationId(UUID.randomUUID())
+                                                        .interfaceName(Assistant.class.getName())
+                                                        .methodName("chat")
+                                                        .methodArguments(List.of("Hi"))
+                                                        .timestampNow()
+                                                        .build())
+                                                .userMessage(UserMessage.from("Hi"))
+                                                .build());
+                                return "answer";
+                            })))
                     .isInstanceOf(IllegalStateException.class)
-                    .hasMessageStartingWith("The lambda has returned, and the AI Service method returns only when it is done")
+                    .hasMessageStartingWith(
+                            "The lambda has returned, and the AI Service method returns only when it is done")
                     .hasMessageContaining("did not report its end");
         }
 
@@ -1978,20 +2095,23 @@ class AiServiceCaptureTest {
             CompletableFuture<String> neverCompleted = new CompletableFuture<>();
             UUID invocationId = UUID.randomUUID();
 
-            assertThatThrownBy(() -> withSystemProperty(Capturer.TIMEOUT_PROPERTY, "300", () -> capture(() -> {
-                        AiServiceListenerRegistrar.newInstance()
-                                .fireEvent(AiServiceStartedEvent.builder()
-                                        .invocationContext(InvocationContext.builder()
-                                                .invocationId(invocationId)
-                                                .interfaceName(AsyncAssistant.class.getName())
-                                                .methodName("chat")
-                                                .methodArguments(List.of("Hi"))
-                                                .timestampNow()
-                                                .build())
-                                        .userMessage(UserMessage.from("Hi"))
-                                        .build());
-                        return neverCompleted;
-                    })))
+            assertThatThrownBy(() -> withSystemProperty(
+                            Capturer.TIMEOUT_PROPERTY,
+                            "300",
+                            () -> capture(() -> {
+                                AiServiceListenerRegistrar.newInstance()
+                                        .fireEvent(AiServiceStartedEvent.builder()
+                                                .invocationContext(InvocationContext.builder()
+                                                        .invocationId(invocationId)
+                                                        .interfaceName(AsyncAssistant.class.getName())
+                                                        .methodName("chat")
+                                                        .methodArguments(List.of("Hi"))
+                                                        .timestampNow()
+                                                        .build())
+                                                .userMessage(UserMessage.from("Hi"))
+                                                .build());
+                                return neverCompleted;
+                            })))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessage("capture(...) timed out after 300 ms. These AI Service invocations have not finished: "
                             + AsyncAssistant.class.getName() + ".chat (id " + invocationId
@@ -2024,16 +2144,19 @@ class AiServiceCaptureTest {
                     .timestampNow()
                     .build();
 
-            assertThatThrownBy(() -> withSystemProperty(Capturer.TIMEOUT_PROPERTY, "300", () -> capture(() -> {
-                        registrar.fireEvent(AiServiceStartedEvent.builder()
-                                .invocationContext(context)
-                                .userMessage(UserMessage.from("Hi"))
-                                .build());
-                        registrar.fireEvent(AiServiceCancelledEvent.builder()
-                                .invocationContext(context)
-                                .build());
-                        return neverCompleted;
-                    })))
+            assertThatThrownBy(() -> withSystemProperty(
+                            Capturer.TIMEOUT_PROPERTY,
+                            "300",
+                            () -> capture(() -> {
+                                registrar.fireEvent(AiServiceStartedEvent.builder()
+                                        .invocationContext(context)
+                                        .userMessage(UserMessage.from("Hi"))
+                                        .build());
+                                registrar.fireEvent(AiServiceCancelledEvent.builder()
+                                        .invocationContext(context)
+                                        .build());
+                                return neverCompleted;
+                            })))
                     .isInstanceOf(IllegalStateException.class)
                     .hasMessageStartingWith(
                             "capture(...) timed out after 300 ms. The value returned by the lambda has not ended.");
@@ -2045,9 +2168,10 @@ class AiServiceCaptureTest {
             CountDownLatch release = new CountDownLatch(1);
             AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
                     .chatModel(MockChatModel.thatResponds(request -> {
-                        await(release, 300);
-                        return AiMessage.from("answer");
-                    }).thenRepeats())
+                                await(release, 300);
+                                return AiMessage.from("answer");
+                            })
+                            .thenRepeats())
                     .build();
 
             AiServiceCapture capture =
@@ -2080,8 +2204,9 @@ class AiServiceCaptureTest {
                             "two seconds",
                             () -> capture(() -> assistant.chat("Hi"))))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessage("The system property langchain4j.test.capture.stream-start-grace-millis must be a number of"
-                            + " milliseconds (0 or more), but is 'two seconds'");
+                    .hasMessage(
+                            "The system property langchain4j.test.capture.stream-start-grace-millis must be a number of"
+                                    + " milliseconds (0 or more), but is 'two seconds'");
         }
     }
 
@@ -2097,7 +2222,8 @@ class AiServiceCaptureTest {
                             .build())
                     .when(chatModel)
                     .defaultRequestParameters();
-            Assistant assistant = AiServices.builder(Assistant.class).chatModel(chatModel).build();
+            Assistant assistant =
+                    AiServices.builder(Assistant.class).chatModel(chatModel).build();
 
             AiServiceInvocation invocation = capture(() -> assistant.chat("Hi")).invocation();
 
@@ -2105,8 +2231,8 @@ class AiServiceCaptureTest {
             assertThat(invocation.lastRequest().parameters().temperature()).isEqualTo(0.0);
             assertThat(invocation.ownChatModelCalls())
                     .singleElement()
-                    .satisfies(call -> assertThat(call.request().parameters().modelName())
-                            .isEqualTo("mock-model"));
+                    .satisfies(call ->
+                            assertThat(call.request().parameters().modelName()).isEqualTo("mock-model"));
         }
 
         @Test
@@ -2115,7 +2241,8 @@ class AiServiceCaptureTest {
             doAnswer(invocation -> chatModel.doChat(invocation.getArgument(0))) // bypasses the listeners, like a model
                     .when(chatModel) // that overrides chat(...)
                     .chat(any(ChatRequest.class));
-            Assistant assistant = AiServices.builder(Assistant.class).chatModel(chatModel).build();
+            Assistant assistant =
+                    AiServices.builder(Assistant.class).chatModel(chatModel).build();
 
             AiServiceInvocation invocation = capture(() -> assistant.chat("Hi")).invocation();
 
@@ -2125,9 +2252,14 @@ class AiServiceCaptureTest {
             String explanation = "The AI Service sent 1 request(s) to its chat model, but the chat model did not notify"
                     + " its listeners, so its calls were not captured. This happens when a chat model overrides"
                     + " chat(...) instead of implementing doChat(...).";
-            assertThatThrownBy(invocation::firstRequest).isInstanceOf(AssertionError.class).hasMessage(explanation);
-            assertThatThrownBy(invocation::lastResponse).isInstanceOf(AssertionError.class).hasMessage(explanation);
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation).hasOwnChatModelCallCount(1))
+            assertThatThrownBy(invocation::firstRequest)
+                    .isInstanceOf(AssertionError.class)
+                    .hasMessage(explanation);
+            assertThatThrownBy(invocation::lastResponse)
+                    .isInstanceOf(AssertionError.class)
+                    .hasMessage(explanation);
+            assertThatThrownBy(
+                            () -> LangChain4jAssertions.assertThat(invocation).hasOwnChatModelCallCount(1))
                     .isInstanceOf(AssertionError.class)
                     .hasMessageContaining(explanation);
         }
@@ -2142,18 +2274,21 @@ class AiServiceCaptureTest {
                     capture(() -> assistant.chat("Hi").ignoreErrors().start()).invocation();
 
             assertThat(invocation.finishReason()).isEqualTo(FinishReason.STOP);
-            assertThat(invocation.finishReason()).isEqualTo(invocation.lastResponse().finishReason());
+            assertThat(invocation.finishReason())
+                    .isEqualTo(invocation.lastResponse().finishReason());
         }
 
         @Test
         void should_capture_the_own_chat_calls_of_the_ai_service() {
             Assistant assistant = AiServices.builder(Assistant.class)
                     .chatModel(MockChatModel.thatResponds(
-                            callToolThenAnswer("cancelBooking", "{\"bookingNumber\":\"MS-777\"}")).thenRepeats())
+                                    callToolThenAnswer("cancelBooking", "{\"bookingNumber\":\"MS-777\"}"))
+                            .thenRepeats())
                     .tools(new BookingTools())
                     .build();
 
-            AiServiceInvocation invocation = capture(() -> assistant.chat("Cancel MS-777")).invocation();
+            AiServiceInvocation invocation =
+                    capture(() -> assistant.chat("Cancel MS-777")).invocation();
 
             assertThat(invocation.modelCalls())
                     .extracting(Object::getClass, AiServiceCaptureTest::isOwn, ModelCall::hasFailed)
@@ -2164,7 +2299,8 @@ class AiServiceCaptureTest {
 
         @Test
         void should_capture_the_model_calls_of_retrieval() {
-            MockEmbeddingModel embeddingModel = MockEmbeddingModel.thatEmbeds(1f, 2f, 3f).thenRepeats();
+            MockEmbeddingModel embeddingModel =
+                    MockEmbeddingModel.thatEmbeds(1f, 2f, 3f).thenRepeats();
             InMemoryEmbeddingStore<TextSegment> embeddingStore = new InMemoryEmbeddingStore<>();
             TextSegment segment = TextSegment.from("Bookings can be cancelled.");
             embeddingStore.add(embeddingModel.embed(segment).content(), segment);
@@ -2179,7 +2315,8 @@ class AiServiceCaptureTest {
                             .build())
                     .build();
 
-            AiServiceInvocation invocation = capture(() -> assistant.chat("Can I cancel?")).invocation();
+            AiServiceInvocation invocation =
+                    capture(() -> assistant.chat("Can I cancel?")).invocation();
 
             assertThat(invocation.modelCalls())
                     .extracting(Object::getClass, AiServiceCaptureTest::isOwn)
@@ -2190,8 +2327,8 @@ class AiServiceCaptureTest {
             LangChain4jAssertions.assertThat(invocation)
                     .hasModelCallCount(3)
                     .hasModelCallCount(EmbeddingModelCall.class, 1);
-            assertThatThrownBy(() -> LangChain4jAssertions.assertThat(invocation)
-                            .hasModelCallCount(ScoringModelCall.class, 2))
+            assertThatThrownBy(() ->
+                            LangChain4jAssertions.assertThat(invocation).hasModelCallCount(ScoringModelCall.class, 2))
                     .isInstanceOf(AssertionError.class)
                     .hasMessageContaining("Expected 2 scoring model call(s), but there were 1");
         }
@@ -2207,7 +2344,8 @@ class AiServiceCaptureTest {
                             .build())
                     .build();
 
-            AiServiceInvocation invocation = capture(() -> assistant.chat("Can I cancel?")).invocation();
+            AiServiceInvocation invocation =
+                    capture(() -> assistant.chat("Can I cancel?")).invocation();
 
             assertThat(invocation.modelCalls())
                     .extracting(Object::getClass, AiServiceCaptureTest::isOwn)
@@ -2220,7 +2358,8 @@ class AiServiceCaptureTest {
                     .chatModel(MockChatModel.thatResponds("expert answer"))
                     .build();
             Assistant assistant = AiServices.builder(Assistant.class)
-                    .chatModel(MockChatModel.thatResponds(callToolThenAnswer("askExpert", "{\"question\":\"why?\"}")).thenRepeats())
+                    .chatModel(MockChatModel.thatResponds(callToolThenAnswer("askExpert", "{\"question\":\"why?\"}"))
+                            .thenRepeats())
                     .tools(new ExpertTool(expert))
                     .build();
 
@@ -2239,7 +2378,8 @@ class AiServiceCaptureTest {
                     .chatModel(MockChatModel.thatFails(new RuntimeException("model unavailable")))
                     .build();
 
-            AiServiceInvocation invocation = captureExpectingFailure(() -> assistant.chat("Hi")).invocation();
+            AiServiceInvocation invocation =
+                    captureExpectingFailure(() -> assistant.chat("Hi")).invocation();
 
             assertThat(invocation.modelCalls()).singleElement().satisfies(call -> {
                 assertThat(isOwn(call)).isTrue();
@@ -2257,8 +2397,9 @@ class AiServiceCaptureTest {
                     .tools(new BookingTools())
                     .build();
 
-            AiServiceInvocation invocation =
-                    capture(() -> assistant.chat("Cancel MS-777").ignoreErrors().start()).invocation();
+            AiServiceInvocation invocation = capture(
+                            () -> assistant.chat("Cancel MS-777").ignoreErrors().start())
+                    .invocation();
 
             assertThat(invocation.modelCalls())
                     .extracting(Object::getClass, AiServiceCaptureTest::isOwn, ModelCall::hasFailed)
@@ -2276,7 +2417,8 @@ class AiServiceCaptureTest {
 
             assertThat(invocation.modelCalls())
                     .extracting(Object::getClass, AiServiceCaptureTest::isOwn)
-                    .containsExactlyInAnyOrder(tuple(ModerationModelCall.class, false), tuple(ChatModelCall.class, true));
+                    .containsExactlyInAnyOrder(
+                            tuple(ModerationModelCall.class, false), tuple(ChatModelCall.class, true));
             LangChain4jAssertions.assertThat(invocation).hasModelCallCount(ModerationModelCall.class, 1);
         }
 
@@ -2291,8 +2433,8 @@ class AiServiceCaptureTest {
                             .build())
                     .build();
 
-            AiServiceInvocation invocation =
-                    captureExpectingFailure(() -> assistant.chat("Can I cancel?")).invocation();
+            AiServiceInvocation invocation = captureExpectingFailure(() -> assistant.chat("Can I cancel?"))
+                    .invocation();
 
             assertThat(invocation.modelCalls()).singleElement().satisfies(call -> {
                 assertThat(call).isInstanceOf(ChatModelCall.class);
