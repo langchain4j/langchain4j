@@ -69,6 +69,14 @@ class GraalVmJavaScriptExecutionEngineTest {
     }
 
     @Test
+    void should_not_inherit_host_environment() {
+
+        String result = engine.execute("typeof process");
+
+        assertThat(result).isEqualTo("undefined");
+    }
+
+    @Test
     void should_throw_when_code_fails() {
 
         assertThatThrownBy(() -> engine.execute("throw new Error('boom');"))

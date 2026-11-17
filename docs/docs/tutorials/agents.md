@@ -4339,6 +4339,44 @@ public interface DeclarativeA2AWithCustomizer {
 }
 ```
 
+### Authenticating agent card discovery
+
+If the remote agent protects its Agent Card endpoint, use `agentCardHeaders` to supply discovery request headers:
+
+```java
+UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
+        .agentCardHeaders(() -> Map.of("Authorization", "Bearer " + tokenProvider.currentToken()))
+        .inputKeys("topic")
+        .outputKey("story")
+        .build();
+```
+
+For declarative agents, annotate a static method returning `Map<String, String>` with `@A2AAgentCardHeaders`:
+
+```java
+public interface ProtectedA2AAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "story")
+    String generateStory(@V("topic") String topic);
+
+    @A2AAgentCardHeaders
+    static Map<String, String> cardHeaders(TokenProvider tokenProvider) {
+        return Map.of("Authorization", "Bearer " + tokenProvider.currentToken());
+    }
+}
+```
+
+`TokenProvider` is an application type provided by a registered `SupplierParameterResolver`; a method with no
+parameters needs no resolver. The method can also be an instance method on a [helper object](#helper-objects).
+Exactly one helper may supply card headers. Resolved parameters are captured when the agent is built, while
+the method itself runs when the card is first needed and again when a failed fetch is retried. Supply a token
+provider rather than a token string if credentials need refreshing between fetch attempts.
+
+Both the programmatic supplier and the annotated method normally run on a LangChain4j executor thread, within
+the agent's resolution timeout. A successful card is cached; this does not refresh credentials on every agent
+invocation. A `null` supplier, or a supplier/method returning `null` or an empty map, adds no headers. These headers
+apply only to card discovery; configure authentication for A2A messages separately through `clientCustomizer`.
+
 ### Streaming A2A Client Listener
 
 When invoking a remote A2A agent with streaming enabled, you can use `A2AStreamingClientListener` to observe events received from the remote agent and control when the client should stop consuming the stream.
