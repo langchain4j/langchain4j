@@ -357,8 +357,9 @@ Implementations that do not support non-blocking calls return a future that fail
 ## Refusals
 
 A decision model can refuse to answer a question, for example because the input or the question goes against the
-usage policies of the provider. The answers to the other questions are still returned. Check
-`response.isRefused(name)` before reading an answer: reading a refused answer, for example with
+usage policies of the provider. The answers to the other questions are still returned, unless the provider blocks the
+whole input, as [Google Gen AI](/integrations/decision-models/google-genai#blocked-input) does: then every question is
+refused. Check `response.isRefused(name)` before reading an answer: reading a refused answer, for example with
 `response.yesNo(name)`, throws a `ContentFilteredException`. When a decision is used as a safety check, treat a
 refused answer as a failed check, as the [guardrails](#guardrails) do, rather than as a "no".
 

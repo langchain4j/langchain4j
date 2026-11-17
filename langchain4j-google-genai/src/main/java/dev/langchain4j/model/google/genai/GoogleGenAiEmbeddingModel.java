@@ -41,6 +41,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -92,7 +93,8 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                         builder.location,
                         builder.timeout,
                         builder.customHeaders,
-                        builder.apiEndpoint);
+                        builder.apiEndpoint,
+                        builder.apiVersion);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.outputDimensionality = builder.outputDimensionality;
         this.taskType = builder.taskType;
@@ -183,7 +185,8 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 }
                 if (embedding.statistics().isPresent()
                         && embedding.statistics().get().tokenCount().isPresent()) {
-                    tokenCount += Math.round(embedding.statistics().get().tokenCount().get());
+                    tokenCount +=
+                            Math.round(embedding.statistics().get().tokenCount().get());
                     tokenCountReported = true;
                 }
             }
@@ -219,8 +222,7 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                             "Gemini requires base64 image data (a plain URL is not supported)");
                 }
                 parts.add(Part.fromBytes(
-                        Base64.getDecoder().decode(image.base64Data()),
-                        getOrDefault(image.mimeType(), "image/png")));
+                        Base64.getDecoder().decode(image.base64Data()), getOrDefault(image.mimeType(), "image/png")));
             } else {
                 throw new UnsupportedFeatureException("Unsupported content type: " + content.type());
             }
@@ -383,6 +385,7 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         private TaskTypeEnum taskType;
         private String titleMetadataKey;
         private String apiEndpoint;
+        private @Nullable String apiVersion;
         private Map<String, String> customHeaders;
         private Integer maxSegmentsPerBatch = 100;
         private Integer maxRetries = 3;
@@ -456,6 +459,17 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         public Builder apiEndpoint(String apiEndpoint) {
             this.apiEndpoint = apiEndpoint;
+            return this;
+        }
+
+        /**
+         * The version of the API to call, for example {@code v1beta} or {@code v1}. When not set ({@code null}), the
+         * version set in the {@code GOOGLE_GENAI_API_VERSION} environment variable is used, otherwise {@code v1beta}
+         * on the Gemini Developer API and the default of the Google GenAI SDK on Vertex AI. Ignored when a client is
+         * set with {@code client(...)}.
+         */
+        public Builder apiVersion(@Nullable String apiVersion) {
+            this.apiVersion = apiVersion;
             return this;
         }
 
