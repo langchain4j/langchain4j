@@ -266,6 +266,12 @@
             "allowedVersions": "(,1.9)"
         },
         {
+            // for the same reason, Kotlin code is compiled with language and API version 1.9; the compiler deprecates
+            // it in 2.2.0 (a warning, which -Werror turns into an error) and drops it in 2.4.0; lift with the cap above
+            "matchPackageNames": ["org.jetbrains.kotlin:kotlin-maven-plugin"],
+            "allowedVersions": "(,2.2)"
+        },
+        {
             // the Milvus tests pin one image per server major version; a new major gets its own entry instead
             "matchDatasources": ["docker"],
             "matchPackageNames": ["milvusdb/milvus"],
