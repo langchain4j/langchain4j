@@ -104,7 +104,8 @@ public class GoogleGenAiTextToSpeechModel implements TextToSpeechModel {
                         builder.location,
                         builder.timeout,
                         builder.customHeaders,
-                        builder.apiEndpoint, builder.apiVersion);
+                        builder.apiEndpoint,
+                        builder.apiVersion);
 
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);

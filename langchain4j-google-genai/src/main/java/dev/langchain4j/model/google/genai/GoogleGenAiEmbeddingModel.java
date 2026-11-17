@@ -93,7 +93,8 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                         builder.location,
                         builder.timeout,
                         builder.customHeaders,
-                        builder.apiEndpoint, builder.apiVersion);
+                        builder.apiEndpoint,
+                        builder.apiVersion);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.outputDimensionality = builder.outputDimensionality;
         this.taskType = builder.taskType;
@@ -184,7 +185,8 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                 }
                 if (embedding.statistics().isPresent()
                         && embedding.statistics().get().tokenCount().isPresent()) {
-                    tokenCount += Math.round(embedding.statistics().get().tokenCount().get());
+                    tokenCount +=
+                            Math.round(embedding.statistics().get().tokenCount().get());
                     tokenCountReported = true;
                 }
             }
@@ -220,8 +222,7 @@ public class GoogleGenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                             "Gemini requires base64 image data (a plain URL is not supported)");
                 }
                 parts.add(Part.fromBytes(
-                        Base64.getDecoder().decode(image.base64Data()),
-                        getOrDefault(image.mimeType(), "image/png")));
+                        Base64.getDecoder().decode(image.base64Data()), getOrDefault(image.mimeType(), "image/png")));
             } else {
                 throw new UnsupportedFeatureException("Unsupported content type: " + content.type());
             }

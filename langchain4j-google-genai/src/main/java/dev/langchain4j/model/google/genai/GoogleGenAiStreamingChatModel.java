@@ -121,7 +121,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         builder.location,
                         builder.timeout,
                         builder.customHeaders,
-                        builder.apiEndpoint, builder.apiVersion);
+                        builder.apiEndpoint,
+                        builder.apiVersion);
 
         ChatRequestParameters commonParameters =
                 getOrDefault(builder.defaultRequestParameters, DefaultChatRequestParameters.EMPTY);

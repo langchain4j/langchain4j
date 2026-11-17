@@ -41,7 +41,8 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
                         builder.location,
                         builder.timeout,
                         builder.customHeaders,
-                        builder.apiEndpoint, builder.apiVersion);
+                        builder.apiEndpoint,
+                        builder.apiVersion);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
     }
@@ -107,11 +108,10 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
     }
 
     private int estimateTokenCount(List<Content> contents, CountTokensConfig config) {
-        CountTokensResponse response =
-                withRetryMappingExceptions(
-                        () -> client.models.countTokens(modelName, contents, config),
-                        maxRetries,
-                        GoogleGenAiExceptionMapper.INSTANCE);
+        CountTokensResponse response = withRetryMappingExceptions(
+                () -> client.models.countTokens(modelName, contents, config),
+                maxRetries,
+                GoogleGenAiExceptionMapper.INSTANCE);
         return response.totalTokens().orElse(0);
     }
 

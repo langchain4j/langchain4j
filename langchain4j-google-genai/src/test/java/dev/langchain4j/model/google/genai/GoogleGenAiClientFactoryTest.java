@@ -158,8 +158,8 @@ class GoogleGenAiClientFactoryTest {
 
     @Test
     void should_use_the_configured_api_version() {
-        Client client = GoogleGenAiClientFactory.createClient(
-                "test-api-key", null, null, null, null, null, baseUrl, "v1");
+        Client client =
+                GoogleGenAiClientFactory.createClient("test-api-key", null, null, null, null, null, baseUrl, "v1");
 
         generateContent(client);
 

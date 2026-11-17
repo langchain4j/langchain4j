@@ -44,7 +44,8 @@ public class GoogleGenAiModelCatalog implements ModelCatalog {
                         builder.location,
                         builder.timeout,
                         builder.customHeaders,
-                        builder.apiEndpoint, builder.apiVersion);
+                        builder.apiEndpoint,
+                        builder.apiVersion);
     }
 
     public static Builder builder() {

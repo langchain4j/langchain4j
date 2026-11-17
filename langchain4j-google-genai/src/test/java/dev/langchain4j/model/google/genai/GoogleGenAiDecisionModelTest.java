@@ -630,7 +630,8 @@ class GoogleGenAiDecisionModelTest {
 
         // a local file is not read: its URI goes to Gemini as it is
         assertThat(input.get(3).get("type").asText()).isEqualTo("image");
-        assertThat(input.get(3).get("uri").asText()).isEqualTo(localImage.toUri().toString());
+        assertThat(input.get(3).get("uri").asText())
+                .isEqualTo(localImage.toUri().toString());
         assertThat(input.get(3).has("data")).isFalse();
         assertThat(input.get(3).get("mime_type").asText()).isEqualTo("image/jpeg");
 
@@ -710,9 +711,7 @@ class GoogleGenAiDecisionModelTest {
                 .inputMessages(List.of(
                         SystemMessage.from("You are a support agent."),
                         UserMessage.from(
-                                "alice",
-                                TextContent.from("Here is the box:"),
-                                ImageContent.from("YWJj", "image/png")),
+                                "alice", TextContent.from("Here is the box:"), ImageContent.from("YWJj", "image/png")),
                         AiMessage.builder().thinking("internal").build(),
                         AiMessage.from(toolCall),
                         ToolExecutionResultMessage.builder()

@@ -110,8 +110,8 @@ class GoogleGenAiDecisionMapper {
                         : Map.of();
         for (String name : customParameters.keySet()) {
             if (FIELDS_SET_BY_THE_MODEL.contains(name)) {
-                throw new IllegalArgumentException("'" + name + "' is set by GoogleGenAiDecisionModel and cannot be "
-                        + "a custom parameter");
+                throw new IllegalArgumentException(
+                        "'" + name + "' is set by GoogleGenAiDecisionModel and cannot be " + "a custom parameter");
             }
         }
         Map<String, com.google.genai.gaos.models.decisions.Question> questions = new LinkedHashMap<>();
