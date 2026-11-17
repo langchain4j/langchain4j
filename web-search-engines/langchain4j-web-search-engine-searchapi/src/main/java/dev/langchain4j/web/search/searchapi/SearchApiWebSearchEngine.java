@@ -12,10 +12,12 @@ import dev.langchain4j.web.search.WebSearchInformationResult;
 import dev.langchain4j.web.search.WebSearchOrganicResult;
 import dev.langchain4j.web.search.WebSearchRequest;
 import dev.langchain4j.web.search.WebSearchResults;
+import java.net.URI;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 /**
@@ -126,15 +128,22 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
     private List<WebSearchOrganicResult> toWebSearchOrganicResults(List<OrganicResult> organicResults) {
         return organicResults.stream()
                 .map(result -> {
+                    // Skip results whose link cannot be resolved into a URI,
+                    // so a single unresolvable link does not abort the whole search.
+                    URI link = UriUtils.createUriSafely(result.getLink());
+                    if (link == null) {
+                        return null;
+                    }
                     Map<String, String> metadata = new HashMap<>(2);
                     metadata.put("position", result.getPosition());
                     return WebSearchOrganicResult.from(
                             result.getTitle(),
-                            UriUtils.createUriSafely(result.getLink()),
+                            link,
                             getOrDefault(result.getSnippet(), ""),
                             null, // by default google custom search api does not return content
                             metadata);
                 })
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
     }
 
@@ -199,7 +208,8 @@ public class SearchApiWebSearchEngine implements WebSearchEngine {
         }
 
         public String toString() {
-            return "SearchApiWebSearchEngine.SearchApiWebSearchEngineBuilder(apiKey=" + (this.apiKey == null ? null : "********") + ", baseUrl="
+            return "SearchApiWebSearchEngine.SearchApiWebSearchEngineBuilder(apiKey="
+                    + (this.apiKey == null ? null : "********") + ", baseUrl="
                     + this.baseUrl + ", timeout=" + this.timeout + ", engine=" + this.engine + ", optionalParameters="
                     + this.optionalParameters + ")";
         }

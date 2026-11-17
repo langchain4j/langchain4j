@@ -18,6 +18,7 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -121,6 +122,7 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
     private static WebSearchResults toWebSearchResults(TavilyResponse tavilyResponse) {
         final List<WebSearchOrganicResult> results = tavilyResponse.getResults().stream()
                 .map(TavilyWebSearchEngine::toWebSearchOrganicResult)
+                .filter(Objects::nonNull)
                 .collect(toList());
 
         if (tavilyResponse.getAnswer() != null) {
@@ -137,9 +139,15 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
     }
 
     private static WebSearchOrganicResult toWebSearchOrganicResult(TavilySearchResult tavilySearchResult) {
+        // Skip results whose url cannot be resolved into a URI,
+        // so a single unresolvable url does not abort the whole search.
+        URI url = UriUtils.createUriSafely(tavilySearchResult.getUrl());
+        if (url == null) {
+            return null;
+        }
         return WebSearchOrganicResult.from(
                 tavilySearchResult.getTitle(),
-                UriUtils.createUriSafely(tavilySearchResult.getUrl()),
+                url,
                 tavilySearchResult.getContent(),
                 tavilySearchResult.getRawContent(),
                 Collections.singletonMap("score", String.valueOf(tavilySearchResult.getScore())));
@@ -221,7 +229,8 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
 
         public String toString() {
             return "TavilyWebSearchEngine.TavilyWebSearchEngineBuilder(baseUrl=" + this.baseUrl + ", apiKey="
-                    + (this.apiKey == null ? null : "********") + ", timeout=" + this.timeout + ", searchDepth=" + this.searchDepth
+                    + (this.apiKey == null ? null : "********") + ", timeout=" + this.timeout + ", searchDepth="
+                    + this.searchDepth
                     + ", includeAnswer=" + this.includeAnswer + ", includeRawContent=" + this.includeRawContent
                     + ", includeDomains=" + this.includeDomains + ", excludeDomains=" + this.excludeDomains + ")";
         }
