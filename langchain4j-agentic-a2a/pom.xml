@@ -20,7 +20,7 @@
     </developers>
 
     <properties>
-        <a2a-java-sdk-version>1.5.0.Final</a2a-java-sdk-version>
+        <a2a-java-sdk-version>1.5.1.Final</a2a-java-sdk-version>
     </properties>
 
     <dependencyManagement>
@@ -80,12 +80,11 @@
             <version>1.24.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>dev.langchain4j</groupId>
-            <artifactId>langchain4j-core</artifactId>
-            <version>1.24.0-SNAPSHOT</version>
-            <classifier>tests</classifier>
-            <type>test-jar</type>
+            <artifactId>langchain4j-test</artifactId>
+            <version>${langchain4j.beta.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

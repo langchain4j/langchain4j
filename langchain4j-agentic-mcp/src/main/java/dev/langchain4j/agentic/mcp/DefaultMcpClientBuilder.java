@@ -12,6 +12,7 @@ import dev.langchain4j.agentic.declarative.McpClientAgent;
 import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.internal.LazyResolution;
 import dev.langchain4j.agentic.internal.McpClientBuilder;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -32,11 +33,12 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -59,12 +61,13 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     private final Class<T> agentServiceClass;
     private final Optional<Method> agentMethod;
     private Supplier<McpClient> mcpClientSupplier;
-    private final ReentrantLock lazyInitLock = new ReentrantLock();
 
     // The MCP client is created and the tool resolved lazily, the first time they are needed, so that building an
     // agentic system never depends on the availability of the MCP server
     private volatile McpClient mcpClient;
-    private volatile ToolSpecification tool;
+    private final LazyResolution<ToolSpecification> toolResolution = new LazyResolution<>(
+            () -> "the MCP tool of the MCP client agent '" + name() + "'", this::findToolOnServer);
+    private Duration resolutionTimeout;
 
     private String toolName;
     private String name;
@@ -137,6 +140,16 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     @Override
     public McpClientBuilder<T> activationCondition(String description, Predicate<AgenticScope> activationCondition) {
         this.activationCondition = new AgentCondition(description, activationCondition);
+        return this;
+    }
+
+    @Override
+    public McpClientBuilder<T> resolutionTimeout(Duration resolutionTimeout) {
+        if (resolutionTimeout != null && resolutionTimeout.isNegative()) {
+            throw new IllegalArgumentException(
+                    "The resolution timeout of an MCP client agent must not be negative: " + resolutionTimeout);
+        }
+        this.resolutionTimeout = resolutionTimeout;
         return this;
     }
 
@@ -228,77 +241,45 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     }
 
     /**
-     * Returns the tool specification, creating the MCP client and listing the tools of the server the first time.
-     * Concurrent first invocations resolve the tool once, and a failed resolution is not cached, so that the next
-     * invocation retries it.
+     * Returns the tool specification, creating the MCP client and listing the tools of the server the first time, on
+     * the thread of the first invocation needing it, or, when a resolution timeout is set, on a thread of the
+     * LangChain4j executor and within that time. Concurrent first
+     * invocations wait on a single resolution and all fail when it fails, while a failed resolution is not cached,
+     * so that the next invocation retries it.
      */
     private ToolSpecification resolveTool() {
-        ToolSpecification resolvedTool = tool;
-        if (resolvedTool == null) {
-            lockForLazyInit();
-            try {
-                resolvedTool = tool;
-                if (resolvedTool == null) {
-                    resolvedTool = findTool(listTools());
-                    applyTool(resolvedTool);
-                }
-            } finally {
-                lazyInitLock.unlock();
-            }
-        }
-        return resolvedTool;
-    }
-
-    private void lockForLazyInit() {
         try {
-            lazyInitLock.lockInterruptibly();
+            return toolResolution.get(resolutionTimeout);
+        } catch (TimeoutException e) {
+            throw new McpToolResolutionException(name(), configuredToolName(), resolutionTimeout, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new McpToolResolutionException(name(), configuredToolName(), e);
-        }
-    }
-
-    private McpClient client() {
-        McpClient client = mcpClient;
-        if (client == null) {
-            lockForLazyInit();
-            try {
-                client = mcpClient;
-                if (client == null) {
-                    client = createClient();
-                    mcpClient = client;
-                    mcpClientSupplier = null;
-                }
-            } finally {
-                lazyInitLock.unlock();
-            }
-        }
-        return client;
-    }
-
-    private McpClient createClient() {
-        McpClient client;
-        try {
-            client = mcpClientSupplier.get();
         } catch (AgenticSystemConfigurationException e) {
             throw e;
         } catch (RuntimeException e) {
             throw new McpToolResolutionException(name(), configuredToolName(), e);
         }
-        if (client == null) {
-            throw new AgenticSystemConfigurationException(
-                    "The MCP client supplier of the MCP client agent '" + name() + "' returned null");
-        }
-        return client;
     }
 
-    private List<ToolSpecification> listTools() {
-        McpClient client = client();
-        try {
-            return client.listTools();
-        } catch (RuntimeException e) {
-            throw new McpToolResolutionException(name(), configuredToolName(), e);
+    /**
+     * Resolves the tool, on the thread doing it for every invocation waiting. The client is kept as soon as it is
+     * created, so that a failure or a timeout of the listing of the tools does not create another one the next time.
+     */
+    private ToolSpecification findToolOnServer() {
+        McpClient client = mcpClient;
+        if (client == null) {
+            client = mcpClientSupplier.get();
+            if (client == null) {
+                throw new AgenticSystemConfigurationException(
+                        "The MCP client supplier of the MCP client agent '" + name() + "' returned null");
+            }
+            mcpClient = client;
+            mcpClientSupplier = null;
         }
+        ToolSpecification resolvedTool = findTool(client.listTools());
+        applyTool(resolvedTool);
+        return resolvedTool;
     }
 
     private ToolSpecification findTool(List<ToolSpecification> tools) {
@@ -338,7 +319,6 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         arguments = agentServiceClass == UntypedAgent.class
                 ? McpSchemaToType.arguments(params, inputKeys)
                 : McpSchemaToType.mergeDescriptions(typedArguments(), inputDescriptions);
-        tool = resolvedTool;
     }
 
     private String configuredToolName() {
@@ -419,7 +399,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
                 .arguments(argumentsJson)
                 .build();
 
-        ToolExecutionResult result = client().executeTool(executionRequest);
+        ToolExecutionResult result = mcpClient.executeTool(executionRequest);
 
         if (result.isError()) {
             throw new RuntimeException("MCP tool execution failed: " + result.resultText());

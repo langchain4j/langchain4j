@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -102,8 +103,8 @@ public class WatsonxStreamingChatModelTest {
         when(mockChatServiceBuilder.spaceId(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.timeout(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.version(any())).thenReturn(mockChatServiceBuilder);
-        when(mockChatServiceBuilder.logRequests(any())).thenReturn(mockChatServiceBuilder);
-        when(mockChatServiceBuilder.logResponses(any())).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.logRequests(nullable(Boolean.class))).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.logResponses(nullable(Boolean.class))).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.authenticator(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.apiKey(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.httpClient(any())).thenReturn(mockChatServiceBuilder);
@@ -187,7 +188,7 @@ public class WatsonxStreamingChatModelTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
@@ -252,8 +253,6 @@ public class WatsonxStreamingChatModelTest {
                 assertNull(parameters.guidedChoice());
                 assertNull(parameters.guidedGrammar());
                 assertNull(parameters.guidedRegex());
-                assertNull(parameters.repetitionPenalty());
-                assertNull(parameters.lengthPenalty());
 
             } catch (Exception e) {
                 fail(e);
@@ -289,7 +288,7 @@ public class WatsonxStreamingChatModelTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withChatServiceMock(() -> {
             StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
@@ -373,7 +372,7 @@ public class WatsonxStreamingChatModelTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withChatServiceMock(() -> {
             StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
@@ -452,7 +451,7 @@ public class WatsonxStreamingChatModelTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withChatServiceMock(() -> {
             StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
@@ -523,7 +522,7 @@ public class WatsonxStreamingChatModelTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
@@ -606,7 +605,7 @@ public class WatsonxStreamingChatModelTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
@@ -666,7 +665,7 @@ public class WatsonxStreamingChatModelTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withChatServiceMock(() -> {
             StreamingChatModel streamingChatModel = WatsonxStreamingChatModel.builder()
@@ -790,7 +789,7 @@ public class WatsonxStreamingChatModelTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
@@ -921,7 +920,7 @@ public class WatsonxStreamingChatModelTest {
                     return streamingFuture;
                 })
                 .when(mockChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
@@ -980,7 +979,7 @@ public class WatsonxStreamingChatModelTest {
                     return streamingFuture;
                 })
                 .when(mockChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
@@ -1044,7 +1043,7 @@ public class WatsonxStreamingChatModelTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()
@@ -1110,7 +1109,7 @@ public class WatsonxStreamingChatModelTest {
                     return CompletableFuture.failedFuture(moderationException);
                 })
                 .when(mockChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withChatServiceMock(() -> {
             var streamingChatModel = WatsonxStreamingChatModel.builder()

@@ -499,7 +499,7 @@ public class AgentUtil {
                 case "double", "java.lang.Double" -> Double.parseDouble(s);
                 case "float", "java.lang.Float" -> Float.parseFloat(s);
                 case "boolean", "java.lang.Boolean" -> Boolean.parseBoolean(s);
-                default -> readArgument(s, type, argumentName);
+                default -> type.isEnum() ? enumConstant(s, type, argumentName) : readArgument(s, type, argumentName);
             };
         }
         if (value instanceof Number n) {
@@ -524,6 +524,32 @@ public class AgentUtil {
             return imageContent.image();
         }
         return value;
+    }
+
+    /**
+     * A planner, or the caller of an untyped agent, passes an enum constant by its name, which is not JSON, so the
+     * name is matched ignoring case, as for the output of an AI service. Anything else is read as JSON, like a quoted
+     * name. If that fails too, the message lists the names of the constants, which come from the code, and leaves out
+     * the value, which came from a model.
+     */
+    private static Object enumConstant(String value, Class<?> type, String argumentName) {
+        String name = value.trim();
+        for (Object constant : type.getEnumConstants()) {
+            if (((Enum<?>) constant).name().equalsIgnoreCase(name)) {
+                return constant;
+            }
+        }
+        try {
+            return Json.fromJson(value, type);
+        } catch (Exception e) {
+            List<String> names = Arrays.stream(type.getEnumConstants())
+                    .map(constant -> ((Enum<?>) constant).name())
+                    .toList();
+            throw new IllegalArgumentException(
+                    "Cannot read agent argument '" + argumentName + "' as " + type.getName()
+                            + ". It must be the name of one of its constants: " + String.join(", ", names) + ".",
+                    e);
+        }
     }
 
     /**

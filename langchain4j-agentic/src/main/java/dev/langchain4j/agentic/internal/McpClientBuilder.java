@@ -3,6 +3,8 @@ package dev.langchain4j.agentic.internal;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import java.time.Duration;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 
 public interface McpClientBuilder<T> {
@@ -86,6 +88,32 @@ public interface McpClientBuilder<T> {
      * evaluated more than once, so it must be free of side effects.
      */
     McpClientBuilder<T> activationCondition(String description, Predicate<AgenticScope> activationCondition);
+
+    /**
+     * Sets the time given to the resolution of the MCP tool, that is the creation of the MCP client by its supplier
+     * and the listing of the tools of the MCP server, which happens the first time the tool is needed, normally on
+     * the first invocation of the agent. It does not limit the execution of the tool. With such a limit the
+     * resolution runs on a thread of the LangChain4j executor, so that it can be abandoned: when the tool is not
+     * resolved within this time the resolution is interrupted and the invocation
+     * fails with an {@code McpToolResolutionException} caused by a {@link TimeoutException}. Concurrent first
+     * invocations wait on the same resolution, so none of them waits longer than this time, and they all fail when
+     * it fails. An invocation arriving before the interrupted resolution has ended fails at once with the same
+     * timeout, so the supplier should respond to the interruption, and the next one after that resolves the tool
+     * again.
+     * <p>
+     * By default the resolution has no such limit, is made by the first invocation needing the tool, on its own
+     * thread, so that interrupting that thread fails the invocations waiting on it too, and takes as long as the MCP
+     * client allows: a
+     * {@code DefaultMcpClient} has its own timeouts, which still apply to each of its steps when this one is set, so
+     * that the resolution ends at the first of them that expires.
+     *
+     * @param resolutionTimeout the time given to the resolution of the MCP tool, or {@link Duration#ZERO} or
+     *                          {@code null} for no such limit
+     * @return this builder for method chaining
+     * @throws IllegalArgumentException if the time is negative
+     * @since 1.24.0
+     */
+    McpClientBuilder<T> resolutionTimeout(Duration resolutionTimeout);
 
     T build();
 }

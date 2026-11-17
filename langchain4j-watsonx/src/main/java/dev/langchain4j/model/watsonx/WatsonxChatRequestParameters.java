@@ -7,6 +7,7 @@ import com.ibm.watsonx.ai.chat.ChatModeration;
 import com.ibm.watsonx.ai.chat.model.ExtractionTags;
 import com.ibm.watsonx.ai.chat.model.Thinking;
 import com.ibm.watsonx.ai.chat.model.ThinkingEffort;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import java.time.Duration;
@@ -37,6 +38,14 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
 
     private WatsonxChatRequestParameters(Builder builder) {
         super(builder);
+        if (nonNull(builder.repetitionPenalty)) {
+            throw new UnsupportedFeatureException("'repetitionPenalty' is not supported by the watsonx.ai chat API. "
+                    + "Remove it, or use 'frequencyPenalty' or 'presencePenalty' to discourage repetition");
+        }
+        if (nonNull(builder.lengthPenalty)) {
+            throw new UnsupportedFeatureException(
+                    "'lengthPenalty' is not supported by the watsonx.ai chat API. Remove it, there is no replacement");
+        }
         logitBias = builder.logitBias;
         logprobs = builder.logprobs;
         topLogprobs = builder.topLogprobs;
@@ -102,10 +111,23 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
         return guidedGrammar;
     }
 
+    /**
+     * @return always {@code null}: a non-null value is rejected when these parameters are built
+     * @deprecated the watsonx.ai chat API does not support a repetition penalty. Use {@link #frequencyPenalty()} or
+     * {@link #presencePenalty()} to discourage repetition. This method will be removed no earlier than 6 months
+     * after 1.24.0-beta34.
+     */
+    @Deprecated(since = "1.24.0-beta34", forRemoval = true)
     public Double repetitionPenalty() {
         return repetitionPenalty;
     }
 
+    /**
+     * @return always {@code null}: a non-null value is rejected when these parameters are built
+     * @deprecated the watsonx.ai chat API does not support a length penalty, and there is no replacement. This method
+     * will be removed no earlier than 6 months after 1.24.0-beta34.
+     */
+    @Deprecated(since = "1.24.0-beta34", forRemoval = true)
     public Double lengthPenalty() {
         return lengthPenalty;
     }
@@ -330,11 +352,28 @@ public class WatsonxChatRequestParameters extends DefaultChatRequestParameters {
             return this;
         }
 
+        /**
+         * @param repetitionPenalty must be {@code null}
+         * @return {@code this}
+         * @deprecated the watsonx.ai chat API does not support a repetition penalty, so a non-null value makes
+         * {@link #build()} throw an {@link UnsupportedFeatureException}. Use {@link #frequencyPenalty(Double)} or
+         * {@link #presencePenalty(Double)} to discourage repetition. This method will be removed no earlier than 6
+         * months after 1.24.0-beta34.
+         */
+        @Deprecated(since = "1.24.0-beta34", forRemoval = true)
         public Builder repetitionPenalty(Double repetitionPenalty) {
             this.repetitionPenalty = repetitionPenalty;
             return this;
         }
 
+        /**
+         * @param lengthPenalty must be {@code null}
+         * @return {@code this}
+         * @deprecated the watsonx.ai chat API does not support a length penalty, so a non-null value makes
+         * {@link #build()} throw an {@link UnsupportedFeatureException}. There is no replacement. This method will be
+         * removed no earlier than 6 months after 1.24.0-beta34.
+         */
+        @Deprecated(since = "1.24.0-beta34", forRemoval = true)
         public Builder lengthPenalty(Double lengthPenalty) {
             this.lengthPenalty = lengthPenalty;
             return this;

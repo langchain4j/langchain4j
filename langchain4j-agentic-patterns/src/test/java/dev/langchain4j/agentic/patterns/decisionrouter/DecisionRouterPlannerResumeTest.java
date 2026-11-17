@@ -23,11 +23,12 @@ import dev.langchain4j.agentic.scope.AgenticScopeStore;
 import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -113,13 +114,10 @@ class DecisionRouterPlannerResumeTest {
     @Test
     void shouldResumeTheSameAgentWithoutAskingTheDecisionModelAgain() {
         AgenticScopePersister.setStore(new JsonInMemoryStore());
-        AtomicInteger decisions = new AtomicInteger();
         // asking again would route to the medical expert
-        DecisionModelMock model = DecisionModelMock.thatAnswers(request -> Map.of(
-                QUESTION_NAME,
-                ChoiceAnswer.builder()
-                        .value(decisions.getAndIncrement() == 0 ? "askUser" : "medical")
-                        .build()));
+        MockDecisionModel model = MockDecisionModel.thatAnswers(
+                        Map.of(QUESTION_NAME, ChoiceAnswer.builder().value("askUser").build()))
+                .thenAnswers(Map.of(QUESTION_NAME, ChoiceAnswer.builder().value("medical").build()));
         ResumableRouter router = AgenticServices.plannerBuilder(ResumableRouter.class)
                 .subAgents(medicalExpert, legalReviewer)
                 .outputKey("response")
@@ -138,7 +136,7 @@ class DecisionRouterPlannerResumeTest {
     @Test
     void shouldKeepTheOutputsOfTheAgentsThatCompletedBeforeTheSuspension() {
         AgenticScopePersister.setStore(new JsonInMemoryStore());
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(
+        MockDecisionModel model = MockDecisionModel.thatAnswers(
                 Map.of("medical", YesNoAnswer.from(0.8), "askUser", YesNoAnswer.from(0.7)));
         ResumableMultiRouter router = AgenticServices.plannerBuilder(ResumableMultiRouter.class)
                 .subAgents(medicalExpert, legalReviewer)
@@ -158,7 +156,7 @@ class DecisionRouterPlannerResumeTest {
 
     @Test
     void shouldReturnTheRestoredOutputsWhenAllTheActivatedAgentsHadCompleted() {
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(
+        MockDecisionModel model = MockDecisionModel.thatAnswers(
                 Map.of("medical", YesNoAnswer.from(0.8), "askUser", YesNoAnswer.from(0.7)));
         ResumableMultiRouter router = AgenticServices.plannerBuilder(ResumableMultiRouter.class)
                 .subAgents(medicalExpert, legalReviewer)
@@ -189,9 +187,77 @@ class DecisionRouterPlannerResumeTest {
     }
 
     @Test
+    void shouldResumeAfterTheSubagentsAreDeclaredInAnotherOrder() {
+        MockDecisionModel model = MockDecisionModel.thatFails(new RuntimeException("unused"));
+        // the state was saved by a router declaring the medical expert before the legal reviewer
+        ResumableMultiRouter router = AgenticServices.plannerBuilder(ResumableMultiRouter.class)
+                .subAgents(legalReviewer, medicalExpert)
+                .planner(() -> new DecisionRouterPlanner(model, 0.5))
+                .build();
+        DefaultAgenticScope scope = new AgenticScopeRegistry("router").create("s6");
+        scope.writeState("request", REQUEST);
+        DecisionRouterPlanner resumed = new DecisionRouterPlanner(model, 0.5);
+        resumed.init(new InitPlanningContext(scope, (AgentInstance) router, ((AgentInstance) router).subagents()));
+        resumed.restoreExecutionState(Map.of(
+                "decision-router-activated", List.of("medical", "askUser"),
+                "decision-router-outputs", Map.of("medical", "medical answer", "askUser", "legal answer"),
+                "decision-router-deferred", List.of()));
+
+        // the state refers to the subagents by their names, so it does not depend on their positions
+        Action action = resumed.firstAction(new PlanningContext(scope, null));
+
+        assertThat(action.isDone()).isTrue();
+        assertThat((Map<String, Object>) action.result())
+                .containsOnly(entry("medical", "medical answer"), entry("askUser", "legal answer"));
+        assertThat(model.requests()).isEmpty();
+    }
+
+    @Test
+    void shouldFailToResumeWhenASavedSubagentIsNotOneOfItsSubagents() {
+        MockDecisionModel model = MockDecisionModel.thatFails(new RuntimeException("unused"));
+        ResumableMultiRouter router = AgenticServices.plannerBuilder(ResumableMultiRouter.class)
+                .subAgents(medicalExpert, legalReviewer)
+                .planner(() -> new DecisionRouterPlanner(model, 0.5))
+                .build();
+        DefaultAgenticScope scope = new AgenticScopeRegistry("router").create("s4");
+        scope.writeState("request", REQUEST);
+        DecisionRouterPlanner resumed = new DecisionRouterPlanner(model, 0.5);
+        resumed.init(new InitPlanningContext(scope, (AgentInstance) router, ((AgentInstance) router).subagents()));
+        // an execution state referring to a subagent that is not declared, for instance after a change of subagents
+        resumed.restoreExecutionState(Map.of(
+                "decision-router-activated", List.of("technical"),
+                "decision-router-outputs", Map.of(),
+                "decision-router-deferred", List.of()));
+
+        assertThatThrownBy(() -> resumed.firstAction(new PlanningContext(scope, null)))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("'technical'")
+                .hasMessageContaining("subagents changed");
+        assertThat(model.requests()).isEmpty();
+    }
+
+    @Test
+    void shouldRejectAPlannerInstanceInitializedTwice() {
+        MockDecisionModel model = MockDecisionModel.thatFails(new RuntimeException("unused"));
+        ResumableMultiRouter router = AgenticServices.plannerBuilder(ResumableMultiRouter.class)
+                .subAgents(medicalExpert, legalReviewer)
+                .planner(() -> new DecisionRouterPlanner(model, 0.5))
+                .build();
+        DefaultAgenticScope scope = new AgenticScopeRegistry("router").create("s5");
+        InitPlanningContext initPlanningContext =
+                new InitPlanningContext(scope, (AgentInstance) router, ((AgentInstance) router).subagents());
+        DecisionRouterPlanner planner = new DecisionRouterPlanner(model, 0.5);
+        planner.init(initPlanningContext);
+
+        assertThatThrownBy(() -> planner.init(initPlanningContext))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("cannot be reused");
+    }
+
+    @Test
     void shouldHaveNoExecutionStateBeforeDeciding() {
         DecisionRouterPlanner planner =
-                new DecisionRouterPlanner(DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("unused"));
+                new DecisionRouterPlanner(MockDecisionModel.thatFails(new RuntimeException("unused")));
 
         assertThat(planner.executionState()).isEmpty();
     }

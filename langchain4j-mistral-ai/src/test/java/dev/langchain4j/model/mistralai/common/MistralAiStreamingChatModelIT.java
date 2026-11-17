@@ -27,6 +27,7 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
             // passing test needs.
             .maxTokens(2000)
             .temperature(0.0)
+            .topP(1.0) // Mistral rejects temperature 0 (greedy sampling) on mistral-large-latest unless top_p is 1
             .strictJsonSchema(true)
             .logRequests(false) // images are huge in logs
             .logResponses(true)

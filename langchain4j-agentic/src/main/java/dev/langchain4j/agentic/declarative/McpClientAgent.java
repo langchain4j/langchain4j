@@ -8,6 +8,7 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Marks a method as an MCP client agent that wraps a single MCP tool as a non-AI agent. The MCP client is obtained
@@ -82,4 +83,19 @@ public @interface McpClientAgent {
      * @return true if the agent should be invoked in an asynchronous manner, false otherwise.
      */
     boolean async() default false;
+
+    /**
+     * Number of seconds given to the resolution of the MCP tool, that is the creation of the MCP client by the
+     * {@link McpClientSupplier} method and the listing of the tools of the MCP server, which happens the first time
+     * the tool is needed, normally on the first invocation of the agent. When the tool is not resolved within this
+     * time the invocation fails with an {@code McpToolResolutionException} caused by a
+     * {@link TimeoutException}. Concurrent first invocations wait on the same resolution, so
+     * none of them waits longer than this time.
+     *
+     * @return the number of seconds given to the resolution of the MCP tool, 0 for no limit other than the
+     * timeouts of the MCP client itself, or -1, which is the default, for the default of an MCP client agent, which
+     * is no limit either. Any other negative value is rejected when the agent is built.
+     * @since 1.24.0
+     */
+    int resolutionTimeoutSeconds() default -1;
 }

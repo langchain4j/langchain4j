@@ -10,12 +10,13 @@ public interface A2AClientInstance extends InternalAgent {
     /**
      * Returns the agent card of the remote agent, fetching it from the A2A server if it has not been fetched yet.
      * The card is normally fetched on the first invocation of the agent, so this call blocks until the fetch
-     * completes and can be used to warm up the agent, or to fail fast, before its first invocation. Inside a
+     * completes, at most for the resolution timeout of the agent, 30 seconds by default, and can be used to warm
+     * up the agent, or to fail fast, before its first invocation. Inside a
      * declarative agentic system the A2A agent is wrapped: reach it through
      * {@code subagent.as(A2AClientInstance.class)} on the corresponding subagent of the
      * {@link dev.langchain4j.agentic.planner.AgentInstance} of the system.
      *
-     * @throws A2AAgentCardException if the card cannot be fetched
+     * @throws A2AAgentCardException if the card cannot be fetched, or is not fetched within the resolution timeout
      */
     AgentCard agentCard();
 

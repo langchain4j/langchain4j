@@ -4,10 +4,10 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.stream.Collectors.toMap;
 
 import dev.langchain4j.agentic.internal.Context;
+import dev.langchain4j.agentic.internal.CurrentPlanningContext;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
-import dev.langchain4j.agentic.planner.AgentCondition;
 import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
@@ -137,8 +137,10 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                 ? requestGenerator.apply(initPlanningContext.agenticScope())
                 : initPlanningContext.agenticScope().readState("request", "");
         if (responseStrategy == SupervisorResponseStrategy.SCORED) {
-            this.responseAgent =
-                    AiServices.builder(ResponseAgent.class).chatModel(chatModel).build();
+            this.responseAgent = AiServices.builder(ResponseAgent.class)
+                    .chatModel(chatModel)
+                    .registerListener(CurrentPlanningContext.modelResponseListener())
+                    .build();
         }
     }
 
@@ -214,7 +216,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         }
 
         if (loopCount++ >= maxAgentsInvocations) {
-            return doneAction(planningContext.agenticScope(), lastResponse, null);
+            return doneAction(planningContext, lastResponse, null);
         }
         // a skipped agent produced no response, so the model is told why instead
         String plannerResponse = previousInvocation != null && previousInvocation.skipped()
@@ -368,8 +370,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                 ? SUPERVISOR_CONTEXT_PREFIX + "'" + agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "") + "'."
                 : "";
 
-        AgentInvocation agentInvocation = withAgenticScope(
-                agenticScope,
+        AgentInvocation agentInvocation = withPlanningContext(
+                planningContext,
                 () -> planner(agenticScope)
                         .plan(agenticScope.memoryId(), agentsList, request, plannerResponse, supervisorContext));
         LOG.info("Agent Invocation: {}", agentInvocation);
@@ -379,7 +381,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         }
 
         if (agentInvocation.getAgentName().equalsIgnoreCase("done")) {
-            return doneAction(agenticScope, lastResponse, agentInvocation);
+            return doneAction(planningContext, lastResponse, agentInvocation);
         }
 
         AgentInstance agent = findAgentByName(agentInvocation.getAgentName());
@@ -391,12 +393,24 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         return call(agent);
     }
 
-    private static <T> T withAgenticScope(AgenticScope agenticScope, Supplier<T> supplier) {
-        LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
+    /**
+     * Runs a model call of the supervisor with its scope and its {@link CurrentPlanningContext} bound to the thread.
+     * The AI service making the call reports each response of its model to that planning context, through the
+     * listener registered on it, and so does the summarizer of its context.
+     */
+    private static <T> T withPlanningContext(PlanningContext planningContext, Supplier<T> supplier) {
+        // the managed parameters of the caller are put back afterwards, since the supervisor can be invoked from
+        // inside another AI service call, for instance by one of its tools
+        Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> callerParameters = LangChain4jManaged.current();
+        LangChain4jManaged.setCurrent(Map.of(
+                AgenticScope.class,
+                planningContext.agenticScope(),
+                CurrentPlanningContext.class,
+                new CurrentPlanningContext(planningContext)));
         try {
             return supplier.get();
         } finally {
-            LangChain4jManaged.removeCurrent();
+            LangChain4jManaged.restore(callerParameters);
         }
     }
 
@@ -434,8 +448,9 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         return true;
     }
 
-    private Action doneAction(AgenticScope agenticScope, String lastResponse, AgentInvocation done) {
-        Object result = result(agenticScope, request, lastResponse, done);
+    private Action doneAction(PlanningContext planningContext, String lastResponse, AgentInvocation done) {
+        AgenticScope agenticScope = planningContext.agenticScope();
+        Object result = result(planningContext, request, lastResponse, done);
         if (outputKey != null) {
             agenticScope.writeState(outputKey, result);
         }
@@ -446,7 +461,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         return ((DefaultAgenticScope) agenticScope).getOrCreateAgent(agentId(), this::buildPlannerAgent);
     }
 
-    private Object result(AgenticScope agenticScope, String request, String lastResponse, AgentInvocation done) {
+    private Object result(PlanningContext planningContext, String request, String lastResponse, AgentInvocation done) {
         if (done == null || done.getArguments() == null || done.getArguments().get("response") == null) {
             return lastResponse;
         }
@@ -456,8 +471,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             case LAST -> lastResponse;
             case SUMMARY -> doneResponse;
             case SCORED -> {
-                ResponseScore score = withAgenticScope(
-                        agenticScope, () -> responseAgent.scoreResponses(request, lastResponse, doneResponse));
+                ResponseScore score = withPlanningContext(
+                        planningContext, () -> responseAgent.scoreResponses(request, lastResponse, doneResponse));
                 LOG.info("Response scores: {}", score);
                 yield score.getScore2() > score.getScore1() ? doneResponse : lastResponse;
             }
@@ -465,7 +480,9 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     }
 
     private PlannerAgent buildPlannerAgent(AgenticScope agenticScope) {
-        var builder = AiServices.builder(PlannerAgent.class).chatModel(chatModel);
+        var builder = AiServices.builder(PlannerAgent.class)
+                .chatModel(chatModel)
+                .registerListener(CurrentPlanningContext.modelResponseListener());
         configureMemoryAndContext(agenticScope, builder);
         return builder.build();
     }

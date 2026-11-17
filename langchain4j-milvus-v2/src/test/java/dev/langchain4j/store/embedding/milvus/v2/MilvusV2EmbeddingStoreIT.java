@@ -38,7 +38,7 @@ class MilvusV2EmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
     private static final String COLLECTION_NAME = "test_collection";
 
-    static final String MILVUS_DOCKER_IMAGE = System.getProperty("milvus.image", "milvusdb/milvus:v2.6.26");
+    static final String MILVUS_DOCKER_IMAGE = System.getProperty("milvus.image", "milvusdb/milvus:v2.6.27");
 
     @Container
     private static final MilvusContainer milvus = new MilvusContainer(MILVUS_DOCKER_IMAGE)

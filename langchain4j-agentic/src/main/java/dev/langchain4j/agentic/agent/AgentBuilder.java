@@ -5,6 +5,8 @@ import static dev.langchain4j.agentic.internal.AgentUtil.argumentsFromMethod;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
 import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 import static dev.langchain4j.agentic.observability.ComposedAgentListener.listenerOfType;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.afterAgentToolExecution;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeAgentToolExecution;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.asList;
 
@@ -17,10 +19,8 @@ import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.AgenticScopeOwner;
 import dev.langchain4j.agentic.internal.Context;
 import dev.langchain4j.agentic.internal.InternalAgent;
-import dev.langchain4j.agentic.observability.AfterAgentToolExecution;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.AgentMonitor;
-import dev.langchain4j.agentic.observability.BeforeAgentToolExecution;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.observability.MonitoredAgent;
 import dev.langchain4j.agentic.planner.AgentArgument;
@@ -47,6 +47,8 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.guardrail.InputGuardrails;
+import dev.langchain4j.service.guardrail.OutputGuardrails;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
@@ -265,10 +267,10 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         }
 
         if (agentListener != null) {
-            aiServices.beforeToolExecution(beforeToolExecution ->
-                    agentListener.beforeAgentToolExecution(new BeforeAgentToolExecution(agent, beforeToolExecution)));
-            aiServices.afterToolExecution(afterToolExecution ->
-                    agentListener.afterAgentToolExecution(new AfterAgentToolExecution(agent, afterToolExecution)));
+            aiServices.beforeToolExecution(
+                    beforeToolExecution -> beforeAgentToolExecution(agentListener, agent, beforeToolExecution));
+            aiServices.afterToolExecution(
+                    afterToolExecution -> afterAgentToolExecution(agentListener, agent, afterToolExecution));
         }
 
         if (compensateOnError) {
@@ -597,6 +599,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the configuration for input guardrails applied before sending requests to the model.
+     * It applies to every method of the agent.
      *
      * @param inputGuardrailsConfig the input guardrails configuration
      * @return {@code this}
@@ -608,6 +611,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the configuration for output guardrails applied after receiving responses from the model.
+     * It takes precedence over the configuration of any {@link OutputGuardrails} annotation on the agent.
      *
      * @param outputGuardrailsConfig the output guardrails configuration
      * @return {@code this}
@@ -619,6 +623,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the input guardrail classes to be instantiated and applied before each request.
+     * Guardrails set this way replace the ones declared in {@link InputGuardrails} annotations on the agent,
+     * see there for the exact rules.
      *
      * @param inputGuardrailClasses the input guardrail classes
      * @param <I> the guardrail type
@@ -631,6 +637,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the output guardrail classes to be instantiated and applied after each response.
+     * Guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations on the agent,
+     * see there for the exact rules.
      *
      * @param outputGuardrailClasses the output guardrail classes
      * @param <O> the guardrail type
@@ -643,6 +651,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the input guardrail instances applied before each request.
+     * Guardrails set this way replace the ones declared in {@link InputGuardrails} annotations on the agent,
+     * see there for the exact rules.
      *
      * @param inputGuardrails the input guardrails
      * @param <I> the guardrail type
@@ -655,6 +665,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the output guardrail instances applied after each response.
+     * Guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations on the agent,
+     * see there for the exact rules.
      *
      * @param outputGuardrails the output guardrails
      * @param <O> the guardrail type

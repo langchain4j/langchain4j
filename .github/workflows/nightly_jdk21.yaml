@@ -109,15 +109,52 @@ jobs:
 
           ## kill a module's test JVM after 2 h (with a thread dump in target/*-reports), so that a hung test
           ## does not cost the rest of the modules (the slowest module, langchain4j-google-ai-gemini, takes ~80 min)
-          mvn -B -U verify ${{ steps.jackson3.outputs.profile }} \
+          ## the test-assertions-frameworks profile adds the apps that build against released framework versions
+          ## failed tests do not fail their module, so that the modules that depend on it still run their tests;
+          ## the check below fails this step instead
+          mvn -B -U verify ${{ steps.jackson3.outputs.profile }} -Ptest-assertions-frameworks \
             -Dsurefire.timeout=7200 \
             -Dfailsafe.timeout=7200 \
+            -Dmaven.test.failure.ignore=true \
             -pl "${modules}" \
             -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
             --fail-at-end \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
             -DembeddingsSkipCache \
             -Dtinylog.writer.level=info
+
+          ## fail this step if a test failed or a test JVM was killed by the timeout above
+          python3 << 'PYEOF'
+          import glob, sys
+          import xml.etree.ElementTree as ET
+
+          problems = []
+          for path in sorted(glob.glob('**/target/*-reports/TEST-*.xml', recursive=True)):
+              try:
+                  root = ET.parse(path).getroot()
+                  failed = int(root.get('failures', 0)) + int(root.get('errors', 0))
+              except Exception as e:
+                  problems.append(f'{path}: unreadable report ({e})')
+                  continue
+              if failed > 0:
+                  problems.append(f'{path}: {failed} failed')
+          for path in sorted(glob.glob('**/target/failsafe-reports/failsafe-summary.xml', recursive=True)):
+              try:
+                  timeout = ET.parse(path).getroot().get('timeout') == 'true'
+              except Exception as e:
+                  problems.append(f'{path}: unreadable report ({e})')
+                  continue
+              if timeout:
+                  problems.append(f'{path}: test JVM killed by the timeout')
+          # surefire writes no summary: a thread dump of its test JVM is the only trace of a timeout
+          for path in sorted(glob.glob('**/target/surefire-reports/*.dump', recursive=True)):
+              problems.append(f'{path}: test JVM killed by the timeout or failed otherwise')
+
+          if problems:
+              print('::error::Tests failed or a test JVM was killed, see the reports below and the Test Results summary')
+              print('\n'.join(problems))
+              sys.exit(1)
+          PYEOF
 
         env:
           LC4J_GLOBAL_TEST_RETRY_ENABLED: true

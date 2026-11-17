@@ -20,6 +20,44 @@ This integration is built on top of the **IBM watsonx.ai Java SDK**. Every model
 </dependency>
 ```
 
+### Jackson 3
+
+The watsonx.ai SDK reads and writes JSON through a separate binding module. `langchain4j-watsonx` brings the
+Jackson 2 one, `com.ibm.watsonx:watsonx-ai-jackson2`. Since `1.24.0-beta34`, if your application is on Jackson 3 and
+you want to remove Jackson 2 (see [Using Jackson 3](/tutorials/jackson-3)), replace it with `com.ibm.watsonx:watsonx-ai-jackson3`, in
+the same version as the `com.ibm.watsonx:watsonx-ai` that `langchain4j-watsonx` depends on:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-watsonx</artifactId>
+    <version>1.23.0-beta33</version>
+    <exclusions>
+        <exclusion>
+            <groupId>com.ibm.watsonx</groupId>
+            <artifactId>watsonx-ai-jackson2</artifactId>
+        </exclusion>
+        <exclusion>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </exclusion>
+        <exclusion>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+        </exclusion>
+    </exclusions>
+</dependency>
+<dependency>
+    <groupId>com.ibm.watsonx</groupId>
+    <artifactId>watsonx-ai-jackson3</artifactId>
+    <!-- the same version as com.ibm.watsonx:watsonx-ai in mvn dependency:tree -->
+    <version>0.50.0</version>
+</dependency>
+```
+
+Keep exactly one binding on the classpath: with none, or with both, the first call to watsonx.ai fails with an
+`Error`.
+
 ## Authentication
 
 Watsonx.ai supports authentication via the `Authenticator` interface.
@@ -382,8 +420,8 @@ In addition to the common chat parameters, `WatsonxGatewayChatRequestParameters`
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.watsonx.WatsonxGatewayChatRequestParameters;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ReasoningEffort;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ServiceTier;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters.ReasoningEffort;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters.ServiceTier;
 
 ChatRequest request = ChatRequest.builder()
     .messages(UserMessage.from("Solve this step by step."))

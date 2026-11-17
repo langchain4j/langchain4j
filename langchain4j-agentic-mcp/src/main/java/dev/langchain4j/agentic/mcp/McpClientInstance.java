@@ -35,13 +35,15 @@ public interface McpClientInstance extends InternalAgent {
     /**
      * Returns the specification of the MCP tool bound by the agent, creating the MCP client and listing the tools of
      * the server if not yet done. The tool is normally resolved on the first invocation of the agent, so this call
-     * blocks until the resolution completes and can be used to warm up the agent, or to fail fast, before its first
+     * blocks until the resolution completes, at most for the resolution timeout of the agent when one is set, and
+     * can be used to warm up the agent, or to fail fast, before its first
      * invocation. Inside a declarative agentic system the MCP agent is wrapped: reach it through
      * {@code subagent.as(McpClientInstance.class)} on the corresponding subagent of the
      * {@link AgentInstance} of the system.
      *
      * @return the specification of the MCP tool bound by the agent
-     * @throws McpToolResolutionException if the client cannot be created or the tools cannot be listed
+     * @throws McpToolResolutionException if the client cannot be created or the tools cannot be listed, or if this
+     *         takes longer than the resolution timeout
      * @throws AgenticSystemConfigurationException if the tool is not found, if no tool name is configured and the
      *         server exposes more than one tool, or if the client supplier does not return an MCP client
      * @since 1.24.0

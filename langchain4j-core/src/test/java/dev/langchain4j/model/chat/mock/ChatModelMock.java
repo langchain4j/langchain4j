@@ -21,6 +21,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.test.mock.MockChatModel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
@@ -33,8 +34,25 @@ import java.util.function.Function;
  * An implementation of a {@link ChatModel} useful for unit testing.
  * Always returns a static response and records all invocations for verification at the end of a test.
  * This implementation is experimental and subject to change in the future. It may utilize Mockito internally.
+ *
+ * @deprecated use {@link MockChatModel} (package {@code dev.langchain4j.test.mock}) from the {@code langchain4j-test}
+ * module. Unlike this class, it answers one request per scripted step and fails when the script runs out; end the
+ * script with {@link MockChatModel#thenRepeats()} to answer every further request with its last step, also for
+ * {@link MockChatModel#thatResponds(Function)}. {@code withListeners(...)}, {@code withTokenUsage(...)},
+ * {@code withSupportedCapabilities(...)}, {@code requests()} and {@code request()} have the same names. A response
+ * reports the model name of the request and {@code STOP} or {@code TOOL_EXECUTION} as its finish reason; instead of
+ * {@code withModelNames(...)}, {@code withTokenUsages(...)} and {@code withFinishReason(...)}, give a step the whole
+ * response: {@link MockChatModel#thatResponds(ChatResponse)}. {@code withRetryPolicy(...)} has no replacement. Instead
+ * of {@code userMessageText()}, check the request, for example with
+ * {@code LangChain4jAssertions.assertThat(model.request()).hasLastUserMessageContaining(...)}. Other differences:
+ * {@link MockChatModel#thatResponds(Function)} does not map the exceptions the function throws (an
+ * {@code HttpException} with status 429 stays an {@code HttpException}, so throw the exception you expect, for example
+ * a {@code RateLimitException}), tool calls without an id get the ids {@code tool_call_1}, {@code tool_call_2}, ...,
+ * and {@code requests()} returns a copy.
+ * This class will be removed in 1.26.0 at the earliest.
  */
 @Experimental
+@Deprecated(since = "1.24.0", forRemoval = true)
 public class ChatModelMock implements ChatModel {
 
     private final String staticResponse;
@@ -51,29 +69,55 @@ public class ChatModelMock implements ChatModel {
     private List<TokenUsage> tokenUsages = List.of();
     private FinishReason finishReason;
 
+    /**
+     * @deprecated use {@link MockChatModel#thatResponds(String)} followed by {@link MockChatModel#thenRepeats()}.
+     * Removed together with this class, in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ChatModelMock(String staticResponse) {
         this.staticResponse = ensureNotBlank(staticResponse, "staticResponse");
         this.exception = null;
         this.aiMessageGenerator = null;
     }
 
+    /**
+     * @deprecated use {@link MockChatModel#thatFails(RuntimeException)} followed by
+     * {@link MockChatModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ChatModelMock(RuntimeException exception) {
         this.staticResponse = null;
         this.exception = ensureNotNull(exception, "exception");
         this.aiMessageGenerator = null;
     }
 
+    /**
+     * @deprecated use {@link MockChatModel#thatResponds(Function)} followed by {@link MockChatModel#thenRepeats()};
+     * unlike this one, it does not map the exceptions the function throws, so throw the exception you expect, for
+     * example a {@code RateLimitException}. Removed together with this class, in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ChatModelMock(Function<ChatRequest, AiMessage> aiMessageGenerator) {
         this.staticResponse = null;
         this.exception = null;
         this.aiMessageGenerator = ensureNotNull(aiMessageGenerator, "aiMessageGenerator");
     }
 
+    /**
+     * @deprecated has no replacement: {@link MockChatModel} has no retry policy. Removed together with this class, in
+     * 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ChatModelMock withRetryPolicy(RetryUtils.RetryPolicy retryPolicy) {
         this.retryPolicy = retryPolicy;
         return this;
     }
 
+    /**
+     * @deprecated use {@link MockChatModel#withSupportedCapabilities(Capability...)}. Removed together with this class,
+     * in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ChatModelMock withSupportedCapabilities(Capability... supportedCapabilities) {
         this.supportedCapabilities = Set.of(supportedCapabilities);
         return this;
@@ -82,12 +126,22 @@ public class ChatModelMock implements ChatModel {
     /**
      * Sets the model name reported in the response metadata, one name per call, in the given order.
      * Once all names are used, the model name is {@code null}.
+     *
+     * @deprecated a response of {@link MockChatModel} reports the model name of the request; for another model name,
+     * give a step the whole response: {@link MockChatModel#thatResponds(ChatResponse)}. Removed together with this
+     * class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ChatModelMock withModelNames(String... modelNames) {
         this.modelNames = new ConcurrentLinkedQueue<>(asList(modelNames));
         return this;
     }
 
+    /**
+     * @deprecated use {@link MockChatModel#withListeners(ChatModelListener...)}. Removed together with this class, in
+     * 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ChatModelMock withListeners(ChatModelListener... listeners) {
         this.listeners = List.of(listeners);
         return this;
@@ -95,14 +149,22 @@ public class ChatModelMock implements ChatModel {
 
     /**
      * Reports the given token usage in every response.
+     *
+     * @deprecated use {@link MockChatModel#withTokenUsage(TokenUsage)}. Removed together with this class, in 1.26.0 at
+     * the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ChatModelMock withTokenUsage(TokenUsage tokenUsage) {
         return withTokenUsages(tokenUsage);
     }
 
     /**
      * Reports the given token usages in successive responses, repeating the last one.
+     *
+     * @deprecated for a different token usage per step, give a step the whole response:
+     * {@link MockChatModel#thatResponds(ChatResponse)}. Removed together with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ChatModelMock withTokenUsages(TokenUsage... tokenUsages) {
         this.tokenUsages = List.of(tokenUsages);
         return this;
@@ -117,7 +179,12 @@ public class ChatModelMock implements ChatModel {
 
     /**
      * Reports the given finish reason in every response.
+     *
+     * @deprecated a response of {@link MockChatModel} reports {@code STOP} or {@code TOOL_EXECUTION}; for another
+     * finish reason, give a step the whole response: {@link MockChatModel#thatResponds(ChatResponse)}. Removed together
+     * with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ChatModelMock withFinishReason(FinishReason finishReason) {
         this.finishReason = finishReason;
         return this;
@@ -171,6 +238,12 @@ public class ChatModelMock implements ChatModel {
         return aiMessageGenerator != null ? aiMessageGenerator.apply(chatRequest) : AiMessage.from(staticResponse);
     }
 
+    /**
+     * @deprecated check the request instead, for example with
+     * {@code LangChain4jAssertions.assertThat(model.request()).hasLastUserMessageContaining(...)} on a
+     * {@link MockChatModel}. Removed together with this class, in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public String userMessageText() {
         if (requests.size() != 1) {
             throw runtime("Expected exactly 1 request, got: " + requests.size());
@@ -190,9 +263,10 @@ public class ChatModelMock implements ChatModel {
     }
 
     /**
-     * @deprecated use {@link #requests()} instead
+     * @deprecated use {@link MockChatModel#requests()} instead. Removed together with this class, in 1.26.0 at the
+     * earliest.
      */
-    @Deprecated(since = "1.12.0")
+    @Deprecated(since = "1.12.0", forRemoval = true)
     public List<List<ChatMessage>> getRequests() {
         return requests.stream().map(ChatRequest::messages).toList();
     }
@@ -209,6 +283,11 @@ public class ChatModelMock implements ChatModel {
         }
     }
 
+    /**
+     * @deprecated use {@link MockChatModel#thatResponds(String)} followed by {@link MockChatModel#thenRepeats()}.
+     * Removed together with this class, in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public static ChatModelMock thatAlwaysResponds(String response) {
         return new ChatModelMock(response);
     }
@@ -216,7 +295,12 @@ public class ChatModelMock implements ChatModel {
     /**
      * Responds with the given message to every request. Fails on the second request if the message contains tool
      * execution requests, because repeating it would make an AI Service call the tools again and again.
+     *
+     * @deprecated use {@link MockChatModel#thatResponds(AiMessage...)} followed by {@link MockChatModel#thenRepeats()};
+     * for a message with tool calls, script the answer that follows the tool results with
+     * {@link MockChatModel#thenResponds(String)} instead. Removed together with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public static ChatModelMock thatAlwaysResponds(AiMessage aiMessage) {
         return thatAlwaysResponds(new AiMessage[] {aiMessage});
     }
@@ -225,20 +309,41 @@ public class ChatModelMock implements ChatModel {
      * Responds with the given messages in order, one per request. Once all of them were given, the last one is given
      * again for every further request (like Mockito's {@code thenReturn(a, b)}), unless it contains tool execution
      * requests: then the mock fails, because repeating it would make an AI Service call the tools again and again.
+     *
+     * @deprecated use {@link MockChatModel#thatResponds(AiMessage...)}, followed by {@link MockChatModel#thenRepeats()}
+     * if the model gets more requests than there are messages. Removed together with this class, in 1.26.0 at the
+     * earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public static ChatModelMock thatAlwaysResponds(AiMessage... aiMessages) {
         ScriptedResponses responses = new ScriptedResponses("ChatModelMock", asList(aiMessages));
         return new ChatModelMock(ignored -> responses.next());
     }
 
+    /**
+     * @deprecated use {@link MockChatModel#thatResponds(Function)} followed by {@link MockChatModel#thenRepeats()};
+     * unlike this one, it does not map the exceptions the function throws, so throw the exception you expect, for
+     * example a {@code RateLimitException}. Removed together with this class, in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public static ChatModelMock thatResponds(Function<ChatRequest, AiMessage> aiMessageGenerator) {
         return new ChatModelMock(aiMessageGenerator);
     }
 
+    /**
+     * @deprecated use {@link MockChatModel#thatFails(RuntimeException)} followed by
+     * {@link MockChatModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public static ChatModelMock thatAlwaysThrowsException() {
         return thatAlwaysThrowsExceptionWithMessage("Something went wrong, but this is an expected exception");
     }
 
+    /**
+     * @deprecated use {@link MockChatModel#thatFails(RuntimeException)} followed by
+     * {@link MockChatModel#thenRepeats()}. Removed together with this class, in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public static ChatModelMock thatAlwaysThrowsExceptionWithMessage(String message) {
         return new ChatModelMock(new RuntimeException(message));
     }

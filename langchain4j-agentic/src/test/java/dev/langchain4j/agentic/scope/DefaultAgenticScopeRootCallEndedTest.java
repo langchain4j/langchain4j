@@ -259,7 +259,7 @@ class DefaultAgenticScopeRootCallEndedTest {
     void suspension_of_an_async_agent_landing_at_root_end_is_notified() {
         DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.REGISTERED);
         AtomicInteger suspensions = new AtomicInteger();
-        AsyncResponse<String> response = suspending(scope, null);
+        AsyncResponse<String> response = suspending(scope, "remediate:task-1", null);
         assertThatThrownBy(response::blockingGet).isInstanceOf(AgenticSystemSuspendedException.class);
         scope.writeState("fix", response);
 
@@ -275,20 +275,71 @@ class DefaultAgenticScopeRootCallEndedTest {
     void suspended_root_call_reports_the_later_suspensions_of_its_async_agents_but_not_the_one_it_noticed() {
         DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.REGISTERED);
         AtomicInteger suspensions = new AtomicInteger();
-        AsyncResponse<String> noticed = suspending(scope, null);
+        AsyncResponse<String> noticed = suspending(scope, "noticed:task-1", null);
         assertThatThrownBy(noticed::blockingGet).isInstanceOf(AgenticSystemSuspendedException.class);
         scope.writeState("noticed", noticed);
         CountDownLatch release = new CountDownLatch(1);
-        AsyncResponse<String> late = suspending(scope, release);
+        AsyncResponse<String> late = suspending(scope, "late:task-1", release);
         scope.writeState("late", late);
 
-        // the suspension of the completed agent is among the pending responses the root call just notified
+        // the suspension of the completed agent is among the pending responses the root call notifies
         scope.rootCallSuspended(null, suspensionCounter(suspensions));
-        assertThat(suspensions).hasValue(0);
+        assertThat(suspensions).hasValue(1);
 
         // the one of the agent still running is notified when it happens
         release.countDown();
-        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> suspensions.get() == 1);
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> suspensions.get() == 2);
+    }
+
+    @Test
+    void suspended_root_call_does_not_report_again_the_suspension_of_an_agent_completing_after_it_noticed_it() {
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.REGISTERED);
+        AtomicInteger suspensions = new AtomicInteger();
+        CountDownLatch release = new CountDownLatch(1);
+        AsyncResponse<String> response = new AsyncResponse<>(() -> {
+            scope.writeState("a2a.response.remediate", new SuspendedResponse<>("remediate:task-1"));
+            await(release);
+            throw new AgenticSystemSuspendedException(scope);
+        });
+        scope.writeState("fix", response);
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> !scope.pendingResponseIds().isEmpty());
+
+        // the agent left its pending response just before completing, in time for the root call to suspend on it
+        scope.rootCallSuspended(null, suspensionCounter(suspensions));
+        release.countDown();
+
+        assertThatThrownBy(response::blockingGet).isInstanceOf(AgenticSystemSuspendedException.class);
+        Awaitility.await()
+                .during(300, TimeUnit.MILLISECONDS)
+                .atMost(2, TimeUnit.SECONDS)
+                .until(() -> suspensions.get() == 1);
+    }
+
+    @Test
+    void suspended_root_call_reports_again_a_pending_response_left_while_it_notifies_its_suspension() {
+        DefaultAgenticScope scope = new DefaultAgenticScope(DefaultAgenticScope.Kind.REGISTERED);
+        AtomicInteger suspensions = new AtomicInteger();
+        scope.writeState("a2a.response.approve", new SuspendedResponse<>("approve:task-1"));
+        CountDownLatch release = new CountDownLatch(1);
+        AsyncResponse<String> late = suspending(scope, "remediate:task-1", release);
+        scope.writeState("fix", late);
+        AgentListener listener = new AgentListener() {
+            @Override
+            public void onAgenticSystemSuspended(AgenticScope agenticScope) {
+                if (suspensions.incrementAndGet() == 1) {
+                    // a detached agent leaves its pending response while the listener of the root call runs
+                    release.countDown();
+                    Awaitility.await()
+                            .atMost(10, TimeUnit.SECONDS)
+                            .until(() -> scope.pendingResponseIds().contains("remediate:task-1"));
+                }
+            }
+        };
+
+        scope.rootCallSuspended(null, listener);
+
+        // the listener may have read the pending responses before it was left: it is notified again rather than never
+        Awaitility.await().atMost(10, TimeUnit.SECONDS).until(() -> suspensions.get() == 2);
     }
 
     /** Counts the suspensions notified to the listener. */
@@ -301,12 +352,17 @@ class DefaultAgenticScopeRootCallEndedTest {
         };
     }
 
-    /** The response of an agent suspending the system, once released when a latch is given. */
-    private static AsyncResponse<String> suspending(DefaultAgenticScope scope, CountDownLatch release) {
+    /**
+     * The response of an agent suspending the system, once released when a latch is given: as an A2A client agent, it
+     * leaves a pending response in the scope before suspending.
+     */
+    private static AsyncResponse<String> suspending(
+            DefaultAgenticScope scope, String responseId, CountDownLatch release) {
         return new AsyncResponse<>(() -> {
             if (release != null) {
                 await(release);
             }
+            scope.writeState("a2a.response." + responseId, new SuspendedResponse<>(responseId));
             throw new AgenticSystemSuspendedException(scope);
         });
     }

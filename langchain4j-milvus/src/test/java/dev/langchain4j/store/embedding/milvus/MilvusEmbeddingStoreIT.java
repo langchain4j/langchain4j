@@ -42,7 +42,7 @@ import org.testcontainers.milvus.MilvusContainer;
 @Testcontainers
 class MilvusEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
 
-    static final String MILVUS_DOCKER_IMAGE = System.getProperty("milvus.image", "milvusdb/milvus:v2.6.26");
+    static final String MILVUS_DOCKER_IMAGE = System.getProperty("milvus.image", "milvusdb/milvus:v2.6.27");
 
     static MilvusContainer milvusContainer() {
         // without these settings, Milvus 2.6 and later never reports healthy when started in a single container

@@ -226,6 +226,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .parentInvocationId(CurrentInvocation.invocationId())
                                 .interfaceName(context.aiServiceClass.getName())
                                 .methodName(method.getName())
+                                .methodReturnType(method.getGenericReturnType())
                                 .methodArguments(args != null ? Arrays.asList(args) : List.of())
                                 .chatMemoryId(findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT))
                                 .defaultRequestParameters(determineChatRequestParameters(context))

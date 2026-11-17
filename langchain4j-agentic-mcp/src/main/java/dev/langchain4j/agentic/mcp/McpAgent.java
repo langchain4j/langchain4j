@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.McpClientBuilder;
 import dev.langchain4j.mcp.client.McpClient;
+import java.time.Duration;
 import java.util.function.Supplier;
 
 /**
@@ -57,10 +58,15 @@ public class McpAgent {
     /**
      * Creates a builder for an untyped MCP client agent whose MCP client is created lazily.
      * <p>
-     * The supplier is invoked on the thread that first needs the client, and the client it returns is then used by
+     * The supplier is invoked on the thread of the invocation that first needs the client, or, when the agent has a
+     * {@link McpClientBuilder#resolutionTimeout(Duration) resolution timeout}, on a thread of the LangChain4j
+     * executor and within that time, and the client it returns is then used by
      * every invocation of the agent, so it must not depend on per-request or per-user state, like the credentials of
-     * the current user. When it fails, it is invoked again the next time the client is needed. The agent never closes
-     * the client: to close it when it is no longer needed, keep a reference to it from the supplier.
+     * the current user. When it fails, the invocations waiting for the client fail, it is invoked again the next time
+     * the client is needed, and a
+     * {@code DefaultMcpClient} that fails to connect stops its transport, so the supplier can reuse one or create it
+     * inside. The agent never closes the client: to close it when it is no longer needed, keep a reference to it from
+     * the supplier.
      *
      * @param mcpClientSupplier the supplier of the MCP client used to discover and execute the tool, invoked when the
      *                          client is first needed, which is normally the first invocation of the agent, so that
@@ -77,10 +83,15 @@ public class McpAgent {
      * Creates a builder for a typed MCP client agent implementing the given agent service interface, whose MCP
      * client is created lazily.
      * <p>
-     * The supplier is invoked on the thread that first needs the client, and the client it returns is then used by
+     * The supplier is invoked on the thread of the invocation that first needs the client, or, when the agent has a
+     * {@link McpClientBuilder#resolutionTimeout(Duration) resolution timeout}, on a thread of the LangChain4j
+     * executor and within that time, and the client it returns is then used by
      * every invocation of the agent, so it must not depend on per-request or per-user state, like the credentials of
-     * the current user. When it fails, it is invoked again the next time the client is needed. The agent never closes
-     * the client: to close it when it is no longer needed, keep a reference to it from the supplier.
+     * the current user. When it fails, the invocations waiting for the client fail, it is invoked again the next time
+     * the client is needed, and a
+     * {@code DefaultMcpClient} that fails to connect stops its transport, so the supplier can reuse one or create it
+     * inside. The agent never closes the client: to close it when it is no longer needed, keep a reference to it from
+     * the supplier.
      *
      * @param mcpClientSupplier the supplier of the MCP client used to discover and execute the tool, invoked when the
      *                          client is first needed, which is normally the first invocation of the agent, so that

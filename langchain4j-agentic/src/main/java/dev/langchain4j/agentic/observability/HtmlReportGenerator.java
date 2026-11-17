@@ -491,7 +491,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             html.append("<span class=\"exec-time\">").append(top.startTime().format(TIME_FMT));
             html.append(" &#8594; ").append(top.finishTime().format(TIME_FMT)).append("</span>");
         } else {
-            html.append("<span class=\"dur-badge\">running...</span>");
+            html.append("<span class=\"dur-badge\">").append(exec.suspended() ? "suspended" : "running...").append("</span>");
         }
         html.append("</div>\n");
 
@@ -569,16 +569,14 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
         html.append("</td>");
 
-        // Model column
+        // Model column, also for an invocation that failed or is still in progress, when its planner called a model
         html.append("<td class=\"wf-dur\">");
-        if (inv.done()) {
-            inv.modelName().ifPresent(modelName -> html.append(esc(modelName)));
-        }
+        inv.modelName().ifPresent(modelName -> html.append(esc(modelName)));
         html.append("</td>");
 
-        // Tokens column
+        // Tokens column, with what the planner of a failed or still in progress invocation spent so far
         html.append("<td class=\"wf-dur\">");
-        if (inv.done() && inv.totalTokenCount() > 0) {
+        if (inv.totalTokenCount() > 0) {
             html.append(fmtTokens(inv.totalTokenCount()));
         }
         html.append("</td>");
@@ -589,7 +587,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             html.append("<div class=\"wf-bar bar-").append(css).append("\" style=\"left:")
                     .append(fmt(leftPct)).append("%;width:").append(fmt(widthPct)).append("%;\"");
             html.append(" title=\"").append(esc(ag.name())).append(": ")
-                    .append(inv.done() ? fmtDur(inv.duration()) : "running").append("\">");
+                    .append(inv.done() ? fmtDur(inv.duration()) : inv.suspended() ? "suspended" : "running").append("\">");
             html.append("</div>");
         }
         html.append("</div></td>");

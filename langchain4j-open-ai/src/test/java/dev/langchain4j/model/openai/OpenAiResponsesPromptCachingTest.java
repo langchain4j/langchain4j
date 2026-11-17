@@ -211,6 +211,36 @@ class OpenAiResponsesPromptCachingTest {
                 .isEqualTo("explicit");
     }
 
+    @Test
+    void should_send_native_tool_image_as_responses_input_image() throws Exception {
+        model().chat(ChatRequest.builder()
+                .messages(
+                        UserMessage.from("Inspect the screenshot"),
+                        AiMessage.from(ToolExecutionRequest.builder()
+                                .id("call_123")
+                                .name("screenshot")
+                                .arguments("{}")
+                                .build()),
+                        ToolExecutionResultMessage.builder()
+                                .id("call_123")
+                                .toolName("screenshot")
+                                .contents(
+                                        TextContent.from("diagnostic screenshot"),
+                                        ImageContent.from("iVBORw0KGgo=", "image/png"))
+                                .build())
+                .build());
+
+        JsonNode input = requestBody().get("input");
+        JsonNode output = input.get(input.size() - 1);
+        assertThat(output.get("type").asText()).isEqualTo("function_call_output");
+        assertThat(output.get("call_id").asText()).isEqualTo("call_123");
+        assertThat(output.get("output").get(0).get("type").asText()).isEqualTo("input_text");
+        assertThat(output.get("output").get(0).get("text").asText()).isEqualTo("diagnostic screenshot");
+        assertThat(output.get("output").get(1).get("type").asText()).isEqualTo("input_image");
+        assertThat(output.get("output").get(1).get("image_url").asText())
+                .isEqualTo("data:image/png;base64,iVBORw0KGgo=");
+    }
+
     // ----- validation -----
 
     @Test

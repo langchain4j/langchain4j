@@ -1,5 +1,6 @@
 package dev.langchain4j.model.decision;
 
+import dev.langchain4j.internal.ObservabilityListeners;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.model.ModelProvider.OTHER;
@@ -58,7 +59,7 @@ public interface DecisionModel {
      */
     default DecisionResponse decide(DecisionRequest request) {
         DecisionRequest finalRequest = withDefaultParameters(request);
-        List<DecisionModelListener> listeners = listeners();
+        List<DecisionModelListener> listeners = ObservabilityListeners.decision(listeners());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         UUID invocationId = CurrentInvocation.invocationId();
 
@@ -98,7 +99,7 @@ public interface DecisionModel {
         } catch (Exception error) {
             return CompletableFuture.failedFuture(error);
         }
-        List<DecisionModelListener> listeners = listeners();
+        List<DecisionModelListener> listeners = ObservabilityListeners.decision(listeners());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         UUID invocationId = CurrentInvocation.invocationId();
 

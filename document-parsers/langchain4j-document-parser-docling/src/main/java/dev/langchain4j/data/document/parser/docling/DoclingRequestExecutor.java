@@ -12,11 +12,11 @@ import java.util.concurrent.CompletionStage;
  * <p>
  * The {@linkplain DoclingDocumentParser.Builder#requestExecutor(DoclingRequestExecutor) default executor} calls the
  * asynchronous convert/chunk endpoints matching the request type; those endpoints already submit a task, poll for
- * completion, and fetch the result on the common {@link java.util.concurrent.ForkJoinPool}. Supplying a custom executor
- * lets callers control exactly how Docling is called — for example to add retry or backoff, to run the blocking call on
- * their own executor (such as the synchronous convert/chunk methods on a dedicated pool or virtual threads) instead of
- * the common {@link java.util.concurrent.ForkJoinPool}, or for fully custom orchestration. When a custom executor is
- * supplied, the parser no longer restricts the request type or target, since the executor owns those semantics.
+ * completion, and fetch the result on the Docling client's threads (with the reference client, set
+ * {@code asyncExecutor(...)} on the {@link DoclingServeApi} builder to choose them). Supplying a custom executor lets
+ * callers control exactly how Docling is called — for example to add retry or backoff, or for fully custom
+ * orchestration. When a custom executor is supplied, the parser no longer restricts the request type or target, since
+ * the executor owns those semantics.
  */
 @FunctionalInterface
 public interface DoclingRequestExecutor {

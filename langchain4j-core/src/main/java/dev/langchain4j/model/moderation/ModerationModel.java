@@ -1,5 +1,6 @@
 package dev.langchain4j.model.moderation;
 
+import dev.langchain4j.internal.ObservabilityListeners;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 import static dev.langchain4j.model.moderation.ModerationModelListenerUtils.onError;
@@ -39,7 +40,7 @@ public interface ModerationModel {
                 .build();
 
         ModelProvider modelProvider = provider();
-        List<ModerationModelListener> listeners = listeners();
+        List<ModerationModelListener> listeners = ObservabilityListeners.moderation(listeners());
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
         UUID invocationId = CurrentInvocation.invocationId();
 

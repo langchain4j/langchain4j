@@ -1,7 +1,6 @@
 package dev.langchain4j.service.common;
 
 import static dev.langchain4j.internal.Utils.generateUUIDFrom;
-import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.service.AiServicesIT.verifyNoMoreInteractionsFor;
 import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithEnumParameter.TemperatureUnit.CELSIUS;
 import static dev.langchain4j.service.common.AbstractAiServiceWithToolsIT.ToolWithSetOfEnumsParameter.Color.GREEN;
@@ -47,7 +46,11 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.Result;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.time.LocalTime;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -1205,17 +1208,15 @@ public abstract class AbstractAiServiceWithToolsIT {
                         && toolResultMessage.contents().equals(List.of(TextContent.from(" ")))));
     }
 
-    static final String CAT_IMAGE_URL =
-            "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
-
-    private static volatile Image catImage;
+    static final String CAT_IMAGE_RESOURCE = "/images/cat.jpg";
 
     protected Image catImage() {
-        if (catImage == null) {
-            String base64Data = java.util.Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-            catImage = Image.builder().base64Data(base64Data).mimeType("image/png").build();
+        try (InputStream inputStream = AbstractAiServiceWithToolsIT.class.getResourceAsStream(CAT_IMAGE_RESOURCE)) {
+            String base64Data = Base64.getEncoder().encodeToString(inputStream.readAllBytes());
+            return Image.builder().base64Data(base64Data).mimeType("image/jpeg").build();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
         }
-        return catImage;
     }
 
     static class ToolReturningImage {
