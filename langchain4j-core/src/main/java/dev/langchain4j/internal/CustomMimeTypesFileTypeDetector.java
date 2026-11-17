@@ -144,6 +144,11 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
 
     /**
      * Guess the mime-type of a given URI.
+     * <p>
+     * For a URI with a scheme other than {@code file}, such as {@code https}, the mime-type is guessed from the file
+     * name only: from the mappings of this detector, then from {@link URLConnection#guessContentTypeFromName(String)}.
+     * The local file system is not accessed for such URIs. For a {@code file} URI, or a URI without a scheme, the
+     * file itself can also be read to guess its mime-type.
      *
      * @param uri the URI to the file whose mime-type we want to retrieve.
      *
@@ -165,6 +170,13 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
         Path fileName = path.getFileName();
         if (fileName == null) {
             return null;
+        }
+
+        if (uri.getScheme() != null && !"file".equalsIgnoreCase(uri.getScheme())) {
+            String mimeTypeFromMappings = mappings.get(extension(path).toLowerCase(Locale.ROOT));
+            return mimeTypeFromMappings != null
+                    ? mimeTypeFromMappings
+                    : URLConnection.guessContentTypeFromName(fileName.toString());
         }
 
         String mimeTypeFromPath = probeContentType(path);

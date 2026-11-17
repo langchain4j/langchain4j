@@ -8,10 +8,12 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -398,6 +400,22 @@ class CustomMimeTypesFileTypeDetectorTest {
 
         // then
         assertThat(mimeType).isEqualTo("audio/mp3");
+    }
+
+    @Test
+    void should_guess_mime_type_of_remote_uri_from_file_name_only(@TempDir Path directory) throws Exception {
+        // given
+        CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
+        Path file = directory.resolve("picture");
+        byte[] pngHeader = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n', 0, 0, 0, 0x0D, 'I', 'H', 'D', 'R'};
+        Files.write(file, pngHeader);
+        URI remoteUri = new URI("https", "example.com", file.toUri().getPath(), null);
+
+        // when-then
+        assertThat(detector.probeContentType(file.toUri())).isEqualTo("image/png");
+        assertThat(detector.probeContentType(remoteUri)).isNull();
+        assertThat(detector.probeContentType(URI.create("https://example.com/images/picture.png")))
+                .isEqualTo("image/png");
     }
 
     @Test

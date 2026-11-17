@@ -273,6 +273,9 @@ interface DamageInspector {
 }
 ```
 
+`AudioContent`, `VideoContent` and `PdfFileContent` parameters are sent the same way, to decision models that take
+them, such as [Google AI Gemini](/integrations/decision-models/google-ai-gemini).
+
 Like the other parameters, contents are sent under the names of their parameters (see
 [Images](/tutorials/decision-models#images)), and each decision model sends them in the form its API expects.
 `Image`s are sent as `ImageContent`s with the `AUTO` detail level, so that the model provider chooses it; to choose

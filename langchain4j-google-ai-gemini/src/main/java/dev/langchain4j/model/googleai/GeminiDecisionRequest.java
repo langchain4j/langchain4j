@@ -3,6 +3,7 @@ package dev.langchain4j.model.googleai;
 import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
@@ -11,45 +12,21 @@ import org.jspecify.annotations.Nullable;
 @JsonInclude(NON_NULL)
 class GeminiDecisionRequest {
 
-    private @Nullable String model;
-    private @Nullable Object input;
-    private @Nullable Map<String, Question> questions;
-    private @Nullable Map<String, Object> customParameters;
-
     @JsonProperty("model")
-    public @Nullable String getModel() {
-        return model;
-    }
-
-    public void setModel(@Nullable String model) {
-        this.model = model;
-    }
+    @Nullable String model;
 
     @JsonProperty("input")
-    public @Nullable Object getInput() {
-        return input;
-    }
-
-    public void setInput(@Nullable Object input) {
-        this.input = input;
-    }
+    @Nullable Object input;
 
     @JsonProperty("questions")
-    public @Nullable Map<String, Question> getQuestions() {
-        return questions;
-    }
+    @Nullable Map<String, Question> questions;
 
-    public void setQuestions(@Nullable Map<String, Question> questions) {
-        this.questions = questions;
-    }
+    @JsonIgnore
+    @Nullable Map<String, Object> customParameters;
 
     @JsonAnyGetter
-    public @Nullable Map<String, Object> getCustomParameters() {
+    @Nullable Map<String, Object> customParameters() {
         return customParameters;
-    }
-
-    public void setCustomParameters(@Nullable Map<String, Object> customParameters) {
-        this.customParameters = customParameters;
     }
 
     @JsonInclude(NON_NULL)

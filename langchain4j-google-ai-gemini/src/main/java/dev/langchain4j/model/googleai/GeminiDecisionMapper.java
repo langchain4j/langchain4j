@@ -67,41 +67,81 @@ class GeminiDecisionMapper {
                     + "GoogleAiGeminiDecisionModel.builder().modelName(...) or on the request with "
                     + "DecisionRequestParameters.builder().modelName(...)");
         }
+        Map<String, Object> customParameters =
+                request.parameters() instanceof GoogleAiGeminiDecisionRequestParameters parameters
+                        ? parameters.customParameters()
+                        : Map.of();
         GeminiDecisionRequest geminiRequest = new GeminiDecisionRequest();
-        geminiRequest.setModel(request.modelName());
-        geminiRequest.setInput(toInput(request.input()));
-        Map<String, GeminiDecisionRequest.Question> questions = new LinkedHashMap<>();
-        request.questions().forEach((name, question) -> questions.put(name, toQuestion(question)));
-        geminiRequest.setQuestions(questions);
-        if (request.parameters() instanceof GoogleAiGeminiDecisionRequestParameters parameters
-                && !isNullOrEmpty(parameters.customParameters())) {
-            Map<String, Object> customParameters = parameters.customParameters();
-            geminiRequest.setCustomParameters(customParameters);
-            // a custom parameter replaces the field of the same name, which is then omitted (not sent twice)
-            if (customParameters.containsKey("model")) geminiRequest.setModel(null);
-            if (customParameters.containsKey("input")) geminiRequest.setInput(null);
-            if (customParameters.containsKey("questions")) geminiRequest.setQuestions(null);
+        // a custom parameter replaces the field of the same name, which is then neither mapped nor sent
+        if (!customParameters.containsKey("model")) {
+            geminiRequest.model = request.modelName();
+        }
+        if (!customParameters.containsKey("input")) {
+            geminiRequest.input = toInput(request.input());
+        }
+        if (!customParameters.containsKey("questions")) {
+            Map<String, GeminiDecisionRequest.Question> questions = new LinkedHashMap<>();
+            questionNamesByKey(request)
+                    .forEach((key, name) -> questions.put(key, toQuestion(request.questions().get(name))));
+            geminiRequest.questions = questions;
+        }
+        if (!isNullOrEmpty(customParameters)) {
+            geminiRequest.customParameters = customParameters;
         }
         return geminiRequest;
+    }
+
+    /**
+     * Gemini accepts only question keys made of {@code A-Z}, {@code a-z}, {@code 0-9}, {@code _} and {@code -}, and
+     * its model does not read them, so each question is sent under a key made of its position, such as {@code q0}.
+     */
+    private static Map<String, String> questionNamesByKey(DecisionRequest request) {
+        Map<String, String> names = new LinkedHashMap<>();
+        request.questions().keySet().forEach(name -> names.put("q" + names.size(), name));
+        return names;
     }
 
     private static Object toInput(DecisionInput input) {
         if (input instanceof TextInput text) {
             return text.text();
         } else if (input instanceof ContentsInput contents) {
-            return contents.contents().stream().map(GeminiDecisionMapper::toBlock).toList();
+            return separated(contents.contents().stream().map(GeminiDecisionMapper::toBlock).toList());
         } else if (input instanceof FieldsInput fields) {
-            return toLabeledBlocks(fields.fields());
+            return separated(toLabeledBlocks(fields.fields()));
         } else if (input instanceof MessagesInput messages) {
-            return toTranscriptBlocks(messages.messages());
+            return separated(toTranscriptBlocks(messages.messages()));
         }
         throw new UnsupportedFeatureException(
                 PROVIDER + " does not support " + input.getClass().getName() + " as input");
     }
 
     /**
-     * Each field is labeled with its name, contents such as images follow their label. Gemini joins adjacent text
-     * blocks without a separator, so each text block ends with a line break.
+     * Gemini joins adjacent text blocks without a separator, so a line break is added to a text block that is
+     * followed by another text block, unless it already ends with whitespace.
+     */
+    private static List<Block> separated(List<Block> blocks) {
+        List<Block> separated = new ArrayList<>(blocks.size());
+        for (int i = 0; i < blocks.size(); i++) {
+            Block block = blocks.get(i);
+            if (i + 1 < blocks.size() && isText(block) && isText(blocks.get(i + 1)) && !endsWithWhitespace(block)) {
+                block = Block.text(block.text() + "\n");
+            }
+            separated.add(block);
+        }
+        return separated;
+    }
+
+    private static boolean isText(Block block) {
+        return "text".equals(block.type());
+    }
+
+    private static boolean endsWithWhitespace(Block block) {
+        String text = block.text();
+        return text != null && !text.isEmpty() && Character.isWhitespace(text.charAt(text.length() - 1));
+    }
+
+    /**
+     * Each field is labeled with its name, contents such as images follow their label.
      */
     private static List<Block> toLabeledBlocks(Map<String, Object> fields) {
         List<Block> blocks = new ArrayList<>();
@@ -256,29 +296,36 @@ class GeminiDecisionMapper {
     }
 
     static DecisionResponse toDecisionResponse(GeminiDecisionResponse response, DecisionRequest request) {
+        GeminiDecisionResponse.@Nullable PromptFeedback promptFeedback =
+                isBlocked(response) ? response.promptFeedback() : null;
         DecisionResponse.Builder builder = DecisionResponse.builder()
-                .modelName(request.modelName())
-                .tokenUsage(toTokenUsage(response.usage()));
-        if (isBlocked(response)) {
+                .metadata(GoogleAiGeminiDecisionResponseMetadata.builder()
+                        .modelName(request.modelName())
+                        .tokenUsage(toTokenUsage(response.usage()))
+                        .blockReason(promptFeedback == null ? null : promptFeedback.blockReason())
+                        .blockMessage(promptFeedback == null ? null : promptFeedback.blockReasonMessage())
+                        .build());
+        if (promptFeedback != null) {
             // Gemini blocks the whole input, so no question is answered
             request.questions().keySet().forEach(name -> builder.answer(name, RefusalAnswer.of()));
             return builder.build();
         }
         Map<String, GeminiDecisionResponse.Answer> answers = getOrDefault(response.answers(), Map.of());
-        request.questions().forEach((name, question) -> {
-            GeminiDecisionResponse.Answer answer = answers.get(name);
-            if (answer == null) {
+        Map<String, String> namesByKey = questionNamesByKey(request);
+        for (String key : answers.keySet()) {
+            if (!namesByKey.containsKey(key)) {
                 throw new InvalidDecisionResponseException(
-                        "The response contains no answer to question '%s'".formatted(name));
-            }
-            builder.answer(name, toAnswer(name, answer, question));
-        });
-        for (String name : answers.keySet()) {
-            if (!request.questions().containsKey(name)) {
-                throw new InvalidDecisionResponseException(
-                        "The response contains an answer to the unknown question '%s'".formatted(name));
+                        "The response contains an answer under the unknown key '%s'".formatted(key));
             }
         }
+        namesByKey.forEach((key, name) -> {
+            GeminiDecisionResponse.Answer answer = answers.get(key);
+            if (answer == null) {
+                throw new InvalidDecisionResponseException(
+                        "The response contains no answer to question '%s' (key '%s')".formatted(name, key));
+            }
+            builder.answer(name, toAnswer(name, answer, request.questions().get(name)));
+        });
         return builder.build();
     }
 
@@ -309,7 +356,7 @@ class GeminiDecisionMapper {
         GeminiDecisionResponse.ErrorResponse body;
         try {
             body = Json.fromJson(error.getMessage(), GeminiDecisionResponse.ErrorResponse.class);
-        } catch (RuntimeException e) {
+        } catch (RuntimeException e) { // the default (Jackson 2) codec throws a plain RuntimeException
             return null;
         }
         if (body == null
@@ -343,7 +390,10 @@ class GeminiDecisionMapper {
                     .confidence(confidence(name, answer.confidence()))
                     .build();
         }
-        ScaleQuestion scale = (ScaleQuestion) question;
+        if (!(question instanceof ScaleQuestion scale)) {
+            throw new UnsupportedFeatureException(
+                    PROVIDER + " does not support " + question.getClass().getName() + " questions");
+        }
         ensureType(name, answer, "score");
         int levels = scale.levels().size();
         List<Double> probabilities = new ArrayList<>();

@@ -4,6 +4,8 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.exception.InvalidDecisionResponseException;
+import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.DefaultDecisionRequestParameters;
 import java.util.Map;
@@ -97,7 +99,9 @@ public class GoogleAiGeminiDecisionRequestParameters extends DefaultDecisionRequ
          * Custom parameters added to the body of the request, for example to use a feature of the Gemini Decisions
          * API that {@link GoogleAiGeminiDecisionModel} does not support yet. A custom parameter with the same name as
          * a parameter that {@link GoogleAiGeminiDecisionModel} sends ({@code model}, {@code input} or
-         * {@code questions}) replaces it.
+         * {@code questions}) replaces it. Do not replace {@code questions}: the answers are read against the
+         * questions of the {@link DecisionRequest}, so the response would be rejected with an
+         * {@link InvalidDecisionResponseException}.
          * <p>
          * If not empty, they replace (are not merged with) the custom parameters set on the
          * {@link GoogleAiGeminiDecisionModel} builder for this request. If not set ({@code null}) or empty, the custom

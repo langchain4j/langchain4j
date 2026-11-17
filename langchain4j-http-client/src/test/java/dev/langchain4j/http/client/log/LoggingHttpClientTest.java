@@ -78,6 +78,18 @@ class LoggingHttpClientTest {
         assertThat(responseLogCount(log)).isEqualTo(logResponses ? 1 : 0);
     }
 
+    @ParameterizedTest(name = "logResponses={0}")
+    @CsvSource({"false", "true"})
+    void executeAsync_cancellation_cancels_the_call_of_the_wrapped_client(boolean logResponses) {
+        MockHttpClient delegate = MockHttpClient.thatNeverResponds();
+        LoggingHttpClient client = new LoggingHttpClient(delegate, true, logResponses, mock(Logger.class));
+
+        client.executeAsync(REQUEST).cancel(true);
+
+        assertThat(delegate.pendingResponses()).singleElement().satisfies(call -> assertThat(call)
+                .isCancelled());
+    }
+
     @Test
     void executeAsync_delegates_to_wrapped_client_and_passes_response_through() throws Exception {
         MockHttpClient delegate = MockHttpClient.thatAlwaysResponds(RESPONSE);

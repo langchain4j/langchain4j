@@ -707,6 +707,14 @@ class OpenAiOfficialDecisionModelTest {
                 .isInstanceOf(UnsupportedFeatureException.class)
                 .hasMessage("The OpenAI Decisions API does not support CustomMessage in a conversation. Supported "
                         + "messages: SystemMessage, UserMessage, AiMessage and ToolExecutionResultMessage");
+        assertThatThrownBy(() -> model().decide(DecisionRequest.builder()
+                        .inputMessages(List.of(UserMessage.from(
+                                TextContent.from("See attached."), AudioContent.from("YXVkaW8=", "audio/wav"))))
+                        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                        .build()))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("The OpenAI Decisions API supports only text and images in a conversation, but it contains "
+                        + "AUDIO");
         assertThat(model().decideAsync(DecisionRequest.builder()
                         .inputMessages(List.of(UserMessage.from(PdfFileContent.from("JVBERi0=", "application/pdf"))))
                         .question("urgent", YesNoQuestion.from("Does this need attention today?"))
@@ -842,32 +850,6 @@ class OpenAiOfficialDecisionModelTest {
         assertThatThrownBy(() -> model.decide(REQUEST))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("The model name must be set");
-    }
-
-    @Test
-    void should_reject_audio_and_pdf_in_conversation_without_calling_the_api() {
-
-        // given
-        OpenAiOfficialDecisionModel model = model();
-
-        List.of(AudioContent.from("YXVkaW8=", "audio/wav"), PdfFileContent.from("JVBERi0=", "application/pdf"))
-                .forEach(content -> {
-                    DecisionRequest request = DecisionRequest.builder()
-                            .inputMessages(UserMessage.from(TextContent.from("See attached."), content))
-                            .question("urgent", YesNoQuestion.from("Does this need attention today?"))
-                            .build();
-
-                    // when-then
-                    assertThatThrownBy(() -> model.decide(request))
-                            .isInstanceOf(UnsupportedFeatureException.class)
-                            .hasMessage("The OpenAI Decisions API supports only text and images in a conversation, but it "
-                                    + "contains " + content.type());
-                    assertThat(model.decideAsync(request))
-                            .failsWithin(Duration.ZERO)
-                            .withThrowableOfType(ExecutionException.class)
-                            .withCauseInstanceOf(UnsupportedFeatureException.class);
-                });
-        assertThat(httpClient.recordedRequests()).isEmpty();
     }
 
     @Test

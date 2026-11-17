@@ -5,7 +5,6 @@ import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
-import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -18,7 +17,6 @@ import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.time.Duration.ofSeconds;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
@@ -49,7 +47,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -214,36 +211,11 @@ class GeminiService {
     }
 
     GeminiDecisionResponse decide(GeminiDecisionRequest request) {
-        try {
-            return sendRequest(baseUrl + "/decisions", apiKey, request, GeminiDecisionResponse.class);
-        } catch (HttpException error) {
-            GeminiDecisionResponse blockedResponse = GeminiDecisionMapper.toBlockedResponse(error);
-            if (blockedResponse == null) {
-                throw error;
-            }
-            return blockedResponse;
-        }
+        return sendRequest(baseUrl + "/decisions", apiKey, request, GeminiDecisionResponse.class);
     }
 
     CompletableFuture<GeminiDecisionResponse> decideAsync(GeminiDecisionRequest request) {
-        HttpRequest httpRequest = buildHttpRequest(baseUrl + "/decisions", apiKey, request, POST);
-        CompletableFuture<SuccessfulHttpResponse> httpFuture = httpClient.executeAsync(httpRequest);
-        CompletableFuture<GeminiDecisionResponse> result = httpFuture.handle((response, error) -> {
-            if (error == null) {
-                return fromJson(response.body(), GeminiDecisionResponse.class);
-            }
-            if (unwrapCompletionException(error) instanceof HttpException httpError) {
-                GeminiDecisionResponse blockedResponse = GeminiDecisionMapper.toBlockedResponse(httpError);
-                if (blockedResponse != null) {
-                    return blockedResponse;
-                }
-            }
-            throw error instanceof CompletionException completionException
-                    ? completionException
-                    : new CompletionException(error);
-        });
-        propagateCancellation(result, httpFuture);
-        return result;
+        return sendRequestAsync(baseUrl + "/decisions", request, GeminiDecisionResponse.class);
     }
 
     void generateContentStream(
@@ -264,6 +236,14 @@ class GeminiService {
             String url, String apiKey, @Nullable Object requestBody, Class<T> responseType, HttpMethod httpMethod) {
         HttpRequest request = buildHttpRequest(url, apiKey, requestBody, httpMethod);
         return fromJson(httpClient.execute(request).body(), responseType);
+    }
+
+    private <T> CompletableFuture<T> sendRequestAsync(String url, @Nullable Object body, Class<T> type) {
+        HttpRequest request = buildHttpRequest(url, apiKey, body, POST);
+        CompletableFuture<SuccessfulHttpResponse> httpFuture = httpClient.executeAsync(request);
+        CompletableFuture<T> result = httpFuture.thenApply(response -> fromJson(response.body(), type));
+        propagateCancellation(result, httpFuture);
+        return result;
     }
 
     private void streamRequest(

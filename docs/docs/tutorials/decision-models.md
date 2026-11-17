@@ -126,6 +126,9 @@ YesNoQuestion refundRequested = YesNoQuestion.builder()
         .build();
 ```
 
+Each criterion is a sufficient condition: when it holds, the answer follows it. When it does not hold, for example
+when only `yesWhen` is set and the input does not meet it, the question itself decides the answer.
+
 ### Choice questions
 
 A `ChoiceQuestion` selects exactly one option out of a named set (at least 2 options).
@@ -212,8 +215,9 @@ the model provider: convert them to a `Map` that holds only what the decision ne
 ### Images
 
 The input can also be a list of contents, such as text and images, if the decision model supports them
-(for example [OpenAI](/integrations/decision-models/open-ai), or [Ollama](/integrations/decision-models/ollama) with
-a vision model such as Clef):
+(for example [OpenAI](/integrations/decision-models/open-ai),
+[Google AI Gemini](/integrations/decision-models/google-ai-gemini), or
+[Ollama](/integrations/decision-models/ollama) with a vision model such as Clef):
 
 ```java
 DecisionRequest request = DecisionRequest.builder()

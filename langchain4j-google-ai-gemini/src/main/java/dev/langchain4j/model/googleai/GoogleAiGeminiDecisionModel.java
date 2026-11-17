@@ -1,6 +1,7 @@
 package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
 import static dev.langchain4j.internal.Utils.copy;
@@ -14,6 +15,8 @@ import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.exception.AuthenticationException;
+import dev.langchain4j.exception.HttpException;
+import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
@@ -26,6 +29,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -56,13 +60,13 @@ import org.slf4j.Logger;
  * or guessed from the URL when the content has none. The detail level of an image is sent as its resolution;
  * an image without a detail level, or with {@code AUTO}, gets Gemini's default resolution.
  * <p>
- * Each question is sent under its name, and Gemini accepts only names made of the characters {@code A-Z},
- * {@code a-z}, {@code 0-9}, {@code _} and {@code -}, 1 to 64 characters long. Gemini checks this and the other limits
- * of the API, such as the number of questions, options and levels, and the size of the input, and rejects a request
- * that exceeds them with an {@link InvalidRequestException}.
+ * Gemini checks the limits of the API, such as the number of questions, options and levels, and the size of the
+ * input, and rejects a request that exceeds them with an {@link InvalidRequestException}.
  * <p>
  * Gemini can block the whole input, for example because it goes against its safety policies. Then no question is
  * answered: the answer to each question is a {@link RefusalAnswer}, see {@link DecisionResponse#isRefused(String)}.
+ * The reason is in the {@link GoogleAiGeminiDecisionResponseMetadata metadata} of the response, see
+ * {@link GoogleAiGeminiDecisionResponseMetadata#blockReason()}.
  *
  * @since 1.24.0
  */
@@ -100,9 +104,20 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
     @Override
     public DecisionResponse doDecide(DecisionRequest request) {
         GeminiDecisionRequest geminiRequest = GeminiDecisionMapper.toGeminiRequest(request);
-        GeminiDecisionResponse response =
-                withRetryMappingExceptions(() -> geminiService.decide(geminiRequest), maxRetries);
+        GeminiDecisionResponse response = withRetryMappingExceptions(() -> decide(geminiRequest), maxRetries);
         return GeminiDecisionMapper.toDecisionResponse(response, request);
+    }
+
+    private GeminiDecisionResponse decide(GeminiDecisionRequest request) {
+        try {
+            return geminiService.decide(request);
+        } catch (HttpException error) {
+            GeminiDecisionResponse blockedResponse = GeminiDecisionMapper.toBlockedResponse(error);
+            if (blockedResponse == null) {
+                throw error;
+            }
+            return blockedResponse;
+        }
     }
 
     @Override
@@ -110,7 +125,7 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
         try {
             GeminiDecisionRequest geminiRequest = GeminiDecisionMapper.toGeminiRequest(request);
             CompletableFuture<GeminiDecisionResponse> responseFuture =
-                    withRetryMappingExceptionsAsync(() -> geminiService.decideAsync(geminiRequest), maxRetries);
+                    withRetryMappingExceptionsAsync(() -> decideAsync(geminiRequest), maxRetries);
             CompletableFuture<DecisionResponse> result = responseFuture.thenApply(
                     response -> GeminiDecisionMapper.toDecisionResponse(response, request));
             propagateCancellation(result, responseFuture);
@@ -118,6 +133,23 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
         } catch (RuntimeException e) {
             return CompletableFuture.failedFuture(e);
         }
+    }
+
+    private CompletableFuture<GeminiDecisionResponse> decideAsync(GeminiDecisionRequest request) {
+        CompletableFuture<GeminiDecisionResponse> responseFuture = geminiService.decideAsync(request);
+        CompletableFuture<GeminiDecisionResponse> result = responseFuture.exceptionally(error -> {
+            if (unwrapCompletionException(error) instanceof HttpException httpError) {
+                GeminiDecisionResponse blockedResponse = GeminiDecisionMapper.toBlockedResponse(httpError);
+                if (blockedResponse != null) {
+                    return blockedResponse;
+                }
+            }
+            throw error instanceof CompletionException completionException
+                    ? completionException
+                    : new CompletionException(error);
+        });
+        propagateCancellation(result, responseFuture);
+        return result;
     }
 
     @Override
@@ -166,8 +198,11 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
         }
 
         /**
-         * The Gemini API key, sent in the {@code x-goog-api-key} header. A missing or wrong key is rejected by
-         * Gemini with an {@link AuthenticationException}.
+         * The Gemini API key, sent in the {@code x-goog-api-key} header. When not set ({@code null}), no
+         * {@code x-goog-api-key} header is sent, for example when the request is authenticated with
+         * {@link #customHeaders(Map)}. Gemini rejects a request without any credentials with an
+         * {@link AuthenticationException} (HTTP 403), and a wrong key with an {@link InvalidRequestException}
+         * (HTTP 400, "API key not valid").
          */
         public GoogleAiGeminiDecisionModelBuilder apiKey(@Nullable String apiKey) {
             this.apiKey = apiKey;
@@ -228,7 +263,8 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
         }
 
         /**
-         * An alternate {@link Logger} to be used instead of the default one for logging requests and responses.
+         * An alternate {@link Logger} to be used instead of the default one for logging requests and responses. When
+         * not set ({@code null}), the default logger is used.
          */
         public GoogleAiGeminiDecisionModelBuilder logger(@Nullable Logger logger) {
             this.logger = logger;
@@ -236,7 +272,7 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
         }
 
         /**
-         * Sets custom HTTP headers.
+         * Sets custom HTTP headers, added to every request. When not set ({@code null}), no custom headers are added.
          */
         public GoogleAiGeminiDecisionModelBuilder customHeaders(@Nullable Map<String, String> customHeaders) {
             this.customHeadersSupplier = () -> customHeaders;
@@ -245,7 +281,8 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
 
         /**
          * Sets a supplier for custom HTTP headers. The supplier is called before each request, allowing dynamic
-         * header values, for example OAuth2 tokens that expire and need refreshing.
+         * header values, for example OAuth2 tokens that expire and need refreshing. When not set ({@code null}), or
+         * when the supplier returns {@code null}, no custom headers are added.
          */
         public GoogleAiGeminiDecisionModelBuilder customHeaders(
                 @Nullable Supplier<Map<String, String>> customHeadersSupplier) {
@@ -256,8 +293,13 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
         /**
          * Custom parameters added to the body of every request, for example to use a feature of the Gemini Decisions
          * API that this class does not support yet. A custom parameter with the same name as a parameter set by this
-         * class ({@code model}, {@code input} or {@code questions}) replaces it. They can be replaced for a single
-         * request with {@link GoogleAiGeminiDecisionRequestParameters.Builder#customParameters(Map)}.
+         * class ({@code model}, {@code input} or {@code questions}) replaces it. When not set ({@code null}) or empty,
+         * no custom parameters are added. They can be replaced for a single request with
+         * {@link GoogleAiGeminiDecisionRequestParameters.Builder#customParameters(Map)}.
+         * <p>
+         * Do not replace {@code questions}: the answers are read against the questions of the
+         * {@link DecisionRequest}, so the response would be rejected with an
+         * {@link InvalidDecisionResponseException}.
          */
         public GoogleAiGeminiDecisionModelBuilder customParameters(@Nullable Map<String, Object> customParameters) {
             this.customParameters = customParameters;
@@ -265,13 +307,17 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
         }
 
         /**
-         * Sets the listeners that are notified of every request, response and error.
+         * Sets the listeners that are notified of every request, response and error. When not set ({@code null}), no
+         * listeners are notified.
          */
         public GoogleAiGeminiDecisionModelBuilder listeners(@Nullable List<DecisionModelListener> listeners) {
             this.listeners = listeners;
             return this;
         }
 
+        /**
+         * Sets the listeners that are notified of every request, response and error.
+         */
         public GoogleAiGeminiDecisionModelBuilder listeners(DecisionModelListener... listeners) {
             return listeners(List.of(listeners));
         }

@@ -63,13 +63,6 @@ The other settings are `baseUrl` (by default `https://generativelanguage.googlea
 
 Both `decide()` and `decideAsync()` are supported.
 
-## Question names
-
-Gemini accepts only question names made of the characters `A-Z`, `a-z`, `0-9`, `_` and `-`, from 1 to 64 characters
-long, for example `urgent` or `prompt_injection`. LangChain4j sends the names as they are, and Gemini rejects a request
-with another name, such as `prompt injection`, with an `InvalidRequestException`. This applies to every question name,
-including the names of the checks of [guardrails](/tutorials/decision-models#guardrails).
-
 ## Input
 
 The input can be:
@@ -102,6 +95,9 @@ Images, audio, video and PDF files can be given as:
   [Gemini Files API](/integrations/language-models/google-ai-gemini#gemini-files-api). LangChain4j does not download
   URLs: they are sent to Gemini as they are.
 
+YouTube URLs and `gs://` URLs are not accepted. Upload such a file with the Files API, or give it as a public or
+signed `https` URL, or as base64 data.
+
 The Files API is useful for large files:
 
 ```java
@@ -129,7 +125,9 @@ when the URL has no file extension, as for Files API URIs.
 
 The detail level of an `ImageContent` is sent as its resolution: `LOW`, `MEDIUM`, `HIGH` and `ULTRA_HIGH` become
 `low`, `medium`, `high` and `ultra_high`. An image created without a detail level, or with `AUTO`, gets Gemini's
-default resolution.
+default resolution. An image read back from JSON, for example from a persistent chat memory, keeps the detail level
+stored with it, which is `LOW` when none was chosen. To use Gemini's default resolution for such an image, create it
+with `DetailLevel.AUTO`.
 
 Gemini checks the limits of the API, such as the number of questions, options and levels, and the size of the input,
 and rejects a request that exceeds them with an `InvalidRequestException` that holds Gemini's message. See the
@@ -155,8 +153,15 @@ is rejected with an `IllegalArgumentException` before calling the API. A `Custom
 | `ChoiceQuestion` | `choice` | options are sent with their descriptions |
 | `ScaleQuestion` | `score` | levels are sent as text, as `label: description` when they have a description |
 
-Yes/no answers include the probability of "yes". Choice and scale answers include the probability of each option or
-level, and a confidence.
+Yes/no answers include the probability of "yes". Gemini always reports it between 0.01 and 0.99, so
+`isYes(threshold)` with a threshold above 0.99 never returns `true`. Choice and scale answers include the probability
+of each option or level, and a confidence.
+
+Gemini sorts the options of a choice question by their names (in UTF-8 byte order) before it evaluates them, so the
+order of the `option(...)` calls does not matter.
+
+Question names can be any text: each question is sent under a key made of its position, such as `q0`, and its answer
+is returned under its name.
 
 ## Blocked input
 
@@ -164,6 +169,20 @@ Gemini can block the whole input, for example because it goes against its safety
 answered: the answer to every question is a refusal, `response.isRefused(name)` returns `true`, and reading the
 answer, for example with `response.yesNo(name)`, throws a `ContentFilteredException`
 (see [Refusals](/tutorials/decision-models#refusals)). Such a response has token usage only when Gemini reports it.
+
+The metadata of every response is a `GoogleAiGeminiDecisionResponseMetadata`. When the input was blocked, it says why:
+
+```java
+DecisionResponse response = decisionModel.decide(request);
+
+if (response.isRefused("urgent")) {
+    GoogleAiGeminiDecisionResponseMetadata metadata = (GoogleAiGeminiDecisionResponseMetadata) response.metadata();
+    String reason = metadata.blockReason();   // for example "safety"
+    String message = metadata.blockMessage(); // Gemini's explanation, or null if it gave none
+}
+```
+
+When the input was not blocked, `blockReason()` and `blockMessage()` return `null`.
 
 ## Custom parameters
 
@@ -194,8 +213,7 @@ DecisionRequest request = DecisionRequest.builder()
 Values are written to JSON as they are, so a `Map` value becomes a JSON object and a `String` stays a string.
 A custom parameter with the same name as a parameter that LangChain4j sends, such as `model`, replaces it. To choose
 the model, use `modelName(...)`: a `model` custom parameter is not reflected in `modelName()` or in what listeners
-receive. Answers are always read against the questions of the `DecisionRequest`, so do not replace `questions` or
-`input`.
+receive. Answers are always read against the questions of the `DecisionRequest`, so do not replace `questions`.
 
 Passing the parameters class of another decision model to `GoogleAiGeminiDecisionModel` fails with an
 `IllegalArgumentException`. `DecisionRequestParameters.builder()`, which has only the parameters common to all

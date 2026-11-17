@@ -5,27 +5,24 @@ import static java.util.stream.Collectors.joining;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Converts chat messages into the input of a {@link dev.langchain4j.model.decision.DecisionModel}, the same way for
@@ -236,6 +233,7 @@ public class DecisionModelInputUtils {
             List<ChatMessage> messages, String provider, Set<ContentType> supportedContents) {
         List<Map<String, Object>> entries = new ArrayList<>();
         Map<String, Content> media = new LinkedHashMap<>();
+        Map<ContentType, Integer> mediaCounts = new EnumMap<>(ContentType.class);
         for (ChatMessage message : messages) {
             Map<String, Object> entry = new LinkedHashMap<>();
             if (message instanceof SystemMessage systemMessage) {
@@ -246,7 +244,9 @@ public class DecisionModelInputUtils {
                 if (userMessage.name() != null) {
                     entry.put("name", userMessage.name());
                 }
-                entry.put("text", transcriptText(userMessage.contents(), media, provider, supportedContents));
+                entry.put(
+                        "text",
+                        transcriptText(userMessage.contents(), media, mediaCounts, provider, supportedContents));
             } else if (message instanceof AiMessage aiMessage) {
                 if ((aiMessage.text() == null || aiMessage.text().isEmpty()) && !aiMessage.hasToolExecutionRequests()) {
                     continue;
@@ -270,7 +270,7 @@ public class DecisionModelInputUtils {
                 entry.put("role", "tool");
                 putIfNotNull(entry, "tool_call_id", result.id());
                 entry.put("name", result.toolName());
-                entry.put("text", transcriptText(result.contents(), media, provider, supportedContents));
+                entry.put("text", transcriptText(result.contents(), media, mediaCounts, provider, supportedContents));
                 if (Boolean.TRUE.equals(result.isError())) {
                     entry.put("is_error", true);
                 }
@@ -302,39 +302,28 @@ public class DecisionModelInputUtils {
     }
 
     private static String transcriptText(
-            List<Content> contents, Map<String, Content> media, String provider, Set<ContentType> supportedContents) {
+            List<Content> contents,
+            Map<String, Content> media,
+            Map<ContentType, Integer> mediaCounts,
+            String provider,
+            Set<ContentType> supportedContents) {
         List<String> parts = new ArrayList<>();
         for (Content content : contents) {
             if (content instanceof TextContent textContent) {
                 parts.add(textContent.text());
                 continue;
             }
-            ContentType kind = mediaKind(content);
-            if (kind == null || !supportedContents.contains(kind)) {
+            ContentType kind = content.type();
+            if (kind == null || !supportedContents.contains(kind) || !kind.getContentClass().isInstance(content)) {
                 throw new UnsupportedFeatureException(provider + " supports only " + describe(supportedContents)
                         + " in a conversation, but it contains " + content.type());
             }
-            long position = media.values().stream()
-                    .filter(other -> mediaKind(other) == kind)
-                    .count();
-            String marker = "[" + kind.name().toLowerCase(Locale.ROOT) + " " + (position + 1) + "]";
+            int position = mediaCounts.merge(kind, 1, Integer::sum);
+            String marker = "[" + kind.name().toLowerCase(Locale.ROOT) + " " + position + "]";
             media.put(marker, content);
             parts.add(marker);
         }
         return String.join("\n", parts);
-    }
-
-    private static @Nullable ContentType mediaKind(Content content) {
-        if (content instanceof ImageContent) {
-            return ContentType.IMAGE;
-        } else if (content instanceof AudioContent) {
-            return ContentType.AUDIO;
-        } else if (content instanceof VideoContent) {
-            return ContentType.VIDEO;
-        } else if (content instanceof PdfFileContent) {
-            return ContentType.PDF;
-        }
-        return null;
     }
 
     private static String describe(Set<ContentType> supportedContents) {
