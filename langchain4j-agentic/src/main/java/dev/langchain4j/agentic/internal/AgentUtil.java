@@ -146,6 +146,7 @@ public class AgentUtil {
         if (agentMethod.isAnnotationPresent(HumanInTheLoop.class)) {
             return humanInTheLoopExecutor(agentMethod, agent, helpers);
         }
+        checkNoDecisionSuppliers(helpers);
         return nonAiAgentToExecutor(agent, agentMethod, helpers);
     }
 

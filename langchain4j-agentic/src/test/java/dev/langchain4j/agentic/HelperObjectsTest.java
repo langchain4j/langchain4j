@@ -1217,6 +1217,15 @@ class HelperObjectsTest {
     }
 
     @Test
+    void decision_supplier_of_the_helper_object_of_a_resolved_non_ai_subagent_is_rejected() {
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(
+                        InstanceGreeting.class,
+                        resolvedSubagent(InstanceGreeter.class, new InstanceGreeter(), new GateHelpers())))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("@DecisionModelSupplier, but it is not built as a decision agent");
+    }
+
+    @Test
     void null_helper_object_of_a_resolved_subagent_is_reported_for_its_listed_type() {
         var configurator = AgentConfigurator.builder()
                 .subAgentResolver(type -> type == InstanceGreeter.class ? new InstanceGreeterProxy() : null)
