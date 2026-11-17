@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import com.google.auth.oauth2.GoogleCredentials;
@@ -15,6 +16,9 @@ import org.jspecify.annotations.Nullable;
 class GoogleGenAiClientFactory {
 
     static final Duration DEFAULT_TIMEOUT = Duration.ofMinutes(20);
+
+    private static final Duration MIN_TIMEOUT = Duration.ofMillis(1);
+    private static final Duration MAX_TIMEOUT = Duration.ofDays(24);
 
     static Client createClient(
             String apiKey,
@@ -69,6 +73,9 @@ class GoogleGenAiClientFactory {
         httpOptions.headers(headers);
 
         if (timeout != null) {
+            if (timeout.compareTo(MIN_TIMEOUT) < 0 || timeout.compareTo(MAX_TIMEOUT) > 0) {
+                throw illegalArgument("timeout must be between 1 millisecond and 24 days, but was %s", timeout);
+            }
             httpOptions.timeout((int) timeout.toMillis());
         }
 

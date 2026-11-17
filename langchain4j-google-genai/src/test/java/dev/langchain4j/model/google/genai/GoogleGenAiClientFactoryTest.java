@@ -14,14 +14,17 @@ import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class GoogleGenAiClientFactoryTest {
@@ -189,5 +192,36 @@ class GoogleGenAiClientFactoryTest {
         assertThat(paths)
                 .containsExactly(
                         "/v1/models/gemini-model:generateContent", "/v1/models/embedding-model:batchEmbedContents");
+    }
+
+    @ParameterizedTest
+    @MethodSource("timeoutsOutOfRange")
+    void should_fail_when_timeout_is_out_of_range(Duration timeout) {
+        assertThatThrownBy(() ->
+                        GoogleGenAiClientFactory.createClient("test-api-key", null, null, null, timeout, null, null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("timeout must be between 1 millisecond and 24 days, but was " + timeout);
+    }
+
+    static Stream<Duration> timeoutsOutOfRange() {
+        return Stream.of(
+                Duration.ZERO,
+                Duration.ofMillis(-1),
+                Duration.ofNanos(999_999),
+                Duration.ofDays(24).plusNanos(1),
+                Duration.ofDays(30),
+                ChronoUnit.FOREVER.getDuration());
+    }
+
+    @ParameterizedTest
+    @MethodSource("timeoutsInRange")
+    void should_accept_timeout_in_range(Duration timeout) {
+        Client client = GoogleGenAiClientFactory.createClient("test-api-key", null, null, null, timeout, null, null);
+
+        assertThat(client).isNotNull();
+    }
+
+    static Stream<Duration> timeoutsInRange() {
+        return Stream.of(Duration.ofMillis(1), Duration.ofDays(24));
     }
 }
