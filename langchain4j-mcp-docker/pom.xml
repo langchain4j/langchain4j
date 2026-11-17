@@ -56,24 +56,4 @@
 
     </dependencies>
 
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <configuration>
-                    <!--
-                        DockerResultCallbackTest mocks LoggerFactory statically and relies on the
-                        DockerResultCallback class still being uninitialized when it runs. The default
-                        "filesystem" run order is not deterministic across environments, so any test
-                        that executes DockerMcpTransport.execute() (which instantiates
-                        DockerResultCallback) could run before it and break the mock. Alphabetical
-                        order pins DockerResultCallbackTest (R) before such tests (T).
-                    -->
-                    <runOrder>alphabetical</runOrder>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
-
 </project>
