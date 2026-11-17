@@ -17,7 +17,7 @@ class DefaultPromptTemplateFactory implements PromptTemplateFactory {
 
     @Override
     public DefaultTemplate create(PromptTemplateFactory.Input input) {
-        return new DefaultTemplate(input.getTemplate());
+        return new DefaultTemplate(input.getTemplate(), input.isLenient());
     }
 
     static class DefaultTemplate implements Template {
@@ -35,10 +35,12 @@ class DefaultPromptTemplateFactory implements PromptTemplateFactory {
 
         private final String template;
         private final Set<String> allVariables;
+        private final boolean lenient;
 
-        public DefaultTemplate(String template) {
+        public DefaultTemplate(String template, boolean lenient) {
             this.template = ensureNotBlank(template, "template");
             this.allVariables = extractVariables(template);
+            this.lenient = lenient;
         }
 
         private static Set<String> extractVariables(String template) {
@@ -57,7 +59,9 @@ class DefaultPromptTemplateFactory implements PromptTemplateFactory {
                 return template;
             }
 
-            ensureAllVariablesProvided(variables);
+            if (!lenient) {
+                ensureAllVariablesProvided(variables);
+            }
 
             Matcher matcher = VARIABLE_PATTERN.matcher(template);
             StringBuffer result = new StringBuffer(template.length());
@@ -65,6 +69,11 @@ class DefaultPromptTemplateFactory implements PromptTemplateFactory {
                 String variable = matcher.group(1).trim();
                 Object value = variables.get(variable);
                 if (value == null || value.toString() == null) {
+                    if (lenient) {
+                        // Leave the variable placeholder as-is
+                        matcher.appendReplacement(result, Matcher.quoteReplacement(matcher.group(0)));
+                        continue;
+                    }
                     throw illegalArgument("Value for the variable '%s' is null", variable);
                 }
                 matcher.appendReplacement(result, Matcher.quoteReplacement(value.toString()));
