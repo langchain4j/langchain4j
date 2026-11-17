@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.Client;
+import com.google.genai.gaos.models.decisions.CreateDecisionResponse;
 import com.google.genai.types.HttpOptions;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -383,6 +384,7 @@ class GoogleGenAiDecisionModelTest {
         assertThat(response.metadata()).isInstanceOfSatisfying(GoogleGenAiDecisionResponseMetadata.class, metadata -> {
             assertThat(metadata.blockReason()).isNull();
             assertThat(metadata.blockMessage()).isNull();
+            assertThat(metadata.rawResponse().answers()).isPresent();
         });
         assertThat(response.answers()).containsOnlyKeys("urgent", "team", "frustration");
         assertThat(response.yesNo("urgent").probability()).isEqualTo(0.93);
@@ -643,6 +645,21 @@ class GoogleGenAiDecisionModelTest {
         assertThat(input.get(0).get("mime_type").asText()).isEqualTo("image/webp");
         assertThat(input.get(1).get("data").asText()).isEqualTo("aW1n");
         assertThat(input.get(1).get("mime_type").asText()).isEqualTo("image/png");
+    }
+
+    @Test
+    void should_decode_percent_escapes_of_data_url() throws Exception {
+        enqueueJson(answers("\"q0\": {\"type\": \"noul\", \"noul\": 0.9, \"confidence\": 0.9}"));
+        DecisionRequest request = DecisionRequest.builder()
+                .inputContents(List.of(ImageContent.from("data:image/png;base64,aW1hZ2U%3D")))
+                .question("ok", YesNoQuestion.from("All good?"))
+                .build();
+
+        model().decide(request);
+
+        JsonNode input = OBJECT_MAPPER.readTree(recordedRequests.get(0).body()).get("input");
+        assertThat(input.get(0).get("data").asText()).isEqualTo("aW1hZ2U=");
+        assertThat(input.get(0).get("mime_type").asText()).isEqualTo("image/png");
     }
 
     @ParameterizedTest
@@ -982,11 +999,14 @@ class GoogleGenAiDecisionModelTest {
         assertThat(response.tokenUsage()).isNotNull();
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(12);
         assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(12);
+        CreateDecisionResponse rawResponse = ((GoogleGenAiDecisionResponseMetadata) response.metadata()).rawResponse();
+        assertThat(rawResponse.promptFeedback()).isPresent();
         GoogleGenAiDecisionResponseMetadata expectedMetadata = GoogleGenAiDecisionResponseMetadata.builder()
                 .modelName(MODEL_NAME)
                 .tokenUsage(response.tokenUsage())
                 .blockReason("safety")
                 .blockMessage("The input was blocked.")
+                .rawResponse(rawResponse)
                 .build();
         assertThat(response.metadata()).isEqualTo(expectedMetadata);
         assertThat(asyncResponse.metadata()).isEqualTo(expectedMetadata);
@@ -1022,6 +1042,8 @@ class GoogleGenAiDecisionModelTest {
                 .build();
         assertThat(response.metadata()).isEqualTo(expectedMetadata);
         assertThat(asyncResponse.metadata()).isEqualTo(expectedMetadata);
+        assertThat(((GoogleGenAiDecisionResponseMetadata) response.metadata()).rawResponse())
+                .isNull();
         assertThat(observed).containsExactly(response, asyncResponse);
         assertThat(recordedRequests).hasSize(2);
     }

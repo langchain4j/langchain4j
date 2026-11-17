@@ -280,7 +280,8 @@ Like the other parameters, contents are sent under the names of their parameters
 [Images](/tutorials/decision-models#images)), and each decision model sends them in the form its API expects.
 `Image`s are sent as `ImageContent`s with the `AUTO` detail level, so that the model provider chooses it; to choose
 another detail level, pass an `ImageContent`.
-A decision model that does not support images throws an `UnsupportedFeatureException` without calling the model.
+A decision model that does not support a kind of content throws an `UnsupportedFeatureException` without calling the
+model.
 
 ### Model name and other parameters
 

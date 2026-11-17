@@ -8,7 +8,6 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.google.genai.GoogleGenAiDecisionMapper.toBlockedResponse;
 import static dev.langchain4j.model.google.genai.GoogleGenAiDecisionMapper.toCreateDecisionRequest;
-import static dev.langchain4j.model.google.genai.GoogleGenAiDecisionMapper.toDecisionResponse;
 
 import com.google.genai.Client;
 import com.google.genai.gaos.models.decisions.CreateDecisionRequest;
@@ -36,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,23 +126,26 @@ public class GoogleGenAiDecisionModel implements DecisionModel {
             log.info("Decision request: {}", createRequest);
         }
 
-        CreateDecisionResponse sdkResponse = withRetryMappingExceptions(
+        Reply reply = withRetryMappingExceptions(
                 () -> decide(createRequest), maxRetries, GoogleGenAiExceptionMapper.DECISION_INSTANCE);
 
         if (logResponses) {
-            log.info("Decision response: {}", sdkResponse);
+            log.info("Decision response: {}", reply.response());
         }
-        return toDecisionResponse(sdkResponse, request);
+        return reply.toDecisionResponse(request);
     }
 
-    private CreateDecisionResponse decide(CreateDecisionRequest createRequest) {
+    private Reply decide(CreateDecisionRequest createRequest) {
         try {
-            return unwrapResponse(
-                    client.decisions.create(apiVersion, createRequest, null).createDecisionResponse());
+            return new Reply(
+                    unwrapResponse(client.decisions
+                            .create(apiVersion, createRequest, null)
+                            .createDecisionResponse()),
+                    false);
         } catch (GaosApiException error) {
             CreateDecisionResponse blockedResponse = toBlockedResponse(error);
             if (blockedResponse != null) {
-                return blockedResponse;
+                return new Reply(blockedResponse, true);
             }
             throw error;
         }
@@ -158,39 +159,48 @@ public class GoogleGenAiDecisionModel implements DecisionModel {
                 log.info("Decision request: {}", createRequest);
             }
 
-            CompletableFuture<CreateDecisionResponse> sdkFuture = withRetryMappingExceptionsAsync(
+            CompletableFuture<Reply> replyFuture = withRetryMappingExceptionsAsync(
                     () -> decideAsync(createRequest), maxRetries, GoogleGenAiExceptionMapper.DECISION_INSTANCE);
 
-            CompletableFuture<DecisionResponse> result = sdkFuture.thenApply(sdkResponse -> {
+            CompletableFuture<DecisionResponse> result = replyFuture.thenApply(reply -> {
                 if (logResponses) {
-                    log.info("Decision response: {}", sdkResponse);
+                    log.info("Decision response: {}", reply.response());
                 }
-                return toDecisionResponse(sdkResponse, request);
+                return reply.toDecisionResponse(request);
             });
-            propagateCancellation(result, sdkFuture);
+            propagateCancellation(result, replyFuture);
             return result;
         } catch (RuntimeException e) {
             return CompletableFuture.failedFuture(GoogleGenAiExceptionMapper.DECISION_INSTANCE.mapException(e));
         }
     }
 
-    private CompletableFuture<CreateDecisionResponse> decideAsync(CreateDecisionRequest createRequest) {
+    private CompletableFuture<Reply> decideAsync(CreateDecisionRequest createRequest) {
         var sdkFuture = client.async.decisions.create(apiVersion, createRequest, null);
-        CompletableFuture<CreateDecisionResponse> responseFuture =
-                sdkFuture.thenApply(op -> unwrapResponse(op.createDecisionResponse()));
-        CompletableFuture<CreateDecisionResponse> result = responseFuture.exceptionally(error -> {
-            if (unwrapCompletionException(error) instanceof GaosApiException gaosError) {
-                CreateDecisionResponse blockedResponse = toBlockedResponse(gaosError);
-                if (blockedResponse != null) {
-                    return blockedResponse;
-                }
-            }
-            throw error instanceof CompletionException completionException
-                    ? completionException
-                    : new CompletionException(error);
-        });
+        CompletableFuture<Reply> result = sdkFuture
+                .thenApply(op -> new Reply(unwrapResponse(op.createDecisionResponse()), false))
+                .exceptionallyCompose(error -> {
+                    CreateDecisionResponse blockedResponse =
+                            unwrapCompletionException(error) instanceof GaosApiException gaosError
+                                    ? toBlockedResponse(gaosError)
+                                    : null;
+                    return blockedResponse == null
+                            ? CompletableFuture.failedFuture(error)
+                            : CompletableFuture.completedFuture(new Reply(blockedResponse, true));
+                });
         propagateCancellation(result, sdkFuture);
         return result;
+    }
+
+    /**
+     * A response of the SDK, or the response made of an HTTP 400 error for blocked input ({@code blocked}), which has
+     * no raw response.
+     */
+    private record Reply(CreateDecisionResponse response, boolean blocked) {
+
+        DecisionResponse toDecisionResponse(DecisionRequest request) {
+            return GoogleGenAiDecisionMapper.toDecisionResponse(response, blocked ? null : response, request);
+        }
     }
 
     private static CreateDecisionResponse unwrapResponse(Optional<CreateDecisionResponse> response) {
@@ -306,9 +316,9 @@ public class GoogleGenAiDecisionModel implements DecisionModel {
          * Custom parameters added to the body of every request, for example to use a feature of the Gemini Decisions
          * API that this class does not support yet. {@code model}, {@code input} and {@code questions} are set by
          * this class and cannot be custom parameters: the request is rejected with an
-         * {@link IllegalArgumentException} before anything is sent. They can be replaced for a single request with
-         * {@link GoogleGenAiDecisionRequestParameters.Builder#customParameters(Map)}. When not set ({@code null}),
-         * no custom parameters are added.
+         * {@link IllegalArgumentException} before anything is sent. The custom parameters set here can be replaced for
+         * a single request with {@link GoogleGenAiDecisionRequestParameters.Builder#customParameters(Map)}. When not
+         * set ({@code null}), no custom parameters are added.
          */
         public Builder customParameters(@Nullable Map<String, Object> customParameters) {
             this.customParameters = customParameters;

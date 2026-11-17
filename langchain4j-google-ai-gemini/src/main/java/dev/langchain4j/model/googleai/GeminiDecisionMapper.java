@@ -17,6 +17,7 @@ import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.internal.CustomMimeTypesFileTypeDetector;
 import dev.langchain4j.internal.DecisionModelInputUtils;
 import dev.langchain4j.internal.DecisionModelInputUtils.Transcript;
@@ -52,7 +53,8 @@ class GeminiDecisionMapper {
 
     private static final String PROVIDER = "The Gemini Decisions API";
     private static final double PROBABILITY_TOLERANCE = 1e-6;
-    private static final Pattern DATA_URL_PATTERN = Pattern.compile("^data:([^;,]+)(?:;[^,]*)?;base64,(.*)$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern DATA_URL_PATTERN =
+            Pattern.compile("^data:([^;,]+)(?:;[^,]*)?;base64,(.*)$", Pattern.CASE_INSENSITIVE);
     private static final CustomMimeTypesFileTypeDetector MIME_TYPE_DETECTOR = new CustomMimeTypesFileTypeDetector();
     private static final Set<ContentType> SUPPORTED_MEDIA =
             Set.of(ContentType.IMAGE, ContentType.AUDIO, ContentType.VIDEO, ContentType.PDF);
@@ -71,6 +73,10 @@ class GeminiDecisionMapper {
                 request.parameters() instanceof GoogleAiGeminiDecisionRequestParameters parameters
                         ? parameters.customParameters()
                         : Map.of();
+        if (customParameters.containsKey("questions")) {
+            throw new IllegalArgumentException("'questions' cannot be a custom parameter: the answers are mapped back "
+                    + "to the questions of the DecisionRequest by their position, so set the questions there");
+        }
         GeminiDecisionRequest geminiRequest = new GeminiDecisionRequest();
         // a custom parameter replaces the field of the same name, which is then neither mapped nor sent
         if (!customParameters.containsKey("model")) {
@@ -79,13 +85,11 @@ class GeminiDecisionMapper {
         if (!customParameters.containsKey("input")) {
             geminiRequest.input = toInput(request.input());
         }
-        if (!customParameters.containsKey("questions")) {
-            Map<String, GeminiDecisionRequest.Question> questions = new LinkedHashMap<>();
-            questionNamesByKey(request)
-                    .forEach((key, name) -> questions.put(
-                            key, toQuestion(request.questions().get(name), yesWhenPrefix, noWhenPrefix)));
-            geminiRequest.questions = questions;
-        }
+        Map<String, GeminiDecisionRequest.Question> questions = new LinkedHashMap<>();
+        questionNamesByKey(request)
+                .forEach((key, name) ->
+                        questions.put(key, toQuestion(request.questions().get(name), yesWhenPrefix, noWhenPrefix)));
+        geminiRequest.questions = questions;
         if (!isNullOrEmpty(customParameters)) {
             geminiRequest.customParameters = customParameters;
         }
@@ -219,7 +223,8 @@ class GeminiDecisionMapper {
             throw new IllegalArgumentException("The " + type + " has neither base64 data nor a URL");
         }
         if ("data".equalsIgnoreCase(url.getScheme())) {
-            Matcher matcher = DATA_URL_PATTERN.matcher(url.toString());
+            // the scheme-specific part has its percent escapes decoded, such as %3D for the padding of base64 data
+            Matcher matcher = DATA_URL_PATTERN.matcher("data:" + url.getSchemeSpecificPart());
             if (!matcher.matches()) {
                 throw new IllegalArgumentException(
                         "The data URL of the " + type + " is not valid, expected data:<MIME type>;base64,<data>");
@@ -232,7 +237,7 @@ class GeminiDecisionMapper {
                 null,
                 null,
                 url.toString(),
-                getOrDefault(mimeType, () -> MIME_TYPE_DETECTOR.probeContentType(url)),
+                getOrDefault(mimeType, () -> MIME_TYPE_DETECTOR.probeContentTypeFromName(url)),
                 resolution);
     }
 
@@ -308,7 +313,27 @@ class GeminiDecisionMapper {
         return levels;
     }
 
-    static DecisionResponse toDecisionResponse(GeminiDecisionResponse response, DecisionRequest request) {
+    /**
+     * Reads the body of a successful response, which must be a JSON object.
+     */
+    static GeminiDecisionResponse fromHttpResponse(SuccessfulHttpResponse httpResponse) {
+        GeminiDecisionResponse response;
+        try {
+            response = Json.fromJson(httpResponse.body(), GeminiDecisionResponse.class);
+        } catch (RuntimeException e) { // the default (Jackson 2) codec throws a plain RuntimeException
+            throw new InvalidDecisionResponseException(
+                    "The response of the Gemini Decisions API is not valid: " + e.getMessage(), e);
+        }
+        if (response == null) {
+            throw new InvalidDecisionResponseException("The response of the Gemini Decisions API is empty");
+        }
+        return response;
+    }
+
+    static DecisionResponse toDecisionResponse(
+            GeminiDecisionResponse response,
+            @Nullable SuccessfulHttpResponse rawHttpResponse,
+            DecisionRequest request) {
         GeminiDecisionResponse.@Nullable PromptFeedback promptFeedback =
                 isBlocked(response) ? response.promptFeedback() : null;
         DecisionResponse.Builder builder = DecisionResponse.builder()
@@ -317,6 +342,7 @@ class GeminiDecisionMapper {
                         .tokenUsage(toTokenUsage(response.usage()))
                         .blockReason(promptFeedback == null ? null : promptFeedback.blockReason())
                         .blockMessage(promptFeedback == null ? null : promptFeedback.blockReasonMessage())
+                        .rawHttpResponse(rawHttpResponse)
                         .build());
         if (promptFeedback != null) {
             // Gemini blocks the whole input, so no question is answered

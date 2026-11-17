@@ -16,9 +16,9 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.HttpException;
-import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
@@ -30,7 +30,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -55,10 +54,11 @@ import org.slf4j.Logger;
  *     <li>a conversation (a list of {@link ChatMessage}s), sent as a JSON transcript followed by the images, audio,
  *     video and PDF files it refers to, for example as {@code [image 1]} or {@code [audio 1]}.</li>
  * </ul>
- * Images, audio, video and PDF files can be given as base64 data, as {@code data:} URLs, or as URLs that Gemini
- * reads itself: publicly accessible {@code https} URLs, or the URIs of files uploaded with {@link GeminiFiles}. URLs
- * are passed to Gemini as they are, they are not downloaded by this class. The MIME type is taken from the content,
- * or guessed from the URL when the content has none. The detail level of an image is sent as its resolution;
+ * Images, audio, video and PDF files can be given as base64 data, as base64 {@code data:} URLs, or as URLs that
+ * Gemini reads itself: publicly accessible {@code https} URLs, or the URIs of files uploaded with {@link GeminiFiles}.
+ * URLs are passed to Gemini as they are: they are not downloaded by this class, and local files are not read. The
+ * MIME type is taken from the content, or, when the content has none, from a {@code data:} URL, or guessed from the
+ * file name of any other URL. The detail level of an image is sent as its resolution;
  * an image without a detail level, or with {@code AUTO}, gets Gemini's default resolution.
  * <p>
  * Gemini checks the limits of the API, such as the number of questions, options and levels, and the size of the
@@ -86,7 +86,7 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
                 builder.httpClientBuilder,
                 builder.apiKey,
                 builder.baseUrl,
-                false,
+                getOrDefault(builder.logRequestsAndResponses, false),
                 getOrDefault(builder.logRequests, false),
                 getOrDefault(builder.logResponses, false),
                 builder.logger,
@@ -110,19 +110,19 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
     public DecisionResponse doDecide(DecisionRequest request) {
         GeminiDecisionRequest geminiRequest =
                 GeminiDecisionMapper.toGeminiRequest(request, yesWhenPrefix, noWhenPrefix);
-        GeminiDecisionResponse response = withRetryMappingExceptions(() -> decide(geminiRequest), maxRetries);
-        return GeminiDecisionMapper.toDecisionResponse(response, request);
+        Reply reply = withRetryMappingExceptions(() -> decide(geminiRequest), maxRetries);
+        return reply.toDecisionResponse(request);
     }
 
-    private GeminiDecisionResponse decide(GeminiDecisionRequest request) {
+    private Reply decide(GeminiDecisionRequest request) {
         try {
-            return geminiService.decide(request);
+            return new Reply(geminiService.decide(request), null);
         } catch (HttpException error) {
             GeminiDecisionResponse blockedResponse = GeminiDecisionMapper.toBlockedResponse(error);
             if (blockedResponse == null) {
                 throw error;
             }
-            return blockedResponse;
+            return new Reply(null, blockedResponse);
         }
     }
 
@@ -131,32 +131,46 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
         try {
             GeminiDecisionRequest geminiRequest =
                     GeminiDecisionMapper.toGeminiRequest(request, yesWhenPrefix, noWhenPrefix);
-            CompletableFuture<GeminiDecisionResponse> responseFuture =
+            CompletableFuture<Reply> replyFuture =
                     withRetryMappingExceptionsAsync(() -> decideAsync(geminiRequest), maxRetries);
-            CompletableFuture<DecisionResponse> result = responseFuture.thenApply(
-                    response -> GeminiDecisionMapper.toDecisionResponse(response, request));
-            propagateCancellation(result, responseFuture);
+            CompletableFuture<DecisionResponse> result =
+                    replyFuture.thenApply(reply -> reply.toDecisionResponse(request));
+            propagateCancellation(result, replyFuture);
             return result;
         } catch (RuntimeException e) {
             return CompletableFuture.failedFuture(e);
         }
     }
 
-    private CompletableFuture<GeminiDecisionResponse> decideAsync(GeminiDecisionRequest request) {
-        CompletableFuture<GeminiDecisionResponse> responseFuture = geminiService.decideAsync(request);
-        CompletableFuture<GeminiDecisionResponse> result = responseFuture.exceptionally(error -> {
-            if (unwrapCompletionException(error) instanceof HttpException httpError) {
-                GeminiDecisionResponse blockedResponse = GeminiDecisionMapper.toBlockedResponse(httpError);
-                if (blockedResponse != null) {
-                    return blockedResponse;
-                }
-            }
-            throw error instanceof CompletionException completionException
-                    ? completionException
-                    : new CompletionException(error);
-        });
-        propagateCancellation(result, responseFuture);
+    private CompletableFuture<Reply> decideAsync(GeminiDecisionRequest request) {
+        CompletableFuture<SuccessfulHttpResponse> httpFuture = geminiService.decideAsync(request);
+        CompletableFuture<Reply> result = httpFuture
+                .thenApply(httpResponse -> new Reply(httpResponse, null))
+                .exceptionallyCompose(error -> {
+                    GeminiDecisionResponse blockedResponse =
+                            unwrapCompletionException(error) instanceof HttpException httpError
+                                    ? GeminiDecisionMapper.toBlockedResponse(httpError)
+                                    : null;
+                    return blockedResponse == null
+                            ? CompletableFuture.failedFuture(error)
+                            : CompletableFuture.completedFuture(new Reply(null, blockedResponse));
+                });
+        propagateCancellation(result, httpFuture);
         return result;
+    }
+
+    /**
+     * Either a successful HTTP response, or the response made of an HTTP 400 error for blocked input. The body of a
+     * successful response is read only after the retries, so that a body that cannot be read is not retried.
+     */
+    private record Reply(
+            @Nullable SuccessfulHttpResponse httpResponse, @Nullable GeminiDecisionResponse blockedResponse) {
+
+        DecisionResponse toDecisionResponse(DecisionRequest request) {
+            GeminiDecisionResponse response =
+                    httpResponse == null ? blockedResponse : GeminiDecisionMapper.fromHttpResponse(httpResponse);
+            return GeminiDecisionMapper.toDecisionResponse(response, httpResponse, request);
+        }
     }
 
     @Override
@@ -184,6 +198,7 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
         private @Nullable Integer maxRetries;
         private @Nullable Boolean logRequests;
         private @Nullable Boolean logResponses;
+        private @Nullable Boolean logRequestsAndResponses;
         private @Nullable Logger logger;
         private @Nullable Supplier<Map<String, String>> customHeadersSupplier;
         private @Nullable Map<String, Object> customParameters;
@@ -272,6 +287,15 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
         }
 
         /**
+         * Whether to log both requests and responses, in addition to {@link #logRequests(Boolean)} and
+         * {@link #logResponses(Boolean)}. Default value is {@code false}.
+         */
+        public GoogleAiGeminiDecisionModelBuilder logRequestsAndResponses(@Nullable Boolean logRequestsAndResponses) {
+            this.logRequestsAndResponses = logRequestsAndResponses;
+            return this;
+        }
+
+        /**
          * An alternate {@link Logger} to be used instead of the default one for logging requests and responses. When
          * not set ({@code null}), the default logger is used.
          */
@@ -301,14 +325,12 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
 
         /**
          * Custom parameters added to the body of every request, for example to use a feature of the Gemini Decisions
-         * API that this class does not support yet. A custom parameter with the same name as a parameter set by this
-         * class ({@code model}, {@code input} or {@code questions}) replaces it. When not set ({@code null}) or empty,
-         * no custom parameters are added. They can be replaced for a single request with
+         * API that this class does not support yet. A custom parameter named {@code model} or {@code input}, which
+         * this class also sets, replaces it. A custom parameter named {@code questions} is rejected with an
+         * {@link IllegalArgumentException} before calling the API: the answers are mapped back to the questions of the
+         * {@link DecisionRequest} by their position. When not set ({@code null}) or empty, no custom parameters are
+         * added. The custom parameters set here can be replaced for a single request with
          * {@link GoogleAiGeminiDecisionRequestParameters.Builder#customParameters(Map)}.
-         * <p>
-         * Do not replace {@code questions}: the answers are read against the questions of the
-         * {@link DecisionRequest}, so the response would be rejected with an
-         * {@link InvalidDecisionResponseException}.
          */
         public GoogleAiGeminiDecisionModelBuilder customParameters(@Nullable Map<String, Object> customParameters) {
             this.customParameters = customParameters;

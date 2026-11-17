@@ -11,6 +11,11 @@ questions about a text, structured, media or conversation input, with probabilit
 video and PDF files. `GoogleAiGeminiDecisionModel` in `langchain4j-google-ai-gemini` implements the
 [`DecisionModel`](/tutorials/decision-models) API on top of it.
 
+The same API is also available as `GoogleGenAiDecisionModel` in `langchain4j-google-genai` (see
+[Google Gen AI](/integrations/decision-models/google-genai)). `GoogleAiGeminiDecisionModel` uses LangChain4j's own HTTP
+client, which can be customized, and needs no other dependency. `GoogleGenAiDecisionModel` uses Google's official Gen
+AI SDK, for example with your own SDK `Client`. Use the module you already use for Gemini.
+
 :::note
 This integration is experimental and may change in future releases.
 :::
@@ -54,13 +59,14 @@ response.choice("team").value();          // "billing"
 response.yesNo("urgent").probability();   // 0.95
 ```
 
-The model name must be set, either on the builder or on each request. An unknown model is rejected by Gemini, and
-the request fails with a `ModelNotFoundException`.
+The model name must be set, either on the builder or on each request (with `GoogleAiGeminiDecisionRequestParameters` or
+`DecisionRequestParameters`). An unknown model is rejected by Gemini, and the request fails with a
+`ModelNotFoundException`.
 
 The other settings are `baseUrl` (by default `https://generativelanguage.googleapis.com/v1beta`), `timeout`,
-`maxRetries`, `logRequests`, `logResponses`, `logger`, `httpClientBuilder`, `customHeaders`, `customParameters`
-(see [Custom parameters](#custom-parameters)), `yesWhenPrefix` and `noWhenPrefix` (see
-[Questions and answers](#questions-and-answers)) and `listeners`.
+`maxRetries`, `logRequests`, `logResponses`, `logRequestsAndResponses`, `logger`, `httpClientBuilder`,
+`customHeaders`, `customParameters` (see [Custom parameters](#custom-parameters)), `yesWhenPrefix` and `noWhenPrefix`
+(see [Questions and answers](#questions-and-answers)) and `listeners`.
 
 By default, the connect timeout is 15 seconds and the read timeout is 60 seconds. If decisions on large audio or video
 files time out, set a longer `timeout(...)`.
@@ -100,7 +106,9 @@ Images, audio, video and PDF files can be given as:
   URLs or read local files: URLs are sent to Gemini as they are.
 
 YouTube URLs, `gs://` URIs and local `file:` URIs are not accepted. Upload such a file with the Files API, or give it
-as a public or signed `https` URL, or as base64 data.
+as a public or signed `https` URL, or as base64 data. To send a local file as base64 data, create the content from its
+path, for example with `AudioContent.from(Path.of("call.mp3"), "audio/mp3")` or
+`PdfFileContent.from(Path.of("receipt.pdf"))`: the file is read when the content is created.
 
 The Files API is useful for large files:
 
@@ -123,9 +131,9 @@ DecisionRequest request = DecisionRequest.builder()
 A large file, such as a video, can take a while to be processed after the upload: wait until it is active (see
 [File States](/integrations/language-models/google-ai-gemini#file-states)) before using it.
 
-The MIME type of each content is the one set on it. When it is not set and the content has a URL, it is guessed from
-the file extension of the URL, and a PDF file without a MIME type is sent as `application/pdf`. Set the MIME type
-when the URL has no file extension, as for Files API URIs.
+The MIME type of each content is the one set on it. When it is not set, it is taken from a `data:` URL, or guessed
+from the file extension of any other URL, and a PDF file without a MIME type is sent as `application/pdf`. Set the
+MIME type when the URL has no file extension, as for Files API URIs.
 
 The detail level of an `ImageContent` is sent as its resolution: `LOW`, `MEDIUM`, `HIGH` and `ULTRA_HIGH` become
 `low`, `medium`, `high` and `ultra_high`. An image created without a detail level, or with `AUTO`, gets Gemini's
@@ -238,9 +246,10 @@ DecisionRequest request = DecisionRequest.builder()
 ```
 
 Values are written to JSON as they are, so a `Map` value becomes a JSON object and a `String` stays a string.
-A custom parameter with the same name as a parameter that LangChain4j sends, such as `model`, replaces it. To choose
-the model, use `modelName(...)`: a `model` custom parameter is not reflected in `modelName()` or in what listeners
-receive. Answers are always read against the questions of the `DecisionRequest`, so do not replace `questions`.
+A custom parameter named `model` or `input`, which LangChain4j also sends, replaces it. To choose the model, use
+`modelName(...)`: a `model` custom parameter is not reflected in `response.modelName()` or in what listeners receive.
+A custom parameter named `questions` is rejected with an `IllegalArgumentException` before calling the API, because
+the answers are mapped back to the questions of the `DecisionRequest` by their position.
 
 Passing the parameters class of another decision model to `GoogleAiGeminiDecisionModel` fails with an
 `IllegalArgumentException`. `DecisionRequestParameters.builder()`, which has only the parameters common to all
@@ -250,3 +259,11 @@ decision models, works with every model.
 
 `response.tokenUsage()` is a `GoogleAiGeminiTokenUsage` with the input, output and total token counts reported by
 Gemini. Gemini counts input tokens only, so the output token count is 0.
+
+## Response metadata
+
+The metadata of every response is a `GoogleAiGeminiDecisionResponseMetadata`. Besides the reason for blocked input
+(see [Blocked input](#blocked-input)), it gives the raw HTTP response with `rawHttpResponse()`, for example to read a
+field that LangChain4j does not expose yet. It is `null` when Gemini rejected blocked input with an HTTP 400 error.
+
+Gemini does not report the model in its response, so `response.modelName()` is the model name of the request.

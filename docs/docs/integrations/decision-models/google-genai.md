@@ -13,6 +13,11 @@ text, structured, media or conversation input in a single call, returning calibr
 API using the official Google Gen AI Java SDK (`com.google.genai:google-genai`). The Gemini Decisions API is available
 on the Gemini Developer API only, not on Vertex AI.
 
+The same API is also available as `GoogleAiGeminiDecisionModel` in `langchain4j-google-ai-gemini` (see
+[Google AI Gemini](/integrations/decision-models/google-ai-gemini)). `GoogleGenAiDecisionModel` uses Google's official
+Gen AI SDK, for example with your own SDK `Client`. `GoogleAiGeminiDecisionModel` uses LangChain4j's own HTTP client,
+which can be customized, and needs no other dependency. Use the module you already use for Gemini.
+
 :::note
 This integration is experimental and may change in future releases.
 :::
@@ -92,10 +97,13 @@ Images, audio, video and PDF files can be given as:
   `GoogleGenAiFiles`. LangChain4j does not download URLs or read local files: URLs are sent to Gemini as they are.
 
 YouTube URLs, `gs://` URIs and local `file:` URIs are not accepted. Upload such a file with `GoogleGenAiFiles`, or give
-it as a public or signed `https` URL, or as base64 data.
+it as a public or signed `https` URL, or as base64 data. To send a local file as base64 data, create the content from
+its path, for example with `AudioContent.from(Path.of("call.mp3"), "audio/mp3")` or
+`PdfFileContent.from(Path.of("receipt.pdf"))`: the file is read when the content is created.
 
 A large file, such as a video, can take a while to be processed after the upload: wait until it is active before
-using it.
+using it. Its state is in the metadata returned by `GoogleGenAiFiles.getMetadata(...)` (see
+[File API](/integrations/language-models/google-genai#file-api)).
 
 The MIME type is taken from the content, or guessed from the file extension of the URL when not set (`PdfFile` defaults
 to `application/pdf`). Set the MIME type explicitly when the URL has no file extension, such as Files API URIs.
@@ -223,3 +231,12 @@ Gemini counts input tokens only, so the output token count is 0. When Gemini rej
 GoogleGenAiTokenUsage tokenUsage = (GoogleGenAiTokenUsage) response.tokenUsage();
 Integer inputTokens = tokenUsage.inputTokenCount();
 ```
+
+## Response metadata
+
+The metadata of every response is a `GoogleGenAiDecisionResponseMetadata`. Besides the reason for blocked input (see
+[Blocked input](#blocked-input)), it gives the raw `CreateDecisionResponse` of the Google Gen AI SDK with
+`rawResponse()`, for example to read a field that LangChain4j does not expose yet. It is `null` when Gemini rejected
+blocked input with an HTTP 400 error.
+
+Gemini does not report the model in its response, so `response.modelName()` is the model name of the request.

@@ -82,7 +82,8 @@ class GoogleGenAiDecisionMapper {
 
     private static final double PROBABILITY_TOLERANCE = 1e-6;
     private static final String PROVIDER_NAME = "The Gemini Decisions API";
-    private static final Pattern DATA_URL_PATTERN = Pattern.compile("^data:([^;,]+)(?:;[^,]*)?;base64,(.*)$", Pattern.CASE_INSENSITIVE);
+    private static final Pattern DATA_URL_PATTERN =
+            Pattern.compile("^data:([^;,]+)(?:;[^,]*)?;base64,(.*)$", Pattern.CASE_INSENSITIVE);
     private static final Set<String> FIELDS_SET_BY_THE_MODEL = Set.of("model", "input", "questions");
     private static final Set<ContentType> SUPPORTED_CONVERSATION_MEDIA =
             Set.of(ContentType.IMAGE, ContentType.AUDIO, ContentType.VIDEO, ContentType.PDF);
@@ -338,7 +339,8 @@ class GoogleGenAiDecisionMapper {
         }
         String scheme = url.getScheme();
         if ("data".equalsIgnoreCase(scheme)) {
-            Matcher matcher = DATA_URL_PATTERN.matcher(url.toString());
+            // the scheme-specific part has its percent escapes decoded, such as %3D for the padding of base64 data
+            Matcher matcher = DATA_URL_PATTERN.matcher("data:" + url.getSchemeSpecificPart());
             if (!matcher.matches()) {
                 throw new IllegalArgumentException(
                         "The data URL of the " + type + " is not valid, expected data:<MIME type>;base64,<data>");
@@ -457,7 +459,8 @@ class GoogleGenAiDecisionMapper {
                 .build();
     }
 
-    static DecisionResponse toDecisionResponse(CreateDecisionResponse response, DecisionRequest request) {
+    static DecisionResponse toDecisionResponse(
+            CreateDecisionResponse response, @Nullable CreateDecisionResponse rawResponse, DecisionRequest request) {
         PromptFeedback promptFeedback =
                 isBlocked(response) ? response.promptFeedback().orElse(null) : null;
         DecisionResponse.Builder builder = DecisionResponse.builder()
@@ -477,6 +480,7 @@ class GoogleGenAiDecisionMapper {
                                 promptFeedback == null
                                         ? null
                                         : promptFeedback.blockReasonMessage().orElse(null))
+                        .rawResponse(rawResponse)
                         .build());
         if (promptFeedback != null) {
             // Gemini blocks the whole input, so no question is answered

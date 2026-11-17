@@ -3,6 +3,8 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.internal.Json.fromJson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockingDetails;
 
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
@@ -12,8 +14,8 @@ import dev.langchain4j.data.message.ChatMessageDeserializer;
 import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ContentType;
-import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.ImageContent.DetailLevel;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
@@ -50,9 +52,13 @@ import dev.langchain4j.model.decision.response.ChoiceAnswer;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -60,11 +66,14 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.slf4j.Logger;
 
 class GoogleAiGeminiDecisionModelTest {
 
@@ -463,6 +472,11 @@ class GoogleAiGeminiDecisionModelTest {
         assertThatThrownBy(() -> model(httpClient).decide(request))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("The image has neither base64 data nor a URL");
+        assertThat(model(httpClient).decideAsync(request))
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseExactlyInstanceOf(IllegalArgumentException.class)
+                .withMessageContaining("The image has neither base64 data nor a URL");
         assertThat(httpClient.requests()).isEmpty();
     }
 
@@ -481,6 +495,60 @@ class GoogleAiGeminiDecisionModelTest {
         // then
         assertThat(body(httpClient.request()).get("input"))
                 .isEqualTo(List.of(map("type", "image", "uri", "https://example.com/photos/latest")));
+    }
+
+    @Test
+    void should_guess_mime_type_of_url_from_its_file_name_only(@TempDir Path directory) throws Exception {
+
+        // given
+        Path pngWithoutExtension = directory.resolve("picture");
+        byte[] pngHeader = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n', 0, 0, 0, 0x0D, 'I', 'H', 'D', 'R'};
+        Files.write(pngWithoutExtension, pngHeader);
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        DecisionRequest request = REQUEST.toBuilder()
+                .inputContents(
+                        ImageContent.from(pngWithoutExtension.toUri()),
+                        ImageContent.from(directory.resolve("picture.png").toUri()),
+                        ImageContent.from("https://example.com/photos/IMG_1234.heic"),
+                        ImageContent.from("https://example.com/photos/a%00.png"))
+                .build();
+
+        // when
+        model(httpClient).decide(request);
+
+        // then: local files are not read, only the file names are used
+        assertThat(body(httpClient.request()).get("input"))
+                .isEqualTo(List.of(
+                        map("type", "image", "uri", pngWithoutExtension.toUri().toString()),
+                        map(
+                                "type", "image",
+                                "uri", directory.resolve("picture.png").toUri().toString(),
+                                "mime_type", "image/png"),
+                        map(
+                                "type", "image",
+                                "uri", "https://example.com/photos/IMG_1234.heic",
+                                "mime_type", "image/heic"),
+                        map(
+                                "type", "image",
+                                "uri", "https://example.com/photos/a%00.png",
+                                "mime_type", "image/png")));
+    }
+
+    @Test
+    void should_decode_percent_escapes_of_data_url() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        DecisionRequest request = REQUEST.toBuilder()
+                .inputContents(ImageContent.from("data:image/png;base64,aW1hZ2U%3D"))
+                .build();
+
+        // when
+        model(httpClient).decide(request);
+
+        // then
+        assertThat(body(httpClient.request()).get("input"))
+                .isEqualTo(List.of(map("type", "image", "data", "aW1hZ2U=", "mime_type", "image/png")));
     }
 
     @Test
@@ -837,8 +905,7 @@ class GoogleAiGeminiDecisionModelTest {
                 .customParameters(Map.of(
                         "new_parameter", "value",
                         "model", "custom-model",
-                        "input", "custom input",
-                        "questions", Map.of("custom", Map.of("type", "noul", "instructions", "Custom?"))))
+                        "input", "custom input"))
                 .build();
 
         // when
@@ -850,10 +917,9 @@ class GoogleAiGeminiDecisionModelTest {
                 .containsEntry("new_parameter", "value")
                 .containsEntry("model", "custom-model")
                 .containsEntry("input", "custom input")
-                .containsEntry("questions", Map.of("custom", Map.of("type", "noul", "instructions", "Custom?")));
+                .containsKey("questions");
         assertThat(body).containsOnlyOnce("\"model\"");
         assertThat(body).containsOnlyOnce("\"input\"");
-        assertThat(body).containsOnlyOnce("\"questions\"");
     }
 
     @Test
@@ -894,11 +960,9 @@ class GoogleAiGeminiDecisionModelTest {
     }
 
     @Test
-    void should_not_map_input_and_questions_replaced_with_custom_parameters() {
+    void should_not_map_input_replaced_with_custom_parameter() {
 
         // given
-        record RankQuestion(String text) implements Question {}
-
         MockHttpClient httpClient =
                 MockHttpClient.thatAlwaysResponds(ok(answers("\"q0\": {\"type\": \"noul\", \"noul\": 0.9}")));
         GoogleAiGeminiDecisionModel model = model(httpClient);
@@ -909,14 +973,6 @@ class GoogleAiGeminiDecisionModelTest {
                         .customParameters(Map.of("input", "My payouts have been failing for 3 days."))
                         .build())
                 .build();
-        Map<String, Object> customQuestion = Map.of("type", "rank", "instructions", "Which step is best?");
-        DecisionRequest customQuestions = DecisionRequest.builder()
-                .input("Refactor the parser")
-                .question("next_step", new RankQuestion("Which step is best?"))
-                .parameters(GoogleAiGeminiDecisionRequestParameters.builder()
-                        .customParameters(Map.of("questions", Map.of("q0", customQuestion)))
-                        .build())
-                .build();
 
         // when
         DecisionResponse response = model.decide(customInput);
@@ -925,37 +981,45 @@ class GoogleAiGeminiDecisionModelTest {
         assertThat(response.yesNo("urgent").probability()).isEqualTo(0.9);
         assertThat(body(httpClient.requests().get(0)))
                 .containsEntry("input", "My payouts have been failing for 3 days.");
-
-        // when-then: the replaced questions are sent, but the answer to a RankQuestion cannot be read
-        assertThatThrownBy(() -> model.decide(customQuestions))
-                .isInstanceOf(UnsupportedFeatureException.class)
-                .hasMessageContaining("RankQuestion");
-        assertThat(questions(httpClient.requests().get(1))).isEqualTo(Map.of("q0", customQuestion));
     }
 
     @Test
-    void should_reject_answers_to_questions_replaced_with_custom_parameter() {
+    void should_reject_questions_custom_parameter_without_calling_the_api() {
 
         // given
-        MockHttpClient httpClient =
-                MockHttpClient.thatAlwaysResponds(ok(answers("\"spam\": {\"type\": \"noul\", \"noul\": 0.9}")));
-        GoogleAiGeminiDecisionModel model = GoogleAiGeminiDecisionModel.builder()
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        Map<String, Object> customQuestions = Map.of("q0", Map.of("type", "noul", "instructions", "Is it spam?"));
+        GoogleAiGeminiDecisionModel modelWithCustomQuestions = GoogleAiGeminiDecisionModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(httpClient))
                 .modelName(MODEL_NAME)
-                .customParameters(
-                        Map.of("questions", Map.of("spam", Map.of("type", "noul", "instructions", "Is it spam?"))))
+                .customParameters(Map.of("questions", customQuestions))
                 .build();
-        DecisionRequest request = DecisionRequest.builder()
-                .input("Click here to claim your prize!")
-                .question("spam", YesNoQuestion.from("Is it spam?"))
+        DecisionRequest requestWithCustomQuestions = REQUEST.toBuilder()
+                .parameters(GoogleAiGeminiDecisionRequestParameters.builder()
+                        .customParameters(Map.of("questions", customQuestions))
+                        .build())
                 .build();
+        String expectedMessage = "'questions' cannot be a custom parameter: the answers are mapped back to the "
+                + "questions of the DecisionRequest by their position, so set the questions there";
 
         // when-then
-        assertThatThrownBy(() -> model.decide(request))
-                .isExactlyInstanceOf(InvalidDecisionResponseException.class)
-                .hasMessage("The response contains an answer under the unknown key 'spam'");
-        assertThat(questions(httpClient.request()))
-                .isEqualTo(Map.of("spam", Map.of("type", "noul", "instructions", "Is it spam?")));
+        assertThatThrownBy(() -> modelWithCustomQuestions.decide(REQUEST))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage(expectedMessage);
+        assertThatThrownBy(() -> model(httpClient).decide(requestWithCustomQuestions))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage(expectedMessage);
+        assertThat(modelWithCustomQuestions.decideAsync(REQUEST))
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseExactlyInstanceOf(IllegalArgumentException.class)
+                .withMessageContaining(expectedMessage);
+        assertThat(model(httpClient).decideAsync(requestWithCustomQuestions))
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseExactlyInstanceOf(IllegalArgumentException.class)
+                .withMessageContaining(expectedMessage);
+        assertThat(httpClient.requests()).isEmpty();
     }
 
     @Test
@@ -990,6 +1054,8 @@ class GoogleAiGeminiDecisionModelTest {
         assertThat(response.metadata()).isInstanceOfSatisfying(GoogleAiGeminiDecisionResponseMetadata.class, metadata -> {
             assertThat(metadata.blockReason()).isNull();
             assertThat(metadata.blockMessage()).isNull();
+            assertThat(metadata.rawHttpResponse().statusCode()).isEqualTo(200);
+            assertThat(metadata.rawHttpResponse().body()).isEqualTo(RESPONSE);
         });
         assertThat(response.answers()).containsOnlyKeys("team", "urgent", "frustration");
 
@@ -1190,6 +1256,97 @@ class GoogleAiGeminiDecisionModelTest {
                 Arguments.of(
                         answers(team, urgent, "\"q2\": {\"type\": \"score\", \"score\": \"NaN\"}"),
                         "invalid score: NaN"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"not JSON", "null", "[1, 2]"})
+    void should_reject_response_body_that_cannot_be_read_and_not_retry_it(String body) {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(body));
+        GoogleAiGeminiDecisionModel model = model(httpClient);
+
+        // when-then
+        assertThatThrownBy(() -> model.decide(REQUEST))
+                .isExactlyInstanceOf(InvalidDecisionResponseException.class)
+                .hasMessageStartingWith("The response of the Gemini Decisions API is");
+        assertThat(httpClient.requests()).hasSize(1);
+        assertThat(model.decideAsync(REQUEST))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseExactlyInstanceOf(InvalidDecisionResponseException.class);
+        assertThat(httpClient.requests()).hasSize(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"block_reason\": \"\"}", "{\"block_reason\": null}"})
+    void should_not_take_prompt_feedback_without_block_reason_for_blocked_input(String promptFeedback) {
+
+        // given
+        String body = RESPONSE.replaceFirst("\\{", "{\"prompt_feedback\": " + promptFeedback + ",");
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(body));
+
+        // when
+        DecisionResponse response = model(httpClient).decide(REQUEST);
+
+        // then
+        assertThat(response.isRefused("team")).isFalse();
+        assertThat(response.choice("team").value()).isEqualTo("billing");
+        assertThat(((GoogleAiGeminiDecisionResponseMetadata) response.metadata()).blockReason())
+                .isNull();
+    }
+
+    @Test
+    void should_log_requests_and_responses() {
+
+        // given
+        Logger logger = mock(Logger.class);
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        GoogleAiGeminiDecisionModel model = GoogleAiGeminiDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .modelName(MODEL_NAME)
+                .logRequestsAndResponses(true)
+                .logger(logger)
+                .build();
+
+        // when
+        model.decide(REQUEST);
+
+        // then
+        List<String> logged = mockingDetails(logger).getInvocations().stream()
+                .filter(invocation -> invocation.getMethod().getName().equals("info"))
+                .map(invocation -> String.valueOf(invocation.getArguments()[0]))
+                .toList();
+        assertThat(logged).anyMatch(message -> message.contains("HTTP request:"));
+        assertThat(logged).anyMatch(message -> message.contains("HTTP response:"));
+    }
+
+    @Test
+    void should_list_every_decision_class_in_native_image_config() throws Exception {
+
+        // given
+        String config;
+        try (InputStream in = getClass()
+                .getResourceAsStream(
+                        "/META-INF/native-image/dev.langchain4j/langchain4j-google-ai-gemini/reflect-config.json")) {
+            config = new String(in.readAllBytes(), StandardCharsets.UTF_8);
+        }
+
+        // when
+        List<String> classNames = Stream.of(GeminiDecisionRequest.class, GeminiDecisionResponse.class)
+                .flatMap(GoogleAiGeminiDecisionModelTest::withNestedClasses)
+                .map(Class::getName)
+                .toList();
+
+        // then
+        assertThat(classNames).hasSizeGreaterThan(2);
+        assertThat(classNames).allSatisfy(className -> assertThat(config).contains("\"" + className + "\""));
+    }
+
+    private static Stream<Class<?>> withNestedClasses(Class<?> type) {
+        return Stream.concat(
+                Stream.of(type),
+                Arrays.stream(type.getDeclaredClasses()).flatMap(GoogleAiGeminiDecisionModelTest::withNestedClasses));
     }
 
     @Test
@@ -1395,11 +1552,15 @@ class GoogleAiGeminiDecisionModelTest {
                         .totalTokenCount(12)
                         .build());
         assertThat(asyncResponse.tokenUsage()).isEqualTo(response.tokenUsage());
+        SuccessfulHttpResponse rawHttpResponse =
+                ((GoogleAiGeminiDecisionResponseMetadata) response.metadata()).rawHttpResponse();
+        assertThat(rawHttpResponse.body()).contains("prompt_feedback");
         GoogleAiGeminiDecisionResponseMetadata expectedMetadata = GoogleAiGeminiDecisionResponseMetadata.builder()
                 .modelName(MODEL_NAME)
                 .tokenUsage(response.tokenUsage())
                 .blockReason("safety")
                 .blockMessage("The input was blocked.")
+                .rawHttpResponse(rawHttpResponse)
                 .build();
         assertThat(response.metadata()).isEqualTo(expectedMetadata);
         assertThat(asyncResponse.metadata()).isEqualTo(expectedMetadata);

@@ -14,6 +14,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
+import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.model.decision.DecisionModel;
@@ -182,16 +183,16 @@ class GoogleAiGeminiDecisionModelIT extends AbstractDecisionModelIT {
                 Base64.getEncoder().encodeToString(Files.readAllBytes(Path.of("src/test/resources/example-video.mp4")));
         DecisionRequest request = DecisionRequest.builder()
                 .inputContents(List.of(VideoContent.from(base64Video, "video/mp4")))
-                .question("video", YesNoQuestion.from("Does the input contain a video?"))
-                .question("text_only", YesNoQuestion.from("Does the input contain only text?"))
+                .question("example", YesNoQuestion.from("Does the video show the word 'example'?"))
+                .question("cat", YesNoQuestion.from("Does the video show a cat?"))
                 .build();
 
         // when
         DecisionResponse response = modelWithoutRequestLogging().decide(request);
 
         // then
-        assertThat(response.yesNo("video").probability())
-                .isGreaterThan(response.yesNo("text_only").probability());
+        assertThat(response.yesNo("example").probability())
+                .isGreaterThan(response.yesNo("cat").probability());
     }
 
     @Test
@@ -213,6 +214,42 @@ class GoogleAiGeminiDecisionModelIT extends AbstractDecisionModelIT {
         // then
         assertThat(response.yesNo("invoice").probability())
                 .isGreaterThan(response.yesNo("recipe").probability());
+    }
+
+    @Test
+    void should_decide_on_pdf_uploaded_with_files_api() throws Exception {
+
+        // given
+        GeminiFiles files = GeminiFiles.builder()
+                .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+                .build();
+        GeminiFiles.GeminiFile file = files.uploadFile(
+                pdf("Invoice 42. Total: 99 EUR. Status: paid."), "application/pdf", "invoice-42.pdf");
+        try {
+            for (int attempt = 0; !file.isActive() && attempt < 30; attempt++) {
+                assertThat(file.isFailed()).isFalse();
+                Thread.sleep(2_000);
+                file = files.getMetadata(file.name());
+            }
+            assertThat(file.isActive()).isTrue();
+            DecisionRequest request = DecisionRequest.builder()
+                    .inputContents(List.of(PdfFileContent.from(PdfFile.builder()
+                            .url(file.uri())
+                            .mimeType(file.mimeType())
+                            .build())))
+                    .question("invoice", YesNoQuestion.from("Is the document an invoice?"))
+                    .question("recipe", YesNoQuestion.from("Is the document a cooking recipe?"))
+                    .build();
+
+            // when
+            DecisionResponse response = model().decide(request);
+
+            // then
+            assertThat(response.yesNo("invoice").probability())
+                    .isGreaterThan(response.yesNo("recipe").probability());
+        } finally {
+            files.deleteFile(file.name());
+        }
     }
 
     @Test

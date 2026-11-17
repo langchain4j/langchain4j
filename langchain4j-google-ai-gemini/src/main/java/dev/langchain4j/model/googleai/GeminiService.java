@@ -4,7 +4,6 @@ import static dev.langchain4j.http.client.HttpMethod.DELETE;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
-import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -210,12 +209,12 @@ class GeminiService {
         return sendRequest(url, apiKey, null, Void.class, DELETE);
     }
 
-    GeminiDecisionResponse decide(GeminiDecisionRequest request) {
-        return sendRequest(baseUrl + "/decisions", apiKey, request, GeminiDecisionResponse.class);
+    SuccessfulHttpResponse decide(GeminiDecisionRequest request) {
+        return httpClient.execute(buildHttpRequest(baseUrl + "/decisions", apiKey, request, POST));
     }
 
-    CompletableFuture<GeminiDecisionResponse> decideAsync(GeminiDecisionRequest request) {
-        return sendRequestAsync(baseUrl + "/decisions", request, GeminiDecisionResponse.class);
+    CompletableFuture<SuccessfulHttpResponse> decideAsync(GeminiDecisionRequest request) {
+        return httpClient.executeAsync(buildHttpRequest(baseUrl + "/decisions", apiKey, request, POST));
     }
 
     void generateContentStream(
@@ -236,14 +235,6 @@ class GeminiService {
             String url, String apiKey, @Nullable Object requestBody, Class<T> responseType, HttpMethod httpMethod) {
         HttpRequest request = buildHttpRequest(url, apiKey, requestBody, httpMethod);
         return fromJson(httpClient.execute(request).body(), responseType);
-    }
-
-    private <T> CompletableFuture<T> sendRequestAsync(String url, @Nullable Object body, Class<T> type) {
-        HttpRequest request = buildHttpRequest(url, apiKey, body, POST);
-        CompletableFuture<SuccessfulHttpResponse> httpFuture = httpClient.executeAsync(request);
-        CompletableFuture<T> result = httpFuture.thenApply(response -> fromJson(response.body(), type));
-        propagateCancellation(result, httpFuture);
-        return result;
     }
 
     private void streamRequest(
