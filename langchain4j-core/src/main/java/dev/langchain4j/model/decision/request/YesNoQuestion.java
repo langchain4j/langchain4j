@@ -18,9 +18,9 @@ import java.util.Objects;
  *         .noWhen("The customer only asks about a charge")
  *         .build();
  * }</pre>
- * Each of them is a sufficient condition: when it holds, the answer follows it. When it does not hold, for example
- * when only {@code yesWhen} is set and the input does not meet it, the meaning of the question itself decides the
- * answer.
+ * They describe what "yes" and "no" mean for this question when the question alone is ambiguous. When only one of
+ * them is set, how it combines with the question is up to the model: some models read a lone {@code yesWhen} as the
+ * only reason to answer "yes". To split the cases clearly, set both.
  *
  * @since 1.21.0
  */
@@ -111,9 +111,7 @@ public final class YesNoQuestion implements Question {
         }
 
         /**
-         * Describes when the answer should be "yes". This is a sufficient condition: when it holds, the answer is
-         * "yes". When it does not hold, the answer is not necessarily "no": then the meaning of the question itself
-         * decides, or {@link #noWhen(String)} if it is set and holds.
+         * Describes when the answer should be "yes" (see {@link YesNoQuestion} for how it combines with the question).
          */
         public Builder yesWhen(String description) {
             this.yesWhen = description;
@@ -121,9 +119,7 @@ public final class YesNoQuestion implements Question {
         }
 
         /**
-         * Describes when the answer should be "no". This is a sufficient condition: when it holds, the answer is
-         * "no". When it does not hold, the answer is not necessarily "yes": then the meaning of the question itself
-         * decides, or {@link #yesWhen(String)} if it is set and holds.
+         * Describes when the answer should be "no" (see {@link YesNoQuestion} for how it combines with the question).
          */
         public Builder noWhen(String description) {
             this.noWhen = description;

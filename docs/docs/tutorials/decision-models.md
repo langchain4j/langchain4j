@@ -126,8 +126,9 @@ YesNoQuestion refundRequested = YesNoQuestion.builder()
         .build();
 ```
 
-Each criterion is a sufficient condition: when it holds, the answer follows it. When it does not hold, for example
-when only `yesWhen` is set and the input does not meet it, the question itself decides the answer.
+The criteria describe what "yes" and "no" mean for this question when the question alone is ambiguous. When only one
+of them is set, how it combines with the question is up to the model: some models read a lone `yesWhen` as the only
+reason to answer "yes". To split the cases clearly, set both.
 
 ### Choice questions
 
