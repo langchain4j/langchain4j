@@ -1,5 +1,7 @@
 package dev.langchain4j.model.anthropic.internal.client;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.perRequestHeaders;
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.http.client.HttpMethod.GET;
 import static dev.langchain4j.http.client.HttpMethod.POST;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
@@ -87,6 +89,8 @@ import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import dev.langchain4j.model.HttpParameters;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Default implementation of {@link AnthropicClient} that provides methods to interact with the
@@ -253,7 +257,13 @@ public class DefaultAnthropicClient extends AnthropicClient {
      */
     @Override
     public ParsedAndRawResponse createMessageWithRawResponse(AnthropicCreateMessageRequest request) {
-        HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
+        return createMessageWithRawResponse(request, (HttpParameters) null);
+    }
+
+    @Override
+    public ParsedAndRawResponse createMessageWithRawResponse(
+            AnthropicCreateMessageRequest request, @Nullable HttpParameters httpParameters) {
+        HttpRequest httpRequest = toHttpRequest(toJson(request), "messages", customHeadersOf(httpParameters));
         SuccessfulHttpResponse rawResponse = httpClient.execute(httpRequest);
         AnthropicCreateMessageResponse parsedResponse =
                 fromJson(rawResponse.body(), AnthropicCreateMessageResponse.class);
@@ -267,7 +277,18 @@ public class DefaultAnthropicClient extends AnthropicClient {
      */
     @Override
     public CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(AnthropicCreateMessageRequest request) {
-        HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
+        return createMessageWithRawResponseAsync(request, (HttpParameters) null);
+    }
+
+    @Override
+    public CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(
+            AnthropicCreateMessageRequest request, @Nullable HttpParameters httpParameters) {
+        HttpRequest httpRequest;
+        try {
+            httpRequest = toHttpRequest(toJson(request), "messages", customHeadersOf(httpParameters));
+        } catch (RuntimeException e) {
+            return CompletableFuture.failedFuture(e);
+        }
         return httpClient.executeAsync(httpRequest).thenApply(rawResponse -> {
             AnthropicCreateMessageResponse parsedResponse =
                     fromJson(rawResponse.body(), AnthropicCreateMessageResponse.class);
@@ -310,7 +331,16 @@ public class DefaultAnthropicClient extends AnthropicClient {
             AnthropicCreateMessageRequest request,
             AnthropicCreateMessageOptions options,
             StreamingChatResponseHandler handler) {
-        HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
+        createMessage(request, options, (HttpParameters) null, handler);
+    }
+
+    @Override
+    public void createMessage(
+            AnthropicCreateMessageRequest request,
+            AnthropicCreateMessageOptions options,
+            @Nullable HttpParameters httpParameters,
+            StreamingChatResponseHandler handler) {
+        HttpRequest httpRequest = toHttpRequest(toJson(request), "messages", customHeadersOf(httpParameters));
         httpClient.execute(httpRequest, buildStreamingEventListener(handler, options));
     }
 
@@ -701,8 +731,17 @@ public class DefaultAnthropicClient extends AnthropicClient {
      */
     public Publisher<ChatModelStreamingEvent> createMessagePublisher(
             AnthropicCreateMessageRequest request, AnthropicCreateMessageOptions options, int bufferSize) {
+        return createMessagePublisher(request, options, bufferSize, (HttpParameters) null);
+    }
 
-        HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
+    @Override
+    public Publisher<ChatModelStreamingEvent> createMessagePublisher(
+            AnthropicCreateMessageRequest request,
+            AnthropicCreateMessageOptions options,
+            int bufferSize,
+            @Nullable HttpParameters httpParameters) {
+
+        HttpRequest httpRequest = toHttpRequest(toJson(request), "messages", customHeadersOf(httpParameters));
         return HttpStreamingChatPublisher.create(
                 bufferSize,
                 () -> httpClient.stream(httpRequest, new DefaultServerSentEventParser()),
@@ -870,18 +909,25 @@ public class DefaultAnthropicClient extends AnthropicClient {
      * @return the constructed {@link HttpRequest}
      */
     private HttpRequest toHttpRequest(String jsonRequest, String path) {
+        return toHttpRequest(jsonRequest, path, Map.of());
+    }
+
+    private HttpRequest toHttpRequest(String jsonRequest, String path, Map<String, String> customHeaders) {
+        Map<String, String> builderHeaders = getOrDefault(customHeadersSupplier.get(), Map.of());
         HttpRequest.Builder builder = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, path)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("x-api-key", apiKey)
                 .addHeader("anthropic-version", version)
-                .addHeaders(customHeadersSupplier.get())
+                .addHeaders(builderHeaders)
                 .body(jsonRequest);
 
         if (this.beta != null) {
             builder.addHeader("anthropic-beta", beta);
         }
+
+        builder.addHeaders(perRequestHeaders(builderHeaders, customHeaders));
 
         return builder.build();
     }

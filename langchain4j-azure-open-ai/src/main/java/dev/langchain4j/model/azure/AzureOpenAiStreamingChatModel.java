@@ -1,5 +1,6 @@
 package dev.langchain4j.model.azure;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -16,6 +17,7 @@ import static dev.langchain4j.model.ModelProvider.AZURE_OPEN_AI;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.setupAsyncClient;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toAzureOpenAiResponseFormat;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toOpenAiMessages;
+import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toRequestOptions;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolChoice;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.toToolDefinitions;
 import static dev.langchain4j.model.azure.InternalAzureOpenAiHelper.validate;
@@ -174,6 +176,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
                 .toolSpecifications(parameters.toolSpecifications())
                 .toolChoice(parameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, parameters.responseFormat()))
+                .httpParameters(parameters.httpParameters())
                 .build();
 
         this.logitBias = copy(builder.logitBias);
@@ -234,7 +237,12 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         ToolCallBuilder toolCallBuilder = new ToolCallBuilder(-1);
         AzureOpenAiStreamingResponseBuilder responseBuilder = new AzureOpenAiStreamingResponseBuilder(toolCallBuilder);
 
-        Flux<ChatCompletions> chatCompletionsStream = client.getChatCompletionsStream(parameters.modelName(), options);
+        Map<String, String> customHeaders = customHeadersOf(parameters);
+        Flux<ChatCompletions> chatCompletionsStream = customHeaders.isEmpty()
+                ? client.getChatCompletionsStream(parameters.modelName(), options)
+                : client.getChatCompletionsStreamWithResponse(
+                                parameters.modelName(), options, toRequestOptions(customHeaders))
+                        .map(response -> response.getValue());
 
         AtomicReference<String> responseId = new AtomicReference<>();
         AtomicReference<String> responseModelName = new AtomicReference<>();
@@ -574,6 +582,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         /**
          * Sets the Azure OpenAI client. This is an optional parameter, if you need more flexibility than using the endpoint, serviceVersion, apiKey, deploymentName parameters.
+         * With a client set here, per-request custom HTTP headers are still sent, but the client's own headers
+         * with the same name win over them.
          *
          * @param openAIAsyncClient The Azure OpenAI client.
          * @return builder

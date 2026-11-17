@@ -1,5 +1,7 @@
 package dev.langchain4j.model.jlama;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.ChatRequestValidationUtils.validateNoHttpParameters;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.jlama.JlamaLanguageModel.toFinishReason;
 import static dev.langchain4j.model.jlama.Json.fromJson;
@@ -95,6 +97,12 @@ public class JlamaStreamingChatModel implements StreamingChatModel {
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ChatRequestValidationUtils.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
+        try {
+            validateNoHttpParameters(parameters);
+        } catch (UnsupportedFeatureException e) {
+            withLoggingExceptions(() -> handler.onError(e));
+            return;
+        }
         ChatRequestValidationUtils.validateParameters(parameters);
         ChatRequestValidationUtils.validate(parameters.toolChoice());
         ChatRequestValidationUtils.validate(parameters.responseFormat());

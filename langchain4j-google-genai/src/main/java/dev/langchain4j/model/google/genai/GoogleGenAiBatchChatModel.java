@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.ChatRequestValidationUtils.validateNoHttpParametersInBatch;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -99,6 +100,9 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         this.audioTranscriptionConfig = builder.audioTranscriptionConfig;
         this.speechConfig = builder.speechConfig;
         this.responseModalities = copy(builder.responseModalities);
+        if (builder.defaultRequestParameters != null) {
+            validateNoHttpParametersInBatch(builder.defaultRequestParameters);
+        }
         this.defaultRequestParameters = builder.defaultRequestParameters;
         this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
@@ -208,6 +212,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         ChatRequestParameters params = defaultRequestParameters != null
                 ? defaultRequestParameters.overrideWith(request.parameters())
                 : request.parameters();
+        validateNoHttpParametersInBatch(params);
 
         GenerateContentConfig config = GoogleGenAiConfigBuilder.buildConfig(
                 params,

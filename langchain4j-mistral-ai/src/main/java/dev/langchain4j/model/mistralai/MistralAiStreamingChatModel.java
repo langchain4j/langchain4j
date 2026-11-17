@@ -1,5 +1,6 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -86,6 +87,7 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .httpParameters(commonParameters.httpParameters())
                 .safePrompt(getOrDefault(builder.safePrompt, mistralParameters.safePrompt()))
                 .randomSeed(getOrDefault(builder.randomSeed, mistralParameters.randomSeed()))
                 .sendThinking(getOrDefault(builder.sendThinking, mistralParameters.sendThinking()))
@@ -106,7 +108,12 @@ public class MistralAiStreamingChatModel implements StreamingChatModel {
                 true,
                 getOrDefault(parameters.sendThinking(), false),
                 strictJsonSchema);
-        client.streamingChatCompletion(request, handler, getOrDefault(parameters.returnThinking(), false));
+        boolean returnThinking = getOrDefault(parameters.returnThinking(), false);
+        if (customHeadersOf(parameters).isEmpty()) {
+            client.streamingChatCompletion(request, handler, returnThinking);
+        } else {
+            client.streamingChatCompletion(request, handler, returnThinking, parameters.httpParameters());
+        }
     }
 
     @Override

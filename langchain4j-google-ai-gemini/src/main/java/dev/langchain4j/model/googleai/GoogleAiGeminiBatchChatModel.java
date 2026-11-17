@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.ChatRequestValidationUtils.validateNoHttpParametersInBatch;
 import static dev.langchain4j.model.googleai.BaseGeminiChatModel.buildGeminiService;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.BATCH_GENERATE_CONTENT;
 
@@ -13,6 +14,7 @@ import dev.langchain4j.model.batch.BatchResponse;
 import dev.langchain4j.model.batch.BatchState;
 import dev.langchain4j.model.chat.BatchChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchCreateResponse;
 import dev.langchain4j.model.googleai.BatchRequestResponse.BatchFileRequest;
@@ -53,6 +55,7 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
         this.preparer = new ChatRequestPreparer();
         this.batchProcessor = new GeminiBatchProcessor<>(geminiService, preparer);
         this.chatModel = new BaseGeminiChatModel(builder, geminiService);
+        validateNoHttpParametersInBatch(chatModel.defaultRequestParameters);
         this.modelName = builder.modelName;
     }
 
@@ -229,9 +232,11 @@ public final class GoogleAiGeminiBatchChatModel implements BatchChatModel {
 
         @Override
         public ChatRequest prepareRequest(ChatRequest request) {
+            ChatRequestParameters parameters = chatModel.defaultRequestParameters.overrideWith(request.parameters());
+            validateNoHttpParametersInBatch(parameters);
             return ChatRequest.builder()
                     .messages(request.messages())
-                    .parameters(chatModel.defaultRequestParameters.overrideWith(request.parameters()))
+                    .parameters(parameters)
                     .build();
         }
 

@@ -162,6 +162,17 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
 
 This works the same way on `GoogleGenAiStreamingChatModel`.
 
+### Per-request HTTP headers
+
+To send HTTP headers with a single request (for example a correlation ID), see
+[Per-request HTTP headers](/tutorials/chat-and-language-models#per-request-http-headers).
+The Google GenAI SDK handles a few headers its own way:
+- a per-request `user-agent` or `x-goog-api-client` value is added after the value already sent instead of replacing it;
+- the authentication header (`x-goog-api-key` or `Authorization`) is always set by the SDK, so a per-request one has no effect.
+
+If you pass your own SDK client with `client(...)`, use the same spelling for header names as that client does:
+when a per-request header and a client header differ only in letter case, which value is sent is not defined.
+
 ## Request & Response Logging
 
 You can enable request and response logging for debugging, troubleshooting, and audit purposes on `GoogleGenAiChatModel`, `GoogleGenAiStreamingChatModel`, `GoogleGenAiEmbeddingModel`, and `GoogleGenAiImageModel`.

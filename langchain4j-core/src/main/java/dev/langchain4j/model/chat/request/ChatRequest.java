@@ -1,16 +1,21 @@
 package dev.langchain4j.model.chat.request;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static java.util.Arrays.asList;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
+import dev.langchain4j.model.HttpParameters;
 
 public class ChatRequest {
 
@@ -30,7 +35,8 @@ public class ChatRequest {
                 || !isNullOrEmpty(builder.stopSequences)
                 || !isNullOrEmpty(builder.toolSpecifications)
                 || builder.toolChoice != null
-                || builder.responseFormat != null;
+                || builder.responseFormat != null
+                || !isNullOrEmpty(builder.customHeaders);
 
         if (!individualParametersAreSpecified) {
             this.parameters = builder.parameters != null ? builder.parameters : DefaultChatRequestParameters.EMPTY;
@@ -49,6 +55,12 @@ public class ChatRequest {
                 .toolSpecifications(builder.toolSpecifications)
                 .toolChoice(builder.toolChoice)
                 .responseFormat(builder.responseFormat)
+                .httpParameters(
+                        isNullOrEmpty(builder.customHeaders)
+                                ? null
+                                : HttpParameters.builder()
+                                        .customHeaders(builder.customHeaders)
+                                        .build())
                 .build();
 
         this.parameters = builder.parameters != null ? builder.parameters.overrideWith(overrides) : overrides;
@@ -104,6 +116,19 @@ public class ChatRequest {
 
     public ResponseFormat responseFormat() {
         return parameters.responseFormat();
+    }
+
+    /**
+     * Returns the custom HTTP headers to send with this request only, as an unmodifiable map;
+     * empty if there are none. A shortcut for {@link HttpParameters#customHeaders()}
+     * in {@link ChatRequestParameters#httpParameters()}.
+     *
+     * @see HttpParameters
+     * @since 1.24.0
+     */
+    @Experimental
+    public Map<String, String> customHeaders() {
+        return customHeadersOf(parameters);
     }
 
     @Override
@@ -180,6 +205,7 @@ public class ChatRequest {
         private List<ToolSpecification> toolSpecifications;
         private ToolChoice toolChoice;
         private ResponseFormat responseFormat;
+        private @Nullable Map<String, String> customHeaders;
 
         public Builder() {}
 
@@ -266,6 +292,23 @@ public class ChatRequest {
 
         public Builder responseFormat(ResponseFormat responseFormat) {
             this.responseFormat = responseFormat;
+            return this;
+        }
+
+        /**
+         * Sets custom HTTP headers to send with this request only,
+         * for example a correlation ID, a tracing header or a tenant ID.
+         * A shortcut for {@link HttpParameters#customHeaders()} in {@link ChatRequestParameters#httpParameters()}.
+         * When {@link #parameters(ChatRequestParameters)} already contain custom headers, the ones set here are added
+         * to them; a header with the same name (ignoring case) is replaced.
+         *
+         * @param customHeaders the headers; {@code null} or empty means that no headers are added
+         * @see HttpParameters
+         * @since 1.24.0
+         */
+        @Experimental
+        public Builder customHeaders(@Nullable Map<String, String> customHeaders) {
+            this.customHeaders = customHeaders;
             return this;
         }
 

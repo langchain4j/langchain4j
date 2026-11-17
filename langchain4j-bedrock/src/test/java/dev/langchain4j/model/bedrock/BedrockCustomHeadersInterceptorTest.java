@@ -16,6 +16,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.http.SdkHttpFullRequest;
 import software.amazon.awssdk.http.SdkHttpMethod;
 import software.amazon.awssdk.http.SdkHttpRequest;
+import software.amazon.awssdk.services.bedrockruntime.model.ConverseRequest;
 
 class BedrockCustomHeadersInterceptorTest {
 
@@ -27,14 +28,15 @@ class BedrockCustomHeadersInterceptorTest {
     private static final ExecutionAttributes EMPTY_ATTRS = new ExecutionAttributes();
 
     private SdkHttpRequest invoke(BedrockCustomHeadersInterceptor interceptor, SdkHttpFullRequest request) {
-        return interceptor.modifyHttpRequest(contextFor(request), EMPTY_ATTRS);
+        return interceptor.modifyHttpRequest(
+                contextFor(ConverseRequest.builder().build(), request), EMPTY_ATTRS);
     }
 
-    private Context.ModifyHttpRequest contextFor(SdkHttpFullRequest req) {
+    private Context.ModifyHttpRequest contextFor(SdkRequest sdkRequest, SdkHttpFullRequest req) {
         return new Context.ModifyHttpRequest() {
             @Override
             public SdkRequest request() {
-                throw new UnsupportedOperationException();
+                return sdkRequest;
             }
 
             @Override
@@ -108,4 +110,19 @@ class BedrockCustomHeadersInterceptorTest {
         assertThat(result.headers().get("X-Header-A")).containsExactly("value-a");
         assertThat(result.headers().get("X-Header-B")).containsExactly("value-b");
     }
+
+    @Test
+    void should_not_add_custom_headers_that_are_overridden_per_request_ignoring_case() {
+        BedrockCustomHeadersInterceptor interceptor =
+                new BedrockCustomHeadersInterceptor(() -> Map.of("X-Shared", "model", "X-Model-Header", "model"));
+        ConverseRequest perRequest = ConverseRequest.builder()
+                .overrideConfiguration(config -> config.putHeader("x-shared", "request"))
+                .build();
+
+        SdkHttpRequest result = interceptor.modifyHttpRequest(contextFor(perRequest, BASE_REQUEST), EMPTY_ATTRS);
+
+        assertThat(result.headers()).doesNotContainKey("X-Shared");
+        assertThat(result.headers().get("X-Model-Header")).containsExactly("model");
+    }
 }
+

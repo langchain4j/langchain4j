@@ -188,6 +188,7 @@ public class OllamaChatRequestParameters extends DefaultChatRequestParameters {
                 + ", toolSpecifications=" + toolSpecifications()
                 + ", toolChoice=" + toolChoice()
                 + ", responseFormat=" + responseFormat()
+                + ", httpParameters=" + httpParameters()
                 + ", mirostat=" + mirostat
                 + ", mirostatEta=" + mirostatEta
                 + ", mirostatTau=" + mirostatTau

@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,9 +32,21 @@ class AwsLoggingInterceptor implements ExecutionInterceptor {
     private static final Logger DEFAULT_LOGGER = LoggerFactory.getLogger(AwsLoggingInterceptor.class);
 
     /**
-     * Authentication headers whose values must never be written to logs. Compared case-insensitively.
+     * A header whose name contains any of these (ignoring case) is assumed to carry a credential, so its value is
+     * never written to logs. The same keywords as the request logging of {@code langchain4j-http-client}, which this
+     * module does not depend on. Matching deliberately errs towards masking too much.
      */
-    private static final Set<String> SENSITIVE_HEADERS = Set.of("authorization", "x-amz-security-token");
+    private static final List<String> SECRET_HEADER_NAME_KEYWORDS = List.of(
+            "auth",
+            "api-key",
+            "api_key",
+            "apikey",
+            "subscription-key",
+            "token",
+            "secret",
+            "password",
+            "credential",
+            "cookie");
 
     private final boolean logRequests;
     private final boolean logResponses;
@@ -116,13 +127,18 @@ class AwsLoggingInterceptor implements ExecutionInterceptor {
      * credentials such as SigV4 signatures and temporary session tokens are not written to logs.
      * Header-name matching is case-insensitive; all other headers are rendered unchanged.
      */
+    private static boolean isSecretHeader(String headerName) {
+        String lowerCaseHeaderName = headerName.toLowerCase(Locale.ROOT);
+        return SECRET_HEADER_NAME_KEYWORDS.stream().anyMatch(lowerCaseHeaderName::contains);
+    }
+
     static String maskHeaders(Map<String, List<String>> headers) {
         if (headers == null || headers.isEmpty()) {
             return "{}";
         }
         return headers.entrySet().stream()
                 .map(entry -> {
-                    if (SENSITIVE_HEADERS.contains(entry.getKey().toLowerCase(Locale.ROOT))) {
+                    if (isSecretHeader(entry.getKey())) {
                         return entry.getKey() + "=[REDACTED]";
                     }
                     return entry.getKey() + "=" + entry.getValue();

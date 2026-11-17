@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
@@ -68,6 +69,7 @@ public class GoogleGenAiChatModel implements ChatModel {
     private final List<String> responseModalities;
     private final Boolean automaticContinuation;
     private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
+    private final Map<String, String> clientHeaders;
 
     private GoogleGenAiChatModel(Builder builder) {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -95,6 +97,8 @@ public class GoogleGenAiChatModel implements ChatModel {
         this.automaticContinuation = builder.automaticContinuation;
         this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
+        this.clientHeaders =
+                builder.client != null ? Map.of() : GoogleGenAiHttpHeaders.clientHeaders(builder.customHeaders);
         this.client = builder.client != null
                 ? builder.client
                 : GoogleGenAiClientFactory.createClient(
@@ -126,6 +130,7 @@ public class GoogleGenAiChatModel implements ChatModel {
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .httpParameters(commonParameters.httpParameters())
                 .cachedContent(getOrDefault(builder.cachedContent, genAiParameters.cachedContent()))
                 .labels(getOrDefault(this.labels, genAiParameters.labels()))
                 .automaticContinuation(
@@ -198,7 +203,7 @@ public class GoogleGenAiChatModel implements ChatModel {
                     config);
         }
 
-        return config;
+        return GoogleGenAiHttpHeaders.withPerRequestHeaders(config, customHeadersOf(parameters), clientHeaders);
     }
 
     private ChatResponse toChatResponseAndLogResponse(GenerateContentResponse response, String modelName) {
@@ -288,6 +293,10 @@ public class GoogleGenAiChatModel implements ChatModel {
          * Use this when you need full control over client configuration.
          * When set, {@link #apiKey(String)}, {@link #googleCredentials(GoogleCredentials)},
          * {@link #projectId(String)}, {@link #location(String)}, and {@link #timeout(Duration)} are ignored.
+         * <p>
+         * Per-request custom HTTP headers ({@code ChatRequestParameters.httpParameters()}) are still sent.
+         * The headers of this client are not known to the model, so when a per-request header has the same name as a
+         * header of the client but different letter case, which value is sent is not defined: use the same spelling.
          *
          * @param client the pre-configured client
          * @return {@code this}

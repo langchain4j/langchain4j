@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.internal.ChatRequestValidationUtils.validateNoHttpParametersInBatch;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -174,6 +175,7 @@ public final class OpenAiOfficialBatchChatModel extends OpenAiOfficialBaseChatMo
                 null,
                 null,
                 false);
+        validateNoHttpParametersInBatch(defaultRequestParameters);
         // init() detects the provider from the configured base URL only, while the batch request shape has
         // to follow the endpoint the client was actually built against, which may come from the environment.
         this.modelProvider = detectedProvider;
@@ -215,6 +217,7 @@ public final class OpenAiOfficialBatchChatModel extends OpenAiOfficialBaseChatMo
             OpenAiOfficialChatRequestParameters parameters =
                     defaultRequestParameters.overrideWith(chatRequest.parameters());
             InternalOpenAiOfficialHelper.validate(parameters);
+            validateNoHttpParametersInBatch(parameters);
 
             String effectiveModelName = resolveModelName(parameters);
             modelNames.add(effectiveModelName);

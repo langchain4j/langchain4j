@@ -11,6 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
@@ -1168,4 +1170,43 @@ public class WatsonxStreamingChatModelTest {
             action.run();
         }
     }
+
+    @Test
+    void should_report_per_request_custom_headers_through_on_error() throws Exception {
+
+        withChatServiceMock(() -> {
+            var streamingChatModel = WatsonxStreamingChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("projectId")
+                    .apiKey("api-key")
+                    .build();
+
+            var chatRequest = ChatRequest.builder()
+                    .messages(UserMessage.from("Hello"))
+                    .customHeaders(Map.of("X-Correlation-Id", "123"))
+                    .build();
+
+            var error = new CompletableFuture<Throwable>();
+
+            streamingChatModel.chat(chatRequest, new StreamingChatResponseHandler() {
+
+                @Override
+                public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
+                    error.complete(null);
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    error.complete(throwable);
+                }
+            });
+
+            Throwable throwable = error.getNow(null);
+            assertInstanceOf(UnsupportedFeatureException.class, throwable);
+            assertTrue(throwable.getMessage().contains("httpParameters"));
+            verify(mockChatService, never()).chatStreaming(any(com.ibm.watsonx.ai.chat.ChatRequest.class), any(ChatHandler.class));
+        });
+    }
 }
+

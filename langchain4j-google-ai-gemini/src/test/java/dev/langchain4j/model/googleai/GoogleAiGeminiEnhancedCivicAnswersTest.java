@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -37,11 +38,11 @@ class GoogleAiGeminiEnhancedCivicAnswersTest {
 
         var chatRequest =
                 ChatRequest.builder().messages(UserMessage.from("Hello")).build();
-        when(mockGeminiService.generateContent(any(), any())).thenReturn(createSimpleResponse("Hi"));
+        when(mockGeminiService.generateContent(any(), any(), anyMap())).thenReturn(createSimpleResponse("Hi"));
 
         model.chat(chatRequest);
 
-        verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+        verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
         assertThat(requestCaptor.getValue().generationConfig().enableEnhancedCivicAnswers())
                 .isTrue();
     }
@@ -56,11 +57,11 @@ class GoogleAiGeminiEnhancedCivicAnswersTest {
 
         var chatRequest =
                 ChatRequest.builder().messages(UserMessage.from("Hello")).build();
-        when(mockGeminiService.generateContent(any(), any())).thenReturn(createSimpleResponse("Hi"));
+        when(mockGeminiService.generateContent(any(), any(), anyMap())).thenReturn(createSimpleResponse("Hi"));
 
         model.chat(chatRequest);
 
-        verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+        verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
         assertThat(requestCaptor.getValue().generationConfig().enableEnhancedCivicAnswers())
                 .isFalse();
     }
@@ -74,11 +75,11 @@ class GoogleAiGeminiEnhancedCivicAnswersTest {
 
         var chatRequest =
                 ChatRequest.builder().messages(UserMessage.from("Hello")).build();
-        when(mockGeminiService.generateContent(any(), any())).thenReturn(createSimpleResponse("Hi"));
+        when(mockGeminiService.generateContent(any(), any(), anyMap())).thenReturn(createSimpleResponse("Hi"));
 
         model.chat(chatRequest);
 
-        verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture());
+        verify(mockGeminiService).generateContent(eq(TEST_MODEL_NAME), requestCaptor.capture(), anyMap());
         assertThat(requestCaptor.getValue().generationConfig().enableEnhancedCivicAnswers())
                 .isNull();
     }

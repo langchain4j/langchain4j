@@ -57,7 +57,15 @@ public final class AsyncNotSupported {
      *         {@link AsyncNotSupportedException} carrying the given message.
      */
     public static <T> Flow.Publisher<T> failingPublisher(String message) {
-        AsyncNotSupportedException error = new AsyncNotSupportedException(message);
+        return failingPublisher(new AsyncNotSupportedException(message));
+    }
+
+    /**
+     * @return a cold {@link Flow.Publisher} that signals {@code onSubscribe} and then {@code onError(error)}
+     *         to every subscriber, for publisher-returning SPI defaults that must not throw.
+     * @since 1.24.0
+     */
+    public static <T> Flow.Publisher<T> failingPublisher(Throwable error) {
         return subscriber -> {
             subscriber.onSubscribe(new Flow.Subscription() {
                 @Override

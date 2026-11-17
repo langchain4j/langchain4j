@@ -1,15 +1,19 @@
 package dev.langchain4j.model.chat.request;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.mergeHttpParameters;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
 import static java.util.Arrays.asList;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import java.util.List;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
+import dev.langchain4j.model.HttpParameters;
 
 public class DefaultChatRequestParameters implements ChatRequestParameters {
 
@@ -27,6 +31,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
     private final List<ToolSpecification> toolSpecifications;
     private final ToolChoice toolChoice;
     private final ResponseFormat responseFormat;
+    private final @Nullable HttpParameters httpParameters;
 
     protected DefaultChatRequestParameters(Builder<?> builder) {
         this.modelName = builder.modelName;
@@ -40,6 +45,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         this.toolSpecifications = copy(builder.toolSpecifications);
         this.toolChoice = builder.toolChoice;
         this.responseFormat = builder.responseFormat;
+        this.httpParameters = builder.httpParameters;
     }
 
     @Override
@@ -98,6 +104,12 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
     }
 
     @Override
+    @Experimental
+    public @Nullable HttpParameters httpParameters() {
+        return httpParameters;
+    }
+
+    @Override
     public ChatRequestParameters overrideWith(ChatRequestParameters that) {
         if (isSubtypeOfThis(that)) {
             return that.defaultedBy(this);
@@ -147,7 +159,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                 && Objects.equals(stopSequences, that.stopSequences)
                 && Objects.equals(toolSpecifications, that.toolSpecifications)
                 && Objects.equals(toolChoice, that.toolChoice)
-                && Objects.equals(responseFormat, that.responseFormat);
+                && Objects.equals(responseFormat, that.responseFormat)
+                && Objects.equals(httpParameters, that.httpParameters);
     }
 
     @Override
@@ -164,7 +177,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                 stopSequences,
                 toolSpecifications,
                 toolChoice,
-                responseFormat);
+                responseFormat,
+                httpParameters);
     }
 
     @Override
@@ -181,7 +195,8 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                 + stopSequences + ", toolSpecifications="
                 + toolSpecifications + ", toolChoice="
                 + toolChoice + ", responseFormat="
-                + responseFormat + '}';
+                + responseFormat + ", httpParameters="
+                + httpParameters + '}';
     }
 
     public static Builder<?> builder() {
@@ -201,6 +216,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
         private List<ToolSpecification> toolSpecifications;
         private ToolChoice toolChoice;
         private ResponseFormat responseFormat;
+        private @Nullable HttpParameters httpParameters;
 
         public T overrideWith(ChatRequestParameters parameters) {
             modelName(getOrDefault(parameters.modelName(), modelName));
@@ -214,6 +230,7 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
             toolSpecifications(getOrDefault(parameters.toolSpecifications(), toolSpecifications));
             toolChoice(getOrDefault(parameters.toolChoice(), toolChoice));
             responseFormat(getOrDefault(parameters.responseFormat(), responseFormat));
+            httpParameters(mergeHttpParameters(httpParameters, parameters.httpParameters()));
             return (T) this;
         }
 
@@ -306,6 +323,19 @@ public class DefaultChatRequestParameters implements ChatRequestParameters {
                         .build();
                 return responseFormat(responseFormat);
             }
+            return (T) this;
+        }
+
+        /**
+         * Sets the parts of the HTTP request (for example custom HTTP headers) to send with this request.
+         *
+         * @param httpParameters the HTTP parameters; {@code null} means none
+         * @see HttpParameters
+         * @since 1.24.0
+         */
+        @Experimental
+        public T httpParameters(@Nullable HttpParameters httpParameters) {
+            this.httpParameters = httpParameters;
             return (T) this;
         }
 

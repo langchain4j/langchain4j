@@ -1,5 +1,6 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -92,6 +93,7 @@ public class MistralAiChatModel implements ChatModel {
                 .toolSpecifications(commonParameters.toolSpecifications())
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(getOrDefault(builder.responseFormat, commonParameters.responseFormat()))
+                .httpParameters(commonParameters.httpParameters())
                 .safePrompt(getOrDefault(builder.safePrompt, mistralParameters.safePrompt()))
                 .randomSeed(getOrDefault(builder.randomSeed, mistralParameters.randomSeed()))
                 .sendThinking(getOrDefault(builder.sendThinking, mistralParameters.sendThinking()))
@@ -112,8 +114,13 @@ public class MistralAiChatModel implements ChatModel {
                 getOrDefault(parameters.sendThinking(), false),
                 strictJsonSchema);
 
+        boolean noCustomHeaders = customHeadersOf(parameters).isEmpty();
         ParsedAndRawResponse<MistralAiChatCompletionResponse> response =
-                withRetryMappingExceptions(() -> client.chatCompletionWithRawResponse(request), maxRetries);
+                withRetryMappingExceptions(
+                        () -> noCustomHeaders
+                                ? client.chatCompletionWithRawResponse(request)
+                                : client.chatCompletionWithRawResponse(request, parameters.httpParameters()),
+                        maxRetries);
 
         MistralAiChatCompletionResponse mistralAiResponse = response.parsedResponse();
 

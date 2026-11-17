@@ -1,5 +1,6 @@
 package dev.langchain4j.model.mistralai;
 
+import static dev.langchain4j.internal.ChatRequestValidationUtils.validateNoHttpParametersInBatch;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.mistralai.InternalMistralAIHelper.createMistralAiRequest;
@@ -105,6 +106,7 @@ public final class MistralAiBatchChatModel implements BatchChatModel {
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
             validate(builder.defaultRequestParameters);
+            validateNoHttpParametersInBatch(builder.defaultRequestParameters);
             commonParameters = builder.defaultRequestParameters;
         } else {
             commonParameters = DefaultChatRequestParameters.EMPTY;
@@ -202,6 +204,7 @@ public final class MistralAiBatchChatModel implements BatchChatModel {
 
     private MistralAiChatCompletionRequest toMistralAiRequest(ChatRequest chatRequest) {
         ChatRequestParameters merged = defaultRequestParameters.overrideWith(chatRequest.parameters());
+        validateNoHttpParametersInBatch(merged);
         ChatRequest effectiveRequest = ChatRequest.builder()
                 .messages(chatRequest.messages())
                 .parameters(merged)

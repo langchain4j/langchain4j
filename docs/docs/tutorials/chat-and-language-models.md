@@ -86,11 +86,114 @@ ChatRequest chatRequest = ChatRequest.builder()
     .toolSpecifications(...)
     .toolChoice(...)
     .responseFormat(...)
+    .customHeaders(...) // HTTP headers for this request only, see below
     .parameters(...) // you can also set common or provider-specific parameters all at once
     .build();
 
 ChatResponse chatResponse = chatModel.chat(chatRequest);
 ```
+
+### Per-request HTTP headers
+
+:::note
+Experimental. The API is annotated `@Experimental` and may change in future releases.
+:::
+
+Sometimes a single call needs extra HTTP headers, for example a correlation ID for tracing,
+or a tenant ID that a gateway in front of the LLM provider uses for routing or billing.
+You can set them on the `ChatRequest`:
+```java
+ChatRequest chatRequest = ChatRequest.builder()
+        .messages(UserMessage.from("Hello"))
+        .customHeaders(Map.of("X-Correlation-Id", correlationId))
+        .build();
+
+ChatResponse chatResponse = chatModel.chat(chatRequest);
+```
+
+These headers are sent with this request only, in addition to the headers that the model sends anyway.
+When a header with the same name (ignoring case) is set somewhere else too, for example with the
+`customHeaders(...)` option of the model builder, the value from the request wins.
+The exception is `User-Agent`: it holds a list of product tokens (for example `my-app/1.0`),
+so a per-request `User-Agent` is added after the one the model sends, separated by a space.
+A few integrations have more exceptions, listed below.
+Headers that are the same for every request are better set once, on the model builder.
+Header names must not be blank, values must not be `null`, and a name must not appear twice with different letter case.
+
+`customHeaders(...)` is a shortcut for `HttpParameters` in `ChatRequestParameters`,
+so you can also set them together with other parameters:
+```java
+ChatRequestParameters parameters = ChatRequestParameters.builder()
+        .temperature(0.3)
+        .httpParameters(HttpParameters.builder()
+                .customHeaders(Map.of("X-Correlation-Id", correlationId))
+                .build())
+        .build();
+
+ChatRequest chatRequest = ChatRequest.builder()
+        .messages(UserMessage.from("Hello"))
+        .parameters(parameters)
+        .build();
+```
+
+With [AI Services](/tutorials/ai-services), pass them in a
+[`ChatRequestParameters` method argument](/tutorials/ai-services#chatrequestparameters).
+They are then sent with every request of that call, including the requests after tool calls:
+```java
+interface Assistant {
+
+    String chat(@UserMessage String userMessage, ChatRequestParameters parameters);
+}
+
+String answer = assistant.chat("Hello", ChatRequestParameters.builder()
+        .httpParameters(HttpParameters.builder()
+                .customHeaders(Map.of("X-Correlation-Id", correlationId))
+                .build())
+        .build());
+```
+
+You can also add headers with a `chatRequestTransformer`:
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(chatModel)
+        .chatRequestTransformer(chatRequest -> chatRequest.toBuilder()
+                .customHeaders(Map.of("X-Client-Version", clientVersion))
+                .build())
+        .build();
+```
+The transformer runs before every request that the AI Service sends to its chat model,
+including the requests after tool calls. With streaming and asynchronous AI Services,
+it can run on another thread than the one that called the AI Service,
+so do not read values from thread-bound state (for example MDC) inside it:
+use a `ChatRequestParameters` method argument for values that change from call to call.
+Model calls made by other components with their own model (for example a query transformer in RAG)
+do not go through the transformer.
+
+These model integrations send per-request headers with their chat models, including the streaming ones:
+[OpenAI](/integrations/language-models/open-ai),
+[OpenAI Official SDK](/integrations/language-models/open-ai-official),
+[Azure OpenAI](/integrations/language-models/azure-open-ai),
+[Anthropic](/integrations/language-models/anthropic),
+[Google AI Gemini](/integrations/language-models/google-ai-gemini),
+[Google GenAI](/integrations/language-models/google-genai),
+[Mistral AI](/integrations/language-models/mistral-ai),
+[Ollama](/integrations/language-models/ollama) and
+[Amazon Bedrock](/integrations/language-models/amazon-bedrock).
+The other model integrations in the main LangChain4j repository fail the call with an `UnsupportedFeatureException`.
+So do batch chat models, as a batch is sent in one HTTP call.
+
+Exceptions in some integrations:
+- Google AI Gemini and Google GenAI also add a per-request `x-goog-api-client` after the value already sent.
+- Google GenAI always sets the authentication header itself, so a per-request one has no effect.
+- Amazon Bedrock always signs the request itself, so a per-request `Authorization` header has no effect.
+
+:::note
+Some `ChatModel` implementations may not know about per-request headers yet and ignore them:
+the community integrations, model classes of a framework integration (for example Quarkus),
+and implementations from other projects. Check their documentation.
+Keep this in mind before you rely on a per-request header for authentication:
+if it is ignored, the request is sent with the credentials configured on the model.
+:::
 
 ### Types of `ChatMessage`
 There are currently five types of chat messages, one for each "source" of the message:

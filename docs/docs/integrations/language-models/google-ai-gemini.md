@@ -168,6 +168,10 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
 // effective parameters: modelName=gemini-2.5-flash, temperature=0.0
 ```
 
+To send HTTP headers with a single request (for example a correlation ID), see
+[Per-request HTTP headers](/tutorials/chat-and-language-models#per-request-http-headers).
+A per-request `User-Agent` or `x-goog-api-client` is added after the value already sent, separated by a space.
+
 ## GoogleAiGeminiStreamingChatModel
 The `GoogleAiGeminiStreamingChatModel` allows streaming the text of a response token by token.
 The response must be handled by a `StreamingChatResponseHandler`.

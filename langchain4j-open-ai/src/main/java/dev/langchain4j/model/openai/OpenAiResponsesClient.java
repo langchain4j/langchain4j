@@ -1,5 +1,7 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.CustomHeadersUtils.perRequestHeaders;
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.http.client.sse.ServerSentEventParsingHandleUtils.toStreamingHandle;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.*;
@@ -222,7 +224,7 @@ class OpenAiResponsesClient {
     ChatResponse chat(ChatRequest chatRequest, OpenAiResponsesChatRequestParameters parameters) {
         try {
             Map<String, Object> payload = buildRequestPayload(chatRequest, parameters, false);
-            HttpRequest request = buildHttpRequest(payload, false);
+            HttpRequest request = buildHttpRequest(payload, parameters, false);
             SuccessfulHttpResponse rawHttpResponse = httpClient.execute(request);
             return parseChatResponse(rawHttpResponse);
         } catch (Exception e) {
@@ -241,7 +243,7 @@ class OpenAiResponsesClient {
         CompletableFuture<SuccessfulHttpResponse> httpFuture;
         try {
             Map<String, Object> payload = buildRequestPayload(chatRequest, parameters, false);
-            httpFuture = httpClient.executeAsync(buildHttpRequest(payload, false));
+            httpFuture = httpClient.executeAsync(buildHttpRequest(payload, parameters, false));
         } catch (Exception e) {
             return CompletableFuture.failedFuture(ExceptionMapper.DEFAULT.mapException(e));
         }
@@ -263,7 +265,7 @@ class OpenAiResponsesClient {
             StreamingChatResponseHandler handler) {
         try {
             Map<String, Object> payload = buildRequestPayload(chatRequest, parameters, true);
-            HttpRequest request = buildHttpRequest(payload, true);
+            HttpRequest request = buildHttpRequest(payload, parameters, true);
 
             httpClient.execute(request, new DefaultServerSentEventParser(), new ResponsesApiEventListener(handler));
 
@@ -280,7 +282,7 @@ class OpenAiResponsesClient {
                 () -> {
                     try {
                         Map<String, Object> payload = buildRequestPayload(chatRequest, parameters, true);
-                        return httpClient.stream(buildHttpRequest(payload, true));
+                        return httpClient.stream(buildHttpRequest(payload, parameters, true));
                     } catch (Exception e) {
                         throw ExceptionMapper.DEFAULT.mapException(e);
                     }
@@ -487,7 +489,9 @@ class OpenAiResponsesClient {
         return payload;
     }
 
-    private HttpRequest buildHttpRequest(Map<String, Object> payload, boolean stream) throws Exception {
+    private HttpRequest buildHttpRequest(
+            Map<String, Object> payload, OpenAiResponsesChatRequestParameters parameters, boolean stream)
+            throws Exception {
         String requestBody = CODEC.toJson(payload);
 
         HttpRequest.Builder requestBuilder = HttpRequest.builder()
@@ -504,7 +508,9 @@ class OpenAiResponsesClient {
             requestBuilder.addHeader(OPENAI_ORGANIZATION_HEADER, organizationId);
         }
 
-        requestBuilder.addHeaders(customHeadersSupplier.get());
+        Map<String, String> builderHeaders = getOrDefault(customHeadersSupplier.get(), Map.of());
+        requestBuilder.addHeaders(builderHeaders);
+        requestBuilder.addHeaders(perRequestHeaders(builderHeaders, customHeadersOf(parameters)));
 
         return requestBuilder.body(requestBody).build();
     }

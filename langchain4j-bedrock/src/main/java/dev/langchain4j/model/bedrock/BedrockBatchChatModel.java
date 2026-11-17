@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.ChatRequestValidationUtils.validateNoHttpParametersInBatch;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
@@ -333,6 +334,7 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
 
     private void validateSupported(ChatRequestParameters parameters) {
         validate(parameters);
+        validateNoHttpParametersInBatch(parameters);
         if (!isNullOrEmpty(parameters.toolSpecifications())) {
             throw new UnsupportedFeatureException("Tool calling is not supported by Bedrock batch inference");
         }

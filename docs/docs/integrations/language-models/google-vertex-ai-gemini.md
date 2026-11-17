@@ -210,6 +210,10 @@ ChatModel model = VertexAiGeminiChatModel.builder()
 
 The same parameters are also available on the streaming chat model.
 
+Per-request HTTP headers ([Per-request HTTP headers](/tutorials/chat-and-language-models#per-request-http-headers)) are not supported by this integration:
+set headers that are the same for every request with `customHeaders(...)` on the model builder,
+or use the [Google GenAI](/integrations/language-models/google-genai) integration, which also works with Vertex AI.
+
 ## More examples
 
 Gemini is a `multimodal` model which accepts text, but also images, audio and video files, as well as PDFs in input.

@@ -95,7 +95,8 @@ public class GoogleGenAiChatRequestParameters extends DefaultChatRequestParamete
                 + stopSequences() + ", toolSpecifications="
                 + toolSpecifications() + ", toolChoice="
                 + toolChoice() + ", responseFormat="
-                + responseFormat() + ", cachedContent="
+                + responseFormat() + ", httpParameters="
+                + httpParameters() + ", cachedContent="
                 + quoted(cachedContent) + ", labels="
                 + labels + ", automaticContinuation="
                 + automaticContinuation + '}';

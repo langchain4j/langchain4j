@@ -1,5 +1,6 @@
 package dev.langchain4j.model.anthropic;
 
+import static dev.langchain4j.internal.ChatRequestValidationUtils.validateNoHttpParametersInBatch;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -99,6 +100,7 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
             validate(builder.defaultRequestParameters);
+            validateNoHttpParametersInBatch(builder.defaultRequestParameters);
             commonParameters = builder.defaultRequestParameters;
         } else {
             commonParameters = DefaultChatRequestParameters.EMPTY;
@@ -214,6 +216,7 @@ public final class AnthropicBatchChatModel implements BatchChatModel {
     private AnthropicCreateMessageRequest toAnthropicRequest(ChatRequest chatRequest) {
         AnthropicChatRequestParameters parameters = defaultRequestParameters.overrideWith(chatRequest.parameters());
         ensureNotBlank(parameters.modelName(), "modelName");
+        validateNoHttpParametersInBatch(parameters);
         ChatRequest effectiveRequest = ChatRequest.builder()
                 .messages(chatRequest.messages())
                 .parameters(parameters)

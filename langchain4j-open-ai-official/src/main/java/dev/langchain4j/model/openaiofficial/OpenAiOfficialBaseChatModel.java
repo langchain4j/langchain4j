@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.userAgentHeaderOf;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.openaiofficial.InternalOpenAiOfficialHelper.fromOpenAiResponseFormat;
@@ -29,6 +30,7 @@ abstract class OpenAiOfficialBaseChatModel {
 
     protected OpenAIClient client;
     protected OpenAIClientAsync asyncClient;
+    protected Map<String, String> clientUserAgentHeader = Map.of();
     protected String modelName;
     protected OpenAiOfficialChatRequestParameters defaultRequestParameters;
     protected String responseFormat;
@@ -111,6 +113,8 @@ abstract class OpenAiOfficialBaseChatModel {
             }
         }
 
+        this.clientUserAgentHeader = isAsync ? userAgentHeaderOf(asyncClient) : userAgentHeaderOf(client);
+
         ChatRequestParameters commonParameters;
         if (defaultRequestParameters != null) {
             validate(defaultRequestParameters);
@@ -139,6 +143,7 @@ abstract class OpenAiOfficialBaseChatModel {
                 .toolChoice(commonParameters.toolChoice())
                 .responseFormat(
                         getOrDefault(fromOpenAiResponseFormat(responseFormat), commonParameters.responseFormat()))
+                .httpParameters(commonParameters.httpParameters())
                 // OpenAI-specific parameters
                 .maxCompletionTokens(getOrDefault(maxCompletionTokens, openAiParameters.maxCompletionTokens()))
                 .logitBias(getOrDefault(logitBias, openAiParameters.logitBias()))

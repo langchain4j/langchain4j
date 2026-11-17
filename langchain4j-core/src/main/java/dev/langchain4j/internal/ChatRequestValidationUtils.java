@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Locale;
 
 import static dev.langchain4j.data.message.ContentType.TEXT;
+import static dev.langchain4j.internal.CustomHeadersUtils.customHeadersOf;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.chat.request.ToolChoice.AUTO;
 
@@ -61,6 +62,31 @@ public class ChatRequestValidationUtils {
         }
         if (!parameters.stopSequences().isEmpty()) {
             throw new UnsupportedFeatureException(String.format(errorTemplate, "'stopSequences' parameter"));
+        }
+        validateNoHttpParameters(parameters);
+    }
+
+    /**
+     * Fails if {@link ChatRequestParameters#httpParameters()} contain something to send
+     * (for example custom HTTP headers). For model integrations that cannot send them.
+     */
+    public static void validateNoHttpParameters(ChatRequestParameters parameters) {
+        if (!customHeadersOf(parameters).isEmpty()) {
+            throw new UnsupportedFeatureException("'httpParameters' (per-request custom HTTP headers) are not supported"
+                    + " by this model integration. Headers that are the same for every request can be set with"
+                    + " customHeaders(...) on the model builder, if it has that option.");
+        }
+    }
+
+    /**
+     * Fails if {@link ChatRequestParameters#httpParameters()} contain something to send.
+     * For batch chat models, which send many requests in one HTTP call.
+     */
+    public static void validateNoHttpParametersInBatch(ChatRequestParameters parameters) {
+        if (!customHeadersOf(parameters).isEmpty()) {
+            throw new UnsupportedFeatureException("'httpParameters' (per-request custom HTTP headers) are not supported"
+                    + " by batch chat models, as a batch is sent in one HTTP call. Headers can be set with"
+                    + " customHeaders(...) on the batch model builder, if it has that option.");
         }
     }
 

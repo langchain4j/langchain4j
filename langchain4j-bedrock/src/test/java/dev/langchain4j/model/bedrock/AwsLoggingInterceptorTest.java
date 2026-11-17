@@ -79,4 +79,25 @@ class AwsLoggingInterceptorTest {
     void should_handle_null_map() {
         assertThat(AwsLoggingInterceptor.maskHeaders(null)).isEqualTo("{}");
     }
+
+    @Test
+    void should_mask_custom_headers_that_look_like_credentials() {
+        Map<String, List<String>> headers = new LinkedHashMap<>();
+        headers.put("X-Api-Key", List.of("gateway-key"));
+        headers.put("X-Tenant-Token", List.of("tenant-token"));
+        headers.put("Proxy-Authorization", List.of("Basic dXNlcjpwYXNz"));
+        headers.put("X-Correlation-Id", List.of("123"));
+
+        String result = AwsLoggingInterceptor.maskHeaders(headers);
+
+        assertThat(result)
+                .contains("X-Api-Key=[REDACTED]")
+                .contains("X-Tenant-Token=[REDACTED]")
+                .contains("Proxy-Authorization=[REDACTED]")
+                .contains("X-Correlation-Id=[123]")
+                .doesNotContain("gateway-key")
+                .doesNotContain("tenant-token")
+                .doesNotContain("dXNlcjpwYXNz");
+    }
 }
+

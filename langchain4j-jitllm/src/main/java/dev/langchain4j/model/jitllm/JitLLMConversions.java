@@ -74,6 +74,7 @@ final class JitLLMConversions {
         }
         ChatRequestValidationUtils.validate(parameters.toolChoice());
         ChatRequestValidationUtils.validate(parameters.responseFormat());
+        ChatRequestValidationUtils.validateNoHttpParameters(parameters);
     }
 
     static GenerationRequest toGenerationRequest(
