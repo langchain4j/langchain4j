@@ -18,9 +18,11 @@ import dev.langchain4j.observability.api.listener.ToolOutputGuardrailExecutedLis
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 
 class ToolGuardrailExecutorTest {
@@ -156,6 +158,59 @@ class ToolGuardrailExecutorTest {
     }
 
     @Test
+    void input_failure_after_a_rewrite_keeps_the_rewritten_arguments() {
+        ToolInputGuardrail rewrite = r -> ToolInputGuardrailResult.successWith("{\"q\":\"b\"}");
+        ToolInputGuardrail reject =
+                r -> new ToolInputGuardrailResult(new ToolInputGuardrailResult.Failure("no"), false);
+
+        var result = input(rewrite, reject).execute(inputRequest());
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.failureMessage()).isEqualTo("no");
+        assertThat(result.rewrittenArguments()).contains("{\"q\":\"b\"}");
+    }
+
+    @Test
+    void input_failure_before_a_rewrite_keeps_the_rewritten_arguments_and_the_latest_rewrite_wins() {
+        ToolInputGuardrail reject =
+                r -> new ToolInputGuardrailResult(new ToolInputGuardrailResult.Failure("no"), false);
+        ToolInputGuardrail first = r -> ToolInputGuardrailResult.successWith("{\"q\":\"b\"}");
+        ToolInputGuardrail second = r -> ToolInputGuardrailResult.successWith("{\"q\":\"c\"}");
+        ToolInputGuardrail rejectAgain =
+                r -> new ToolInputGuardrailResult(new ToolInputGuardrailResult.Failure("again"), false);
+
+        var result = input(reject, first, second, rejectAgain).execute(inputRequest());
+
+        assertThat(result.failureMessage()).isEqualTo("no\nagain");
+        assertThat(result.rewrittenArguments()).contains("{\"q\":\"c\"}");
+    }
+
+    @Test
+    void input_failure_without_a_rewrite_has_no_rewritten_arguments() {
+        ToolInputGuardrail reject =
+                r -> new ToolInputGuardrailResult(new ToolInputGuardrailResult.Failure("no"), false);
+
+        var result = input(reject).execute(inputRequest());
+
+        assertThat(result.rewrittenArguments()).isEmpty();
+        assertThat(result.successfulText()).isNull();
+    }
+
+    @Test
+    void input_async_failure_after_a_rewrite_keeps_the_rewritten_arguments() throws Exception {
+        ToolInputGuardrail rewrite = r -> ToolInputGuardrailResult.successWith("{\"q\":\"b\"}");
+        ToolInputGuardrail reject =
+                r -> new ToolInputGuardrailResult(new ToolInputGuardrailResult.Failure("no"), false);
+
+        var result = input(async(rewrite), async(reject))
+                .executeAsync(inputRequest())
+                .get();
+
+        assertThat(result.isSuccess()).isFalse();
+        assertThat(result.rewrittenArguments()).contains("{\"q\":\"b\"}");
+    }
+
+    @Test
     void input_non_fatal_failures_are_aggregated_without_throwing_and_chain_continues() {
         var calls = new AtomicInteger();
         ToolInputGuardrail f1 = r -> {
@@ -194,6 +249,67 @@ class ToolGuardrailExecutorTest {
                 .isExactlyInstanceOf(ToolInputGuardrailException.class)
                 .hasCauseInstanceOf(IllegalStateException.class);
         assertThat(calls).hasValue(0);
+    }
+
+    @Test
+    void input_fatal_exception_carries_the_arguments_rewritten_before_it() {
+        ToolInputGuardrail rewrite = r -> ToolInputGuardrailResult.successWith("{\"q\":\"b\"}");
+        ToolInputGuardrail fatal =
+                r -> new ToolInputGuardrailResult(new ToolInputGuardrailResult.Failure("stop"), true);
+
+        assertThatThrownBy(() -> input(rewrite, fatal).execute(inputRequest()))
+                .asInstanceOf(InstanceOfAssertFactories.type(ToolInputGuardrailException.class))
+                .extracting(ToolInputGuardrailException::arguments)
+                .isEqualTo(Optional.of("{\"q\":\"b\"}"));
+    }
+
+    @Test
+    void input_fatal_exception_carries_the_received_arguments_without_a_rewrite() {
+        ToolInputGuardrail fatal =
+                r -> new ToolInputGuardrailResult(new ToolInputGuardrailResult.Failure("stop"), true);
+
+        assertThatThrownBy(() -> input(fatal).execute(inputRequest()))
+                .asInstanceOf(InstanceOfAssertFactories.type(ToolInputGuardrailException.class))
+                .extracting(ToolInputGuardrailException::arguments)
+                .isEqualTo(Optional.of(EXEC.arguments()));
+    }
+
+    @Test
+    void input_throwing_guardrail_exception_carries_the_arguments_rewritten_before_it() {
+        ToolInputGuardrail rewrite = r -> ToolInputGuardrailResult.successWith("{\"q\":\"b\"}");
+        ToolInputGuardrail boom = r -> {
+            throw new IllegalArgumentException("boom");
+        };
+
+        assertThatThrownBy(() -> input(rewrite, boom).execute(inputRequest()))
+                .asInstanceOf(InstanceOfAssertFactories.type(ToolInputGuardrailException.class))
+                .returns("boom", ToolInputGuardrailException::getMessage)
+                .extracting(ToolInputGuardrailException::arguments)
+                .isEqualTo(Optional.of("{\"q\":\"b\"}"));
+    }
+
+    @Test
+    void input_async_fatal_and_throwing_exceptions_carry_the_arguments_rewritten_before_them() {
+        ToolInputGuardrail rewrite = r -> ToolInputGuardrailResult.successWith("{\"q\":\"b\"}");
+        ToolInputGuardrail fatal =
+                r -> new ToolInputGuardrailResult(new ToolInputGuardrailResult.Failure("stop"), true);
+        ToolInputGuardrail boom = r -> {
+            throw new IllegalArgumentException("boom");
+        };
+
+        var fatalError = rootOf(input(async(rewrite), async(fatal)).executeAsync(inputRequest()));
+        var thrownError = rootOf(input(async(rewrite), async(boom)).executeAsync(inputRequest()));
+
+        assertThat(List.of(fatalError, thrownError))
+                .allSatisfy(error -> assertThat(error)
+                        .asInstanceOf(InstanceOfAssertFactories.type(ToolInputGuardrailException.class))
+                        .extracting(ToolInputGuardrailException::arguments)
+                        .isEqualTo(Optional.of("{\"q\":\"b\"}")));
+    }
+
+    @Test
+    void input_exception_created_outside_the_executor_has_no_arguments() {
+        assertThat(new ToolInputGuardrailException("stop").arguments()).isEmpty();
     }
 
     @Test

@@ -27,11 +27,18 @@ public final class ToolInputGuardrailResult implements GuardrailResult<ToolInput
     private final Result result;
     private final String successfulText;
     private final List<Failure> failures;
+    private final String rewrittenArguments;
 
-    private ToolInputGuardrailResult(Result result, String successfulText, List<Failure> failures) {
+    private ToolInputGuardrailResult(
+            Result result, String successfulText, List<Failure> failures, String rewrittenArguments) {
         this.result = ensureNotNull(result, "result");
         this.successfulText = successfulText;
         this.failures = Optional.ofNullable(failures).orElseGet(List::of);
+        this.rewrittenArguments = rewrittenArguments;
+    }
+
+    private ToolInputGuardrailResult(Result result, String successfulText, List<Failure> failures) {
+        this(result, successfulText, failures, successfulText);
     }
 
     private ToolInputGuardrailResult() {
@@ -85,6 +92,28 @@ public final class ToolInputGuardrailResult implements GuardrailResult<ToolInput
     }
 
     /**
+     * Gets the tool arguments as the guardrail chain left them: the arguments rewritten by the guardrails that ran,
+     * or empty if none of them rewrote the arguments.
+     * <p>
+     *     Unlike {@link #successfulText()}, this is also available on a failed result, when a guardrail that ran
+     *     before the failing one rewrote the arguments. The tool is not executed then, but what the caller reports
+     *     for the rejected call is the latest request state.
+     * </p>
+     *
+     * @return the rewritten tool arguments (a JSON string), if any guardrail of the chain rewrote them
+     */
+    public Optional<String> rewrittenArguments() {
+        return Optional.ofNullable(rewrittenArguments);
+    }
+
+    /**
+     * @return a copy of this result that also carries the given rewritten arguments, which {@code null} clears
+     */
+    ToolInputGuardrailResult withRewrittenArguments(String arguments) {
+        return new ToolInputGuardrailResult(result, successfulText, failures, arguments);
+    }
+
+    /**
      * Gets the text of the error tool result that reports the failures of this result to the LLM: the messages of
      * all the failures, joined with {@code \n} in chain order. No framework text is added.
      *
@@ -114,13 +143,14 @@ public final class ToolInputGuardrailResult implements GuardrailResult<ToolInput
         ToolInputGuardrailResult that = (ToolInputGuardrailResult) o;
         return result == that.result
                 && Objects.equals(successfulText, that.successfulText)
+                && Objects.equals(rewrittenArguments, that.rewrittenArguments)
                 && Objects.equals(failures, that.failures);
     }
 
     @Override
     @JacocoIgnoreCoverageGenerated
     public int hashCode() {
-        return Objects.hash(result, successfulText, failures);
+        return Objects.hash(result, successfulText, rewrittenArguments, failures);
     }
 
     /**

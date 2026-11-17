@@ -172,6 +172,13 @@ class ToolGuardrailResultTest {
     }
 
     @Test
+    void output_contents_rewrite_rejects_empty_contents() {
+        assertThatThrownBy(() -> OUTPUT.successWith(List.of(), false))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("rewrittenContents");
+    }
+
+    @Test
     void output_contents_rewrite_can_clear_the_error_flag() {
         var request = outputRequest(true, new TextContent("old"));
         var result = OUTPUT.successWith(List.of(IMAGE), false);

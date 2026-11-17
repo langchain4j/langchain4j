@@ -1,13 +1,18 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
+
 import dev.langchain4j.Experimental;
 import dev.langchain4j.guardrail.ToolInputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
+import dev.langchain4j.internal.CancellationChain;
 import dev.langchain4j.observability.api.event.ToolInputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.ToolInputGuardrailExecutedEvent.ToolInputGuardrailExecutedEventBuilder;
 import dev.langchain4j.spi.guardrail.ToolInputGuardrailExecutorBuilderFactory;
 import java.util.List;
 import java.util.ServiceLoader;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 /**
  * The {@link GuardrailExecutor} for {@link ToolInputGuardrail}s.
@@ -36,6 +41,75 @@ public non-sealed class ToolInputGuardrailExecutor
     @Override
     protected ToolInputGuardrailResult createFailure(List<Failure> failures) {
         return new ToolInputGuardrailResult(failures, false);
+    }
+
+    /**
+     * Keeps the rewritten arguments on a failed result, so a rejected call is reported with the arguments as the
+     * guardrails that ran before the failing one left them.
+     */
+    @Override
+    protected ToolInputGuardrailResult composeResult(
+            ToolInputGuardrailResult oldResult, ToolInputGuardrailResult newResult) {
+        var composed = super.composeResult(oldResult, newResult);
+        var latestArguments = newResult.rewrittenArguments().or(oldResult::rewrittenArguments);
+
+        return composed.isSuccess()
+                ? composed
+                : latestArguments.map(composed::withRewrittenArguments).orElse(composed);
+    }
+
+    /**
+     * Records on the exception of a guardrail that threw the arguments it validated.
+     */
+    @Override
+    protected ToolInputGuardrailResult validate(ToolInputGuardrailRequest request, ToolInputGuardrail guardrail) {
+        try {
+            return super.validate(request, guardrail);
+        } catch (ToolInputGuardrailException e) {
+            throw e.arguments(request.arguments());
+        }
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #validate(ToolInputGuardrailRequest, ToolInputGuardrail)}.
+     */
+    @Override
+    protected CompletableFuture<ToolInputGuardrailResult> validateAsync(
+            ToolInputGuardrailRequest request, ToolInputGuardrail guardrail, CancellationChain chain) {
+        return super.validateAsync(request, guardrail, chain).handle((result, error) -> {
+            if (error == null) {
+                return result;
+            }
+            var cause = unwrapCompletionException(error);
+            if (cause instanceof ToolInputGuardrailException e) {
+                e.arguments(request.arguments());
+            }
+            throw (error instanceof CompletionException completion) ? completion : new CompletionException(cause);
+        });
+    }
+
+    /**
+     * Records on the exception of a fatal result the arguments the failing guardrail validated: the ones rewritten by
+     * the guardrails before it, otherwise the ones of the request.
+     */
+    @Override
+    protected void throwIfFatal(ToolInputGuardrailRequest request, ToolInputGuardrailResult result) {
+        if (result.isFatal()) {
+            throw createGuardrailException(result.toString(), result.getFirstFailureException())
+                    .arguments(result.rewrittenArguments().orElseGet(request::arguments));
+        }
+    }
+
+    /**
+     * Keeps the arguments rewritten by the guardrails before a fatal one, for {@link #throwIfFatal}.
+     */
+    @Override
+    protected ToolInputGuardrailResult handleFatalResult(
+            ToolInputGuardrailResult accumulatedResult, ToolInputGuardrailResult result) {
+        return accumulatedResult
+                .rewrittenArguments()
+                .map(result::withRewrittenArguments)
+                .orElse(result);
     }
 
     @Override

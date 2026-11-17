@@ -53,7 +53,7 @@ public abstract sealed class AbstractToolGuardrailExecutor<
     @Override
     public R execute(P request) {
         var result = executeGuardrails(request);
-        throwIfFatal(result);
+        throwIfFatal(request, result);
         return result;
     }
 
@@ -64,12 +64,18 @@ public abstract sealed class AbstractToolGuardrailExecutor<
     @Override
     public CompletableFuture<R> executeAsync(P request) {
         return executeGuardrailsAsyncAndFinish(request, result -> {
-            throwIfFatal(result);
+            throwIfFatal(request, result);
             return result;
         });
     }
 
-    protected void throwIfFatal(R result) {
+    /**
+     * Throws the exception of a fatal result.
+     *
+     * @param request The request the chain was executed with
+     * @param result The result of the chain
+     */
+    protected void throwIfFatal(P request, R result) {
         if (result.isFatal()) {
             throw createGuardrailException(result.toString(), result.getFirstFailureException());
         }

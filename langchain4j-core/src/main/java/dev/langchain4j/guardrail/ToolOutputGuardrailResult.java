@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -95,13 +96,16 @@ public final class ToolOutputGuardrailResult implements GuardrailResult<ToolOutp
      * </p>
      *
      * @param rewrittenContents
-     *            the new contents of the tool result, must not be {@code null} and must not contain {@code null}
+     *            the new contents of the tool result, must not be {@code null} or empty (a tool result always has
+     *            contents; use {@link #successWith(String)} with an empty string to blank the text) and must not
+     *            contain {@code null}
      * @param isError
      *            whether the rewritten tool result is an error
      * @return a successful result carrying the rewritten contents and error flag
+     * @throws IllegalArgumentException if {@code rewrittenContents} is {@code null} or empty, or contains {@code null}
      */
     public static ToolOutputGuardrailResult successWith(List<Content> rewrittenContents, boolean isError) {
-        ensureNotNull(rewrittenContents, "rewrittenContents");
+        ensureNotEmpty(rewrittenContents, "rewrittenContents");
         rewrittenContents.forEach(content -> ensureNotNull(content, "rewrittenContents element"));
         var contents = List.copyOf(rewrittenContents);
         return new ToolOutputGuardrailResult(

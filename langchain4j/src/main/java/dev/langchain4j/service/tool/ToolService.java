@@ -28,6 +28,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.CapturedContextSupport;
@@ -47,6 +48,7 @@ import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.IllegalConfigurationException;
+import dev.langchain4j.service.guardrail.GuardedToolExecution;
 import dev.langchain4j.service.guardrail.ToolGuardrailService;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
@@ -623,6 +625,26 @@ public class ToolService {
         });
     }
 
+    /**
+     * Creates the context of an AI service invocation, carrying the invocation's {@link GuardrailRequestParams}, which
+     * the tool guardrails receive in their requests. A context without tools (so, without tool guardrails) is
+     * returned as is.
+     *
+     * @since 1.24.0
+     */
+    public ToolServiceContext createContext(
+            InvocationContext invocationContext,
+            UserMessage userMessage,
+            List<ChatMessage> messages,
+            GuardrailRequestParams guardrailRequestParams) {
+        var context = createContext(invocationContext, userMessage, messages);
+        return (context instanceof ToolServiceContext.Empty)
+                ? context
+                : context.toBuilder()
+                        .guardrailRequestParams(guardrailRequestParams)
+                        .build();
+    }
+
     private ToolServiceContext createContextFromStaticToolsAndProviders(
             InvocationContext invocationContext, UserMessage userMessage, List<ChatMessage> messages) {
         if (this.toolProviders.isEmpty()) {
@@ -752,12 +774,16 @@ public class ToolService {
 
             intermediateResponses.add(chatResponse);
 
-            List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
-            Map<ToolExecutionRequest, ToolExecutionResult> toolResults = execute(
-                    toolExecutionRequests,
-                    toolServiceContext.toolExecutors(),
+            ToolRound.Outcome round = executeTools(
+                    aiMessage,
+                    toolServiceContext,
+                    chatMemory,
+                    messages,
                     invocationContext,
                     context.eventListenerRegistrar);
+            List<ToolExecutionRequest> toolExecutionRequests = round.requests();
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults = round.results();
+            messages = round.messages();
 
             ToolResultsOutcome outcome = processToolResults(
                     context, toolExecutionRequests, toolResults, toolExecutions, invocationContext, toolServiceContext);
@@ -1927,21 +1953,33 @@ public class ToolService {
                 .build());
     }
 
-    private Map<ToolExecutionRequest, ToolExecutionResult> execute(
-            List<ToolExecutionRequest> toolRequests,
-            Map<String, ToolExecutor> toolExecutors,
+    /**
+     * Executes the tool calls of {@code aiMessage}, which is already in the history ({@code chatMemory}, or
+     * {@code messages} without a memory), and reports the calls as they were executed, their results and the
+     * messages for the rest of the round.
+     */
+    private ToolRound.Outcome executeTools(
+            AiMessage aiMessage,
+            ToolServiceContext toolServiceContext,
+            ChatMemory chatMemory,
+            List<ChatMessage> messages,
             InvocationContext invocationContext,
             AiServiceListenerRegistrar listenerRegistrar) {
+        var toolRequests = aiMessage.toolExecutionRequests();
+        var round = ToolRound.start(aiMessage, toolServiceContext, invocationContext, listenerRegistrar);
         if (executor != null && toolRequests.size() > 1) {
-            return executeConcurrently(toolRequests, toolExecutors, invocationContext, listenerRegistrar);
+            executeConcurrently(
+                    toolRequests, toolServiceContext.toolExecutors(), round, invocationContext, listenerRegistrar);
         } else {
             // when there is only one tool to execute, it doesn't make sense to do it in a separate thread
-            return executeSequentially(toolRequests, toolExecutors, invocationContext, listenerRegistrar);
+            executeSequentially(
+                    toolRequests, toolServiceContext.toolExecutors(), round, invocationContext, listenerRegistrar);
         }
+        return round.complete(chatMemory, messages);
     }
 
     /**
-     * Non-blocking counterpart of {@link #execute(List, Map, InvocationContext)} that collects the results of all
+     * Non-blocking counterpart of {@link #executeTools(AiMessage, ToolServiceContext, ChatMemory, List, InvocationContext, AiServiceListenerRegistrar)} that collects the results of all
      * tools (including failed ones) instead of short-circuiting on the first failure, so the caller can compensate
      * the successful tools before failing the invocation with the tool error. Every tool is started on the
      * {@linkplain #effectiveToolExecutor() effective executor} so the model-delivery thread is never blocked.
@@ -2182,25 +2220,25 @@ public class ToolService {
         }
     }
 
-    private Map<ToolExecutionRequest, ToolExecutionResult> executeConcurrently(
+    private void executeConcurrently(
             List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
+            ToolRound round,
             InvocationContext invocationContext,
             AiServiceListenerRegistrar listenerRegistrar) {
-        Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures = new LinkedHashMap<>();
+        Map<ToolExecutionRequest, CompletableFuture<GuardedToolExecution>> futures = new LinkedHashMap<>();
 
         for (ToolExecutionRequest toolRequest : toolRequests) {
-            CompletableFuture<ToolExecutionResult> future = CompletableFuture.supplyAsync(
-                    () -> executeTool(invocationContext, toolExecutors, toolRequest),
+            CompletableFuture<GuardedToolExecution> future = CompletableFuture.supplyAsync(
+                    () -> executeTool(invocationContext, toolExecutors, round, toolRequest),
                     CapturedContextSupport.restoringIn(executor, invocationContext));
             futures.put(toolRequest, future);
         }
 
-        Map<ToolExecutionRequest, ToolExecutionResult> results = new LinkedHashMap<>();
         Map<ToolExecutionRequest, Throwable> errors = new LinkedHashMap<>();
-        for (Map.Entry<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> entry : futures.entrySet()) {
+        for (Map.Entry<ToolExecutionRequest, CompletableFuture<GuardedToolExecution>> entry : futures.entrySet()) {
             try {
-                results.put(entry.getKey(), entry.getValue().get());
+                entry.getValue().get();
             } catch (ExecutionException e) {
                 if (e.getCause() instanceof VirtualMachineError vmError) {
                     throw vmError;
@@ -2213,35 +2251,53 @@ public class ToolService {
         }
 
         if (!errors.isEmpty()) {
-            fireToolExecutedEventsOfFailedRound(invocationContext, toolRequests, results, errors, listenerRegistrar);
+            fireEventsOfFailedRound(invocationContext, toolRequests, round, errors, listenerRegistrar);
             Throwable error = errors.values().iterator().next();
             if (error instanceof RuntimeException re) {
                 throw re;
             }
             throw new RuntimeException(error);
         }
-
-        return results;
     }
 
-    private Map<ToolExecutionRequest, ToolExecutionResult> executeSequentially(
+    private void executeSequentially(
             List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
+            ToolRound round,
             InvocationContext invocationContext,
             AiServiceListenerRegistrar listenerRegistrar) {
-        Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
         for (ToolExecutionRequest toolRequest : toolRequests) {
             try {
-                toolResults.put(toolRequest, executeTool(invocationContext, toolExecutors, toolRequest));
+                executeTool(invocationContext, toolExecutors, round, toolRequest);
             } catch (VirtualMachineError e) {
                 throw e;
             } catch (RuntimeException | Error e) {
-                fireToolExecutedEventsOfFailedRound(
-                        invocationContext, toolRequests, toolResults, Map.of(toolRequest, e), listenerRegistrar);
+                fireEventsOfFailedRound(
+                        invocationContext, toolRequests, round, Map.of(toolRequest, e), listenerRegistrar);
                 throw e;
             }
         }
-        return toolResults;
+    }
+
+    /**
+     * Fires the events of a failed round, reporting each call as the round knows it (see
+     * {@link ToolRound#reportedRequest(ToolExecutionRequest, Throwable)}).
+     */
+    private static void fireEventsOfFailedRound(
+            InvocationContext invocationContext,
+            List<ToolExecutionRequest> toolRequests,
+            ToolRound round,
+            Map<ToolExecutionRequest, Throwable> errors,
+            AiServiceListenerRegistrar listenerRegistrar) {
+        var reportedRequests = toolRequests.stream()
+                .map(request -> round.reportedRequest(request, errors.get(request)))
+                .toList();
+        Map<ToolExecutionRequest, Throwable> reportedErrors = new LinkedHashMap<>();
+        for (Map.Entry<ToolExecutionRequest, Throwable> entry : errors.entrySet()) {
+            reportedErrors.putIfAbsent(round.reportedRequest(entry.getKey(), entry.getValue()), entry.getValue());
+        }
+        fireToolExecutedEventsOfFailedRound(
+                invocationContext, reportedRequests, round.results(), reportedErrors, listenerRegistrar);
     }
 
     /**
@@ -2284,14 +2340,23 @@ public class ToolService {
         }
     }
 
-    private ToolExecutionResult executeTool(
+    private GuardedToolExecution executeTool(
             InvocationContext invocationContext,
             Map<String, ToolExecutor> toolExecutors,
+            ToolRound round,
             ToolExecutionRequest toolRequest) {
         return internalExecuteTool(
-                invocationContext, toolExecutors, toolRequest, this.beforeToolExecution, this.afterToolExecution);
+                invocationContext,
+                toolExecutors,
+                round,
+                toolRequest,
+                this.beforeToolExecution,
+                this.afterToolExecution);
     }
 
+    /**
+     * Executes a tool without tool guardrails: it has only the executors, so there are no guardrail bindings.
+     */
     public ToolExecutionResult executeTool(
             InvocationContext invocationContext,
             Map<String, ToolExecutor> toolExecutors,
@@ -2299,11 +2364,13 @@ public class ToolService {
             Consumer<BeforeToolExecution> externalBeforeToolExecution,
             Consumer<ToolExecution> externalAfterToolExecution) {
         return internalExecuteTool(
-                invocationContext,
-                toolExecutors,
-                toolRequest,
-                nullSafeCombineConsumers(this.beforeToolExecution, externalBeforeToolExecution),
-                nullSafeCombineConsumers(this.afterToolExecution, externalAfterToolExecution));
+                        invocationContext,
+                        toolExecutors,
+                        ToolRound.unguarded(toolRequest, invocationContext),
+                        toolRequest,
+                        nullSafeCombineConsumers(this.beforeToolExecution, externalBeforeToolExecution),
+                        nullSafeCombineConsumers(this.afterToolExecution, externalAfterToolExecution))
+                .result();
     }
 
     private static <T> Consumer<T> nullSafeCombineConsumers(Consumer<T> first, Consumer<T> second) {
@@ -2313,9 +2380,14 @@ public class ToolService {
         return first != null ? first : second;
     }
 
-    private ToolExecutionResult internalExecuteTool(
+    /**
+     * Executes a call through the tool guardrails of {@code round}. The {@code afterToolExecution} callback gets the
+     * call as the input guardrails left it, and the guarded result.
+     */
+    private GuardedToolExecution internalExecuteTool(
             InvocationContext invocationContext,
             Map<String, ToolExecutor> toolExecutors,
+            ToolRound round,
             ToolExecutionRequest toolRequest,
             Consumer<BeforeToolExecution> beforeToolExecution,
             Consumer<ToolExecution> afterToolExecution) {
@@ -2329,21 +2401,31 @@ public class ToolService {
         LocalDateTime startTime = LocalDateTime.now();
 
         ToolExecutor executor = toolExecutors.get(toolRequest.name());
-        ToolExecutionResult toolResult = executor == null
-                ? CurrentInvocation.callWith(invocationContext, () -> applyToolHallucinationStrategy(toolRequest))
-                : executeWithErrorHandling(
-                        toolRequest, executor, invocationContext, argumentsErrorHandler(), executionErrorHandler());
+        GuardedToolExecution execution = (executor == null)
+                // a hallucinated tool name: there is no tool to guard
+                ? round.record(
+                        toolRequest,
+                        CurrentInvocation.callWith(
+                                invocationContext, () -> applyToolHallucinationStrategy(toolRequest)))
+                : round.execute(
+                        toolRequest,
+                        request -> executeWithErrorHandling(
+                                request,
+                                executor,
+                                invocationContext,
+                                argumentsErrorHandler(),
+                                executionErrorHandler()));
 
         if (afterToolExecution != null) {
             afterToolExecution.accept(ToolExecution.builder()
-                    .request(toolRequest)
-                    .result(toolResult)
+                    .request(execution.request())
+                    .result(execution.result())
                     .startTime(startTime)
                     .finishTime(LocalDateTime.now())
                     .invocationContext(invocationContext)
                     .build());
         }
-        return toolResult;
+        return execution;
     }
 
     public static ToolExecutionResult executeWithErrorHandling(

@@ -6,6 +6,7 @@ import static java.util.stream.Collectors.toSet;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.guardrail.ToolGuardrailService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
@@ -26,6 +27,7 @@ public class ToolServiceContext {
     private final List<ToolProvider> dynamicToolProviders;
     private final Map<String, ToolGuardrailBinding> toolGuardrailBindings;
     private final ToolGuardrailService toolGuardrailService;
+    private final GuardrailRequestParams guardrailRequestParams;
 
     public ToolServiceContext(Builder builder) {
         this.effectiveTools = copy(builder.effectiveTools);
@@ -35,6 +37,7 @@ public class ToolServiceContext {
         this.dynamicToolProviders = copy(builder.dynamicToolProviders);
         this.toolGuardrailBindings = copy(builder.toolGuardrailBindings);
         this.toolGuardrailService = builder.toolGuardrailService;
+        this.guardrailRequestParams = builder.guardrailRequestParams;
     }
 
     /**
@@ -49,6 +52,7 @@ public class ToolServiceContext {
         this.dynamicToolProviders = List.of();
         this.toolGuardrailBindings = Map.of();
         this.toolGuardrailService = null;
+        this.guardrailRequestParams = null;
     }
 
     /**
@@ -148,6 +152,21 @@ public class ToolServiceContext {
         return Optional.ofNullable(toolGuardrailService);
     }
 
+    /**
+     * Returns the {@link GuardrailRequestParams} of the AI service invocation, which the tool guardrails receive in
+     * their requests (so they see the same context as the AI service guardrails, and their events reach the listeners
+     * registered for the invocation), if the invocation has any.
+     * <p>
+     *     It is absent when the context is not created by an AI service invocation. The tool guardrails then
+     *     run with minimal parameters (an empty user message template and no variables).
+     * </p>
+     *
+     * @since 1.24.0
+     */
+    public Optional<GuardrailRequestParams> guardrailRequestParams() {
+        return Optional.ofNullable(guardrailRequestParams);
+    }
+
     public Builder toBuilder() {
         return builder()
                 .effectiveTools(effectiveTools)
@@ -156,7 +175,8 @@ public class ToolServiceContext {
                 .returnBehaviors(returnBehaviors)
                 .dynamicToolProviders(dynamicToolProviders)
                 .toolGuardrailBindings(toolGuardrailBindings)
-                .toolGuardrailService(toolGuardrailService);
+                .toolGuardrailService(toolGuardrailService)
+                .guardrailRequestParams(guardrailRequestParams);
     }
 
     @Override
@@ -169,7 +189,8 @@ public class ToolServiceContext {
                 && Objects.equals(returnBehaviors, that.returnBehaviors)
                 && Objects.equals(dynamicToolProviders, that.dynamicToolProviders)
                 && Objects.equals(toolGuardrailBindings, that.toolGuardrailBindings)
-                && (toolGuardrailService == that.toolGuardrailService);
+                && (toolGuardrailService == that.toolGuardrailService)
+                && Objects.equals(guardrailRequestParams, that.guardrailRequestParams);
     }
 
     @Override
@@ -192,7 +213,8 @@ public class ToolServiceContext {
                 + returnBehaviors + ", dynamicToolProviders="
                 + dynamicToolProviders + ", toolGuardrailBindings="
                 + toolGuardrailBindings + ", toolGuardrailService="
-                + toolGuardrailService + '}';
+                + toolGuardrailService + ", guardrailRequestParams="
+                + guardrailRequestParams + '}';
     }
 
     public static Builder builder() {
@@ -208,6 +230,7 @@ public class ToolServiceContext {
         private List<ToolProvider> dynamicToolProviders;
         private Map<String, ToolGuardrailBinding> toolGuardrailBindings;
         private ToolGuardrailService toolGuardrailService;
+        private GuardrailRequestParams guardrailRequestParams;
 
         /**
          * Sets <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
@@ -291,6 +314,14 @@ public class ToolServiceContext {
          */
         public Builder toolGuardrailService(ToolGuardrailService toolGuardrailService) {
             this.toolGuardrailService = toolGuardrailService;
+            return this;
+        }
+
+        /**
+         * @since 1.24.0
+         */
+        public Builder guardrailRequestParams(GuardrailRequestParams guardrailRequestParams) {
+            this.guardrailRequestParams = guardrailRequestParams;
             return this;
         }
 
