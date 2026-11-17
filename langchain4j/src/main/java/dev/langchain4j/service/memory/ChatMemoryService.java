@@ -61,7 +61,7 @@ public class ChatMemoryService {
     }
 
     public ChatMemory getChatMemory(Object memoryId) {
-        return chatMemoryProvider != null ? chatMemories.get(memoryId) : memoryId == DEFAULT ? defaultChatMemory : null;
+        return chatMemoryProvider != null ? chatMemories.get(memoryId) : DEFAULT.equals(memoryId) ? defaultChatMemory : null;
     }
 
     public ChatMemory evictChatMemory(Object memoryId) {

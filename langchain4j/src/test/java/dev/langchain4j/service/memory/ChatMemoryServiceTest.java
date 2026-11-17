@@ -3,6 +3,7 @@ package dev.langchain4j.service.memory;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
@@ -32,5 +33,22 @@ class ChatMemoryServiceTest {
         } catch (NoSuchMethodException e) {
             return false;
         }
+    }
+
+    @Test
+    void should_find_default_memory_using_equal_string_id() {
+
+        ChatMemory memory =
+                MessageWindowChatMemory.withMaxMessages(10);
+
+        ChatMemoryService service = new ChatMemoryService(memory);
+
+        String memoryId = new String(ChatMemoryService.DEFAULT);
+
+        assertThat(memoryId)
+                .isNotSameAs(ChatMemoryService.DEFAULT);
+
+        assertThat(service.getChatMemory(memoryId))
+                .isSameAs(memory);
     }
 }
