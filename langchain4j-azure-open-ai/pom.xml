@@ -31,7 +31,7 @@
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-bom</artifactId>
-                <version>4.1.140.Final</version>
+                <version>4.2.20.Final</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -62,7 +62,19 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-codec-http2</artifactId>
-            <version>4.1.139.Final</version>
+            <version>4.2.20.Final</version>
+        </dependency>
+
+        <!-- azure-ai-openai depends on old azure-core and azure-core-http-netty (Netty 4.1);
+             declared here so that users get the azure-sdk-bom versions, on the same Netty line as netty-codec-http2 -->
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-core-http-netty</artifactId>
         </dependency>
 
         <dependency>
