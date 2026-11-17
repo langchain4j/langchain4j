@@ -129,12 +129,11 @@ public class ToolServiceContext {
     }
 
     /**
-     * Returns the guardrail binding (tool source, and the key to execute the tool guardrails of the tool with) of each
-     * tool, by tool name. A tool without an entry has no tool guardrails executed, which is the case of every tool
-     * when no {@link ToolGuardrailService} is set. A tool with an entry can have no tool guardrails either (an AI
-     * service always sets a {@link ToolGuardrailService}, so every one of its tools is bound): check
-     * {@link ToolGuardrailBinding#hasInputGuardrails()} / {@link ToolGuardrailBinding#hasOutputGuardrails()} before
-     * building a guardrail request.
+     * Returns the guardrail binding (tool specification, tool source, and the key to execute the tool guardrails of the
+     * tool with) of each tool, by tool name. A tool without an entry has no tool guardrails executed, which is the case
+     * of every tool when no {@link ToolGuardrailService} is set. A tool with an entry can have no tool guardrails either
+     * (an AI service always sets a {@link ToolGuardrailService}, so every one of its tools is bound): the service then
+     * runs only the tool.
      *
      * @since 1.24.0
      */

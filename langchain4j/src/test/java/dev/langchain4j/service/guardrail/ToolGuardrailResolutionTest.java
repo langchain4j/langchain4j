@@ -326,8 +326,6 @@ class ToolGuardrailResolutionTest {
         assertThat(setup.outputExecutor("plain")).isEmpty();
         assertThat(binding.service().hasInputGuardrails(binding.key())).isFalse();
         assertThat(binding.service().hasOutputGuardrails(binding.key())).isFalse();
-        assertThat(binding.hasInputGuardrails()).isFalse();
-        assertThat(binding.hasOutputGuardrails()).isFalse();
         assertThat(binding.service()
                         .executeOutputGuardrails(binding.key(), outputRequest("plain", "result"))
                         .isSuccess())
@@ -335,15 +333,19 @@ class ToolGuardrailResolutionTest {
     }
 
     @Test
-    void the_binding_tells_which_guardrails_a_tool_has() {
+    void the_service_tells_which_guardrails_a_bound_tool_has_and_the_binding_carries_its_specification() {
         var setup = setupWith(new WebTools(), new ClassOnly());
         var fetch = setup.binding("fetch");
         var classOnly = setup.binding("classOnly");
 
-        assertThat(fetch.hasInputGuardrails()).isFalse();
-        assertThat(fetch.hasOutputGuardrails()).isTrue();
-        assertThat(classOnly.hasInputGuardrails()).isTrue();
-        assertThat(classOnly.hasOutputGuardrails()).isTrue();
+        assertThat(fetch)
+                .returns("fetch", binding -> binding.toolSpecification().name())
+                .returns(false, binding -> binding.service().hasInputGuardrails(binding.key()))
+                .returns(true, binding -> binding.service().hasOutputGuardrails(binding.key()));
+        assertThat(classOnly)
+                .returns("classOnly", binding -> binding.toolSpecification().name())
+                .returns(true, binding -> binding.service().hasInputGuardrails(binding.key()))
+                .returns(true, binding -> binding.service().hasOutputGuardrails(binding.key()));
     }
 
     @Test

@@ -1,5 +1,8 @@
 package dev.langchain4j.service.guardrail;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.CompletableFutureUtils.startSafely;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -8,6 +11,7 @@ import dev.langchain4j.agent.tool.ToolSource;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.ToolInputGuardrail;
+import dev.langchain4j.guardrail.ToolInputGuardrailException;
 import dev.langchain4j.guardrail.ToolInputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolInputGuardrailResult;
 import dev.langchain4j.guardrail.ToolOutputGuardrail;
@@ -15,11 +19,16 @@ import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
 import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.ToolOutputGuardrailsConfig;
+import dev.langchain4j.internal.Exceptions;
 import dev.langchain4j.service.guardrail.spi.ToolGuardrailServiceBuilderFactory;
 import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.ToolExecutionResult;
+import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Executes the tool guardrails of the tools of an AI service: the {@link ToolInputGuardrail}s, which validate or
@@ -61,7 +70,9 @@ import java.util.function.Function;
  *     with it). {@link #executeGuardrails(ToolKey, ToolExecutionRequest, ToolSpecification, ToolSource,
  *     GuardrailRequestParams, Function)} runs a whole tool call through the guardrails and applies these rules, the
  *     way {@link GuardrailService#executeGuardrails(Object, dev.langchain4j.guardrail.InputGuardrailRequest)} does for
- *     the AI service guardrails.
+ *     the AI service guardrails; {@link #executeGuardrailsAsync(ToolKey, ToolExecutionRequest, ToolSpecification,
+ *     ToolSource, GuardrailRequestParams, Function)} is its non-blocking counterpart, for which the guardrails must
+ *     implement {@link dev.langchain4j.guardrail.Guardrail#validateAsync(dev.langchain4j.guardrail.GuardrailRequest)}.
  * </p>
  * <p>
  *     <strong>Customizing.</strong> The default implementation finds the annotations through
@@ -117,10 +128,11 @@ public non-sealed interface ToolGuardrailService
      *     the error flag of the result, keeps its attributes, and drops its raw {@link ToolExecutionResult#result()},
      *     which no longer matches what the LLM sees. A non-fatal output failure replaces the result with an error
      *     result whose text is the failure message, verbatim.</li>
-     *     <li>A fatal failure throws a {@link dev.langchain4j.guardrail.ToolInputGuardrailException} (which carries the
-     *     arguments the failing guardrail validated) or a {@link dev.langchain4j.guardrail.ToolOutputGuardrailException}.
-     *     It is thrown outside {@code tool}, so the error handling of the tool does not see it. An exception thrown
-     *     by {@code tool} propagates as is.</li>
+     *     <li>A fatal failure throws a {@link ToolInputGuardrailException} or a
+     *     {@link dev.langchain4j.guardrail.ToolOutputGuardrailException}. It is thrown outside {@code tool}, so the
+     *     error handling of the tool does not see it. An exception thrown by {@code tool} propagates as is. When a
+     *     fatal input failure ends the call, {@link #rejectedRequest(ToolExecutionRequest, Throwable)} gives the
+     *     request as the guardrails before it left it.</li>
      * </ul>
      *
      * @param key               The key {@link #bind(Class, AiServiceTool)} returned for the tool. Must not be null.
@@ -148,22 +160,25 @@ public non-sealed interface ToolGuardrailService
         ensureNotNull(requestParams, "requestParams");
         ensureNotNull(tool, "tool");
 
+        // without guardrails, nothing but the tool runs: not even a guardrail request is built
+        return hasGuardrails(key)
+                ? guard(key, request, toolSpecification, toolSource, requestParams, tool)
+                : guardedExecution(request, tool.apply(request));
+    }
+
+    private GuardedToolExecution guard(
+            ToolKey key,
+            ToolExecutionRequest request,
+            ToolSpecification toolSpecification,
+            ToolSource toolSource,
+            GuardrailRequestParams requestParams,
+            Function<ToolExecutionRequest, ToolExecutionResult> tool) {
+
         var inputResult = hasInputGuardrails(key)
-                ? executeInputGuardrails(
-                        key,
-                        ToolInputGuardrailRequest.builder()
-                                .toolExecutionRequest(request)
-                                .toolSpecification(toolSpecification)
-                                .toolSource(toolSource)
-                                .requestParams(requestParams)
-                                .build())
+                ? executeInputGuardrails(key, inputRequest(request, toolSpecification, toolSource, requestParams))
                 : ToolInputGuardrailResult.success();
 
-        // a rejected call is reported with the arguments as the guardrails before the rejection left them
-        var effectiveRequest = inputResult
-                .rewrittenArguments()
-                .map(arguments -> request.toBuilder().arguments(arguments).build())
-                .orElse(request);
+        var effectiveRequest = effectiveRequest(inputResult, request);
 
         var result = inputResult.isSuccess()
                 ? applyOutputGuardrails(
@@ -175,10 +190,182 @@ public non-sealed interface ToolGuardrailService
                         requestParams)
                 : errorResult(inputResult.failureMessage());
 
-        return GuardedToolExecution.builder()
-                .request(effectiveRequest)
-                .result(result)
-                .build();
+        return guardedExecution(effectiveRequest, result);
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #executeGuardrails(ToolKey, ToolExecutionRequest, ToolSpecification,
+     * ToolSource, GuardrailRequestParams, Function)}, with the same rules, for the asynchronous
+     * ({@code CompletableFuture}) and streaming AI service modes. The guardrails run with
+     * {@link #executeInputGuardrailsAsync(Object, dev.langchain4j.guardrail.GuardrailRequest)} and
+     * {@link #executeOutputGuardrailsAsync(Object, dev.langchain4j.guardrail.GuardrailRequest)}, so a guardrail that
+     * overrides {@link dev.langchain4j.guardrail.Guardrail#validateAsync(dev.langchain4j.guardrail.GuardrailRequest)}
+     * does not block the calling thread.
+     * <p>
+     *     Nothing is thrown from this method: a fatal guardrail failure, an exception thrown by a guardrail or by
+     *     {@code tool}, and a failed future of {@code tool} all fail the returned future. Canceling the returned future
+     *     cancels the guardrails or the tool in flight.
+     * </p>
+     *
+     * @param key               The key {@link #bind(Class, AiServiceTool)} returned for the tool. Must not be null.
+     * @param request           The tool call of the LLM. Must not be null.
+     * @param toolSpecification The specification of the tool, for the guardrail requests; may be null.
+     * @param toolSource        Where the tool comes from, for the guardrail requests; {@code null} means
+     *                          {@link ToolSource#programmatic()}.
+     * @param requestParams     The parameters of the guardrail requests: those of the AI service invocation. Must not
+     *                          be null.
+     * @param tool              Starts the tool for the request it is given (the call, or the call as the input
+     *                          guardrails rewrote it) and returns the future of its result. Must not be null.
+     * @return A future of the request as the input guardrails left it and of the result to send to the LLM.
+     * @since 1.24.0
+     */
+    @Experimental
+    default CompletableFuture<GuardedToolExecution> executeGuardrailsAsync(
+            ToolKey key,
+            ToolExecutionRequest request,
+            ToolSpecification toolSpecification,
+            ToolSource toolSource,
+            GuardrailRequestParams requestParams,
+            Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool) {
+
+        ensureNotNull(key, "key");
+        ensureNotNull(request, "request");
+        ensureNotNull(requestParams, "requestParams");
+        ensureNotNull(tool, "tool");
+
+        // without guardrails, nothing but the tool runs: not even a guardrail request is built
+        return hasGuardrails(key)
+                ? guardAsync(key, request, toolSpecification, toolSource, requestParams, tool)
+                : executeWithoutGuardrailsAsync(request, tool);
+    }
+
+    /**
+     * The request of a call that a tool guardrail failure ended, as the guardrails left it, when the failure tells:
+     * after a fatal input failure, the call with the arguments the failing guardrail validated (as the guardrails
+     * before it rewrote them). It lets a caller report a call that {@link #executeGuardrails(ToolKey,
+     * ToolExecutionRequest, ToolSpecification, ToolSource, GuardrailRequestParams, Function)} or
+     * {@link #executeGuardrailsAsync(ToolKey, ToolExecutionRequest, ToolSpecification, ToolSource,
+     * GuardrailRequestParams, Function)} ended with an exception without knowing the exceptions of the guardrails.
+     * <p>
+     *     Empty for any other failure: a failure of the tool or of an output guardrail ends a call that the tool was
+     *     started with, and the caller knows that request from its {@code tool} function.
+     * </p>
+     *
+     * @param request The tool call of the LLM. Must not be null.
+     * @param failure The exception that ended the call, possibly wrapped in a
+     *                {@link java.util.concurrent.CompletionException}; may be null.
+     * @return The request as the guardrails left it, if the failure tells.
+     * @since 1.24.0
+     */
+    @Experimental
+    default Optional<ToolExecutionRequest> rejectedRequest(ToolExecutionRequest request, Throwable failure) {
+        ensureNotNull(request, "request");
+        return Optional.ofNullable(failure)
+                .map(Exceptions::unwrapCompletionException)
+                .filter(ToolInputGuardrailException.class::isInstance)
+                .map(ToolInputGuardrailException.class::cast)
+                .flatMap(ToolInputGuardrailException::arguments)
+                .map(arguments -> request.toBuilder().arguments(arguments).build());
+    }
+
+    private boolean hasGuardrails(ToolKey key) {
+        return hasInputGuardrails(key) || hasOutputGuardrails(key);
+    }
+
+    private static CompletableFuture<GuardedToolExecution> executeWithoutGuardrailsAsync(
+            ToolExecutionRequest request, Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool) {
+        var toolResult = startSafely(() -> tool.apply(request), "future of the tool");
+        var execution = toolResult.thenApply(result -> guardedExecution(request, result));
+        propagateCancellation(execution, toolResult);
+        return execution;
+    }
+
+    private CompletableFuture<GuardedToolExecution> guardAsync(
+            ToolKey key,
+            ToolExecutionRequest request,
+            ToolSpecification toolSpecification,
+            ToolSource toolSource,
+            GuardrailRequestParams requestParams,
+            Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool) {
+        var result = new CompletableFuture<GuardedToolExecution>();
+        var inFlight = new AtomicReference<CompletableFuture<?>>();
+
+        // canceling the returned future cancels whatever stage is running
+        result.whenComplete((ignored, error) -> {
+            if (result.isCancelled()) {
+                Optional.ofNullable(inFlight.get()).ifPresent(stage -> stage.cancel(true));
+            }
+        });
+
+        var inputStage = hasInputGuardrails(key)
+                ? startStage(
+                        inFlight,
+                        () -> executeInputGuardrailsAsync(
+                                key, inputRequest(request, toolSpecification, toolSource, requestParams)),
+                        "future of the tool input guardrails")
+                : CompletableFuture.completedFuture(ToolInputGuardrailResult.success());
+
+        inputStage
+                .thenCompose(inputResult -> {
+                    var effectiveRequest = effectiveRequest(inputResult, request);
+                    return inputResult.isSuccess()
+                            ? startStage(inFlight, () -> tool.apply(effectiveRequest), "future of the tool")
+                                    .thenCompose(toolResult -> applyOutputGuardrailsAsync(
+                                            inFlight,
+                                            key,
+                                            effectiveRequest,
+                                            toolResult,
+                                            toolSpecification,
+                                            toolSource,
+                                            requestParams))
+                                    .thenApply(guardedResult -> guardedExecution(effectiveRequest, guardedResult))
+                            : CompletableFuture.completedFuture(
+                                    guardedExecution(effectiveRequest, errorResult(inputResult.failureMessage())));
+                })
+                .whenComplete((execution, error) -> {
+                    if (error != null) {
+                        result.completeExceptionally(unwrapCompletionException(error));
+                    } else {
+                        result.complete(execution);
+                    }
+                });
+
+        return result;
+    }
+
+    /**
+     * Starts a stage of {@link #executeGuardrailsAsync}, turning an exception thrown while starting it into a failed
+     * future, and makes it the stage that a cancellation cancels.
+     */
+    private static <T> CompletableFuture<T> startStage(
+            AtomicReference<CompletableFuture<?>> inFlight, Supplier<CompletableFuture<T>> stage, String name) {
+        var future = startSafely(stage, name);
+        inFlight.set(future);
+        return future;
+    }
+
+    private CompletableFuture<ToolExecutionResult> applyOutputGuardrailsAsync(
+            AtomicReference<CompletableFuture<?>> inFlight,
+            ToolKey key,
+            ToolExecutionRequest request,
+            ToolExecutionResult toolResult,
+            ToolSpecification toolSpecification,
+            ToolSource toolSource,
+            GuardrailRequestParams requestParams) {
+
+        CompletableFuture<ToolExecutionResult> guarded;
+
+        if (hasOutputGuardrails(key)) {
+            var guardrailRequest = outputRequest(request, toolResult, toolSpecification, toolSource, requestParams);
+            guarded = startStage(
+                            inFlight,
+                            () -> executeOutputGuardrailsAsync(key, guardrailRequest),
+                            "future of the tool output guardrails")
+                    .thenApply(outputResult -> guardedResult(outputResult, guardrailRequest, toolResult));
+        } else {
+            guarded = CompletableFuture.completedFuture(toolResult);
+        }
+        return guarded;
     }
 
     private ToolExecutionResult applyOutputGuardrails(
@@ -200,7 +387,34 @@ public non-sealed interface ToolGuardrailService
             ToolSpecification toolSpecification,
             ToolSource toolSource,
             GuardrailRequestParams requestParams) {
-        var guardrailRequest = ToolOutputGuardrailRequest.builder()
+
+        var guardrailRequest = outputRequest(request, toolResult, toolSpecification, toolSource, requestParams);
+
+        return guardedResult(executeOutputGuardrails(key, guardrailRequest), guardrailRequest, toolResult);
+    }
+
+    private static ToolInputGuardrailRequest inputRequest(
+            ToolExecutionRequest request,
+            ToolSpecification toolSpecification,
+            ToolSource toolSource,
+            GuardrailRequestParams requestParams) {
+
+        return ToolInputGuardrailRequest.builder()
+                .toolExecutionRequest(request)
+                .toolSpecification(toolSpecification)
+                .toolSource(toolSource)
+                .requestParams(requestParams)
+                .build();
+    }
+
+    private static ToolOutputGuardrailRequest outputRequest(
+            ToolExecutionRequest request,
+            ToolExecutionResult toolResult,
+            ToolSpecification toolSpecification,
+            ToolSource toolSource,
+            GuardrailRequestParams requestParams) {
+
+        return ToolOutputGuardrailRequest.builder()
                 .toolExecutionRequest(request)
                 .toolSpecification(toolSpecification)
                 .toolSource(toolSource)
@@ -208,10 +422,30 @@ public non-sealed interface ToolGuardrailService
                 .resultContents(toolResult.resultContents())
                 .isError(toolResult.isError())
                 .build();
+    }
 
-        var outputResult = executeOutputGuardrails(key, guardrailRequest);
+    /**
+     * The request as the input guardrails left it. A rejected call is reported with the arguments as the guardrails
+     * before the rejection left them.
+     */
+    private static ToolExecutionRequest effectiveRequest(
+            ToolInputGuardrailResult inputResult, ToolExecutionRequest request) {
 
-        // the raw result() is dropped on a rewrite: it no longer matches what the LLM sees. The attributes are kept
+        return inputResult
+                .rewrittenArguments()
+                .map(arguments -> request.toBuilder().arguments(arguments).build())
+                .orElse(request);
+    }
+
+    /**
+     * The result the LLM sees after the output guardrails. The raw {@code result()} is dropped on a rewrite: it no
+     * longer matches what the LLM sees. The attributes are kept.
+     */
+    private static ToolExecutionResult guardedResult(
+            ToolOutputGuardrailResult outputResult,
+            ToolOutputGuardrailRequest guardrailRequest,
+            ToolExecutionResult toolResult) {
+
         return outputResult.isSuccess()
                 ? (outputResult.hasRewrittenResult()
                         ? ToolExecutionResult.builder()
@@ -221,6 +455,10 @@ public non-sealed interface ToolGuardrailService
                                 .build()
                         : toolResult)
                 : errorResult(outputResult.failureMessage());
+    }
+
+    private static GuardedToolExecution guardedExecution(ToolExecutionRequest request, ToolExecutionResult result) {
+        return GuardedToolExecution.builder().request(request).result(result).build();
     }
 
     /**

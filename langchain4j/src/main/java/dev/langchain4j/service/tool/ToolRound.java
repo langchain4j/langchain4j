@@ -1,14 +1,15 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.CompletableFutureUtils.startSafely;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
-import dev.langchain4j.guardrail.ToolInputGuardrailException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
@@ -18,82 +19,176 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * One round of the tool loop of {@link ToolService}: the tool calls of one {@link AiMessage}. Each call is
- * {@linkplain #execute(ToolExecutionRequest, Function) executed} through its tool guardrails, if it has any
- * ({@link dev.langchain4j.service.guardrail.ToolGuardrailService#executeGuardrails}), and once every call has run,
- * {@link #complete(ChatMemory, List)} reports the round: the calls as they were executed, their results, and the
- * messages for the rest of the round.
+ * One round of tool execution: the tool calls of one {@link AiMessage}, in every AI service mode (blocking,
+ * {@code CompletableFuture}, {@code TokenStream}, reactive). A round is started by
+ * {@link ToolService#startRound(ToolServiceContext, InvocationContext, AiServiceListenerRegistrar)} and is the single
+ * way in and out of executing its calls:
+ * <ul>
+ *     <li><b>in:</b> {@link #executeTool(ToolExecutionRequest, Consumer, Consumer)} (blocking) or
+ *     {@link #startTool(ToolExecutionRequest, Consumer, Consumer, Executor)} (non-blocking) executes a call, through
+ *     the tool guardrails of its tool if it has any;</li>
+ *     <li><b>out:</b> once every call has run, {@link #complete(AiMessage, List, ChatMemory, List)} or
+ *     {@link #completeAsync(AiMessage, List, ChatMemory, List)} reports the round: the calls as they were executed,
+ *     their results, and the messages for the rest of the round ({@link #settleAsync(List)} for a canceled round,
+ *     and {@link #fireEventsOfFailedRound(List)} for a round that fails with an exception).</li>
+ * </ul>
  * <p>
  *     The loop does not need to know that the calls it gets back can differ from the ones of the LLM: an input
  *     guardrail can rewrite the arguments of a call, and the rewritten call is then what everything downstream
- *     carries (D18), including the tool call stored in the history, which {@link #complete(ChatMemory, List)}
- *     updates.
+ *     carries, including the tool call stored in the history, which completing the round updates.
  * </p>
  * <p>
- *     The tools of a round may run concurrently, so {@link #execute(ToolExecutionRequest, Function)} and
- *     {@link #record(ToolExecutionRequest, ToolExecutionResult)} are thread-safe.
+ *     A round can start before the {@link AiMessage} is known (a streaming model announces each tool call before its
+ *     final response), so the calls are identified by the requests they were executed with, and the caller passes
+ *     them, in the order of the LLM, when it completes the round. The tools of a round may run concurrently, so
+ *     executing and recording calls is thread-safe.
  * </p>
  */
 @Internal
-final class ToolRound {
+public final class ToolRound {
 
     private static final Logger log = LoggerFactory.getLogger(ToolRound.class);
 
-    private final AiMessage aiMessage;
-    private final List<ToolExecutionRequest> requestedCalls;
+    private final ToolService toolService;
     private final ToolServiceContext toolServiceContext;
     private final InvocationContext invocationContext;
     private final AiServiceListenerRegistrar listenerRegistrar;
+    private final CompletableFuture<?> cancellation;
     private final Map<ToolExecutionRequest, GuardedToolExecution> executions = new ConcurrentHashMap<>();
     private final Map<ToolExecutionRequest, ToolExecutionRequest> startedRequests = new ConcurrentHashMap<>();
     private final Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new ConcurrentHashMap<>();
+    // the failure of each call that ended with an exception, recorded at the entries of the round only
+    private final Map<ToolExecutionRequest, Throwable> errors = new ConcurrentHashMap<>();
+    // the future of each call started without blocking, which settles once its failure is recorded
+    private final Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures = new ConcurrentHashMap<>();
 
     private ToolRound(
-            AiMessage aiMessage,
-            List<ToolExecutionRequest> requestedCalls,
+            ToolService toolService,
             ToolServiceContext toolServiceContext,
             InvocationContext invocationContext,
-            AiServiceListenerRegistrar listenerRegistrar) {
-        this.aiMessage = aiMessage;
-        this.requestedCalls = List.copyOf(requestedCalls);
+            AiServiceListenerRegistrar listenerRegistrar,
+            CompletableFuture<?> cancellation) {
+        this.toolService = ensureNotNull(toolService, "toolService");
         this.toolServiceContext = toolServiceContext;
         this.invocationContext = invocationContext;
         this.listenerRegistrar = listenerRegistrar;
+        this.cancellation = cancellation;
     }
 
     /**
-     * Starts the round of the tool calls of {@code aiMessage}, guarded by the bindings of the given context.
+     * Starts a round of {@code toolService}; see {@link ToolService#startRound(ToolServiceContext, InvocationContext,
+     * AiServiceListenerRegistrar, CompletableFuture)}.
      *
-     * @param aiMessage the message of the LLM, already added to the history
-     * @param listenerRegistrar the registrar of the invocation, for the events of the tool guardrails when the context
-     *                          carries no {@link GuardrailRequestParams}; may be {@code null}
+     * @param toolServiceContext the context of the tools of the round; {@code null} for a round without tools
+     * @param listenerRegistrar the registrar of the invocation, for the events of the round, and of the tool guardrails
+     *                          when the context carries no {@link GuardrailRequestParams}; may be {@code null}
+     * @param cancellation canceled when the invocation is canceled; may be {@code null}
      */
     static ToolRound start(
-            AiMessage aiMessage,
+            ToolService toolService,
             ToolServiceContext toolServiceContext,
             InvocationContext invocationContext,
-            AiServiceListenerRegistrar listenerRegistrar) {
-        return new ToolRound(
-                aiMessage,
-                aiMessage.toolExecutionRequests(),
-                ensureNotNull(toolServiceContext, "toolServiceContext"),
-                invocationContext,
-                listenerRegistrar);
+            AiServiceListenerRegistrar listenerRegistrar,
+            CompletableFuture<?> cancellation) {
+        return new ToolRound(toolService, toolServiceContext, invocationContext, listenerRegistrar, cancellation);
     }
 
     /**
-     * Starts a round of one call that no tool guardrail applies to, for callers that have no guardrail bindings and
-     * that only {@linkplain #execute(ToolExecutionRequest, Function) execute} the call (they do not
-     * {@linkplain #complete(ChatMemory, List) complete} the round).
+     * Starts a round that no tool guardrail applies to, for the {@link ToolService} methods that only have executors.
      */
-    static ToolRound unguarded(ToolExecutionRequest call, InvocationContext invocationContext) {
-        return new ToolRound(null, List.of(call), null, invocationContext, null);
+    static ToolRound unguarded(ToolService toolService, InvocationContext invocationContext) {
+        return start(toolService, null, invocationContext, null, null);
+    }
+
+    /**
+     * Executes a call of the round, blocking: its tool, through the tool guardrails of the tool if it has any, with
+     * the callbacks of the {@link ToolService} and the given ones. Every exception that ends the call is thrown (a
+     * fatal guardrail failure, an error of the tool that its error handler rethrows, a failing callback), and the round
+     * records it, for {@link #fireEventsOfFailedRound(List)}; a {@link VirtualMachineError} is rethrown without being
+     * recorded.
+     *
+     * @param call                the call of the LLM
+     * @param beforeToolExecution called before the call is executed, with the call of the LLM; may be {@code null}
+     * @param afterToolExecution  called after the call is executed, with the request it was executed with and its
+     *                            result; may be {@code null}
+     * @return the request the call was executed with, and its result
+     */
+    public GuardedToolExecution executeTool(
+            ToolExecutionRequest call,
+            Consumer<BeforeToolExecution> beforeToolExecution,
+            Consumer<ToolExecution> afterToolExecution) {
+        try {
+            return toolService.executeTool(
+                    this, invocationContext, toolExecutors(), call, beforeToolExecution, afterToolExecution);
+        } catch (VirtualMachineError e) {
+            // the JVM may not be able to run more code safely: rethrown without recording, as the loops do
+            throw e;
+        } catch (RuntimeException | Error e) {
+            errors.put(call, e);
+            throw e;
+        }
+    }
+
+    /**
+     * Starts a call of the round on {@code executor}, as {@link #executeTool(ToolExecutionRequest, Consumer, Consumer)}
+     * does, without blocking. Nothing is thrown: every failure fails the returned future, and the round records it.
+     * Once the round is canceled, the call fails with a {@link CancellationException} instead of starting its tool.
+     *
+     * @return the future of the result of the call
+     */
+    public CompletableFuture<ToolExecutionResult> startTool(
+            ToolExecutionRequest call,
+            Consumer<BeforeToolExecution> beforeToolExecution,
+            Consumer<ToolExecution> afterToolExecution,
+            Executor executor) {
+        var started = toolService.startTool(
+                this, call, toolExecutors(), invocationContext, beforeToolExecution, afterToolExecution, executor);
+        // the round waits for this future, which completes only once the failure is recorded
+        CompletableFuture<ToolExecutionResult> recorded = started.whenComplete((ignored, error) -> {
+            if (error != null) {
+                errors.put(call, unwrapCompletionException(error));
+            }
+        });
+        propagateCancellation(recorded, started);
+        futures.put(call, recorded);
+        return recorded;
+    }
+
+    /**
+     * Fires the {@link dev.langchain4j.observability.api.event.ToolExecutedEvent}s of the round when it fails with an
+     * exception that ends the invocation, reporting each call with the request it was executed with: the calls that
+     * returned with their result, and the calls that threw with their exception.
+     *
+     * @param calls the calls of the round, as they were started, in the order of the LLM
+     */
+    public void fireEventsOfFailedRound(List<ToolExecutionRequest> calls) {
+        ToolService.fireEventsOfFailedRound(invocationContext, calls, this, errors(calls), listenerRegistrar);
+    }
+
+    /**
+     * The failure of each call that ended with an exception, in the order of {@code calls}.
+     */
+    private Map<ToolExecutionRequest, Throwable> errors(List<ToolExecutionRequest> calls) {
+        Map<ToolExecutionRequest, Throwable> failures = new LinkedHashMap<>();
+        for (ToolExecutionRequest call : calls) {
+            Optional.ofNullable(errors.get(call)).ifPresent(error -> failures.putIfAbsent(call, error));
+        }
+        return failures;
+    }
+
+    private Map<String, ToolExecutor> toolExecutors() {
+        return (this.toolServiceContext != null) ? this.toolServiceContext.toolExecutors() : Map.of();
     }
 
     /**
@@ -117,7 +212,7 @@ final class ToolRound {
                         .executeGuardrails(
                                 binding.key(),
                                 call,
-                                toolSpecification(call.name()),
+                                binding.toolSpecification(),
                                 binding.toolSource(),
                                 guardrailRequestParams(),
                                 recordingTool))
@@ -128,12 +223,106 @@ final class ToolRound {
     }
 
     /**
+     * Non-blocking counterpart of {@link #execute(ToolExecutionRequest, Function)}. Nothing is thrown: a fatal
+     * guardrail failure, or a failure of {@code tool}, fails the returned future. Once the round is canceled, no tool
+     * is started any more, and a call whose input guardrails are in flight is canceled.
+     *
+     * @param call the call of the LLM
+     * @param tool starts the tool for a request (the call, or the call as the input guardrails rewrote it), handling
+     *             its errors
+     * @return the future of the result to send to the LLM
+     */
+    CompletableFuture<ToolExecutionResult> executeAsync(
+            ToolExecutionRequest call, Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool) {
+
+        Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> recordingTool = request -> {
+            // recorded before checking the cancellation, so that a cancellation either sees the tool as started (and
+            // lets it run to completion) or stops it here
+            startedRequests.put(call, request);
+            CompletableFuture<ToolExecutionResult> recorded;
+            if (isCancelled()) {
+                recorded = CompletableFuture.failedFuture(new CancellationException());
+            } else {
+                var toolResult = startSafely(() -> tool.apply(request), "future of the tool");
+                recorded = toolResult.thenApply(result -> {
+                    toolResults.put(call, result);
+                    return result;
+                });
+                propagateCancellation(recorded, toolResult);
+            }
+            return recorded;
+        };
+
+        CompletableFuture<GuardedToolExecution> execution;
+        if (isCancelled()) {
+            execution = CompletableFuture.failedFuture(new CancellationException());
+        } else {
+            execution = binding(call.name())
+                    .map(binding -> startSafely(
+                            () -> binding.service()
+                                    .executeGuardrailsAsync(
+                                            binding.key(),
+                                            call,
+                                            binding.toolSpecification(),
+                                            binding.toolSource(),
+                                            guardrailRequestParams(),
+                                            recordingTool),
+                            "future of the tool guardrails"))
+                    .orElseGet(() -> recordingTool.apply(call).thenApply(result -> unguarded(call, result)));
+            cancelBeforeToolStarts(call, execution);
+        }
+        return track(call, execution);
+    }
+
+    /**
      * Records the result of a call that is not executed through a tool, e.g. a call of a tool that does not exist.
      */
     GuardedToolExecution record(ToolExecutionRequest call, ToolExecutionResult result) {
         var execution = unguarded(call, result);
         executions.put(call, execution);
         return execution;
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #record(ToolExecutionRequest, ToolExecutionResult)}: an exception thrown by
+     * {@code result} fails the returned future.
+     */
+    CompletableFuture<ToolExecutionResult> recordAsync(
+            ToolExecutionRequest call, Supplier<ToolExecutionResult> result) {
+        return track(call, startSafely(() -> CompletableFuture.completedFuture(unguarded(call, result.get()))));
+    }
+
+    /**
+     * Records the execution of an asynchronous call that returned, and returns the future of its result. A failure is
+     * recorded at the entry of the round ({@link #startTool(ToolExecutionRequest, Consumer, Consumer, Executor)}).
+     */
+    private CompletableFuture<ToolExecutionResult> track(
+            ToolExecutionRequest call, CompletableFuture<GuardedToolExecution> execution) {
+        CompletableFuture<ToolExecutionResult> result = execution.thenApply(guarded -> {
+            executions.put(call, guarded);
+            return guarded.result();
+        });
+        propagateCancellation(result, execution);
+        return result;
+    }
+
+    private boolean isCancelled() {
+        return (cancellation != null) && cancellation.isCancelled();
+    }
+
+    /**
+     * Cancels an execution whose input guardrails are in flight when the round is canceled. Once the tool has started,
+     * the execution runs to completion (a tool is never interrupted), so that its result is known and a compensable
+     * tool can be rolled back.
+     */
+    private void cancelBeforeToolStarts(ToolExecutionRequest call, CompletableFuture<?> execution) {
+        if (cancellation != null) {
+            cancellation.whenComplete((ignored, error) -> {
+                if (cancellation.isCancelled() && !startedRequests.containsKey(call)) {
+                    execution.cancel(true);
+                }
+            });
+        }
     }
 
     /**
@@ -150,14 +339,88 @@ final class ToolRound {
     }
 
     /**
+     * Completes a round of the calls of {@code aiMessage} once every call has been executed. See
+     * {@link #complete(AiMessage, List, ChatMemory, List)}.
+     */
+    Outcome complete(AiMessage aiMessage, ChatMemory chatMemory, List<ChatMessage> messages) {
+        return complete(aiMessage, aiMessage.toolExecutionRequests(), chatMemory, messages);
+    }
+
+    /**
      * Completes the round once every call has been executed: updates the history with the calls as they were
      * executed, and reports them with their results.
      *
-     * @param chatMemory the chat memory holding the {@link AiMessage} of the round, or {@code null} without a memory
+     * @param aiMessage the message of the LLM, already in the history
+     * @param calls the calls of the round as they were executed, in the order of the LLM
+     * @param chatMemory the chat memory holding {@code aiMessage}, or {@code null} without a memory
      * @param messages the messages holding it, without a memory
      */
-    Outcome complete(ChatMemory chatMemory, List<ChatMessage> messages) {
-        return new Outcome(requests(), results(), updateHistory(chatMemory, messages));
+    public Outcome complete(
+            AiMessage aiMessage, List<ToolExecutionRequest> calls, ChatMemory chatMemory, List<ChatMessage> messages) {
+        var requests = calls.stream()
+                .map(call -> ensureNotNull(executions.get(call), "execution of " + call)
+                        .request())
+                .toList();
+        return new Outcome(
+                requests, results(calls), updateHistory(aiMessage, calls, requests, chatMemory, messages), null);
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #complete(AiMessage, List, ChatMemory, List)}, for calls started with
+     * {@link #startTool(ToolExecutionRequest, Consumer, Consumer, Executor)}: waits until every call has ended, normally or not, and
+     * reports them all. A call that failed is reported with an error result carrying the text of its failure, and the
+     * first failure, in the order of the calls, is the {@link Outcome#firstError()} of the round. The history is only
+     * updated when no call failed (a round that fails ends the invocation).
+     */
+    public CompletableFuture<Outcome> completeAsync(
+            AiMessage aiMessage, List<ToolExecutionRequest> calls, ChatMemory chatMemory, List<ChatMessage> messages) {
+        return settleAsync(calls, messages)
+                .thenCompose(outcome -> (outcome.firstError().isPresent())
+                        ? CompletableFuture.completedFuture(outcome)
+                        : updateHistoryAsync(aiMessage, calls, outcome.requests(), chatMemory, messages)
+                                .thenApply(outcome::withMessages));
+    }
+
+    /**
+     * Waits until every call has ended, normally or not, and reports them as
+     * {@link #completeAsync(AiMessage, List, ChatMemory, List)} does, without touching the history. For a round that
+     * is canceled. The {@link Outcome#messages()} are empty.
+     */
+    public CompletableFuture<Outcome> settleAsync(List<ToolExecutionRequest> calls) {
+        return settleAsync(calls, List.of());
+    }
+
+    private CompletableFuture<Outcome> settleAsync(List<ToolExecutionRequest> calls, List<ChatMessage> messages) {
+        var callFutures = calls.stream().map(this::future).toArray(CompletableFuture[]::new);
+        return CompletableFuture.allOf(callFutures)
+                // wait for every call to end, normally or not
+                .handle((ignored, ignoredError) -> settled(calls, messages));
+    }
+
+    private Outcome settled(List<ToolExecutionRequest> calls, List<ChatMessage> messages) {
+        Map<ToolExecutionRequest, ToolExecutionResult> results = new LinkedHashMap<>();
+        Throwable firstError = null;
+        for (ToolExecutionRequest call : calls) {
+            var execution = executions.get(call);
+            var error = errors.get(call);
+            if (execution != null) {
+                results.putIfAbsent(execution.request(), execution.result());
+            } else if (error != null) {
+                results.putIfAbsent(
+                        reportedRequest(call),
+                        ToolExecutionResult.builder()
+                                .isError(true)
+                                .resultText(ToolService.errorText(error))
+                                .build());
+                firstError = (firstError != null) ? firstError : error;
+            }
+        }
+        var requests = calls.stream().map(this::reportedRequest).toList();
+        return new Outcome(requests, results, messages, firstError);
+    }
+
+    private CompletableFuture<ToolExecutionResult> future(ToolExecutionRequest call) {
+        return futures.getOrDefault(call, CompletableFuture.completedFuture(null));
     }
 
     /**
@@ -166,29 +429,33 @@ final class ToolRound {
      * @param requests the calls as they were executed, in the order of the LLM
      * @param results the result of each call, by the call as it was executed
      * @param messages the messages for the rest of the round
+     * @param error the first failure of a call, in the order of the LLM, or {@code null}
      */
-    record Outcome(
+    public record Outcome(
             List<ToolExecutionRequest> requests,
             Map<ToolExecutionRequest, ToolExecutionResult> results,
-            List<ChatMessage> messages) {}
+            List<ChatMessage> messages,
+            Throwable error) {
 
-    /**
-     * The calls of the round as the input guardrails left them, in the order of the LLM. Every call must have been
-     * executed.
-     */
-    private List<ToolExecutionRequest> requests() {
-        return requestedCalls.stream()
-                .map(call -> ensureNotNull(executions.get(call), "execution of " + call)
-                        .request())
-                .toList();
+        /**
+         * The first failure of a call of the round, in the order of the LLM, if a call failed.
+         */
+        public Optional<Throwable> firstError() {
+            return Optional.ofNullable(error);
+        }
+
+        private Outcome withMessages(List<ChatMessage> messages) {
+            return new Outcome(requests, results, messages, error);
+        }
     }
 
     /**
-     * The guarded result of each executed call, by the call as the input guardrails left it, in the order of the LLM.
+     * The guarded result of each executed call, by the call as the input guardrails left it, in the order of
+     * {@code calls}.
      */
-    Map<ToolExecutionRequest, ToolExecutionResult> results() {
+    Map<ToolExecutionRequest, ToolExecutionResult> results(List<ToolExecutionRequest> calls) {
         Map<ToolExecutionRequest, ToolExecutionResult> results = new LinkedHashMap<>();
-        for (ToolExecutionRequest call : requestedCalls) {
+        for (ToolExecutionRequest call : calls) {
             Optional.ofNullable(executions.get(call))
                     .ifPresent(execution -> results.putIfAbsent(execution.request(), execution.result()));
         }
@@ -196,54 +463,54 @@ final class ToolRound {
     }
 
     /**
-     * The request to report for a call of a round that failed with an exception: the call as the input guardrails
-     * left it, as far as it is known. That is the one of its execution if it returned, the one its tool was started
-     * with if the tool (or a fatal output guardrail) threw, the arguments a fatal input guardrail validated, otherwise
-     * the call of the LLM.
-     *
-     * @param error the exception of the call, or {@code null} if it has none
+     * The request to report for a call, also when it failed: the request the call was executed with, as far as it is
+     * known. That is the one of its execution if it returned, the one its tool was started with if it failed after
+     * that, the one the guardrail service tells for a failure that ended the call before (see
+     * {@link dev.langchain4j.service.guardrail.ToolGuardrailService#rejectedRequest(ToolExecutionRequest,
+     * Throwable)}), otherwise the call of the LLM.
      */
-    ToolExecutionRequest reportedRequest(ToolExecutionRequest call, Throwable error) {
+    ToolExecutionRequest reportedRequest(ToolExecutionRequest call) {
         return Optional.ofNullable(executions.get(call))
                 .map(GuardedToolExecution::request)
                 .or(() -> Optional.ofNullable(startedRequests.get(call)))
-                .or(() -> Optional.ofNullable(error)
-                        .filter(ToolInputGuardrailException.class::isInstance)
-                        .map(ToolInputGuardrailException.class::cast)
-                        .flatMap(ToolInputGuardrailException::arguments)
-                        .map(arguments -> call.toBuilder().arguments(arguments).build()))
+                .or(() -> Optional.ofNullable(errors.get(call))
+                        .flatMap(error -> binding(call.name())
+                                .flatMap(binding -> binding.service().rejectedRequest(call, error))))
                 .orElse(call);
     }
 
     /**
+     * Whether an input guardrail rewrote a call, so the {@link AiMessage} in the history must carry the rewritten one.
+     */
+    private static boolean isRewritten(List<ToolExecutionRequest> calls, List<ToolExecutionRequest> requests) {
+        return !requests.equals(calls);
+    }
+
+    private static AiMessage rewrittenMessage(AiMessage aiMessage, List<ToolExecutionRequest> requests) {
+        return aiMessage.toBuilder().toolExecutionRequests(requests).build();
+    }
+
+    /**
      * Replaces the tool calls of {@code aiMessage}, the last message with these calls in the chat memory (or in
-     * {@code messages} without a memory), with the {@linkplain #requests() effective requests} when an input
-     * guardrail rewrote some of them, so the history holds the arguments the tools ran with.
+     * {@code messages} without a memory), with the effective requests when an input guardrail rewrote some of them,
+     * so the history holds the arguments the tools ran with.
      *
      * @return the messages for the rest of the round: {@code messages}, or a copy holding the rewritten message
      */
-    private List<ChatMessage> updateHistory(ChatMemory chatMemory, List<ChatMessage> messages) {
-        var effectiveRequests = requests();
+    private static List<ChatMessage> updateHistory(
+            AiMessage aiMessage,
+            List<ToolExecutionRequest> calls,
+            List<ToolExecutionRequest> requests,
+            ChatMemory chatMemory,
+            List<ChatMessage> messages) {
         List<ChatMessage> result = messages;
 
-        if (!effectiveRequests.equals(requestedCalls)) {
-            var rewrittenMessage = aiMessage.toBuilder()
-                    .toolExecutionRequests(effectiveRequests)
-                    .build();
-
+        if (isRewritten(calls, requests)) {
+            var rewrittenMessage = rewrittenMessage(aiMessage, requests);
             if (chatMemory != null) {
-                var memoryMessages = new ArrayList<>(chatMemory.messages());
-                var index = memoryMessages.lastIndexOf(aiMessage);
-                if (index >= 0) {
-                    memoryMessages.set(index, rewrittenMessage);
-                    chatMemory.set(memoryMessages);
-                }
+                replace(chatMemory.messages(), aiMessage, rewrittenMessage).ifPresent(chatMemory::set);
             } else {
-                var index = messages.lastIndexOf(aiMessage);
-                if (index >= 0) {
-                    result = new ArrayList<>(messages);
-                    result.set(index, rewrittenMessage);
-                }
+                result = replace(messages, aiMessage, rewrittenMessage).orElse(messages);
             }
         }
 
@@ -251,20 +518,59 @@ final class ToolRound {
     }
 
     /**
-     * The binding of a tool with guardrails to execute. Absent without a context, for a tool without a binding, and
-     * for a bound tool without guardrails (the fast path: not even the guardrail parameters are built).
+     * Non-blocking counterpart of {@link #updateHistory(AiMessage, List, List, ChatMemory, List)}, with the
+     * asynchronous methods of the chat memory.
+     */
+    private static CompletableFuture<List<ChatMessage>> updateHistoryAsync(
+            AiMessage aiMessage,
+            List<ToolExecutionRequest> calls,
+            List<ToolExecutionRequest> requests,
+            ChatMemory chatMemory,
+            List<ChatMessage> messages) {
+        CompletableFuture<List<ChatMessage>> result;
+
+        if (!isRewritten(calls, requests)) {
+            result = CompletableFuture.completedFuture(messages);
+        } else if (chatMemory != null) {
+            var rewrittenMessage = rewrittenMessage(aiMessage, requests);
+            result = chatMemory
+                    .messagesAsync()
+                    .thenCompose(memoryMessages -> replace(memoryMessages, aiMessage, rewrittenMessage)
+                            .map(chatMemory::setAsync)
+                            .orElseGet(() -> CompletableFuture.completedFuture(null)))
+                    .thenApply(ignored -> messages);
+        } else {
+            result = CompletableFuture.completedFuture(
+                    replace(messages, aiMessage, rewrittenMessage(aiMessage, requests))
+                            .orElse(messages));
+        }
+
+        return result;
+    }
+
+    /**
+     * A copy of {@code messages} with the last occurrence of {@code message} replaced, if it occurs.
+     */
+    private static Optional<List<ChatMessage>> replace(
+            List<ChatMessage> messages, AiMessage message, AiMessage replacement) {
+        return Optional.ofNullable(messages).map(ArrayList::new).flatMap(copy -> {
+            var index = copy.lastIndexOf(message);
+            Optional<List<ChatMessage>> replaced = Optional.empty();
+            if (index >= 0) {
+                copy.set(index, replacement);
+                replaced = Optional.of(copy);
+            }
+            return replaced;
+        });
+    }
+
+    /**
+     * The binding of a tool to the guardrail service, which decides what runs for the tool (only the tool, when it has
+     * no guardrails). Absent without a context, and for a tool without a binding (no guardrail service).
      */
     private Optional<ToolGuardrailBinding> binding(String toolName) {
         return Optional.ofNullable(toolServiceContext)
-                .map(context -> context.toolGuardrailBindings().get(toolName))
-                .filter(binding -> binding.hasInputGuardrails() || binding.hasOutputGuardrails());
-    }
-
-    private ToolSpecification toolSpecification(String toolName) {
-        return toolServiceContext.availableTools().stream()
-                .filter(specification -> toolName.equals(specification.name()))
-                .findFirst()
-                .orElse(null);
+                .map(context -> context.toolGuardrailBindings().get(toolName));
     }
 
     /**

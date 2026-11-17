@@ -30,17 +30,17 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
+import dev.langchain4j.service.guardrail.GuardedToolExecution;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionResult;
-import dev.langchain4j.service.tool.ToolExecutor;
+import dev.langchain4j.service.tool.ToolRound;
 import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -91,12 +91,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final TokenUsage tokenUsage;
 
     private final ToolServiceContext toolServiceContext;
-    private final Map<String, ToolExecutor> toolExecutors;
     private final ToolArgumentsErrorHandler toolArgumentsErrorHandler;
     private final ToolExecutionErrorHandler toolExecutionErrorHandler;
     private final Executor toolExecutor;
     private final Executor completeResponseProcessingExecutor;
     private final Queue<Future<ToolRequestResult>> toolExecutionFutures = new ConcurrentLinkedQueue<>();
+    private final ToolRound toolRound;
 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
@@ -156,7 +156,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.commonGuardrailParams = commonGuardrailParams;
 
         this.toolServiceContext = toolServiceContext;
-        this.toolExecutors = toolServiceContext != null ? toolServiceContext.toolExecutors() : Map.of();
+        this.toolRound =
+                context.toolService.startRound(toolServiceContext, invocationContext, context.eventListenerRegistrar);
         this.toolArgumentsErrorHandler = ensureNotNull(toolArgumentsErrorHandler, "toolArgumentsErrorHandler");
         this.toolExecutionErrorHandler = ensureNotNull(toolExecutionErrorHandler, "toolExecutionErrorHandler");
         this.toolExecutor = toolExecutor;
@@ -240,7 +241,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             var future = CompletableFuture.supplyAsync(
                     () -> {
                         try {
-                            return new ToolRequestResult(toolRequest, execute(toolRequest), null);
+                            return new ToolRequestResult(
+                                    toolRequest, execute(toolRequest).result(), null);
                         } catch (VirtualMachineError e) {
                             throw e;
                         } catch (Throwable e) {
@@ -358,20 +360,19 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 intermediateResponseHandler.accept(chatResponse);
             }
 
-            List<ToolExecutionRequest> executedRequests = aiMessage.toolExecutionRequests();
-            Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
+            // the calls as they were started: the final response can reformat their JSON arguments
+            List<ToolExecutionRequest> calls = aiMessage.toolExecutionRequests();
             if (toolExecutor != null) {
-                executedRequests = new ArrayList<>();
-                Map<ToolExecutionRequest, Throwable> toolErrors = new LinkedHashMap<>();
+                calls = new ArrayList<>();
+                // The round records the failure of every call (ToolRound#executeTool), and reports each one with its
+                // own ToolExecutedEvent (ToolRound#fireEventsOfFailedRound). Only the first failure, in the order of
+                // the calls, is rethrown; the others are not attached to it.
+                Throwable firstError = null;
                 for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
                     try {
                         ToolRequestResult toolRequestResult = toolExecutionFuture.get();
-                        executedRequests.add(toolRequestResult.request());
-                        if (toolRequestResult.error() != null) {
-                            toolErrors.put(toolRequestResult.request(), toolRequestResult.error());
-                        } else {
-                            toolResults.put(toolRequestResult.request(), toolRequestResult.result());
-                        }
+                        calls.add(toolRequestResult.request());
+                        firstError = (firstError != null) ? firstError : toolRequestResult.error();
                     } catch (ExecutionException e) {
                         if (e.getCause() instanceof VirtualMachineError vmError) {
                             throw vmError;
@@ -385,40 +386,31 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         throw new RuntimeException(e);
                     }
                 }
-                if (!toolErrors.isEmpty()) {
-                    ToolService.fireToolExecutedEventsOfFailedRound(
-                            invocationContext,
-                            executedRequests,
-                            toolResults,
-                            toolErrors,
-                            context.eventListenerRegistrar);
-                    Throwable error = toolErrors.values().iterator().next();
-                    if (error instanceof RuntimeException re) {
+                if (firstError != null) {
+                    toolRound.fireEventsOfFailedRound(calls);
+                    if (firstError instanceof RuntimeException re) {
                         throw re;
                     }
-                    throw new RuntimeException(error);
+                    throw new RuntimeException(firstError);
                 }
             } else {
-                for (ToolExecutionRequest toolRequest : executedRequests) {
+                for (ToolExecutionRequest toolRequest : calls) {
                     try {
-                        toolResults.put(toolRequest, execute(toolRequest));
+                        execute(toolRequest);
                     } catch (VirtualMachineError e) {
                         throw e;
                     } catch (RuntimeException | Error e) {
-                        ToolService.fireToolExecutedEventsOfFailedRound(
-                                invocationContext,
-                                executedRequests,
-                                toolResults,
-                                Map.of(toolRequest, e),
-                                context.eventListenerRegistrar);
+                        toolRound.fireEventsOfFailedRound(calls);
                         throw e;
                     }
                 }
             }
 
-            // Use the requests that were executed: the final response can reformat their JSON arguments.
+            ToolRound.Outcome round = toolRound.complete(aiMessage, calls, getMemory(), List.of());
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults = round.results();
+
             ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
-                    context, executedRequests, toolResults, new ArrayList<>(), invocationContext, toolServiceContext);
+                    context, round.requests(), toolResults, new ArrayList<>(), invocationContext, toolServiceContext);
 
             List<ChatMessage> nextMessages = context.toolService.persistToolResultsAndResolveMessagesSync(
                     context, getMemory(), null, outcome.resultMessages(), invocationContext);
@@ -472,7 +464,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     commonGuardrailParams,
                     methodKey);
 
-            CurrentInvocation.runWith(invocationContext, () -> context.streamingChatModel.chat(next.chatRequest(), HandlerWithoutInvocation.wrap(handler)));
+            CurrentInvocation.runWith(
+                    invocationContext,
+                    () -> context.streamingChatModel.chat(next.chatRequest(), HandlerWithoutInvocation.wrap(handler)));
         } else {
             ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
 
@@ -567,13 +561,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 .build();
     }
 
-    private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
-        return context.toolService.executeTool(
-                invocationContext,
-                toolExecutors,
-                toolRequest,
-                beforeToolExecutionHandler,
-                toolExecutionHandler);
+    private GuardedToolExecution execute(ToolExecutionRequest toolRequest) {
+        return toolRound.executeTool(toolRequest, beforeToolExecutionHandler, toolExecutionHandler);
     }
 
     private ChatMemory getMemory() {
