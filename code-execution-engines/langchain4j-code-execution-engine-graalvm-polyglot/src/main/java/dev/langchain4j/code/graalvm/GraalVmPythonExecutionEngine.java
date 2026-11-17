@@ -1,8 +1,9 @@
 package dev.langchain4j.code.graalvm;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.graalvm.polyglot.EnvironmentAccess.NONE;
 import static org.graalvm.polyglot.HostAccess.UNTRUSTED;
-import static org.graalvm.polyglot.SandboxPolicy.TRUSTED;
+import static org.graalvm.polyglot.SandboxPolicy.CONSTRAINED;
 
 import dev.langchain4j.code.CodeExecutionEngine;
 import java.io.ByteArrayOutputStream;
@@ -25,7 +26,7 @@ import org.graalvm.polyglot.Value;
  * When the code fails, a {@link org.graalvm.polyglot.PolyglotException} is thrown
  * and anything printed before the failure is lost.
  * <p>
- * Attention! It might be dangerous to execute the code, see {@link SandboxPolicy#TRUSTED}
+ * Attention! It might be dangerous to execute the code, see {@link SandboxPolicy#CONSTRAINED}
  * and {@link HostAccess#UNTRUSTED} for more details.
  */
 public class GraalVmPythonExecutionEngine implements CodeExecutionEngine {
@@ -34,8 +35,9 @@ public class GraalVmPythonExecutionEngine implements CodeExecutionEngine {
     public String execute(String code) {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         try (Context context = Context.newBuilder("python")
-                .sandbox(TRUSTED)
+                .sandbox(CONSTRAINED)
                 .allowHostAccess(UNTRUSTED)
+                .allowEnvironmentAccess(NONE)
                 .out(outputStream)
                 .err(outputStream)
                 // Truffle logs (for example the warning about running without runtime compilation)
