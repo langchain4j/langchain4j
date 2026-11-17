@@ -1,6 +1,7 @@
 package dev.langchain4j.guardrail;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import java.util.Arrays;
 
 /**
@@ -9,7 +10,9 @@ import java.util.Arrays;
  * <p>
  * In the case of reprompting, the reprompt message is added to the LLM context and the request is retried.
  * <p>
- * The maximum number of retries is configurable, defaulting to {@link dev.langchain4j.guardrail.config.OutputGuardrailsConfig#MAX_RETRIES_DEFAULT}.
+ * The maximum number of times a response of the model is validated, including the first one, is configurable with
+ * {@link OutputGuardrailsConfig#maxRetries()}, and defaults to {@link OutputGuardrailsConfig#MAX_RETRIES_DEFAULT} (one
+ * retry or reprompt).
  */
 public interface OutputGuardrail extends Guardrail<OutputGuardrailRequest, OutputGuardrailResult> {
     /**

@@ -13,6 +13,11 @@
     <name>LangChain4j :: Test</name>
     <description>Testing utility classes and interfaces of LangChain4j</description>
 
+    <!-- The package dev/langchain4j/test/mock is also compiled into the tests of langchain4j-core and langchain4j, and
+         dev/langchain4j/test/guardrail into the tests of langchain4j-core (see their poms). The mocks are left out of
+         their test-jars and test-sources jars, so they are published only here. After changing these packages, build
+         with -pl langchain4j-test -am -amd -->
+
     <licenses>
         <license>
             <name>Apache License, Version 2.0</name>

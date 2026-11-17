@@ -8,7 +8,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
@@ -45,7 +45,7 @@ class StreamingAiServicesWithAsyncToolsTest {
                 .name("currentTemperature")
                 .arguments("{}")
                 .build();
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
                 AiMessage.from(toolExecutionRequest), AiMessage.from("It is 42 degrees"));
 
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)

@@ -14,12 +14,13 @@ import dev.langchain4j.agentic.observability.AgentMonitor;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.output.TokenUsage;
@@ -134,14 +135,14 @@ class DecisionRouterPlannerTest {
         return ChoiceAnswer.builder().value(value).probabilities(probabilities).build();
     }
 
-    private static DecisionModelMock modelAnswering(ChoiceAnswer answer) {
-        return DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, answer));
+    private static MockDecisionModel modelAnswering(ChoiceAnswer answer) {
+        return MockDecisionModel.thatAnswers(Map.of(QUESTION_NAME, answer));
     }
 
-    private static DecisionModelMock modelAnsweringRelevance(Map<String, Double> probabilities) {
+    private static MockDecisionModel modelAnsweringRelevance(Map<String, Double> probabilities) {
         Map<String, YesNoAnswer> answers = new LinkedHashMap<>();
         probabilities.forEach((agentName, probability) -> answers.put(agentName, YesNoAnswer.from(probability)));
-        return DecisionModelMock.thatAlwaysAnswers(answers);
+        return MockDecisionModel.thatAnswers(answers);
     }
 
     private <T> T router(Class<T> routerType, DecisionRouterPlanner planner) {
@@ -152,11 +153,11 @@ class DecisionRouterPlannerTest {
                 .build();
     }
 
-    private ExpertRouter router(DecisionModelMock model) {
+    private ExpertRouter router(MockDecisionModel model) {
         return router(ExpertRouter.class, new DecisionRouterPlanner(model));
     }
 
-    private MultiExpertRouter multiRouter(DecisionModelMock model, double activationThreshold) {
+    private MultiExpertRouter multiRouter(MockDecisionModel model, double activationThreshold) {
         return router(MultiExpertRouter.class, new DecisionRouterPlanner(model, activationThreshold));
     }
 
@@ -164,7 +165,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldInvokeOnlyTheChosenAgent() {
-        DecisionModelMock model = modelAnswering(choice("legal", Map.of("legal", 0.8, "medical", 0.2)));
+        MockDecisionModel model = modelAnswering(choice("legal", Map.of("legal", 0.8, "medical", 0.2)));
 
         String response = router(model).ask(REQUEST);
 
@@ -176,7 +177,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldAskOneChoiceQuestionWithTheSubagentsAsOptions() {
-        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+        MockDecisionModel model = modelAnswering(choice("medical", Map.of()));
 
         router(model).ask(REQUEST);
 
@@ -195,7 +196,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldAskTheChoiceQuestionSetOnTheBuilder() {
-        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+        MockDecisionModel model = modelAnswering(choice("medical", Map.of()));
         DecisionRouterPlanner planner = DecisionRouterPlanner.builder()
                 .decisionModel(model)
                 .choiceQuestion("Which expert should answer this request?")
@@ -208,7 +209,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldWriteTheResultUnderTheRouterOutputKey() {
-        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+        MockDecisionModel model = modelAnswering(choice("medical", Map.of()));
 
         ResultWithAgenticScope<String> result = router(ExpertRouterWithScope.class, new DecisionRouterPlanner(model))
                 .ask(REQUEST);
@@ -219,7 +220,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldRouteWhenTheModelReportsNoProbabilities() {
-        DecisionModelMock model = modelAnswering(choice("technical", Map.of()));
+        MockDecisionModel model = modelAnswering(choice("technical", Map.of()));
 
         assertThat(router(model).ask(REQUEST)).isEqualTo("technical answer");
     }
@@ -244,7 +245,7 @@ class DecisionRouterPlannerTest {
             }
         };
         // each agent has its own probability, so both can be above 0.5, which a choice question could not express
-        DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.85, "technical", 0.05));
+        MockDecisionModel model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.85, "technical", 0.05));
 
         MultiExpertRouter router = AgenticServices.plannerBuilder(MultiExpertRouter.class)
                 .subAgents(medical, legal, technicalExpert)
@@ -260,14 +261,14 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldActivateAnAgentWhoseProbabilityEqualsTheThreshold() {
-        DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.5, "legal", 0.3, "technical", 0.2));
+        MockDecisionModel model = modelAnsweringRelevance(Map.of("medical", 0.5, "legal", 0.3, "technical", 0.2));
 
         assertThat(multiRouter(model, 0.5).ask(REQUEST)).containsOnly(entry("medical", "medical answer"));
     }
 
     @Test
     void shouldReturnASingleOutputWhenOnlyOneAgentReachesTheThreshold() {
-        DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.1, "legal", 0.85, "technical", 0.05));
+        MockDecisionModel model = modelAnsweringRelevance(Map.of("medical", 0.1, "legal", 0.85, "technical", 0.05));
 
         assertThat(multiRouter(model, 0.5).ask(REQUEST)).containsOnly(entry("legal", "legal answer"));
         assertThat(medicalExpert.calls).hasValue(0);
@@ -276,7 +277,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldInvokeNoAgentWhenNoneReachesTheThreshold() {
-        DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.4, "legal", 0.35, "technical", 0.25));
+        MockDecisionModel model = modelAnsweringRelevance(Map.of("medical", 0.4, "legal", 0.35, "technical", 0.25));
 
         assertThat(multiRouter(model, 0.5).ask(REQUEST)).isEmpty();
         assertThat(medicalExpert.calls).hasValue(0);
@@ -311,7 +312,7 @@ class DecisionRouterPlannerTest {
     @Test
     void shouldOfferOnlyTheActiveAgentsAsOptions() {
         AtomicInteger inactiveCalls = new AtomicInteger();
-        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+        MockDecisionModel model = modelAnswering(choice("medical", Map.of()));
 
         ExpertRouter router = AgenticServices.plannerBuilder(ExpertRouter.class)
                 .subAgents(medicalExpert, inactiveExpert("legal", inactiveCalls), technicalExpert)
@@ -328,7 +329,7 @@ class DecisionRouterPlannerTest {
     @Test
     void shouldAskOnlyAboutTheActiveAgentsWithAThreshold() {
         AtomicInteger inactiveCalls = new AtomicInteger();
-        DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.9, "technical", 0.1));
+        MockDecisionModel model = modelAnsweringRelevance(Map.of("medical", 0.9, "technical", 0.1));
 
         MultiExpertRouter router = AgenticServices.plannerBuilder(MultiExpertRouter.class)
                 .subAgents(medicalExpert, inactiveExpert("legal", inactiveCalls), technicalExpert)
@@ -344,14 +345,14 @@ class DecisionRouterPlannerTest {
     @Test
     void shouldNotAskTheDecisionModelWhenNoAgentIsActive() {
         AtomicInteger inactiveCalls = new AtomicInteger();
-        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+        MockDecisionModel model = modelAnswering(choice("medical", Map.of()));
         ExpertRouter router = AgenticServices.plannerBuilder(ExpertRouter.class)
                 .subAgents(inactiveExpert("medical", inactiveCalls), inactiveExpert("legal", inactiveCalls))
                 .outputKey("response")
                 .planner(() -> new DecisionRouterPlanner(model))
                 .build();
 
-        DecisionModelMock relevanceModel = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.9));
+        MockDecisionModel relevanceModel = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.9));
         MultiExpertRouter multiRouter = AgenticServices.plannerBuilder(MultiExpertRouter.class)
                 .subAgents(inactiveExpert("medical", inactiveCalls), inactiveExpert("legal", inactiveCalls))
                 .outputKey("responses")
@@ -368,7 +369,7 @@ class DecisionRouterPlannerTest {
     @Test
     void shouldInvokeTheOnlyActiveAgentWithoutAskingTheDecisionModel() {
         AtomicInteger inactiveCalls = new AtomicInteger();
-        DecisionModelMock model = modelAnswering(choice("legal", Map.of()));
+        MockDecisionModel model = modelAnswering(choice("legal", Map.of()));
 
         ExpertRouter router = AgenticServices.plannerBuilder(ExpertRouter.class)
                 .subAgents(
@@ -387,7 +388,7 @@ class DecisionRouterPlannerTest {
     @Test
     void shouldLeaveAnAgentSkippedAfterTheDecisionOutOfTheOutputsWithAThreshold() {
         AtomicInteger skippedCalls = new AtomicInteger();
-        DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.8, "technical", 0.1));
+        MockDecisionModel model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.8, "technical", 0.1));
 
         MultiExpertRouter router = AgenticServices.plannerBuilder(MultiExpertRouter.class)
                 .subAgents(medicalExpert, expertSkippedAfterTheDecision("legal", skippedCalls), technicalExpert)
@@ -402,7 +403,7 @@ class DecisionRouterPlannerTest {
     @Test
     void shouldHaveNoResultWhenTheChosenAgentIsSkippedAfterTheDecision() {
         AtomicInteger skippedCalls = new AtomicInteger();
-        DecisionModelMock model = modelAnswering(choice("legal", Map.of()));
+        MockDecisionModel model = modelAnswering(choice("legal", Map.of()));
 
         ExpertRouter router = AgenticServices.plannerBuilder(ExpertRouter.class)
                 .subAgents(medicalExpert, expertSkippedAfterTheDecision("legal", skippedCalls), technicalExpert)
@@ -417,7 +418,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldAskOneYesNoQuestionPerSubagentWithAThreshold() {
-        DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.1, "technical", 0.1));
+        MockDecisionModel model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.1, "technical", 0.1));
 
         multiRouter(model, 0.5).ask(REQUEST);
 
@@ -438,7 +439,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldAskTheRelevanceQuestionOfTheTemplateSetOnTheBuilder() {
-        DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.1, "technical", 0.1));
+        MockDecisionModel model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.1, "technical", 0.1));
         DecisionRouterPlanner planner = DecisionRouterPlanner.builder()
                 .decisionModel(model)
                 .activationThreshold(0.5)
@@ -474,7 +475,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldRejectAThresholdOutsideZeroToOne() {
-        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+        MockDecisionModel model = modelAnswering(choice("medical", Map.of()));
 
         assertThatThrownBy(() -> new DecisionRouterPlanner(model, 1.5))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -500,8 +501,8 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldTellApartByTheirIdsTheSubagentsWithTheSameName() {
-        DecisionModelMock model =
-                DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, choice("medical$1", Map.of())));
+        MockDecisionModel model =
+                MockDecisionModel.thatAnswers(Map.of(QUESTION_NAME, choice("medical$1", Map.of())));
 
         ExpertRouter router = AgenticServices.plannerBuilder(ExpertRouter.class)
                 .subAgents(medicalExpert, new AnotherMedicalExpert(), legalExpert)
@@ -521,7 +522,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldReturnUnderTheirIdsTheOutputsOfTheSubagentsWithTheSameNameWithAThreshold() {
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of(
+        MockDecisionModel model = MockDecisionModel.thatAnswers(Map.of(
                 "medical$0", YesNoAnswer.from(0.9),
                 "medical$1", YesNoAnswer.from(0.8),
                 "legal", YesNoAnswer.from(0.7)));
@@ -543,7 +544,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldRejectInvalidQuestions() {
-        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+        MockDecisionModel model = modelAnswering(choice("medical", Map.of()));
 
         assertThatThrownBy(() -> DecisionRouterPlanner.builder()
                         .decisionModel(model)
@@ -570,7 +571,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldRejectARouterNotReturningAMapWithAThreshold() {
-        DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.8, "technical", 0.1));
+        MockDecisionModel model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.8, "technical", 0.1));
 
         assertThatThrownBy(() -> router(ExpertRouter.class, new DecisionRouterPlanner(model, 0.3))
                         .ask(REQUEST))
@@ -584,7 +585,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldAcceptAResultWithAgenticScopeOfAMapWithAThreshold() {
-        DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.8, "technical", 0.1));
+        MockDecisionModel model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.8, "technical", 0.1));
 
         ResultWithAgenticScope<Map<String, Object>> result = router(
                         MultiExpertRouterWithScope.class, new DecisionRouterPlanner(model, 0.5))
@@ -595,7 +596,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldRejectAnUntypedRouter() {
-        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+        MockDecisionModel model = modelAnswering(choice("medical", Map.of()));
 
         UntypedAgent router = AgenticServices.plannerBuilder()
                 .subAgents(medicalExpert, legalExpert)
@@ -609,7 +610,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldRejectAnArgumentThatTheDecisionModelDoesNotAccept() {
-        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+        MockDecisionModel model = modelAnswering(choice("medical", Map.of()));
         PatientRouter router = router(PatientRouter.class, new DecisionRouterPlanner(model));
 
         // the record is sent as it is, and the decision model rejects it
@@ -623,7 +624,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldPropagateADecisionModelFailure() {
-        DecisionModelMock model = DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("decision failed");
+        MockDecisionModel model = MockDecisionModel.thatFails(new RuntimeException("decision failed"));
 
         assertThatThrownBy(() -> router(model).ask(REQUEST)).hasMessageContaining("decision failed");
         assertThat(medicalExpert.calls).hasValue(0);
@@ -633,7 +634,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldBeAStepOfASequenceWithoutThreshold() {
-        DecisionModelMock model = modelAnswering(choice("legal", Map.of()));
+        MockDecisionModel model = modelAnswering(choice("legal", Map.of()));
         ExpertRouter router = router(model);
 
         ExpertPipeline pipeline = AgenticServices.sequenceBuilder(ExpertPipeline.class)
@@ -647,7 +648,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldBeAStepOfASequenceWithThreshold() {
-        DecisionModelMock model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.7, "technical", 0.05));
+        MockDecisionModel model = modelAnsweringRelevance(Map.of("medical", 0.9, "legal", 0.7, "technical", 0.05));
         MultiExpertRouter router = AgenticServices.plannerBuilder(MultiExpertRouter.class)
                 .subAgents(medicalExpert, legalExpert, technicalExpert)
                 .outputKey("responses")
@@ -667,7 +668,7 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldBeReportedAsARouter() {
-        DecisionModelMock model = modelAnswering(choice("medical", Map.of()));
+        MockDecisionModel model = modelAnswering(choice("medical", Map.of()));
 
         assertThat(new DecisionRouterPlanner(model).topology()).isEqualTo(AgenticSystemTopology.ROUTER);
         assertThat(HtmlReportGenerator.generateTopology(router(model)))
@@ -679,7 +680,8 @@ class DecisionRouterPlannerTest {
 
     // ── Token usage ──
 
-    private <T> T monitoredRouter(Class<T> routerType, DecisionModelMock model, AgentMonitor monitor, Object... experts) {
+    private <T> T monitoredRouter(
+            Class<T> routerType, MockDecisionModel model, AgentMonitor monitor, Object... experts) {
         return AgenticServices.plannerBuilder(routerType)
                 .subAgents(experts)
                 .outputKey("response")
@@ -690,9 +692,11 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldCountTheDecisionCallOnTheRouter() {
-        DecisionModelMock model = modelAnswering(choice("legal", Map.of("legal", 0.8, "medical", 0.2)))
-                .withModelName("decision-model")
-                .withTokenUsage(new TokenUsage(40, 2));
+        MockDecisionModel model = MockDecisionModel.thatResponds(DecisionResponse.builder()
+                .answer(QUESTION_NAME, choice("legal", Map.of("legal", 0.8, "medical", 0.2)))
+                .modelName("decision-model")
+                .tokenUsage(new TokenUsage(40, 2))
+                .build());
         AgentMonitor monitor = new AgentMonitor();
 
         monitoredRouter(ExpertRouter.class, model, monitor, medicalExpert, legalExpert, technicalExpert)
@@ -705,7 +709,11 @@ class DecisionRouterPlannerTest {
 
     @Test
     void shouldCountNoTokensWhenTheOnlyCandidateIsInvokedWithoutAskingTheModel() {
-        DecisionModelMock model = modelAnswering(choice("medical", Map.of())).withTokenUsage(new TokenUsage(40, 2));
+        // a response with tokens, so that a call that should not happen would be counted
+        MockDecisionModel model = MockDecisionModel.thatResponds(DecisionResponse.builder()
+                .answer(QUESTION_NAME, choice("medical", Map.of()))
+                .tokenUsage(new TokenUsage(40, 2))
+                .build());
         AgentMonitor monitor = new AgentMonitor();
 
         monitoredRouter(ExpertRouter.class, model, monitor, medicalExpert).ask(REQUEST);
