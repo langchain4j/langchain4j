@@ -64,6 +64,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class GoogleAiGeminiDecisionModelTest {
 
@@ -404,12 +405,37 @@ class GoogleAiGeminiDecisionModelTest {
     }
 
     @Test
-    void should_reject_invalid_data_url_without_calling_the_api() {
+    void should_read_data_url_in_any_case_and_prefer_mime_type_set_on_content() {
 
         // given
         MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
         DecisionRequest request = REQUEST.toBuilder()
-                .inputContents(ImageContent.from("data:image/png"))
+                .inputContents(
+                        ImageContent.from("DATA:image/webp;BASE64,d2VicA=="),
+                        ImageContent.from(Image.builder()
+                                .url("data:application/octet-stream;base64,aW1n")
+                                .mimeType("image/png")
+                                .build()))
+                .build();
+
+        // when
+        model(httpClient).decide(request);
+
+        // then
+        assertThat(body(httpClient.request()).get("input"))
+                .isEqualTo(List.of(
+                        map("type", "image", "data", "d2VicA==", "mime_type", "image/webp"),
+                        map("type", "image", "data", "aW1n", "mime_type", "image/png")));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"data:image/png", "data:text/plain,hello", "data:image/png;charset=utf-8,aW1n"})
+    void should_reject_invalid_data_url_without_calling_the_api(String dataUrl) {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        DecisionRequest request = REQUEST.toBuilder()
+                .inputContents(ImageContent.from(dataUrl))
                 .build();
 
         // when-then

@@ -624,6 +624,42 @@ class GoogleGenAiDecisionModelTest {
     }
 
     @Test
+    void should_read_data_url_in_any_case_and_prefer_mime_type_set_on_content() throws Exception {
+        enqueueJson(answers("\"q0\": {\"type\": \"noul\", \"noul\": 0.9, \"confidence\": 0.9}"));
+        DecisionRequest request = DecisionRequest.builder()
+                .inputContents(List.of(
+                        ImageContent.from("DATA:image/webp;BASE64,d2VicA=="),
+                        ImageContent.from(Image.builder()
+                                .url("data:application/octet-stream;base64,aW1n")
+                                .mimeType("image/png")
+                                .build())))
+                .question("ok", YesNoQuestion.from("All good?"))
+                .build();
+
+        model().decide(request);
+
+        JsonNode input = OBJECT_MAPPER.readTree(recordedRequests.get(0).body()).get("input");
+        assertThat(input.get(0).get("data").asText()).isEqualTo("d2VicA==");
+        assertThat(input.get(0).get("mime_type").asText()).isEqualTo("image/webp");
+        assertThat(input.get(1).get("data").asText()).isEqualTo("aW1n");
+        assertThat(input.get(1).get("mime_type").asText()).isEqualTo("image/png");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"data:image/png", "data:text/plain,hello", "data:image/png;charset=utf-8,aW1n"})
+    void should_reject_data_url_that_is_not_base64_without_calling_the_api(String dataUrl) {
+        DecisionRequest request = DecisionRequest.builder()
+                .inputContents(List.of(ImageContent.from(dataUrl)))
+                .question("ok", YesNoQuestion.from("All good?"))
+                .build();
+
+        assertThatThrownBy(() -> model().decide(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The data URL of the image is not valid, expected data:<MIME type>;base64,<data>");
+        assertThat(recordedRequests).isEmpty();
+    }
+
+    @Test
     void should_send_all_multimodal_content_types_and_sources(@TempDir Path tempDir) throws Exception {
         enqueueJson("{\"answers\":{\"q0\":{\"type\":\"noul\",\"noul\":0.9,\"confidence\":0.9}}}");
 

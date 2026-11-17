@@ -82,7 +82,7 @@ class GoogleGenAiDecisionMapper {
 
     private static final double PROBABILITY_TOLERANCE = 1e-6;
     private static final String PROVIDER_NAME = "The Gemini Decisions API";
-    private static final Pattern DATA_URL_PATTERN = Pattern.compile("^data:([^;,]+)(?:;[^,]*)?,(.*)$");
+    private static final Pattern DATA_URL_PATTERN = Pattern.compile("^data:([^;,]+)(?:;[^,]*)?;base64,(.*)$", Pattern.CASE_INSENSITIVE);
     private static final Set<String> FIELDS_SET_BY_THE_MODEL = Set.of("model", "input", "questions");
     private static final Set<ContentType> SUPPORTED_CONVERSATION_MEDIA =
             Set.of(ContentType.IMAGE, ContentType.AUDIO, ContentType.VIDEO, ContentType.PDF);

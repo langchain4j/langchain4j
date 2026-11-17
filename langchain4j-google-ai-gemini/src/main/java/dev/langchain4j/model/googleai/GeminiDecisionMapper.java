@@ -52,7 +52,7 @@ class GeminiDecisionMapper {
 
     private static final String PROVIDER = "The Gemini Decisions API";
     private static final double PROBABILITY_TOLERANCE = 1e-6;
-    private static final Pattern DATA_URL_PATTERN = Pattern.compile("^data:([^;,]+)(?:;[^,]*)?,(.*)$");
+    private static final Pattern DATA_URL_PATTERN = Pattern.compile("^data:([^;,]+)(?:;[^,]*)?;base64,(.*)$", Pattern.CASE_INSENSITIVE);
     private static final CustomMimeTypesFileTypeDetector MIME_TYPE_DETECTOR = new CustomMimeTypesFileTypeDetector();
     private static final Set<ContentType> SUPPORTED_MEDIA =
             Set.of(ContentType.IMAGE, ContentType.AUDIO, ContentType.VIDEO, ContentType.PDF);
@@ -218,13 +218,14 @@ class GeminiDecisionMapper {
         if (url == null) {
             throw new IllegalArgumentException("The " + type + " has neither base64 data nor a URL");
         }
-        if ("data".equals(url.getScheme())) {
+        if ("data".equalsIgnoreCase(url.getScheme())) {
             Matcher matcher = DATA_URL_PATTERN.matcher(url.toString());
             if (!matcher.matches()) {
                 throw new IllegalArgumentException(
                         "The data URL of the " + type + " is not valid, expected data:<MIME type>;base64,<data>");
             }
-            return new Block(type, null, matcher.group(2), null, matcher.group(1), resolution);
+            return new Block(
+                    type, null, matcher.group(2), null, getOrDefault(mimeType, matcher.group(1)), resolution);
         }
         return new Block(
                 type,

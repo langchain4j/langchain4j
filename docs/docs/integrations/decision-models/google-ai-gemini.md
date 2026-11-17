@@ -62,6 +62,9 @@ The other settings are `baseUrl` (by default `https://generativelanguage.googlea
 (see [Custom parameters](#custom-parameters)), `yesWhenPrefix` and `noWhenPrefix` (see
 [Questions and answers](#questions-and-answers)) and `listeners`.
 
+By default, the connect timeout is 15 seconds and the read timeout is 60 seconds. If decisions on large audio or video
+files time out, set a longer `timeout(...)`.
+
 Both `decide()` and `decideAsync()` are supported.
 
 ## Input
@@ -90,14 +93,14 @@ DecisionRequest request = DecisionRequest.builder()
 ```
 
 Images, audio, video and PDF files can be given as:
-- base64 data, as above;
-- a `data:` URL, such as `data:image/png;base64,...`;
+- base64 data (or binary data on `Audio`), as above;
+- a base64 `data:` URL, such as `data:image/png;base64,...`;
 - a URL that Gemini reads itself: a publicly accessible `https` URL, or the URI of a file uploaded with the
   [Gemini Files API](/integrations/language-models/google-ai-gemini#gemini-files-api). LangChain4j does not download
-  URLs: they are sent to Gemini as they are.
+  URLs or read local files: URLs are sent to Gemini as they are.
 
-YouTube URLs and `gs://` URLs are not accepted. Upload such a file with the Files API, or give it as a public or
-signed `https` URL, or as base64 data.
+YouTube URLs, `gs://` URIs and local `file:` URIs are not accepted. Upload such a file with the Files API, or give it
+as a public or signed `https` URL, or as base64 data.
 
 The Files API is useful for large files:
 

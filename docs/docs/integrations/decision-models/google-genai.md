@@ -87,12 +87,15 @@ DecisionRequest request = DecisionRequest.builder()
 
 Images, audio, video and PDF files can be given as:
 - base64 data (or binary data on `Audio`);
-- a `data:` URL, such as `data:image/png;base64,...`;
+- a base64 `data:` URL, such as `data:image/png;base64,...`;
 - a URL that Gemini reads itself: a publicly accessible `https` URL, or the URI of a file uploaded with
   `GoogleGenAiFiles`. LangChain4j does not download URLs or read local files: URLs are sent to Gemini as they are.
 
 YouTube URLs, `gs://` URIs and local `file:` URIs are not accepted. Upload such a file with `GoogleGenAiFiles`, or give
 it as a public or signed `https` URL, or as base64 data.
+
+A large file, such as a video, can take a while to be processed after the upload: wait until it is active before
+using it.
 
 The MIME type is taken from the content, or guessed from the file extension of the URL when not set (`PdfFile` defaults
 to `application/pdf`). Set the MIME type explicitly when the URL has no file extension, such as Files API URIs.
