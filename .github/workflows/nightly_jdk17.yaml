@@ -180,7 +180,8 @@ jobs:
           ##   that depend on it; without it, one flaky test skips all of them
           ## - the property alone hides failures: Maven ends with BUILD SUCCESS and the job stays green
           ## - the check fails this step on failed tests and test errors, on a test JVM killed by the timeout above or
-          ##   crashed, and on any Maven failure, with error annotations that name the failing test classes
+          ##   crashed, on tests skipped because a variable in env: below is empty (a missing secret), and on any
+          ##   Maven failure, with error annotations that name the failing test classes
           ## - still skipped: the modules that depend on a module that does not compile or whose test JVM crashed
           ##   (Maven fails that module, BUILD FAILURE)
           maven_exit=0
@@ -197,7 +198,7 @@ jobs:
 
           ## the check: it also runs when Maven failed, so that failed tests of other modules are reported too
           MAVEN_EXIT="$maven_exit" python3 << 'PYEOF'
-          import glob, os, sys
+          import glob, os, re, sys
           import xml.etree.ElementTree as ET
 
           def escape(text, prop=False):
@@ -210,6 +211,7 @@ jobs:
           maven_exit = int(os.environ['MAVEN_EXIT'])
           problems = []  # (module, what went wrong), the ones that stopped tests from running first
           failed_classes = {}  # module -> [(test class, its failed tests)]
+          skipped_by_empty_variable = {}  # variable from env: -> number of tests skipped because it is empty
           if maven_exit:
               problems.append(('Maven', f'Maven failed (exit code {maven_exit}): a module did not compile, a plugin failed '
                                'or a test JVM crashed, and the modules of this job that depend on it were skipped. '
@@ -238,6 +240,12 @@ jobs:
                                   if tc.find('failure') is not None or tc.find('error') is not None})
                   names = ', '.join(tests[:3]) + (f' and {len(tests) - 3} more' if len(tests) > 3 else '')
                   failed_classes.setdefault(module_of(path), []).append((test_class, f'{failed} of {root.get("tests")} tests failed ({names})'))
+              for skipped in root.iter('skipped'):
+                  match = re.search(r'Environment variable \[(\w+)\] with value \[\] does not match', skipped.get('message') or '')
+                  if match and os.environ.get(match.group(1)) == '':
+                      skipped_by_empty_variable[match.group(1)] = skipped_by_empty_variable.get(match.group(1), 0) + 1
+          for variable, count in sorted(skipped_by_empty_variable.items()):
+              problems.append((variable, f'{variable} is empty (a missing secret?), so {count} tests were skipped'))
 
           if not problems and not failed_classes:
               sys.exit(0)
