@@ -1,10 +1,10 @@
 package dev.langchain4j.guardrail;
 
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import dev.langchain4j.Internal;
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Base class of the {@link GuardrailExecutor}s of tool guardrails, which share the same semantics:

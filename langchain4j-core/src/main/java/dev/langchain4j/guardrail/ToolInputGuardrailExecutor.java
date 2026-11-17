@@ -1,13 +1,13 @@
 package dev.langchain4j.guardrail;
 
-import java.util.List;
-import java.util.ServiceLoader;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.guardrail.ToolInputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
 import dev.langchain4j.observability.api.event.ToolInputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.ToolInputGuardrailExecutedEvent.ToolInputGuardrailExecutedEventBuilder;
 import dev.langchain4j.spi.guardrail.ToolInputGuardrailExecutorBuilderFactory;
+import java.util.List;
+import java.util.ServiceLoader;
 
 /**
  * The {@link GuardrailExecutor} for {@link ToolInputGuardrail}s.

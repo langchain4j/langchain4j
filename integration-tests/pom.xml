@@ -29,6 +29,7 @@
         <module>integration-tests-class-instance-loader/integration-tests-class-instance-loader-quarkus</module>
         <module>integration-tests-class-metadata-provider</module>
         <module>integration-tests-class-metadata-provider/integration-tests-class-metadata-provider-spring</module>
+        <module>integration-tests-class-metadata-provider/integration-tests-class-metadata-provider-string-keys</module>
         <module>integration-tests-decision-models</module>
         <module>integration-tests-guardrails</module>
         <module>integration-tests-jackson3</module>
@@ -36,6 +37,16 @@
         <module>integration-tests-test-assertions/integration-tests-test-assertions-spring</module>
         <module>integration-tests-test-assertions/integration-tests-test-assertions-quarkus</module>
     </modules>
+
+    <properties>
+        <!-- Don't want to actually install, deploy, or generate sources/javadocs for any of the artifacts under here -->
+        <maven.deploy.file.skip>true</maven.deploy.file.skip>
+        <maven.install.skip>true</maven.install.skip>
+        <maven.javadoc.skip>true</maven.javadoc.skip>
+        <maven.source.skip>true</maven.source.skip>
+        <enforcer.skipRules>requireUpperBoundDeps</enforcer.skipRules>
+        <revapi.skip>true</revapi.skip>
+    </properties>
 
     <profiles>
         <!-- These apps build against released versions of the Spring Boot starter and the Quarkus extension, which
@@ -49,14 +60,4 @@
             </modules>
         </profile>
     </profiles>
-
-    <properties>
-        <!-- Don't want to actually install, deploy, or generate sources/javadocs for any of the artifacts under here -->
-        <maven.deploy.file.skip>true</maven.deploy.file.skip>
-        <maven.install.skip>true</maven.install.skip>
-        <maven.javadoc.skip>true</maven.javadoc.skip>
-        <maven.source.skip>true</maven.source.skip>
-        <enforcer.skipRules>requireUpperBoundDeps</enforcer.skipRules>
-        <revapi.skip>true</revapi.skip>
-    </properties>
 </project>
