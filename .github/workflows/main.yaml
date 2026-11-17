@@ -288,6 +288,7 @@ jobs:
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
             -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
+            --fail-at-end \
             -DembeddingsSkipCache \
             -Dtinylog.writer.level=info 2>&1 | tee maven-output.log
         env:

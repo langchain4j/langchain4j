@@ -17,10 +17,11 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.exception.ContentFilteredException;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.RefusalAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import dev.langchain4j.model.output.TokenUsage;
@@ -152,15 +153,17 @@ class ConfidenceCascadePlannerTest {
     private final ExpertAgent expertAgent = new ExpertAgent();
     private final SeniorExpertAgent seniorExpertAgent = new SeniorExpertAgent();
 
-    private static DecisionModelMock modelGrading(double probability) {
-        return DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, YesNoAnswer.from(probability)));
+    private static MockDecisionModel modelGrading(double probability) {
+        return MockDecisionModel.thatAnswers(Map.of(QUESTION_NAME, YesNoAnswer.from(probability)));
     }
 
     /** A model grading the successive answers with the given probabilities, in turn. */
-    private static DecisionModelMock modelGradingInTurn(double... probabilities) {
-        AtomicInteger grades = new AtomicInteger();
-        return DecisionModelMock.thatAnswers(
-                request -> Map.of(QUESTION_NAME, YesNoAnswer.from(probabilities[grades.getAndIncrement()])));
+    private static MockDecisionModel modelGradingInTurn(double... probabilities) {
+        MockDecisionModel model = modelGrading(probabilities[0]);
+        for (int i = 1; i < probabilities.length; i++) {
+            model.thenAnswers(Map.of(QUESTION_NAME, YesNoAnswer.from(probabilities[i])));
+        }
+        return model;
     }
 
     private static <T> T cascade(Class<T> cascadeType, ConfidenceCascadePlanner planner, Object... tiers) {
@@ -171,7 +174,7 @@ class ConfidenceCascadePlannerTest {
                 .build();
     }
 
-    private static SupportCascade cascade(DecisionModelMock model, Object... tiers) {
+    private static SupportCascade cascade(MockDecisionModel model, Object... tiers) {
         return cascade(SupportCascade.class, new ConfidenceCascadePlanner(model, 0.5), tiers);
     }
 
@@ -179,7 +182,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldReturnTheAnswerOfTheFirstTierWhenItIsAccepted() {
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
 
         assertThat(cascade(model, faqAgent, expertAgent).ask(REQUEST)).isEqualTo("faq answer");
         assertThat(faqAgent.calls).hasValue(1);
@@ -189,7 +192,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldEscalateToTheNextTierWhenTheAnswerIsRejected() {
-        DecisionModelMock model = modelGrading(0.2);
+        MockDecisionModel model = modelGrading(0.2);
 
         assertThat(cascade(model, faqAgent, expertAgent).ask(REQUEST)).isEqualTo("expert answer");
         assertThat(faqAgent.calls).hasValue(1);
@@ -200,7 +203,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldNotGradeTheLastTier() {
-        DecisionModelMock model = modelGrading(0.1);
+        MockDecisionModel model = modelGradingInTurn(0.1, 0.1);
 
         assertThat(cascade(model, faqAgent, expertAgent, seniorExpertAgent).ask(REQUEST))
                 .isEqualTo("senior answer");
@@ -210,7 +213,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldAcceptAProbabilityEqualToTheThreshold() {
-        DecisionModelMock model = modelGrading(0.5);
+        MockDecisionModel model = modelGrading(0.5);
 
         assertThat(cascade(model, faqAgent, expertAgent).ask(REQUEST)).isEqualTo("faq answer");
         assertThat(expertAgent.calls).hasValue(0);
@@ -218,7 +221,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldAcceptTheAnswerOfAMiddleTier() {
-        DecisionModelMock model = modelGradingInTurn(0.1, 0.8);
+        MockDecisionModel model = modelGradingInTurn(0.1, 0.8);
 
         assertThat(cascade(model, faqAgent, expertAgent, seniorExpertAgent).ask(REQUEST))
                 .isEqualTo("expert answer");
@@ -227,7 +230,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldSendTheRequestAndTheCandidateAnswerToTheDecisionModel() {
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
 
         cascade(model, faqAgent, expertAgent).ask(REQUEST);
 
@@ -241,7 +244,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldSendTheAcceptanceCriterionAsTheYesWhenDescription() {
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
         String criterion = "The answer gives concrete steps and does not ask the user to contact support";
 
         cascade(SupportCascade.class, new ConfidenceCascadePlanner(model, 0.5, criterion), faqAgent, expertAgent)
@@ -254,7 +257,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldAskTheQuestionSetOnTheBuilder() {
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
         String criterion = "The answer gives concrete steps and does not ask the user to contact support";
         ConfidenceCascadePlanner planner = ConfidenceCascadePlanner.builder()
                 .decisionModel(model)
@@ -272,7 +275,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldSendTheArgumentsAsTheyAreAndConvertATypedAnswerToJsonValues() {
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
         Map<String, Object> ticket = Map.of("subject", "Descaling", "priority", 2);
         TicketMapCascade cascade = cascade(
                 TicketMapCascade.class,
@@ -293,7 +296,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldSendAContentAnswerAsItIs() {
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
         ImageContent image = ImageContent.from("https://example.com/descaling.png");
         ImageCascade cascade = cascade(
                 ImageCascade.class, new ConfidenceCascadePlanner(model, 0.5), new ImageFaqAgent(image), expertAgent);
@@ -304,7 +307,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldRejectAnArgumentThatTheDecisionModelDoesNotAccept() {
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
         TicketCascade cascade = cascade(
                 TicketCascade.class, new ConfidenceCascadePlanner(model, 0.5), new StructuredFaqAgent(), expertAgent);
 
@@ -319,7 +322,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldWriteTheResultUnderTheCascadeOutputKey() {
-        DecisionModelMock model = modelGrading(0.2);
+        MockDecisionModel model = modelGrading(0.2);
 
         ResultWithAgenticScope<String> result = cascade(
                         SupportCascadeWithScope.class, new ConfidenceCascadePlanner(model, 0.5), faqAgent, expertAgent)
@@ -331,7 +334,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldBeAStepOfASequence() {
-        DecisionModelMock model = modelGrading(0.2);
+        MockDecisionModel model = modelGrading(0.2);
 
         SupportPipeline pipeline = AgenticServices.sequenceBuilder(SupportPipeline.class)
                 .subAgents(cascade(model, faqAgent, expertAgent), new Summarizer())
@@ -343,7 +346,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldBeReportedAsASequence() {
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
 
         assertThat(new ConfidenceCascadePlanner(model, 0.5).topology()).isEqualTo(AgenticSystemTopology.SEQUENCE);
         assertThat(HtmlReportGenerator.generateTopology(cascade(model, faqAgent, expertAgent)))
@@ -379,7 +382,7 @@ class ConfidenceCascadePlannerTest {
     @Test
     void shouldPassOverAnInactiveTierWithoutGradingIt() {
         AtomicInteger inactiveCalls = new AtomicInteger();
-        DecisionModelMock model = modelGrading(0.1);
+        MockDecisionModel model = modelGrading(0.1);
 
         String answer = cascade(model, faqAgent, inactiveTier("expert", inactiveCalls), seniorExpertAgent)
                 .ask(REQUEST);
@@ -392,7 +395,7 @@ class ConfidenceCascadePlannerTest {
     @Test
     void shouldNotGradeTheAnswerWhenNoLaterTierIsActive() {
         AtomicInteger inactiveCalls = new AtomicInteger();
-        DecisionModelMock model = modelGrading(0.1);
+        MockDecisionModel model = modelGrading(0.1);
 
         assertThat(cascade(model, faqAgent, inactiveTier("expert", inactiveCalls))
                         .ask(REQUEST))
@@ -404,7 +407,7 @@ class ConfidenceCascadePlannerTest {
     @Test
     void shouldReturnTheLatestAnswerWhenTheRemainingTiersAreSkippedAfterTheGrade() {
         AtomicInteger skippedCalls = new AtomicInteger();
-        DecisionModelMock model = modelGrading(0.1);
+        MockDecisionModel model = modelGrading(0.1);
 
         assertThat(cascade(model, faqAgent, tierSkippedAfterTheGrade("expert", skippedCalls))
                         .ask(REQUEST))
@@ -416,7 +419,7 @@ class ConfidenceCascadePlannerTest {
     @Test
     void shouldHaveNoResultWhenEveryTierIsSkipped() {
         AtomicInteger inactiveCalls = new AtomicInteger();
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
 
         assertThat(cascade(model, inactiveTier("faq", inactiveCalls), inactiveTier("expert", inactiveCalls))
                         .ask(REQUEST))
@@ -440,7 +443,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldWaitForTheAnswerOfAnAsyncTierBeforeGradingIt() {
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
 
         assertThat(cascade(model, asyncTier("faq", "faqAnswer"), expertAgent).ask(REQUEST))
                 .isEqualTo("faq answer");
@@ -451,7 +454,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldFailWhenTheDelayedAnswerOfATierHasNoOutputKey() {
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
 
         assertThatThrownBy(() ->
                         cascade(model, asyncTier("faq", null), expertAgent).ask(REQUEST))
@@ -473,7 +476,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldRejectAThresholdOutsideZeroToOne() {
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
 
         for (double threshold : new double[] {0.0, 1.0, -0.1, 1.5, Double.NaN}) {
             assertThatThrownBy(() -> new ConfidenceCascadePlanner(model, threshold))
@@ -484,7 +487,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldRejectABlankAcceptanceCriterion() {
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
 
         assertThatThrownBy(() -> new ConfidenceCascadePlanner(model, 0.5, "  "))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -493,7 +496,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldRejectABuilderWithoutAThresholdOrWithABlankQuestion() {
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
 
         assertThatThrownBy(() ->
                         ConfidenceCascadePlanner.builder().decisionModel(model).build())
@@ -510,7 +513,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldRejectFewerThanTwoTiers() {
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
 
         assertThatThrownBy(() -> cascade(model, faqAgent).ask(REQUEST))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -520,7 +523,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldRejectAnUntypedCascade() {
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
 
         UntypedAgent cascade = AgenticServices.plannerBuilder()
                 .subAgents(faqAgent, expertAgent)
@@ -535,7 +538,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldRejectAnArgumentNamedLikeTheCandidateAnswerField() {
-        DecisionModelMock model = modelGrading(0.9);
+        MockDecisionModel model = modelGrading(0.9);
 
         assertThatThrownBy(() -> cascade(
                                 CascadeWithClashingArgument.class,
@@ -550,7 +553,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldPropagateADecisionModelFailure() {
-        DecisionModelMock model = DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("decision failed");
+        MockDecisionModel model = MockDecisionModel.thatFails(new RuntimeException("decision failed"));
 
         assertThatThrownBy(() -> cascade(model, faqAgent, expertAgent).ask(REQUEST))
                 .hasMessageContaining("decision failed");
@@ -560,7 +563,7 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldPropagateARefusalOfTheDecisionModel() {
-        DecisionModelMock model = DecisionModelMock.thatAlwaysAnswers(Map.of(QUESTION_NAME, RefusalAnswer.of()));
+        MockDecisionModel model = MockDecisionModel.thatAnswers(Map.of(QUESTION_NAME, RefusalAnswer.of()));
 
         assertThatThrownBy(() -> cascade(model, faqAgent, expertAgent).ask(REQUEST))
                 .isInstanceOf(ContentFilteredException.class);
@@ -571,8 +574,12 @@ class ConfidenceCascadePlannerTest {
 
     @Test
     void shouldCountEveryGradingCallOnTheCascadeAndNoneForTheLastTier() {
-        DecisionModelMock model =
-                modelGrading(0.1).withModelName("decision-model").withTokenUsage(new TokenUsage(40, 2));
+        MockDecisionModel model = MockDecisionModel.thatResponds(DecisionResponse.builder()
+                        .answer(QUESTION_NAME, YesNoAnswer.from(0.1))
+                        .modelName("decision-model")
+                        .tokenUsage(new TokenUsage(40, 2))
+                        .build())
+                .thenRepeats();
         AgentMonitor monitor = new AgentMonitor();
         SupportCascade cascade = AgenticServices.plannerBuilder(SupportCascade.class)
                 .subAgents(faqAgent, expertAgent, seniorExpertAgent)

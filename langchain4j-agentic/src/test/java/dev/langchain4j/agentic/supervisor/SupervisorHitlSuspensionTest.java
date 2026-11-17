@@ -15,12 +15,12 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.agentic.workflow.HumanInTheLoop;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
+import dev.langchain4j.test.mock.MockChatModel;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
@@ -151,17 +151,24 @@ class SupervisorHitlSuspensionTest {
     void resumed_supervisor_counts_the_planning_calls_made_before_the_suspension() {
         AgenticScopePersister.setStore(new InMemoryAgenticScopeStore());
 
-        ChatModelMock plannerModel = ChatModelMock.thatAlwaysResponds(
-                        AiMessage.from("""
+        MockChatModel plannerModel = MockChatModel.thatResponds(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("""
                                 {"agentName": "askUser", "arguments": {"question": "What is your name?"}}
-                                """),
-                        AiMessage.from("""
+                                """))
+                        .tokenUsage(new TokenUsage(100, 20))
+                        .build())
+                .thenResponds(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("""
                                 {"agentName": "query", "arguments": {}}
-                                """),
-                        AiMessage.from("""
+                                """))
+                        .tokenUsage(new TokenUsage(30, 5))
+                        .build())
+                .thenResponds(ChatResponse.builder()
+                        .aiMessage(AiMessage.from("""
                                 {"agentName": "done", "arguments": {"response": "Hello Alice"}}
                                 """))
-                .withTokenUsages(new TokenUsage(100, 20), new TokenUsage(30, 5), new TokenUsage(10, 2));
+                        .tokenUsage(new TokenUsage(10, 2))
+                        .build());
 
         HumanInTheLoop askUser = AgenticServices.humanInTheLoopBuilder()
                 .description("Ask the user for missing information")
