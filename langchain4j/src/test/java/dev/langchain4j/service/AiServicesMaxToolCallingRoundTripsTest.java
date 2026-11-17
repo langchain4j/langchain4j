@@ -13,7 +13,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -56,7 +56,7 @@ class AiServicesMaxToolCallingRoundTripsTest {
         // given: 2 LLM responses with tool calls, then the answer
         Tools tools = new Tools();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(TOOL_CALL, TOOL_CALL, ANSWER))
+                .chatModel(MockChatModel.thatResponds(TOOL_CALL, TOOL_CALL, ANSWER))
                 .tools(tools)
                 .maxToolCallingRoundTrips(2)
                 .build();
@@ -76,7 +76,7 @@ class AiServicesMaxToolCallingRoundTripsTest {
         Tools tools = new Tools();
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(TOOL_CALL, TOOL_CALL, ANSWER))
+                .chatModel(MockChatModel.thatResponds(TOOL_CALL, TOOL_CALL, ANSWER))
                 .chatMemory(chatMemory)
                 .tools(tools)
                 .maxToolCallingRoundTrips(1)
@@ -97,7 +97,7 @@ class AiServicesMaxToolCallingRoundTripsTest {
 
         // given: an answer without tool calls, and no round trip allowed
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(ANSWER))
+                .chatModel(MockChatModel.thatResponds(ANSWER))
                 .tools(new Tools())
                 .maxToolCallingRoundTrips(0)
                 .build();
@@ -115,7 +115,7 @@ class AiServicesMaxToolCallingRoundTripsTest {
         // given: 2 LLM responses with tool calls, then the answer
         Tools tools = new Tools();
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(TOOL_CALL, TOOL_CALL, ANSWER))
+                .chatModel(MockChatModel.thatResponds(TOOL_CALL, TOOL_CALL, ANSWER))
                 .tools(tools)
                 .maxToolCallingRoundTrips(2)
                 .build();
@@ -134,7 +134,7 @@ class AiServicesMaxToolCallingRoundTripsTest {
         // given: 2 LLM responses with tool calls, but only 1 round trip is allowed
         Tools tools = new Tools();
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(TOOL_CALL, TOOL_CALL, ANSWER))
+                .chatModel(MockChatModel.thatResponds(TOOL_CALL, TOOL_CALL, ANSWER))
                 .tools(tools)
                 .maxToolCallingRoundTrips(1)
                 .build();
