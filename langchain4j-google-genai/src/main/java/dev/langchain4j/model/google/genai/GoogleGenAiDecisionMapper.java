@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.DecisionModelInputUtils.transcript;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
@@ -29,25 +30,21 @@ import com.google.genai.gaos.models.interactions.ImageContentMimeType;
 import com.google.genai.gaos.models.interactions.MediaResolution;
 import com.google.genai.gaos.models.interactions.Usage;
 import com.google.genai.gaos.models.interactions.VideoContentMimeType;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
-import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
-import dev.langchain4j.data.message.ToolExecutionResultMessage;
-import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.DecisionModelInputUtils.Transcript;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
@@ -70,10 +67,8 @@ import java.net.URI;
 import java.net.URLConnection;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -98,7 +93,8 @@ class GoogleGenAiDecisionMapper {
 
     private GoogleGenAiDecisionMapper() {}
 
-    static CreateDecisionRequest toCreateDecisionRequest(DecisionRequest request) {
+    static CreateDecisionRequest toCreateDecisionRequest(
+            DecisionRequest request, String yesWhenPrefix, String noWhenPrefix) {
         if (isNullOrBlank(request.modelName())) {
             throw new IllegalArgumentException("The model name must be set, either with "
                     + "GoogleGenAiDecisionModel.builder().modelName(...) or on the request with "
@@ -117,7 +113,7 @@ class GoogleGenAiDecisionMapper {
         Map<String, com.google.genai.gaos.models.decisions.Question> questions = new LinkedHashMap<>();
         questionNamesByKey(request)
                 .forEach((key, name) ->
-                        questions.put(key, toQuestion(request.questions().get(name))));
+                        questions.put(key, toQuestion(request.questions().get(name), yesWhenPrefix, noWhenPrefix)));
 
         Input input = toInput(request.input());
         if (customParameters.isEmpty()) {
@@ -244,7 +240,7 @@ class GoogleGenAiDecisionMapper {
      * each labeled with the marker that refers to it, such as {@code [audio 1]}.
      */
     private static List<DecisionInputContent> toTranscriptContents(List<ChatMessage> messages) {
-        ConversationTranscript transcript = buildTranscript(messages);
+        Transcript transcript = transcript(messages, PROVIDER_NAME, SUPPORTED_CONVERSATION_MEDIA);
         List<DecisionInputContent> parts = new ArrayList<>();
         parts.add(textContent("messages: " + Json.toJson(transcript.messages()) + "\n"));
         transcript.media().forEach((marker, content) -> {
@@ -253,94 +249,6 @@ class GoogleGenAiDecisionMapper {
         });
         return parts;
     }
-
-    private static ConversationTranscript buildTranscript(List<ChatMessage> messages) {
-        List<Map<String, Object>> entries = new ArrayList<>();
-        Map<String, Content> media = new LinkedHashMap<>();
-        Map<ContentType, Integer> mediaCounts = new EnumMap<>(ContentType.class);
-        for (ChatMessage message : messages) {
-            Map<String, Object> entry = new LinkedHashMap<>();
-            if (message instanceof SystemMessage systemMessage) {
-                entry.put("role", "system");
-                entry.put("text", systemMessage.text());
-            } else if (message instanceof UserMessage userMessage) {
-                entry.put("role", "user");
-                if (userMessage.name() != null) {
-                    entry.put("name", userMessage.name());
-                }
-                entry.put("text", transcriptText(userMessage.contents(), media, mediaCounts));
-            } else if (message instanceof AiMessage aiMessage) {
-                if ((aiMessage.text() == null || aiMessage.text().isEmpty()) && !aiMessage.hasToolExecutionRequests()) {
-                    continue;
-                }
-                entry.put("role", "assistant");
-                if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
-                    entry.put("text", aiMessage.text());
-                }
-                if (aiMessage.hasToolExecutionRequests()) {
-                    List<Map<String, Object>> toolCalls = new ArrayList<>();
-                    for (ToolExecutionRequest toolRequest : aiMessage.toolExecutionRequests()) {
-                        Map<String, Object> toolCall = new LinkedHashMap<>();
-                        putIfNotNull(toolCall, "id", toolRequest.id());
-                        toolCall.put("name", toolRequest.name());
-                        putIfNotNull(toolCall, "arguments", toolRequest.arguments());
-                        toolCalls.add(toolCall);
-                    }
-                    entry.put("tool_calls", toolCalls);
-                }
-            } else if (message instanceof ToolExecutionResultMessage result) {
-                entry.put("role", "tool");
-                putIfNotNull(entry, "tool_call_id", result.id());
-                entry.put("name", result.toolName());
-                entry.put("text", transcriptText(result.contents(), media, mediaCounts));
-                if (Boolean.TRUE.equals(result.isError())) {
-                    entry.put("is_error", true);
-                }
-            } else {
-                throw new UnsupportedFeatureException(PROVIDER_NAME + " does not support "
-                        + message.getClass().getSimpleName() + " in a conversation. Supported messages: "
-                        + "SystemMessage, UserMessage, AiMessage and ToolExecutionResultMessage");
-            }
-            entries.add(entry);
-        }
-        if (entries.isEmpty()) {
-            throw new IllegalArgumentException("The conversation has nothing to send: AiMessages without text and tool "
-                    + "execution requests are skipped");
-        }
-        return new ConversationTranscript(entries, media);
-    }
-
-    private static void putIfNotNull(Map<String, Object> map, String key, Object value) {
-        if (value != null) {
-            map.put(key, value);
-        }
-    }
-
-    private static String transcriptText(
-            List<Content> contents, Map<String, Content> media, Map<ContentType, Integer> mediaCounts) {
-        List<String> parts = new ArrayList<>();
-        for (Content content : contents) {
-            if (content instanceof TextContent textContent) {
-                parts.add(textContent.text());
-                continue;
-            }
-            ContentType kind = content.type();
-            if (kind == null
-                    || !SUPPORTED_CONVERSATION_MEDIA.contains(kind)
-                    || !kind.getContentClass().isInstance(content)) {
-                throw new UnsupportedFeatureException(
-                        PROVIDER_NAME + " supports only text, images, audio, video and PDF files in a conversation, "
-                                + "but it contains " + content.type());
-            }
-            int position = mediaCounts.merge(kind, 1, Integer::sum);
-            String marker = "[" + kind.name().toLowerCase(Locale.ROOT) + " " + position + "]";
-            media.put(marker, content);
-            parts.add(marker);
-        }
-        return String.join("\n", parts);
-    }
-
-    private record ConversationTranscript(List<Map<String, Object>> messages, Map<String, Content> media) {}
 
     private static DecisionInputContent textContent(String text) {
         return com.google.genai.gaos.models.interactions.TextContent.builder()
@@ -470,17 +378,10 @@ class GoogleGenAiDecisionMapper {
             @Nullable String uri,
             @Nullable String mimeType) {}
 
-    private static com.google.genai.gaos.models.decisions.Question toQuestion(Question question) {
+    private static com.google.genai.gaos.models.decisions.Question toQuestion(
+            Question question, String yesWhenPrefix, String noWhenPrefix) {
         if (question instanceof YesNoQuestion yesNo) {
-            NoulQuestion.Builder builder =
-                    NoulQuestion.builder().instructions(NoulQuestionInstructions.of(yesNo.text()));
-            if (yesNo.yesWhen() != null || yesNo.noWhen() != null) {
-                builder.criteria(NoulCriteria.builder()
-                        .trueDescription(yesNo.yesWhen())
-                        .falseDescription(yesNo.noWhen())
-                        .build());
-            }
-            return builder.build();
+            return toNoulQuestion(yesNo, yesWhenPrefix, noWhenPrefix);
         }
         if (question instanceof ChoiceQuestion choice) {
             return com.google.genai.gaos.models.decisions.ChoiceQuestion.builder()
@@ -502,6 +403,34 @@ class GoogleGenAiDecisionMapper {
         }
         throw new UnsupportedFeatureException(
                 PROVIDER_NAME + " does not support " + question.getClass().getName() + " questions");
+    }
+
+    /**
+     * A one-sided criterion is one reason for its answer, not the only one, but Gemini reads a lone
+     * {@code true_description} as the only reason to answer yes. Added to the instructions after a prefix such as
+     * "Also answer yes when: ", it is read as one reason among others.
+     */
+    private static NoulQuestion toNoulQuestion(YesNoQuestion question, String yesWhenPrefix, String noWhenPrefix) {
+        String yesWhen = question.yesWhen();
+        String noWhen = question.noWhen();
+        if (yesWhen != null && noWhen != null) {
+            return NoulQuestion.builder()
+                    .instructions(NoulQuestionInstructions.of(question.text()))
+                    .criteria(NoulCriteria.builder()
+                            .trueDescription(yesWhen)
+                            .falseDescription(noWhen)
+                            .build())
+                    .build();
+        }
+        String instructions = question.text();
+        if (yesWhen != null) {
+            instructions += "\n" + yesWhenPrefix + yesWhen;
+        } else if (noWhen != null) {
+            instructions += "\n" + noWhenPrefix + noWhen;
+        }
+        return NoulQuestion.builder()
+                .instructions(NoulQuestionInstructions.of(instructions))
+                .build();
     }
 
     /**

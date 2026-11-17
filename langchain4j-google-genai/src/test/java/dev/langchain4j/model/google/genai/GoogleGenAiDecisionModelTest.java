@@ -404,13 +404,74 @@ class GoogleGenAiDecisionModelTest {
     }
 
     @Test
-    void should_send_only_the_given_yes_no_criteria() throws Exception {
+    void should_send_one_sided_yes_no_criterion_in_instructions() throws Exception {
         enqueueJson(answers(
                 "\"q0\": {\"type\": \"noul\", \"noul\": 0.9, \"confidence\": 0.9}",
-                "\"q1\": {\"type\": \"noul\", \"noul\": 0.8, \"confidence\": 0.8}",
-                "\"q2\": {\"type\": \"noul\", \"noul\": 0.1, \"confidence\": 0.9}"));
+                "\"q1\": {\"type\": \"noul\", \"noul\": 0.9, \"confidence\": 0.9}",
+                "\"q2\": {\"type\": \"noul\", \"noul\": 0.9, \"confidence\": 0.9}"));
 
+        model().decide(oneSidedCriteriaRequest());
+
+        JsonNode questions =
+                OBJECT_MAPPER.readTree(recordedRequests.get(0).body()).get("questions");
+        assertThat(questions.get("q0").get("instructions").asText())
+                .isEqualTo("Do they want a refund?\nAlso answer yes when: They ask for their money back");
+        assertThat(questions.get("q0").has("criteria")).isFalse();
+        assertThat(questions.get("q1").get("instructions").asText())
+                .isEqualTo("Is it a complaint?\nAlso answer no when: Only a question");
+        assertThat(questions.get("q1").has("criteria")).isFalse();
+        assertThat(questions.get("q2").get("instructions").asText()).isEqualTo("Is it spam?");
+        assertThat(questions.get("q2").has("criteria")).isFalse();
+    }
+
+    @Test
+    void should_send_one_sided_yes_no_criterion_with_custom_prefixes() throws Exception {
+        enqueueJson(answers(
+                "\"q0\": {\"type\": \"noul\", \"noul\": 0.9, \"confidence\": 0.9}",
+                "\"q1\": {\"type\": \"noul\", \"noul\": 0.9, \"confidence\": 0.9}",
+                "\"q2\": {\"type\": \"noul\", \"noul\": 0.9, \"confidence\": 0.9}",
+                "\"q3\": {\"type\": \"noul\", \"noul\": 0.9, \"confidence\": 0.9}"));
+        GoogleGenAiDecisionModel model = GoogleGenAiDecisionModel.builder()
+                .apiKey("test-key")
+                .apiEndpoint(baseUrl)
+                .modelName(MODEL_NAME)
+                .maxRetries(0)
+                .yesWhenPrefix("Yes in any case if: ")
+                .noWhenPrefix("No in any case if: ")
+                .build();
         DecisionRequest request = DecisionRequest.builder()
+                .input("I want my money back.")
+                .questions(oneSidedCriteriaRequest().questions())
+                .question(
+                        "urgent",
+                        YesNoQuestion.builder()
+                                .text("Is it urgent?")
+                                .yesWhen("Money is not reaching the customer")
+                                .noWhen("Only a question")
+                                .build())
+                .build();
+
+        model.decide(request);
+
+        JsonNode questions =
+                OBJECT_MAPPER.readTree(recordedRequests.get(0).body()).get("questions");
+        assertThat(questions.get("q0").get("instructions").asText())
+                .isEqualTo("Do they want a refund?\nYes in any case if: They ask for their money back");
+        assertThat(questions.get("q0").has("criteria")).isFalse();
+        assertThat(questions.get("q1").get("instructions").asText())
+                .isEqualTo("Is it a complaint?\nNo in any case if: Only a question");
+        assertThat(questions.get("q1").has("criteria")).isFalse();
+        assertThat(questions.get("q2").get("instructions").asText()).isEqualTo("Is it spam?");
+        assertThat(questions.get("q2").has("criteria")).isFalse();
+        assertThat(questions.get("q3").get("instructions").asText()).isEqualTo("Is it urgent?");
+        assertThat(questions.get("q3").get("criteria").get("true_description").asText())
+                .isEqualTo("Money is not reaching the customer");
+        assertThat(questions.get("q3").get("criteria").get("false_description").asText())
+                .isEqualTo("Only a question");
+    }
+
+    private static DecisionRequest oneSidedCriteriaRequest() {
+        return DecisionRequest.builder()
                 .input("I want my money back.")
                 .question(
                         "refund",
@@ -426,18 +487,6 @@ class GoogleGenAiDecisionModelTest {
                                 .build())
                 .question("spam", YesNoQuestion.from("Is it spam?"))
                 .build();
-
-        model().decide(request);
-
-        JsonNode questions =
-                OBJECT_MAPPER.readTree(recordedRequests.get(0).body()).get("questions");
-        assertThat(questions.get("q0").get("criteria").get("true_description").asText())
-                .isEqualTo("They ask for their money back");
-        assertThat(questions.get("q0").get("criteria").has("false_description")).isFalse();
-        assertThat(questions.get("q1").get("criteria").get("false_description").asText())
-                .isEqualTo("Only a question");
-        assertThat(questions.get("q1").get("criteria").has("true_description")).isFalse();
-        assertThat(questions.get("q2").has("criteria")).isFalse();
     }
 
     @Test
