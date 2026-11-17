@@ -224,7 +224,10 @@ DecisionRequest request = DecisionRequest.builder()
 
 Images can be base64 data, a `data:` URL, or a publicly accessible `http` or `https` URL, which OpenAI downloads
 itself, for example `ImageContent.from("https://example.com/package.jpg")`. The detail levels `LOW`, `HIGH` and `AUTO`
-are supported; `MEDIUM` and `ULTRA_HIGH` are rejected with an `UnsupportedFeatureException`.
+are supported; `MEDIUM` and `ULTRA_HIGH` are rejected with an `UnsupportedFeatureException`. An image created without a
+detail level is sent without one, so OpenAI's default applies. An image read back from JSON, for example from a
+persistent chat memory, keeps the detail level stored with it, which is `LOW` when none was chosen. To use OpenAI's
+default for such an image, create it with `DetailLevel.AUTO`.
 
 The input can also be a conversation, a list of `ChatMessage`s set with `inputMessages(...)`. It is sent as a
 [transcript in JSON](/tutorials/decision-models#conversations) in a user message, followed by the images of the

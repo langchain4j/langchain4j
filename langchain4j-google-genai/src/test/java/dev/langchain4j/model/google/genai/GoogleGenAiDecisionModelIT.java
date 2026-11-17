@@ -109,6 +109,40 @@ class GoogleGenAiDecisionModelIT extends AbstractDecisionModelIT {
     }
 
     @Test
+    void should_read_lone_yes_when_as_criterion_for_yes() {
+        DecisionRequest request = DecisionRequest.builder()
+                .input("I'd like to return this jacket, I don't like the color.")
+                .question(
+                        "exchange",
+                        YesNoQuestion.builder()
+                                .text("Is this a return request?")
+                                .yesWhen("The customer wants to exchange an item for another size.")
+                                .build())
+                .build();
+
+        DecisionResponse response = model().decide(request);
+
+        assertThat(response.yesNo("exchange").probability()).isLessThan(0.5);
+    }
+
+    @Test
+    void should_read_lone_no_when_as_criterion_for_no() {
+        DecisionRequest request = DecisionRequest.builder()
+                .input("Your product is the worst thing I've ever bought, total garbage.")
+                .question(
+                        "abusive",
+                        YesNoQuestion.builder()
+                                .text("Is this message abusive?")
+                                .noWhen("The insults target the product or the company, not a person.")
+                                .build())
+                .build();
+
+        DecisionResponse response = model().decide(request);
+
+        assertThat(response.yesNo("abusive").probability()).isLessThan(0.5);
+    }
+
+    @Test
     void should_map_unknown_model_to_model_not_found_exception() {
         DecisionRequest request = DecisionRequest.builder()
                 .input("Hello")

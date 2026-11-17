@@ -18,6 +18,9 @@ import java.util.Objects;
  *         .noWhen("The customer only asks about a charge")
  *         .build();
  * }</pre>
+ * They describe what "yes" and "no" mean for this question when the question alone is ambiguous. When only one of
+ * them is set, how it combines with the question is up to the model: some models read a lone {@code yesWhen} as the
+ * only reason to answer "yes". To split the cases clearly, set both.
  *
  * @since 1.21.0
  */
@@ -108,7 +111,7 @@ public final class YesNoQuestion implements Question {
         }
 
         /**
-         * Describes when the answer should be "yes".
+         * Describes when the answer should be "yes" (see {@link YesNoQuestion} for how it combines with the question).
          */
         public Builder yesWhen(String description) {
             this.yesWhen = description;
@@ -116,7 +119,7 @@ public final class YesNoQuestion implements Question {
         }
 
         /**
-         * Describes when the answer should be "no".
+         * Describes when the answer should be "no" (see {@link YesNoQuestion} for how it combines with the question).
          */
         public Builder noWhen(String description) {
             this.noWhen = description;

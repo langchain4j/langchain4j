@@ -93,13 +93,17 @@ public class OllamaDecisionModel implements DecisionModel {
 
     @Override
     public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
-        OllamaDecisionRequest ollamaRequest = OllamaDecisionMapper.toOllamaRequest(request, keepAlive);
-        CompletableFuture<OllamaDecisionResponse> responseFuture =
-                withRetryMappingExceptionsAsync(() -> client.decideAsync(ollamaRequest), maxRetries);
-        CompletableFuture<DecisionResponse> result =
-                responseFuture.thenApply(response -> OllamaDecisionMapper.toDecisionResponse(response, request));
-        propagateCancellation(result, responseFuture);
-        return result;
+        try {
+            OllamaDecisionRequest ollamaRequest = OllamaDecisionMapper.toOllamaRequest(request, keepAlive);
+            CompletableFuture<OllamaDecisionResponse> responseFuture =
+                    withRetryMappingExceptionsAsync(() -> client.decideAsync(ollamaRequest), maxRetries);
+            CompletableFuture<DecisionResponse> result =
+                    responseFuture.thenApply(response -> OllamaDecisionMapper.toDecisionResponse(response, request));
+            propagateCancellation(result, responseFuture);
+            return result;
+        } catch (RuntimeException e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
     @Override

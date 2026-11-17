@@ -133,6 +133,9 @@ public interface DecisionModel {
     /**
      * The provider hook behind {@link #decideAsync(DecisionRequest)}. The default returns a failed future: a model
      * that is not genuinely asynchronous does not pretend to be.
+     * <p>
+     * Implementations return every failure, including mapping and validation errors, as a failed future, and never
+     * throw.
      *
      * @param request the request, with the default parameters already applied.
      * @return a {@link CompletableFuture} of the answers, keyed by question name.

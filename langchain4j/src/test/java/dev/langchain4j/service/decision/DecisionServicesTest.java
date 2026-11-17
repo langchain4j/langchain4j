@@ -10,6 +10,11 @@ import static org.assertj.core.api.Assertions.offset;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.video.Video;
+import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.data.message.VideoContent;
+import dev.langchain4j.data.message.AudioContent;
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.test.mock.MockDecisionModel;
@@ -133,6 +138,13 @@ class DecisionServicesTest {
 
         @Decide("Is the invoice for a damaged item?")
         boolean isInvoiceForDamagedItem(@V("invoice") PdfFileContent invoice);
+
+        @Decide("Is the item visibly damaged?")
+        boolean isDamagedAccordingToMedia(
+                @V("call") Audio call, @V("video") Video video, @V("receipt") PdfFile receipt);
+
+        @Decide("Is any of the invoices for a damaged item?")
+        boolean anyInvoiceForDamagedItem(@V("invoices") List<PdfFile> invoices);
     }
 
     static final ImageContent PHOTO = ImageContent.from("iVBORw0KGgo=", "image/png");
@@ -201,6 +213,31 @@ class DecisionServicesTest {
         inspector.isInvoiceForDamagedItem(invoice);
 
         assertThat(damaged.request().input()).isEqualTo(FieldsInput.from(Map.of("invoice", invoice)));
+    }
+
+    @Test
+    void should_send_audio_video_and_pdf_files_as_contents() throws Exception {
+
+        Audio call = Audio.builder().base64Data("SUQz").mimeType("audio/mp3").build();
+        Video video = Video.builder().url("https://example.com/unboxing.mp4").build();
+        PdfFile receipt = PdfFile.builder().base64Data("JVBERi0=").build();
+        PdfFile second = PdfFile.builder().url("https://example.com/invoice.pdf").build();
+
+        inspector.isDamagedAccordingToMedia(call, video, receipt);
+        inspector.anyInvoiceForDamagedItem(List.of(receipt, second));
+
+        assertThat(damaged.requests())
+                .extracting(request -> ((FieldsInput) request.input()).fields())
+                .containsExactly(
+                        Map.of(
+                                "call", AudioContent.from(call),
+                                "video", VideoContent.from(video),
+                                "receipt", PdfFileContent.from(receipt)),
+                        Map.of("invoices", List.of(PdfFileContent.from(receipt), PdfFileContent.from(second))));
+        assertThat(DecisionMethod.from(DamageInspector.class.getMethod(
+                                "isDamagedAccordingToMedia", Audio.class, Video.class, PdfFile.class))
+                        .inputTypes())
+                .isEmpty();
     }
 
     @Test
