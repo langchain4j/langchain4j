@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agentic.declarative.A2AAgentCardHeaders;
 import dev.langchain4j.agentic.declarative.A2AClientCustomizer;
 import dev.langchain4j.agentic.declarative.A2AServerUrlSupplier;
 import dev.langchain4j.agentic.declarative.ActivationCondition;
@@ -79,6 +80,7 @@ public final class AgentHelpers {
             McpClientSupplier.class,
             PlannerSupplier.class,
             A2AServerUrlSupplier.class,
+            A2AAgentCardHeaders.class,
             A2AClientCustomizer.class,
             ParallelExecutor.class,
             ExitCondition.class,
@@ -145,8 +147,8 @@ public final class AgentHelpers {
      */
     private static void checkOverridable(Method method, Class<? extends Annotation> annotation) {
         int modifiers = method.getModifiers();
-        boolean finalInProxyableClass =
-                Modifier.isFinal(modifiers) && !Modifier.isFinal(method.getDeclaringClass().getModifiers());
+        boolean finalInProxyableClass = Modifier.isFinal(modifiers)
+                && !Modifier.isFinal(method.getDeclaringClass().getModifiers());
         if (Modifier.isPrivate(modifiers) || finalInProxyableClass) {
             throw new AgenticSystemConfigurationException("The method " + method + " annotated with @"
                     + annotation.getSimpleName() + " is " + (Modifier.isPrivate(modifiers) ? "private" : "final")
