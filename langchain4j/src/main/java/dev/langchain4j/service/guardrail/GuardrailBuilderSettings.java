@@ -104,10 +104,24 @@ final class GuardrailBuilderSettings<G extends Guardrail<?, ?>, C extends Guardr
      * The classes are instantiated on every call.
      */
     List<G> resolveGuardrails() {
-        return Stream.concat(
-                        this.guardrails.stream(),
-                        this.guardrailClasses.stream().map(GuardrailBuilderSettings::instantiate))
+        return Stream.concat(this.guardrails.stream(), instantiateGuardrailClasses().stream())
                 .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    /**
+     * The guardrail instances that were set.
+     */
+    List<G> guardrailInstances() {
+        return List.copyOf(this.guardrails);
+    }
+
+    /**
+     * The guardrails created from the classes that were set, in order. The classes are instantiated on every call.
+     */
+    List<G> instantiateGuardrailClasses() {
+        return this.guardrailClasses.stream()
+                .<G>map(GuardrailBuilderSettings::instantiate)
+                .toList();
     }
 
     /**

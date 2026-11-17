@@ -9,8 +9,10 @@ import dev.langchain4j.guardrail.OutputGuardrailExecutor;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 /**
@@ -29,12 +31,27 @@ final class GuardrailServiceInspector {
         return new GuardrailServiceInspector((DefaultAiServiceGuardrailService) guardrailService);
     }
 
+    /**
+     * The number of methods of the AI service that have input guardrails: the builder registers an executor only for
+     * the methods that have guardrails.
+     */
     int getInputGuardrailMethodCount() {
-        return service.inputKeyCount();
+        return countMethodsWith(method -> service.inputExecutor(method).isPresent());
     }
 
+    /**
+     * The number of methods of the AI service that have output guardrails: the builder registers an executor only for
+     * the methods that have guardrails.
+     */
     int getOutputGuardrailMethodCount() {
-        return service.outputKeyCount();
+        return countMethodsWith(method -> service.outputExecutor(method).isPresent());
+    }
+
+    private int countMethodsWith(Predicate<Method> hasExecutor) {
+        return (int) Stream.of(service.targetClass().getMethods())
+                .filter(method -> !Modifier.isStatic(method.getModifiers()))
+                .filter(hasExecutor)
+                .count();
     }
 
     Optional<InputGuardrailsConfig> getInputConfig(String methodName) {

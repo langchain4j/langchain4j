@@ -9,18 +9,23 @@ import org.junit.jupiter.api.Test;
 class AbstractKeyedGuardrailServiceTest {
 
     @Test
-    void the_generic_service_is_sealed_and_the_ai_service_interface_stays_open_to_frameworks() {
+    void the_generic_service_is_sealed_and_the_interfaces_of_each_kind_stay_open_to_frameworks() {
         assertThat(GenericGuardrailService.class.isSealed()).isTrue();
         assertThat(GenericGuardrailService.class.getPermittedSubclasses())
-                .containsExactlyInAnyOrder(GuardrailService.class, AbstractKeyedGuardrailService.class);
+                .containsExactlyInAnyOrder(
+                        GuardrailService.class, ToolGuardrailService.class, AbstractKeyedGuardrailService.class);
         assertThat(GuardrailService.class.isSealed()).isFalse();
+        assertThat(ToolGuardrailService.class.isSealed()).isFalse();
     }
 
     @Test
     void only_the_services_of_this_package_can_extend_it() {
         assertThat(AbstractKeyedGuardrailService.class.isSealed()).isTrue();
         assertThat(AbstractKeyedGuardrailService.class.getPermittedSubclasses())
-                .containsExactlyInAnyOrder(AbstractGuardrailService.class, DefaultAiServiceGuardrailService.class);
+                .containsExactlyInAnyOrder(
+                        AbstractGuardrailService.class,
+                        DefaultAiServiceGuardrailService.class,
+                        DefaultToolGuardrailService.class);
     }
 
     @Test
@@ -36,6 +41,12 @@ class AbstractKeyedGuardrailServiceTest {
     @Test
     void the_default_ai_service_implementation_is_final() {
         assertThat(Modifier.isFinal(DefaultAiServiceGuardrailService.class.getModifiers()))
+                .isTrue();
+    }
+
+    @Test
+    void the_default_tool_implementation_is_final() {
+        assertThat(Modifier.isFinal(DefaultToolGuardrailService.class.getModifiers()))
                 .isTrue();
     }
 }

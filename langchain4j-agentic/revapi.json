@@ -20,6 +20,26 @@
           "justification": "The new static AgentListener.forAiServiceListeners method takes AiServiceListener from the existing langchain4j-core dependency, so that listeners written for AI Services can be reused for agents. Existing API signatures are unchanged."
         },
         {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.guardrail.ToolInputGuardrail",
+          "justification": "The new optional AgentBuilder toolInputGuardrails and toolInputGuardrailClasses configuration exposes ToolInputGuardrail from the existing langchain4j-core dependency. Existing API signatures are unchanged."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.guardrail.ToolOutputGuardrail",
+          "justification": "The new optional AgentBuilder toolOutputGuardrails and toolOutputGuardrailClasses configuration exposes ToolOutputGuardrail from the existing langchain4j-core dependency. Existing API signatures are unchanged."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig",
+          "justification": "The new optional AgentBuilder toolInputGuardrailsConfig configuration exposes ToolInputGuardrailsConfig from the existing langchain4j-core dependency. Existing API signatures are unchanged."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.guardrail.config.ToolOutputGuardrailsConfig",
+          "justification": "The new optional AgentBuilder toolOutputGuardrailsConfig configuration exposes ToolOutputGuardrailsConfig from the existing langchain4j-core dependency. Existing API signatures are unchanged."
+        },
+        {
           "code": "java.method.addedToInterface",
           "new": "method void dev.langchain4j.agentic.scope.AgenticScope::writeExecutionContext(java.lang.String, java.lang.Object)",
           "justification": "New method to allow Planner implementations to store non-serializable execution context. Does not break existing implementations as it's a new optional feature."

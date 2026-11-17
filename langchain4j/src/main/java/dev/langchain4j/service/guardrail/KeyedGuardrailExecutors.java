@@ -9,32 +9,38 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 /**
- * Looks up and runs the {@link GuardrailExecutor} registered for a key (for AI services, the method of the AI
- * service), for one kind of guardrail.
+ * Looks up and runs the {@link GuardrailExecutor} for a key (for AI services, the method of the AI service), for one
+ * kind of guardrail.
  * <p>
  *     A key without an executor, or a {@code null} key, means there is nothing to run: the result is then the one
  *     given at construction, a success.
  * </p>
  * <p>
- *     The lookup of a key, including its translation by the key resolver, happens once: its outcome is cached for the
- *     key the caller passes. The key resolver must therefore always translate the same key into the same key.
+ *     The executors are found in one of two ways:
  * </p>
+ * <ul>
+ *     <li><strong>registered up front</strong>, in a map: the lookup of a key, including its translation by the key
+ *     resolver, happens once, and its outcome is cached for the key the caller passes. The key resolver must
+ *     therefore always translate the same key into the same key.</li>
+ *     <li><strong>with a lookup function</strong>, for keys that hold their executors (tool keys, which are created
+ *     when a tool is bound, and tools can be provided anew for every invocation): the function reads the executor
+ *     out of the key, and nothing is cached here, so the keys are not retained.</li>
+ * </ul>
  *
  * @param <P> The type of {@link GuardrailRequest} to validate
  * @param <R> The type of {@link GuardrailResult} the executors return
- * @param <E> The type of {@link GuardrailExecutor} registered for the keys
+ * @param <E> The type of {@link GuardrailExecutor} of the keys
  */
 final class KeyedGuardrailExecutors<
         P extends GuardrailRequest<P>, R extends GuardrailResult<R>, E extends GuardrailExecutor<?, P, R, ?, ?>> {
 
-    private final Map<Object, E> executors;
-    private final Map<Object, Optional<E>> executorsByCallerKey = new ConcurrentHashMap<>();
+    private final Function<Object, Optional<E>> lookUp;
     private final Supplier<R> noGuardrailsResult;
-    private final UnaryOperator<Object> keyResolver;
 
     /**
      * @param executors          the executor of each key. {@code null} means none.
@@ -54,20 +60,37 @@ final class KeyedGuardrailExecutors<
      */
     KeyedGuardrailExecutors(
             Map<Object, E> executors, Supplier<R> noGuardrailsResult, UnaryOperator<Object> keyResolver) {
+        this(cachedLookUp(executors, ensureNotNull(keyResolver, "keyResolver")), noGuardrailsResult);
+    }
+
+    private KeyedGuardrailExecutors(Function<Object, Optional<E>> lookUp, Supplier<R> noGuardrailsResult) {
+        this.lookUp = ensureNotNull(lookUp, "lookUp");
         this.noGuardrailsResult = ensureNotNull(noGuardrailsResult, "noGuardrailsResult");
-        this.keyResolver = ensureNotNull(keyResolver, "keyResolver");
-        this.executors = Optional.ofNullable(executors).map(Map::copyOf).orElseGet(Map::of);
     }
 
     /**
-     * The executor registered for the key, if any. The key is first translated by the key resolver.
+     * Creates an instance that finds the executor of a key with a lookup function rather than in executors registered
+     * up front, for keys that hold their executors, such as tool keys.
+     *
+     * @param lookUp             finds the executor of a key. It is never called with {@code null}, and is called on
+     *                           every lookup.
+     * @param noGuardrailsResult provides the result for a key that has no executor
+     */
+    static <P extends GuardrailRequest<P>, R extends GuardrailResult<R>, E extends GuardrailExecutor<?, P, R, ?, ?>>
+            KeyedGuardrailExecutors<P, R, E> withLookUp(
+                    Function<Object, Optional<E>> lookUp, Supplier<R> noGuardrailsResult) {
+        return new KeyedGuardrailExecutors<>(lookUp, noGuardrailsResult);
+    }
+
+    /**
+     * The executor of the key, if any.
      */
     <K> Optional<E> executor(K key) {
-        return Optional.ofNullable(key).flatMap(k -> this.executorsByCallerKey.computeIfAbsent(k, this::lookUp));
+        return Optional.ofNullable(key).flatMap(this.lookUp);
     }
 
     /**
-     * Runs the executor registered for the key.
+     * Runs the executor of the key.
      */
     <K> R execute(K key, P request) {
         return executor(key).map(executor -> executor.execute(request)).orElseGet(this.noGuardrailsResult);
@@ -89,14 +112,12 @@ final class KeyedGuardrailExecutors<
         return executor(key).map(executor -> !executor.guardrails().isEmpty()).orElse(false);
     }
 
-    /**
-     * The number of keys that have an executor.
-     */
-    int size() {
-        return this.executors.size();
-    }
+    private static <E> Function<Object, Optional<E>> cachedLookUp(
+            Map<Object, E> executors, UnaryOperator<Object> keyResolver) {
+        var registered = Optional.ofNullable(executors).map(Map::copyOf).orElseGet(Map::of);
+        var executorsByCallerKey = new ConcurrentHashMap<Object, Optional<E>>();
 
-    private Optional<E> lookUp(Object key) {
-        return Optional.ofNullable(this.keyResolver.apply(key)).map(this.executors::get);
+        return key -> executorsByCallerKey.computeIfAbsent(
+                key, k -> Optional.ofNullable(keyResolver.apply(k)).map(registered::get));
     }
 }

@@ -13,6 +13,7 @@ import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
 import java.time.Duration;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -116,15 +117,20 @@ class KeyedGuardrailExecutorsTest {
 
     @Test
     void a_null_or_empty_map_means_no_executors() {
-        assertThat(executors(null).size()).isZero();
+        assertThat(executors(null).executor("key")).isEmpty();
+        assertThat(executors(null).execute("key", REQUEST).isSuccess()).isTrue();
+        assertThat(executors(Map.of()).executor("key")).isEmpty();
         assertThat(executors(Map.of()).execute("key", REQUEST).isSuccess()).isTrue();
     }
 
     @Test
-    void size_is_the_number_of_keys_with_an_executor() {
-        assertThat(executors(Map.of("a", executorOf(REJECTING), "b", executorOf()))
-                        .size())
-                .isEqualTo(2);
+    void every_registered_key_has_its_own_executor() {
+        var a = executorOf(REJECTING);
+        var b = executorOf();
+        var executors = executors(Map.of("a", a, "b", b));
+
+        assertThat(executors.executor("a")).containsSame(a);
+        assertThat(executors.executor("b")).containsSame(b);
     }
 
     @Test
@@ -184,5 +190,32 @@ class KeyedGuardrailExecutorsTest {
         executors.execute("unknown", REQUEST);
 
         assertThat(resolverCalls).hasValue(2);
+    }
+
+    @Test
+    void a_lookup_function_is_called_on_every_lookup_and_never_with_null() {
+        var executor = executorOf(REJECTING);
+        var lookUps = new AtomicInteger();
+        var executors =
+                KeyedGuardrailExecutors.<InputGuardrailRequest, InputGuardrailResult, InputGuardrailExecutor>withLookUp(
+                        key -> {
+                            assertThat(key).isNotNull();
+                            lookUps.incrementAndGet();
+                            return Optional.of(executor).filter(e -> "with".equals(key));
+                        },
+                        InputGuardrailResult::success);
+
+        assertThat(executors.executor("with")).containsSame(executor);
+        assertThat(executors.hasGuardrails("with")).isTrue();
+        assertThat(executors.hasGuardrails("without")).isFalse();
+        assertThat(executors.hasGuardrails(null)).isFalse();
+        assertThat(executors.execute("without", REQUEST).isSuccess()).isTrue();
+        assertThatThrownBy(() -> executors.execute("with", REQUEST)).isInstanceOf(InputGuardrailException.class);
+        assertThat(executors.executeAsync("with", REQUEST))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .havingRootCause()
+                .isInstanceOf(InputGuardrailException.class);
+        assertThat(lookUps).hasValue(6);
     }
 }

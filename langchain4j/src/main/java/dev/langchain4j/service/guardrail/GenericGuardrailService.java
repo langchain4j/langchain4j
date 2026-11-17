@@ -10,9 +10,9 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * The contract shared by every service that executes guardrails on behalf of a <em>target</em> (the AI service for
- * {@link GuardrailService}, the tools of an AI service for tool guardrails): given a key that identifies what the
- * guardrails apply to (for AI services, the method), it runs the input guardrails or the output guardrails registered
- * for it.
+ * {@link GuardrailService}, the tools of an AI service for {@link ToolGuardrailService}): given a key that identifies
+ * what the guardrails apply to (for AI services, the method; for tools, the tool), it runs the input guardrails or the
+ * output guardrails registered for it.
  * <p>
  *     The key is opaque to this contract. A key without guardrails is not an error: the execution then returns a
  *     successful result.
@@ -24,8 +24,8 @@ import java.util.concurrent.CompletableFuture;
  * <p>
  *     This interface is sealed: the kinds of guardrail services are the ones LangChain4j defines, so the request and
  *     result types of every service match its kind of guardrails. Each kind's interface ({@link GuardrailService} for
- *     AI services) is {@code non-sealed}: frameworks implement that interface, or customize the default
- *     implementation through its SPIs.
+ *     AI services, {@link ToolGuardrailService} for tools) is {@code non-sealed}: frameworks implement that interface,
+ *     or customize the default implementation through its SPIs.
  * </p>
  *
  * @param <IP> The type of {@link GuardrailRequest} of the input guardrails
@@ -39,10 +39,11 @@ public sealed interface GenericGuardrailService<
                 IR extends GuardrailResult<IR>,
                 OP extends GuardrailRequest<OP>,
                 OR extends GuardrailResult<OR>>
-        permits GuardrailService, AbstractKeyedGuardrailService {
+        permits GuardrailService, ToolGuardrailService, AbstractKeyedGuardrailService {
 
     /**
-     * The class the guardrails of this service apply to: the AI service class, for AI service guardrails.
+     * The class the guardrails of this service apply to: the AI service class, for AI service guardrails and for the
+     * guardrails of the tools of an AI service.
      *
      * @return The target class.
      */
@@ -117,8 +118,8 @@ public sealed interface GenericGuardrailService<
      * <p>
      *     The type parameters tie the guardrails to the service: the input guardrails validate the requests the
      *     service runs its input guardrails on, and the output guardrails the requests of its output guardrails. Like
-     *     the services, this interface is sealed, and the builder interface of each kind (such as
-     *     {@link GuardrailService.Builder}) is {@code non-sealed}.
+     *     the services, this interface is sealed, and the builder interface of each kind
+     *     ({@link GuardrailService.Builder}, {@link ToolGuardrailService.Builder}) is {@code non-sealed}.
      * </p>
      *
      * @param <IP> The type of {@link GuardrailRequest} of the input guardrails
@@ -144,7 +145,7 @@ public sealed interface GenericGuardrailService<
                     IC extends GuardrailsConfig,
                     OC extends GuardrailsConfig,
                     B extends Builder<IP, IR, OP, OR, S, IG, OG, IC, OC, B>>
-            permits GuardrailService.Builder, AbstractKeyedGuardrailServiceBuilder {
+            permits GuardrailService.Builder, ToolGuardrailService.Builder, AbstractKeyedGuardrailServiceBuilder {
 
         /**
          * Configures the input guardrails for the builder.

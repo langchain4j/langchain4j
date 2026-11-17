@@ -1,7 +1,5 @@
 package dev.langchain4j.service.tool;
 
-import dev.langchain4j.exception.AsyncNotSupportedException;
-import dev.langchain4j.exception.UnsupportedFeatureException;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
@@ -11,7 +9,6 @@ import static dev.langchain4j.internal.Utils.allConcreteMethods;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.Internal;
@@ -21,13 +18,16 @@ import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolMemoryId;
+import dev.langchain4j.agent.tool.ToolSource;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.CapturedContextSupport;
@@ -47,6 +47,7 @@ import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.IllegalConfigurationException;
+import dev.langchain4j.service.guardrail.ToolGuardrailService;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.lang.reflect.Method;
@@ -63,14 +64,14 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import org.slf4j.Logger;
@@ -82,11 +83,13 @@ public class ToolService {
     private static final Logger log = LoggerFactory.getLogger(ToolService.class);
 
     private static final ToolArgumentsErrorHandler RETHROW_ARGUMENTS_ERROR = ToolArgumentsErrorHandler.failInvocation();
-    private static final ToolArgumentsErrorHandler ARGUMENTS_ERROR_TO_LLM = ToolArgumentsErrorHandler.sendExceptionMessageToLlm();
+    private static final ToolArgumentsErrorHandler ARGUMENTS_ERROR_TO_LLM =
+            ToolArgumentsErrorHandler.sendExceptionMessageToLlm();
     private static final ToolExecutionErrorHandler EXECUTION_ERROR_TO_LLM = (error, context) -> {
         // the same handler users are told to configure to keep this behavior, so that the two cannot drift,
         // and so that an exception that says what the LLM may be told is honored here too
-        ToolErrorHandlerResult result = ToolExecutionErrorHandler.sendExceptionMessageToLlm().handle(error, context);
+        ToolErrorHandlerResult result =
+                ToolExecutionErrorHandler.sendExceptionMessageToLlm().handle(error, context);
         log.warn(
                 "Tool '{}' execution failed. The error message is being returned to the LLM. "
                         + "To customize this behavior (and silence this log), configure a custom "
@@ -115,6 +118,9 @@ public class ToolService {
     private final List<ToolSpecification> toolSpecifications = new ArrayList<>();
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private final Map<String, ReturnBehavior> returnBehaviors = new HashMap<>();
+    private final Map<String, GuardedTool> guardedTools = new HashMap<>();
+    private final Map<String, ToolGuardrailBinding> toolGuardrailBindings = new HashMap<>();
+    private ToolGuardrailService toolGuardrailService;
     private final Map<String, BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>>>
             compensatingExecutors = new HashMap<>();
     private IllegalConfigurationException compensatingToolMisconfiguration;
@@ -157,6 +163,12 @@ public class ToolService {
         tools.forEach((toolSpecification, toolExecutor) -> {
             toolSpecifications.add(toolSpecification);
             toolExecutors.put(toolSpecification.name(), toolExecutor);
+            registerGuardedTool(
+                    null,
+                    AiServiceTool.builder()
+                            .toolSpecification(toolSpecification)
+                            .toolExecutor(toolExecutor)
+                            .build());
         });
     }
 
@@ -169,6 +181,7 @@ public class ToolService {
         for (Object objectWithTools : objectsWithTools) {
             List<AiServiceTool> tools = findTools(objectWithTools);
             addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
+            tools.forEach(tool -> registerGuardedTool(objectWithTools.getClass(), tool));
             this.compensatingExecutors.putAll(findCompensatingActions(objectWithTools));
         }
     }
@@ -178,7 +191,56 @@ public class ToolService {
      */
     public void tools(List<AiServiceTool> tools) {
         addTools(tools, this.toolExecutors, this.toolSpecifications, this.returnBehaviors);
+        tools.forEach(tool -> registerGuardedTool(null, tool));
     }
+
+    /**
+     * Sets the service that executes the tool guardrails, and binds every tool registered so far to it (the tools
+     * registered later are bound when they are registered, and the tools of {@link ToolProvider}s when they are
+     * provided). {@code null}, the default, means that tool guardrails are not executed.
+     *
+     * @since 1.24.0
+     */
+    public void toolGuardrailService(ToolGuardrailService toolGuardrailService) {
+        this.toolGuardrailService = toolGuardrailService;
+        this.toolGuardrailBindings.clear();
+        this.guardedTools.values().forEach(this::bindGuardedTool);
+    }
+
+    /**
+     * The service that executes the tool guardrails, if one was set.
+     *
+     * @since 1.24.0
+     */
+    public Optional<ToolGuardrailService> toolGuardrailService() {
+        return Optional.ofNullable(this.toolGuardrailService);
+    }
+
+    private void registerGuardedTool(Class<?> toolClass, AiServiceTool tool) {
+        var guardedTool = new GuardedTool(toolClass, tool);
+        this.guardedTools.put(tool.name(), guardedTool);
+        bindGuardedTool(guardedTool);
+    }
+
+    private void bindGuardedTool(GuardedTool guardedTool) {
+        bindTool(this.toolGuardrailService, guardedTool.toolClass(), guardedTool.tool(), this.toolGuardrailBindings);
+    }
+
+    private static void bindTool(
+            ToolGuardrailService toolGuardrailService,
+            Class<?> toolClass,
+            AiServiceTool tool,
+            Map<String, ToolGuardrailBinding> bindings) {
+        Optional.ofNullable(toolGuardrailService)
+                .map(service -> ToolGuardrailBinding.bind(service, toolClass, tool))
+                .ifPresent(binding -> bindings.put(tool.name(), binding));
+    }
+
+    /**
+     * A tool registered with this service, and the class of the object it was found on ({@code null} if none), kept so
+     * that it can be bound again when the {@link ToolGuardrailService} changes.
+     */
+    private record GuardedTool(Class<?> toolClass, AiServiceTool tool) {}
 
     private static void validateToolParameters(Method toolMethod) {
         for (Parameter parameter : toolMethod.getParameters()) {
@@ -275,6 +337,7 @@ public class ToolService {
                 result.add(AiServiceTool.builder()
                         .toolSpecification(toolSpecificationFrom(toolMethod))
                         .toolExecutor(createToolExecutor(objectWithTools, toolMethod))
+                        .toolSource(ToolSource.local(toolMethod))
                         .returnBehavior(toolMethod.getAnnotation(Tool.class).returnBehavior())
                         .build());
             }
@@ -294,8 +357,8 @@ public class ToolService {
         }
     }
 
-    private Map<String, BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>>>
-            findCompensatingActions(Object objectWithTools) {
+    private Map<String, BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>>> findCompensatingActions(
+            Object objectWithTools) {
         Map<String, BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>>> compensatingActions =
                 new HashMap<>();
         if (compensatingToolMisconfiguration != null) {
@@ -303,7 +366,8 @@ public class ToolService {
         }
 
         for (Method candidateMethod : allConcreteMethods(objectWithTools.getClass())) {
-            Method method = getAnnotatedMethod(candidateMethod, CompensateFor.class).orElse(null);
+            Method method =
+                    getAnnotatedMethod(candidateMethod, CompensateFor.class).orElse(null);
             if (method != null) {
                 CompensateFor compensateFor = method.getAnnotation(CompensateFor.class);
                 String toolName = compensateFor.value();
@@ -348,13 +412,15 @@ public class ToolService {
                 if (acceptsToolExecution) {
                     method.setAccessible(true);
                     Method compensatingMethod = method;
-                    compensatingActions.put(toolName, (toolExecution, ctx) -> CurrentInvocation.callWith(ctx, () -> {
-                        try {
-                            return toVoidFuture(compensatingMethod.invoke(objectWithTools, toolExecution));
-                        } catch (Exception e) {
-                            return CompletableFuture.failedFuture(e);
-                        }
-                    }));
+                    compensatingActions.put(
+                            toolName,
+                            (toolExecution, ctx) -> CurrentInvocation.callWith(ctx, () -> {
+                                try {
+                                    return toVoidFuture(compensatingMethod.invoke(objectWithTools, toolExecution));
+                                } catch (Exception e) {
+                                    return CompletableFuture.failedFuture(e);
+                                }
+                            }));
                 } else {
                     DefaultToolExecutor executor = DefaultToolExecutor.builder()
                             .object(objectWithTools)
@@ -451,7 +517,8 @@ public class ToolService {
         return afterToolExecution;
     }
 
-    public void onCompensableToolExecution(BiConsumer<ToolExecution, Consumer<ToolExecution>> onCompensableToolExecution) {
+    public void onCompensableToolExecution(
+            BiConsumer<ToolExecution, Consumer<ToolExecution>> onCompensableToolExecution) {
         if (compensatingToolMisconfiguration != null) {
             throw compensatingToolMisconfiguration;
         }
@@ -568,12 +635,15 @@ public class ToolService {
                     .availableTools(this.toolSpecifications)
                     .toolExecutors(this.toolExecutors)
                     .returnBehaviors(this.returnBehaviors)
+                    .toolGuardrailBindings(this.toolGuardrailBindings)
+                    .toolGuardrailService(this.toolGuardrailService)
                     .build();
         }
 
         List<ToolSpecification> toolSpecifications = new ArrayList<>(this.toolSpecifications);
         Map<String, ToolExecutor> toolExecutors = new HashMap<>(this.toolExecutors);
         Map<String, ReturnBehavior> returnBehaviors = new HashMap<>(this.returnBehaviors);
+        Map<String, ToolGuardrailBinding> toolGuardrailBindings = new HashMap<>(this.toolGuardrailBindings);
         List<ToolProvider> dynamicToolProviders = new ArrayList<>();
 
         ToolProviderRequest toolProviderRequest = ToolProviderRequest.builder()
@@ -589,6 +659,9 @@ public class ToolService {
             ToolProviderResult toolProviderResult = toolProvider.provideTools(toolProviderRequest);
             if (toolProviderResult != null) {
                 addTools(toolProviderResult.aiServiceTools(), toolExecutors, toolSpecifications, returnBehaviors);
+                toolProviderResult
+                        .aiServiceTools()
+                        .forEach(tool -> bindTool(this.toolGuardrailService, null, tool, toolGuardrailBindings));
             }
         });
 
@@ -597,6 +670,8 @@ public class ToolService {
                 .availableTools(toolSpecifications)
                 .toolExecutors(toolExecutors)
                 .returnBehaviors(returnBehaviors)
+                .toolGuardrailBindings(toolGuardrailBindings)
+                .toolGuardrailService(this.toolGuardrailService)
                 .dynamicToolProviders(dynamicToolProviders)
                 .build();
     }
@@ -678,20 +753,14 @@ public class ToolService {
             intermediateResponses.add(chatResponse);
 
             List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
-            Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
-                    execute(
-                            toolExecutionRequests,
-                            toolServiceContext.toolExecutors(),
-                            invocationContext,
-                            context.eventListenerRegistrar);
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults = execute(
+                    toolExecutionRequests,
+                    toolServiceContext.toolExecutors(),
+                    invocationContext,
+                    context.eventListenerRegistrar);
 
             ToolResultsOutcome outcome = processToolResults(
-                    context,
-                    toolExecutionRequests,
-                    toolResults,
-                    toolExecutions,
-                    invocationContext,
-                    toolServiceContext);
+                    context, toolExecutionRequests, toolResults, toolExecutions, invocationContext, toolServiceContext);
 
             List<ToolExecutionResultMessage> resultMessages = outcome.resultMessages();
 
@@ -715,20 +784,14 @@ public class ToolService {
             }
 
             NextChatRequest next = prepareNextChatRequest(
-                    context,
-                    memoryId,
-                    nextMessages,
-                    invocationContext,
-                    toolServiceContext,
-                    toolResults,
-                    parameters);
+                    context, memoryId, nextMessages, invocationContext, toolServiceContext, toolResults, parameters);
             messages = next.messages();
             toolServiceContext = next.toolServiceContext();
             parameters = next.parameters();
 
             lastChatRequest = next.chatRequest();
-            chatResponse = CurrentInvocation.callWith(
-                    invocationContext, () -> chatModelInvoker.apply(next.chatRequest()));
+            chatResponse =
+                    CurrentInvocation.callWith(invocationContext, () -> chatModelInvoker.apply(next.chatRequest()));
             fireResponseReceivedEvent(
                     next.chatRequest(), chatResponse, invocationContext, context.eventListenerRegistrar);
             aggregateTokenUsage =
@@ -951,7 +1014,11 @@ public class ToolService {
                         .toList();
                 synchronized (compensableExecutions) {
                     collectCompensable(
-                            toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
+                            toolExecutionRequests,
+                            toolResults,
+                            resultMessages,
+                            compensableExecutions,
+                            invocationContext);
                 }
                 return CompletableFuture.failedFuture(
                         firstError instanceof CancellationException ? firstError : new CancellationException());
@@ -1059,8 +1126,8 @@ public class ToolService {
                     context, memoryId, nextMessages, invocationContext, toolServiceContext, toolResults, parameters);
 
             lastChatRequest = next.chatRequest();
-            CompletableFuture<ChatResponse> nextModelCall = CurrentInvocation.callWith(
-                    invocationContext, () -> chatModelInvoker.apply(next.chatRequest()));
+            CompletableFuture<ChatResponse> nextModelCall =
+                    CurrentInvocation.callWith(invocationContext, () -> chatModelInvoker.apply(next.chatRequest()));
             inFlightModelCall.set(nextModelCall);
             if (isCancelled(cancellation)) {
                 nextModelCall.cancel(true);
@@ -1073,7 +1140,8 @@ public class ToolService {
                         next.parameters(),
                         next.messages(),
                         next.toolServiceContext(),
-                        TokenUsage.sum(aggregateTokenUsage, nextChatResponse.metadata().tokenUsage()),
+                        TokenUsage.sum(
+                                aggregateTokenUsage, nextChatResponse.metadata().tokenUsage()),
                         roundTripsLeft - 1);
             });
         }
@@ -1082,7 +1150,6 @@ public class ToolService {
     private static boolean isCancelled(CompletableFuture<?> cancellation) {
         return cancellation != null && cancellation.isCancelled();
     }
-
 
     /**
      * Per-round bookkeeping shared by every AI Service mode (sync, {@code CompletableFuture}, {@code TokenStream},
@@ -1131,7 +1198,10 @@ public class ToolService {
                 BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>> compensatingAction =
                         compensatingExecutors.get(request.name());
                 onCompensableToolExecution.accept(
-                        toolExecution, te -> compensatingAction.apply(te, te.invocationContext()).join());
+                        toolExecution,
+                        te -> compensatingAction
+                                .apply(te, te.invocationContext())
+                                .join());
             }
 
             anyToolErrored = anyToolErrored || result.isError();
@@ -1341,16 +1411,24 @@ public class ToolService {
         if (!compensateOnToolErrors) {
             return;
         }
-        String failedToolName =
-                collectCompensable(toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
+        String failedToolName = collectCompensable(
+                toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
         if (anyToolErrored && !compensableExecutions.isEmpty()) {
             List<CompensableToolExecution> compensated = List.copyOf(compensableExecutions);
             compensateToolsActions(compensableExecutions, invocationContext).join();
             rewriteChatMemoryForCompensatedTools(
-                    messages, chatMemory, compensableExecutions, CompensationReason.TOOL_EXECUTION_FAILED, failedToolName);
+                    messages,
+                    chatMemory,
+                    compensableExecutions,
+                    CompensationReason.TOOL_EXECUTION_FAILED,
+                    failedToolName);
             compensableExecutions.clear();
             rewriteCurrentResults(
-                    toolExecutionRequests, toolResults, resultMessages, CompensationReason.TOOL_EXECUTION_FAILED, failedToolName);
+                    toolExecutionRequests,
+                    toolResults,
+                    resultMessages,
+                    CompensationReason.TOOL_EXECUTION_FAILED,
+                    failedToolName);
             fireCompensatedEvents(
                     compensated, CompensationReason.TOOL_EXECUTION_FAILED, invocationContext, listenerRegistrar, null);
         }
@@ -1425,7 +1503,11 @@ public class ToolService {
             failedToolName = alreadyCollected
                     ? preCollectedFailedToolName
                     : collectCompensable(
-                            toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
+                            toolExecutionRequests,
+                            toolResults,
+                            resultMessages,
+                            compensableExecutions,
+                            invocationContext);
             boolean triggered = reason == CompensationReason.INVOCATION_CANCELLED || anyToolErrored;
             if (!triggered || compensableExecutions.isEmpty()) {
                 return CompletableFuture.completedFuture(null);
@@ -1438,7 +1520,8 @@ public class ToolService {
         return compensateToolsActions(toCompensate, invocationContext)
                 .thenCompose(ignored -> rewriteChatMemoryForCompensatedToolsAsync(
                         messages, chatMemory, toCompensate, reason, rolledBackByToolName))
-                .thenRun(() -> fireCompensatedEvents(toCompensate, reason, invocationContext, listenerRegistrar, streamEmitter));
+                .thenRun(() -> fireCompensatedEvents(
+                        toCompensate, reason, invocationContext, listenerRegistrar, streamEmitter));
     }
 
     /**
@@ -1500,7 +1583,11 @@ public class ToolService {
                         .map(request -> toResultMessage(request, currentRoundResults.get(request)))
                         .toList();
                 collectCompensable(
-                        currentRoundRequests, currentRoundResults, resultMessages, compensableExecutions, invocationContext);
+                        currentRoundRequests,
+                        currentRoundResults,
+                        resultMessages,
+                        compensableExecutions,
+                        invocationContext);
             }
             if (compensableExecutions.isEmpty()) {
                 return CompletableFuture.completedFuture(null);
@@ -1590,25 +1677,26 @@ public class ToolService {
         return compensateOnToolErrors ? new ArrayList<>() : null;
     }
 
-    private void rewriteCurrentResults(List<ToolExecutionRequest> toolExecutionRequests,
-                                       Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
-                                       List<ToolExecutionResultMessage> resultMessages,
-                                       CompensationReason reason,
-                                       String failedToolName) {
+    private void rewriteCurrentResults(
+            List<ToolExecutionRequest> toolExecutionRequests,
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            List<ToolExecutionResultMessage> resultMessages,
+            CompensationReason reason,
+            String failedToolName) {
         for (int i = 0; i < toolExecutionRequests.size(); i++) {
             ToolExecutionRequest request = toolExecutionRequests.get(i);
-            if (!toolResults.get(request).isError()
-                    && compensatingExecutors.containsKey(request.name())) {
+            if (!toolResults.get(request).isError() && compensatingExecutors.containsKey(request.name())) {
                 resultMessages.set(i, rolledBackResultMessage(resultMessages.get(i), reason, failedToolName));
             }
         }
     }
 
-    private static void rewriteChatMemoryForCompensatedTools(List<ChatMessage> messages,
-                                                             ChatMemory chatMemory,
-                                                             List<CompensableToolExecution> compensableExecutions,
-                                                             CompensationReason reason,
-                                                             String failedToolName) {
+    private static void rewriteChatMemoryForCompensatedTools(
+            List<ChatMessage> messages,
+            ChatMemory chatMemory,
+            List<CompensableToolExecution> compensableExecutions,
+            CompensationReason reason,
+            String failedToolName) {
         List<ChatMessage> memoryMessages = chatMemory != null ? new ArrayList<>(chatMemory.messages()) : messages;
         replaceCompensatedMessages(memoryMessages, compensableExecutions, reason, failedToolName);
         if (chatMemory != null) {
@@ -1656,8 +1744,8 @@ public class ToolService {
         String cause = reason == CompensationReason.INVOCATION_CANCELLED
                 ? "the invocation was cancelled"
                 : "failure of tool '" + failedToolName + "'";
-        String rolledBackText = "Tool '" + original.toolName() + "' was executed successfully"
-                + " but was rolled back due to " + cause;
+        String rolledBackText =
+                "Tool '" + original.toolName() + "' was executed successfully" + " but was rolled back due to " + cause;
         return original.toBuilder()
                 .contents(List.of(TextContent.from(rolledBackText)))
                 .isError(true)
@@ -1751,6 +1839,8 @@ public class ToolService {
         List<ToolSpecification> newAvailableTools = new ArrayList<>(toolServiceContext.availableTools());
         Map<String, ToolExecutor> newToolExecutors = new HashMap<>(toolServiceContext.toolExecutors());
         Map<String, ReturnBehavior> newReturnBehaviors = new HashMap<>(toolServiceContext.returnBehaviors());
+        Map<String, ToolGuardrailBinding> newToolGuardrailBindings =
+                new HashMap<>(toolServiceContext.toolGuardrailBindings());
         boolean changed = false;
 
         for (ToolProvider dynamicProvider : dynamicProviders) {
@@ -1762,6 +1852,11 @@ public class ToolService {
                         newAvailableTools.add(tool.toolSpecification());
                         newToolExecutors.put(tool.name(), tool.toolExecutor());
                         newReturnBehaviors.put(tool.name(), tool.returnBehavior());
+                        bindTool(
+                                toolServiceContext.toolGuardrailService().orElse(null),
+                                null,
+                                tool,
+                                newToolGuardrailBindings);
                         changed = true;
                     }
                 }
@@ -1777,6 +1872,7 @@ public class ToolService {
                 .availableTools(newAvailableTools)
                 .toolExecutors(newToolExecutors)
                 .returnBehaviors(newReturnBehaviors)
+                .toolGuardrailBindings(newToolGuardrailBindings)
                 .build();
     }
 
@@ -1905,8 +2001,7 @@ public class ToolService {
      * @param firstError the first tool failure in request order, or {@code null} if every tool succeeded
      * @since 1.20.0
      */
-    public record CombinedToolResults(
-            Map<ToolExecutionRequest, ToolExecutionResult> results, Throwable firstError) {}
+    public record CombinedToolResults(Map<ToolExecutionRequest, ToolExecutionResult> results, Throwable firstError) {}
 
     /**
      * Combines a set of in-flight (possibly already-started) tool executions into a single future of their results,
@@ -2080,8 +2175,8 @@ public class ToolService {
             ToolArgumentsErrorHandler argumentsErrorHandler,
             ToolExecutionErrorHandler executionErrorHandler) {
         try {
-            return CompletableFuture.completedFuture(toolErrorResult(
-                    e, toolRequest, invocationContext, argumentsErrorHandler, executionErrorHandler));
+            return CompletableFuture.completedFuture(
+                    toolErrorResult(e, toolRequest, invocationContext, argumentsErrorHandler, executionErrorHandler));
         } catch (Exception handlerException) {
             return CompletableFuture.failedFuture(handlerException);
         }

@@ -48,7 +48,7 @@ abstract sealed class AbstractKeyedGuardrailServiceBuilder<
                 OE extends GuardrailExecutor<OC, OP, OR, OG, ?>,
                 B extends GenericGuardrailService.Builder<IP, IR, OP, OR, S, IG, OG, IC, OC, B>>
         implements GenericGuardrailService.Builder<IP, IR, OP, OR, S, IG, OG, IC, OC, B>
-        permits GuardrailServiceBuilder {
+        permits GuardrailServiceBuilder, ToolGuardrailServiceBuilder {
 
     private final Class<?> targetClass;
     private final GuardrailBuilderSettings<IG, IC> input = new GuardrailBuilderSettings<>();

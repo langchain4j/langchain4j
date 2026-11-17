@@ -42,7 +42,7 @@ public abstract sealed class AbstractKeyedGuardrailService<
                 IE extends GuardrailExecutor<?, IP, IR, ?, ?>,
                 OE extends GuardrailExecutor<?, OP, OR, ?, ?>>
         implements GenericGuardrailService<IP, IR, OP, OR>
-        permits AbstractGuardrailService, DefaultAiServiceGuardrailService {
+        permits AbstractGuardrailService, DefaultAiServiceGuardrailService, DefaultToolGuardrailService {
 
     private final Class<?> targetClass;
     private final KeyedGuardrailExecutors<IP, IR, IE> inputGuardrails;
@@ -90,9 +90,27 @@ public abstract sealed class AbstractKeyedGuardrailService<
             Supplier<IR> noInputGuardrails,
             Supplier<OR> noOutputGuardrails,
             UnaryOperator<Object> keyResolver) {
+        this(
+                targetClass,
+                new KeyedGuardrailExecutors<>(inputGuardrails, noInputGuardrails, keyResolver),
+                new KeyedGuardrailExecutors<>(outputGuardrails, noOutputGuardrails, keyResolver));
+    }
+
+    /**
+     * Creates a service from how its input and output executors are found, for example a service whose keys carry
+     * their executors.
+     *
+     * @param targetClass      The class the guardrails apply to. Must not be null.
+     * @param inputGuardrails  Finds the input executor of a key.
+     * @param outputGuardrails Finds the output executor of a key.
+     */
+    AbstractKeyedGuardrailService(
+            Class<?> targetClass,
+            KeyedGuardrailExecutors<IP, IR, IE> inputGuardrails,
+            KeyedGuardrailExecutors<OP, OR, OE> outputGuardrails) {
         this.targetClass = ensureNotNull(targetClass, "targetClass");
-        this.inputGuardrails = new KeyedGuardrailExecutors<>(inputGuardrails, noInputGuardrails, keyResolver);
-        this.outputGuardrails = new KeyedGuardrailExecutors<>(outputGuardrails, noOutputGuardrails, keyResolver);
+        this.inputGuardrails = ensureNotNull(inputGuardrails, "inputGuardrails");
+        this.outputGuardrails = ensureNotNull(outputGuardrails, "outputGuardrails");
     }
 
     @Override
@@ -150,23 +168,5 @@ public abstract sealed class AbstractKeyedGuardrailService<
      */
     <K> Optional<OE> outputExecutor(K key) {
         return this.outputGuardrails.executor(key);
-    }
-
-    /**
-     * The number of keys that have an input executor.
-     *
-     * @return The number of keys.
-     */
-    int inputKeyCount() {
-        return this.inputGuardrails.size();
-    }
-
-    /**
-     * The number of keys that have an output executor.
-     *
-     * @return The number of keys.
-     */
-    int outputKeyCount() {
-        return this.outputGuardrails.size();
     }
 }

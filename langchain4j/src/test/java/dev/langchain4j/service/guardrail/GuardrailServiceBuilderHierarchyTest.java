@@ -96,17 +96,21 @@ class GuardrailServiceBuilderHierarchyTest {
     }
 
     @Test
-    void the_generic_builder_is_sealed_and_the_ai_service_builder_stays_open_to_frameworks() {
+    void the_generic_builder_is_sealed_and_the_builders_of_each_kind_stay_open_to_frameworks() {
         assertThat(GenericGuardrailService.Builder.class.isSealed()).isTrue();
         assertThat(GenericGuardrailService.Builder.class.getPermittedSubclasses())
-                .containsExactlyInAnyOrder(GuardrailService.Builder.class, AbstractKeyedGuardrailServiceBuilder.class);
+                .containsExactlyInAnyOrder(
+                        GuardrailService.Builder.class,
+                        ToolGuardrailService.Builder.class,
+                        AbstractKeyedGuardrailServiceBuilder.class);
         assertThat(GuardrailService.Builder.class.isSealed()).isFalse();
+        assertThat(ToolGuardrailService.Builder.class.isSealed()).isFalse();
     }
 
     @Test
     void the_builder_base_is_sealed_like_the_service_base() {
         assertThat(AbstractKeyedGuardrailServiceBuilder.class.isSealed()).isTrue();
         assertThat(AbstractKeyedGuardrailServiceBuilder.class.getPermittedSubclasses())
-                .containsExactly(GuardrailServiceBuilder.class);
+                .containsExactlyInAnyOrder(GuardrailServiceBuilder.class, ToolGuardrailServiceBuilder.class);
     }
 }
