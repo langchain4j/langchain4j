@@ -139,13 +139,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         // but the card itself is fetched only when first needed
         String cardTenant = this.tenant;
         A2AHttpClient httpClient = A2AHttpClientFactory.create(A2AHttpClientConfiguration.DEFAULT);
-        A2ACardResolver cardResolver = cardResolver(a2aServerUrl, cardTenant, null, httpClient);
+        cardResolver(a2aServerUrl, cardTenant, null, httpClient);
         this.cardResolution = new LazyResolution<>(this::describeCard, () -> {
             Supplier<Map<String, String>> headers = agentCardHeaders;
-            return headers == null
-                    ? cardResolver.getAgentCard()
-                    : cardResolver(a2aServerUrl, cardTenant, headers.get(), httpClient)
-                            .getAgentCard();
+            return cardResolver(a2aServerUrl, cardTenant, headers == null ? null : headers.get(), httpClient)
+                    .getAgentCard();
         });
         this.clientFactory = this::buildClient;
     }

@@ -4308,22 +4308,6 @@ If an A2A client is invoked outside an agentic system, there is no scope to susp
 
 ### Customizing the A2A client
 
-If the remote agent protects its Agent Card endpoint, use `agentCardHeaders` to supply discovery request headers:
-
-```java
-UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
-        .agentCardHeaders(() -> Map.of("Authorization", "Bearer " + tokenProvider.currentToken()))
-        .inputKeys("topic")
-        .outputKey("story")
-        .build();
-```
-
-The supplier runs when the card is first needed and again when a failed fetch is retried, so it can obtain a fresh
-token instead of capturing one at build time. It normally runs on a thread of the LangChain4j executor, within the
-agent's resolution timeout. A successful card is cached; this does not refresh credentials on every agent invocation.
-A `null` supplier, or one returning `null` or an empty map, adds no headers. These headers apply only to card
-discovery; authentication for A2A messages must be configured separately through `clientCustomizer`.
-
 By default, A2A agents use a JSONRPC transport with a default configuration. The `clientCustomizer` method exposes the underlying a2a-java SDK `ClientBuilder`, allowing you to configure a different transport, set a custom HTTP client, add interceptors, or change any other client setting. The customizer is applied when the `Client` is created, which happens on the first invocation of the agent, once its agent card is available, and not when the agent is built.
 
 When building an A2A agent programmatically, pass a `Consumer<ClientBuilder>` to `clientCustomizer`:
@@ -4354,6 +4338,44 @@ public interface DeclarativeA2AWithCustomizer {
     }
 }
 ```
+
+### Authenticating agent card discovery
+
+If the remote agent protects its Agent Card endpoint, use `agentCardHeaders` to supply discovery request headers:
+
+```java
+UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
+        .agentCardHeaders(() -> Map.of("Authorization", "Bearer " + tokenProvider.currentToken()))
+        .inputKeys("topic")
+        .outputKey("story")
+        .build();
+```
+
+For declarative agents, annotate a static method returning `Map<String, String>` with `@A2AAgentCardHeaders`:
+
+```java
+public interface ProtectedA2AAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "story")
+    String generateStory(@V("topic") String topic);
+
+    @A2AAgentCardHeaders
+    static Map<String, String> cardHeaders(TokenProvider tokenProvider) {
+        return Map.of("Authorization", "Bearer " + tokenProvider.currentToken());
+    }
+}
+```
+
+`TokenProvider` is an application type provided by a registered `SupplierParameterResolver`; a method with no
+parameters needs no resolver. The method can also be an instance method on a [helper object](#helper-objects).
+Exactly one helper may supply card headers. Resolved parameters are captured when the agent is built, while
+the method itself runs when the card is first needed and again when a failed fetch is retried. Supply a token
+provider rather than a token string if credentials need refreshing between fetch attempts.
+
+Both the programmatic supplier and the annotated method normally run on a LangChain4j executor thread, within
+the agent's resolution timeout. A successful card is cached; this does not refresh credentials on every agent
+invocation. A `null` supplier, or a supplier/method returning `null` or an empty map, adds no headers. These headers
+apply only to card discovery; configure authentication for A2A messages separately through `clientCustomizer`.
 
 ### Streaming A2A Client Listener
 
