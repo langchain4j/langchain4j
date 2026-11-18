@@ -10,6 +10,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.guardrail.ToolGuardrailStage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
@@ -55,6 +56,8 @@ import org.slf4j.LoggerFactory;
  *     them, in the order of the LLM, when it completes the round. The tools of a round may run concurrently, so
  *     executing and recording calls is thread-safe.
  * </p>
+ *
+ * @since 1.25.0
  */
 @Internal
 public final class ToolRound {
@@ -408,9 +411,9 @@ public final class ToolRound {
         for (ToolExecutionRequest call : calls) {
             var execution = executions.get(call);
             var error = errors.get(call);
-            if (execution != null) {
-                results.putIfAbsent(execution.request(), execution.result());
-            } else if (error != null) {
+            // A failure recorded for a call that was also executed comes from after the execution (an
+            // afterToolExecution callback that threw): the call failed, whatever its result.
+            if (error != null) {
                 results.putIfAbsent(
                         reportedRequest(call),
                         ToolExecutionResult.builder()
@@ -418,6 +421,8 @@ public final class ToolRound {
                                 .resultText(ToolService.errorText(error))
                                 .build());
                 firstError = (firstError != null) ? firstError : error;
+            } else if (execution != null) {
+                results.putIfAbsent(execution.request(), execution.result());
             }
         }
         var requests = calls.stream().map(this::reportedRequest).toList();
@@ -483,36 +488,33 @@ public final class ToolRound {
 
             Optional.ofNullable(original).ifPresent(result -> originalResults.putIfAbsent(executed, result));
 
-            guardrailFailure(call, original).ifPresent(reason -> guardrailFailures.putIfAbsent(executed, reason));
+            guardrailFailure(call).ifPresent(reason -> guardrailFailures.putIfAbsent(executed, reason));
         });
 
         return new ToolRoundCompensation(originalResults, guardrailFailures);
     }
 
     /**
-     * Why a call ended as an error result, if a tool guardrail made it one: its input guardrails rejected it (the tool
-     * did not run), or its output guardrails turned the successful result of the tool into an error (or failed fatally
-     * on it). A call that was canceled, a tool that did not run for another reason, and a tool that ended with an
-     * error of its own are not guardrail failures.
+     * Why a call ended as an error result, if a tool guardrail made it one. The guardrail service tells the stage: on
+     * the execution of a call that returned ({@link GuardedToolExecution#failedStage()}), or for a fatal failure
+     * ({@code ToolGuardrailService#rejectedStage}). The round does not infer it from what it saw of the call, so a
+     * call that failed for another reason (a callback that threw before the guardrails ran, a tool that errored, a
+     * cancellation) is not a guardrail failure.
      */
-    private Optional<CompensationReason> guardrailFailure(ToolExecutionRequest call, ToolExecutionResult original) {
-        var execution = executions.get(call);
-        var error = errors.get(call);
-        boolean hasEnded = (execution != null) || (error != null);
-        boolean isErrorOfGuardrail = (error != null) && !(error instanceof CancellationException);
-        boolean isErrorResult = (execution != null) && execution.result().isError();
-        boolean hasFailed = isErrorResult || isErrorOfGuardrail;
-        boolean hasStarted = startedRequests.containsKey(call);
+    private Optional<CompensationReason> guardrailFailure(ToolExecutionRequest call) {
+        return Optional.ofNullable(executions.get(call))
+                .flatMap(GuardedToolExecution::failedStage)
+                .or(() -> Optional.ofNullable(errors.get(call))
+                        .flatMap(error -> binding(call.name())
+                                .flatMap(binding -> binding.service().rejectedStage(call, error))))
+                .map(ToolRound::compensationReason);
+    }
 
-        if (hasEnded && hasFailed) {
-            if (!hasStarted && binding(call.name()).isPresent()) {
-                return Optional.of(CompensationReason.TOOL_INPUT_GUARDRAIL_FAILED);
-            } else if ((original != null) && !original.isError()) {
-                return Optional.of(CompensationReason.TOOL_OUTPUT_GUARDRAIL_FAILED);
-            }
-        }
-
-        return Optional.empty();
+    private static CompensationReason compensationReason(ToolGuardrailStage stage) {
+        return switch (stage) {
+            case INPUT -> CompensationReason.TOOL_INPUT_GUARDRAIL_FAILED;
+            case OUTPUT -> CompensationReason.TOOL_OUTPUT_GUARDRAIL_FAILED;
+        };
     }
 
     /**

@@ -6,16 +6,6 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.merge;
 import static java.util.Arrays.asList;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
-import java.util.function.BiPredicate;
-import java.util.function.Function;
 import dev.langchain4j.agent.tool.ToolSource;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.Utils;
@@ -28,6 +18,16 @@ import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
+import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -183,9 +183,8 @@ public class McpToolProvider implements ToolProvider {
             List<McpClient> consideredMcpClients) {
 
         List<McpClient> clientsSnapshot = List.copyOf(consideredMcpClients);
-        List<KeyedClient> keyedClients = clientsSnapshot.stream()
-                .map(KeyedClient::of)
-                .toList();
+        List<KeyedClient> keyedClients =
+                clientsSnapshot.stream().map(KeyedClient::of).toList();
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
 
         for (KeyedClient keyedClient : keyedClients) {

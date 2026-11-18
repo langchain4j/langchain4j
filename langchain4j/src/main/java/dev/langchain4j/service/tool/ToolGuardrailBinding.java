@@ -12,6 +12,8 @@ import java.util.Objects;
 /**
  * What the tool guardrails need to know about one tool: its specification, where it comes from, and the key a
  * {@link ToolGuardrailService} returned for it, to execute its guardrails with.
+ *
+ * @since 1.25.0
  */
 @Internal
 public final class ToolGuardrailBinding {

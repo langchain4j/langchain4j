@@ -366,6 +366,27 @@ class ToolGuardrailCompensationTest {
                 .isEqualTo(ROLLED_BACK.formatted("credit", "debit"));
     }
 
+    // ---------- failures that are not the guardrails' ----------
+
+    @Test
+    void a_callback_that_throws_before_the_guardrails_run_is_not_a_guardrail_failure() {
+        var run = run(
+                Mode.COMPLETABLE_FUTURE,
+                modelCalling("credit", "debit"),
+                services -> services.toolInputGuardrails(onInputOf("debit", request -> INPUT.success()))
+                        .beforeToolExecution(before -> {
+                            if (before.request().name().equals("debit")) {
+                                throw new IllegalStateException("callback failed");
+                            }
+                        }));
+
+        assertThat(run.failure).isInstanceOf(IllegalStateException.class).hasMessage("callback failed");
+        // handled as any other failure (probed: the same without guardrails): the earlier tool is rolled back, with the
+        // generic reason
+        assertThat(run.compensatedTools()).containsExactly("credit");
+        assertThat(run.compensationReasons()).containsOnly(CompensationReason.TOOL_EXECUTION_FAILED);
+    }
+
     // ---------- mixed rounds and rounds in sequence ----------
 
     @ParameterizedTest

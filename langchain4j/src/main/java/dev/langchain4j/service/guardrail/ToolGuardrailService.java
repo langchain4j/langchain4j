@@ -10,11 +10,13 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSource;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.guardrail.ToolGuardrailStage;
 import dev.langchain4j.guardrail.ToolInputGuardrail;
 import dev.langchain4j.guardrail.ToolInputGuardrailException;
 import dev.langchain4j.guardrail.ToolInputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolInputGuardrailResult;
 import dev.langchain4j.guardrail.ToolOutputGuardrail;
+import dev.langchain4j.guardrail.ToolOutputGuardrailException;
 import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
 import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
@@ -180,17 +182,28 @@ public non-sealed interface ToolGuardrailService
 
         var effectiveRequest = effectiveRequest(inputResult, request);
 
-        var result = inputResult.isSuccess()
-                ? applyOutputGuardrails(
-                        key,
+        return inputResult.isSuccess()
+                ? executeToolAndOutputGuardrails(
+                        key, effectiveRequest, toolSpecification, toolSource, requestParams, tool)
+                : guardedExecution(
                         effectiveRequest,
-                        tool.apply(effectiveRequest),
-                        toolSpecification,
-                        toolSource,
-                        requestParams)
-                : errorResult(inputResult.failureMessage());
+                        errorResult(inputResult.failureMessage()),
+                        Optional.of(ToolGuardrailStage.INPUT));
+    }
 
-        return guardedExecution(effectiveRequest, result);
+    private GuardedToolExecution executeToolAndOutputGuardrails(
+            ToolKey key,
+            ToolExecutionRequest request,
+            ToolSpecification toolSpecification,
+            ToolSource toolSource,
+            GuardrailRequestParams requestParams,
+            Function<ToolExecutionRequest, ToolExecutionResult> tool) {
+
+        var toolResult = tool.apply(request);
+        var guardedResult =
+                applyOutputGuardrails(key, request, toolResult, toolSpecification, toolSource, requestParams);
+
+        return guardedExecution(request, guardedResult, failedOutputStage(toolResult, guardedResult));
     }
 
     /**
@@ -268,6 +281,36 @@ public non-sealed interface ToolGuardrailService
                 .map(arguments -> request.toBuilder().arguments(arguments).build());
     }
 
+    /**
+     * The stage whose guardrails ended a call with a fatal failure, as {@link #rejectedRequest(ToolExecutionRequest,
+     * Throwable)} gives its request. It lets a caller tell what ended a call that
+     * {@link #executeGuardrails(ToolKey, ToolExecutionRequest, ToolSpecification, ToolSource, GuardrailRequestParams,
+     * Function)} or {@link #executeGuardrailsAsync(ToolKey, ToolExecutionRequest, ToolSpecification, ToolSource,
+     * GuardrailRequestParams, Function)} ended with an exception without knowing the exceptions of the guardrails, and
+     * without inferring it from what it saw of the call: a failure of the call before the guardrails ran, such as a
+     * callback that threw, is not one of a stage.
+     * <p>
+     *     Empty for any other failure, including a cancellation. A non-fatal failure returns an execution, which tells
+     *     its stage with {@link GuardedToolExecution#failedStage()}.
+     * </p>
+     *
+     * @param request The tool call of the LLM. Must not be null.
+     * @param failure The exception that ended the call, possibly wrapped in a
+     *                {@link java.util.concurrent.CompletionException}; may be null.
+     * @return The stage of the fatal failure, if the failure is one.
+     * @since 1.25.0
+     */
+    @Experimental
+    default Optional<ToolGuardrailStage> rejectedStage(ToolExecutionRequest request, Throwable failure) {
+        ensureNotNull(request, "request");
+        return Optional.ofNullable(failure)
+                .map(Exceptions::unwrapCompletionException)
+                .flatMap(error -> Optional.ofNullable(
+                        (error instanceof ToolInputGuardrailException)
+                                ? ToolGuardrailStage.INPUT
+                                : (error instanceof ToolOutputGuardrailException) ? ToolGuardrailStage.OUTPUT : null));
+    }
+
     private boolean hasGuardrails(ToolKey key) {
         return hasInputGuardrails(key) || hasOutputGuardrails(key);
     }
@@ -311,16 +354,21 @@ public non-sealed interface ToolGuardrailService
                     return inputResult.isSuccess()
                             ? startStage(inFlight, () -> tool.apply(effectiveRequest), "future of the tool")
                                     .thenCompose(toolResult -> applyOutputGuardrailsAsync(
-                                            inFlight,
-                                            key,
-                                            effectiveRequest,
-                                            toolResult,
-                                            toolSpecification,
-                                            toolSource,
-                                            requestParams))
-                                    .thenApply(guardedResult -> guardedExecution(effectiveRequest, guardedResult))
-                            : CompletableFuture.completedFuture(
-                                    guardedExecution(effectiveRequest, errorResult(inputResult.failureMessage())));
+                                                    inFlight,
+                                                    key,
+                                                    effectiveRequest,
+                                                    toolResult,
+                                                    toolSpecification,
+                                                    toolSource,
+                                                    requestParams)
+                                            .thenApply(guardedResult -> guardedExecution(
+                                                    effectiveRequest,
+                                                    guardedResult,
+                                                    failedOutputStage(toolResult, guardedResult))))
+                            : CompletableFuture.completedFuture(guardedExecution(
+                                    effectiveRequest,
+                                    errorResult(inputResult.failureMessage()),
+                                    Optional.of(ToolGuardrailStage.INPUT)));
                 })
                 .whenComplete((execution, error) -> {
                     if (error != null) {
@@ -458,7 +506,28 @@ public non-sealed interface ToolGuardrailService
     }
 
     private static GuardedToolExecution guardedExecution(ToolExecutionRequest request, ToolExecutionResult result) {
-        return GuardedToolExecution.builder().request(request).result(result).build();
+        return guardedExecution(request, result, Optional.empty());
+    }
+
+    private static GuardedToolExecution guardedExecution(
+            ToolExecutionRequest request, ToolExecutionResult result, Optional<ToolGuardrailStage> failedStage) {
+        return GuardedToolExecution.builder()
+                .request(request)
+                .result(result)
+                .failedStage(failedStage.orElse(null))
+                .build();
+    }
+
+    /**
+     * The output stage failed the call when its guardrails turned the successful result of the tool into an error
+     * result. A tool that failed on its own did not fail because of a guardrail, whatever the guardrails then did
+     * with its error result.
+     */
+    private static Optional<ToolGuardrailStage> failedOutputStage(
+            ToolExecutionResult toolResult, ToolExecutionResult guardedResult) {
+        return (guardedResult.isError() && !toolResult.isError())
+                ? Optional.of(ToolGuardrailStage.OUTPUT)
+                : Optional.empty();
     }
 
     /**

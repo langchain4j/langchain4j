@@ -214,7 +214,7 @@ public abstract sealed class AbstractGuardrailExecutor<
     /**
      * Runs the guardrails like {@link #executeGuardrailsAsync(GuardrailRequest, CancellationChain)} in a single pass,
      * then applies {@code finisher} to the result, and returns a future that cancels the in-flight guardrail when it
-     * is cancelled. If {@code finisher} throws, the future completes exceptionally with that exception.
+     * is canceled. If {@code finisher} throws, the future completes exceptionally with that exception.
      * <p>
      *     This is the shared body of the {@code executeAsync} of executors that have no retry loop.
      * </p>

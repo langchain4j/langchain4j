@@ -19,6 +19,7 @@ import java.util.Optional;
  *                        executed. Without an entry the tool did not run
  * @param guardrailFailures the reason to compensate for each call that a tool guardrail turned into an error result,
  *                          by the call as it was executed
+ * @since 1.25.0
  */
 @Internal
 public record ToolRoundCompensation(

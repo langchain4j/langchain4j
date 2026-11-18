@@ -32,6 +32,7 @@ import java.util.function.UnaryOperator;
  * @param <OR> The type of {@link GuardrailResult} of the output guardrails
  * @param <IE> The type of {@link GuardrailExecutor} of the input guardrails
  * @param <OE> The type of {@link GuardrailExecutor} of the output guardrails
+ * @since 1.25.0
  */
 @Internal
 public abstract sealed class AbstractKeyedGuardrailService<

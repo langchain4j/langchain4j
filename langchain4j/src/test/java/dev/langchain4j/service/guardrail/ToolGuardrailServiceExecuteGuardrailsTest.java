@@ -10,6 +10,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.guardrail.ToolGuardrailStage;
 import dev.langchain4j.guardrail.ToolInputGuardrail;
 import dev.langchain4j.guardrail.ToolInputGuardrailException;
 import dev.langchain4j.guardrail.ToolInputGuardrailRequest;
@@ -25,6 +26,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
@@ -60,6 +62,7 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
     // the result factories are default methods of the interfaces, which lambdas cannot call
     private static final ToolInputGuardrail INPUT = request -> null;
     private static final ToolOutputGuardrail OUTPUT = request -> null;
+    private static final ToolInputGuardrail INPUT_PASS = request -> ToolInputGuardrailResult.success();
 
     /** A tool that records the requests it ran with. */
     private static final class Tool implements Function<ToolExecutionRequest, ToolExecutionResult> {
@@ -586,6 +589,114 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
                 .isEmpty();
         assertThat(service.rejectedRequest(CALL, null)).isEmpty();
         assertThatThrownBy(() -> service.rejectedRequest(null, outputFailure))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    // ---------- failedStage and rejectedStage ----------
+
+    @Test
+    void a_call_without_a_guardrail_failure_tells_no_stage() {
+        ToolOutputGuardrail sanitize = request -> OUTPUT.successWith("sanitized");
+
+        assertThat(execute(List.of(), List.of(), new Tool(toolResult(false))).failedStage())
+                .isEmpty();
+        assertThat(execute(List.of(INPUT_PASS), List.of(sanitize), new Tool(toolResult(false)))
+                        .failedStage())
+                .isEmpty();
+    }
+
+    @Test
+    void an_input_rejection_tells_the_input_stage_and_the_tool_does_not_run() {
+        ToolInputGuardrail reject = request -> INPUT.failure("denied");
+        var tool = new Tool(toolResult(false));
+
+        var execution = execute(List.of(reject), List.of(), tool);
+
+        assertThat(execution.failedStage()).hasValue(ToolGuardrailStage.INPUT);
+        assertThat(tool.requests).isEmpty();
+    }
+
+    @Test
+    void an_output_failure_or_a_rewrite_to_an_error_of_a_success_tells_the_output_stage() {
+        ToolOutputGuardrail fail = request -> OUTPUT.failure("blocked");
+        ToolOutputGuardrail toError = request -> OUTPUT.successWith(List.of(TextContent.from("flagged")), true);
+
+        assertThat(execute(List.of(), List.of(fail), new Tool(toolResult(false)))
+                        .failedStage())
+                .hasValue(ToolGuardrailStage.OUTPUT);
+        assertThat(execute(List.of(), List.of(toError), new Tool(toolResult(false)))
+                        .failedStage())
+                .hasValue(ToolGuardrailStage.OUTPUT);
+    }
+
+    @Test
+    void a_tool_that_failed_on_its_own_tells_no_stage_whatever_the_output_guardrails_do_with_its_error() {
+        ToolOutputGuardrail keepError = request -> OUTPUT.successWith("[removed]");
+        ToolOutputGuardrail fail = request -> OUTPUT.failure("blocked");
+
+        assertThat(execute(List.of(), List.of(keepError), new Tool(toolResult(true)))
+                        .failedStage())
+                .isEmpty();
+        assertThat(execute(List.of(), List.of(fail), new Tool(toolResult(true))).failedStage())
+                .isEmpty();
+    }
+
+    @Test
+    void an_output_chain_that_flips_back_to_a_success_tells_no_stage() {
+        ToolOutputGuardrail toError = request -> OUTPUT.successWith(List.of(TextContent.from("flagged")), true);
+        ToolOutputGuardrail toSuccess = request -> OUTPUT.successWith(List.of(TextContent.from("clean")), false);
+
+        assertThat(execute(List.of(), List.of(toError, toSuccess), new Tool(toolResult(false)))
+                        .failedStage())
+                .isEmpty();
+    }
+
+    @Test
+    void the_async_execution_tells_the_same_stages() {
+        ToolInputGuardrail reject = asyncInput(request -> INPUT.failure("denied"));
+        ToolOutputGuardrail fail = asyncOutput(request -> OUTPUT.failure("blocked"));
+        ToolOutputGuardrail keepError = asyncOutput(request -> OUTPUT.successWith("[removed]"));
+
+        assertThat(executeAsync(List.of(reject), List.of(), async(new Tool(toolResult(false)))))
+                .succeedsWithin(Duration.ofSeconds(5))
+                .returns(Optional.of(ToolGuardrailStage.INPUT), GuardedToolExecution::failedStage);
+        assertThat(executeAsync(List.of(), List.of(fail), async(new Tool(toolResult(false)))))
+                .succeedsWithin(Duration.ofSeconds(5))
+                .returns(Optional.of(ToolGuardrailStage.OUTPUT), GuardedToolExecution::failedStage);
+        assertThat(executeAsync(List.of(), List.of(keepError), async(new Tool(toolResult(true)))))
+                .succeedsWithin(Duration.ofSeconds(5))
+                .returns(Optional.empty(), GuardedToolExecution::failedStage);
+        assertThat(executeAsync(List.of(), List.of(), async(new Tool(toolResult(false)))))
+                .succeedsWithin(Duration.ofSeconds(5))
+                .returns(Optional.empty(), GuardedToolExecution::failedStage);
+    }
+
+    @Test
+    void a_fatal_failure_tells_its_stage_also_when_wrapped() {
+        ToolInputGuardrail fatalInput = request -> INPUT.fatal("stop");
+        ToolOutputGuardrail fatalOutput = request -> OUTPUT.fatal("stop");
+        var service = ToolGuardrailService.builder(Assistant.class).build();
+        var inputFailure = catchThrowable(() -> execute(List.of(fatalInput), List.of(), new Tool(toolResult(false))));
+        var outputFailure = catchThrowable(() -> execute(List.of(), List.of(fatalOutput), new Tool(toolResult(false))));
+
+        assertThat(service.rejectedStage(CALL, inputFailure)).hasValue(ToolGuardrailStage.INPUT);
+        assertThat(service.rejectedStage(CALL, new CompletionException(inputFailure)))
+                .hasValue(ToolGuardrailStage.INPUT);
+        assertThat(service.rejectedStage(CALL, outputFailure)).hasValue(ToolGuardrailStage.OUTPUT);
+        assertThat(service.rejectedStage(CALL, new CompletionException(outputFailure)))
+                .hasValue(ToolGuardrailStage.OUTPUT);
+    }
+
+    @Test
+    void no_rejected_stage_is_told_for_any_other_failure() {
+        var service = ToolGuardrailService.builder(Assistant.class).build();
+
+        assertThat(service.rejectedStage(CALL, new IllegalStateException("boom")))
+                .isEmpty();
+        assertThat(service.rejectedStage(CALL, new java.util.concurrent.CancellationException()))
+                .isEmpty();
+        assertThat(service.rejectedStage(CALL, null)).isEmpty();
+        assertThatThrownBy(() -> service.rejectedStage(null, new IllegalStateException("boom")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

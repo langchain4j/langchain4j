@@ -2,7 +2,9 @@ package dev.langchain4j.service.guardrail;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.guardrail.ToolGuardrailStage;
 import dev.langchain4j.service.tool.ToolExecutionResult;
+import java.util.Optional;
 
 /**
  * The outcome of a tool call executed through its tool guardrails by
@@ -56,6 +58,21 @@ public sealed interface GuardedToolExecution permits DefaultGuardedToolExecution
     ToolExecutionResult result();
 
     /**
+     * The stage whose guardrails turned the call into an error result, so that a caller does not have to infer it:
+     * {@link ToolGuardrailStage#INPUT} when an input guardrail rejected the call (the tool did not run), and
+     * {@link ToolGuardrailStage#OUTPUT} when the output guardrails turned the successful result of the tool into an
+     * error result (a failure, or a rewrite to an error).
+     * <p>
+     *     Empty for every other call: a call without a guardrail failure, a tool that failed on its own (also when an
+     *     output guardrail rewrote its error result), and a rewrite that keeps a success. A fatal failure does not
+     *     return an execution: see {@link ToolGuardrailService#rejectedStage(ToolExecutionRequest, Throwable)}.
+     * </p>
+     *
+     * @return The stage, empty if no guardrail failed the call.
+     */
+    Optional<ToolGuardrailStage> failedStage();
+
+    /**
      * Builds a {@link GuardedToolExecution}.
      *
      * @since 1.25.0
@@ -64,12 +81,14 @@ public sealed interface GuardedToolExecution permits DefaultGuardedToolExecution
     final class Builder {
         ToolExecutionRequest request;
         ToolExecutionResult result;
+        ToolGuardrailStage failedStage;
 
         private Builder() {}
 
         private Builder(GuardedToolExecution execution) {
             this.request = execution.request();
             this.result = execution.result();
+            this.failedStage = execution.failedStage().orElse(null);
         }
 
         /**
@@ -87,6 +106,17 @@ public sealed interface GuardedToolExecution permits DefaultGuardedToolExecution
          */
         public Builder result(ToolExecutionResult result) {
             this.result = result;
+            return this;
+        }
+
+        /**
+         * @param failedStage The stage whose guardrails turned the call into an error result, or {@code null} (the
+         *                    default) if no guardrail failed the call.
+         * @return This builder.
+         * @see GuardedToolExecution#failedStage()
+         */
+        public Builder failedStage(ToolGuardrailStage failedStage) {
+            this.failedStage = failedStage;
             return this;
         }
 

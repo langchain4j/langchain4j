@@ -27,6 +27,7 @@ import java.util.concurrent.CompletableFuture;
  * @param <E> The type of {@link GuardrailExecutedEvent} to be fired
  * @param <F>
  *            The type of {@link GuardrailResult.Failure} to return
+ * @since 1.25.0
  */
 @Internal
 public abstract sealed class AbstractToolGuardrailExecutor<
