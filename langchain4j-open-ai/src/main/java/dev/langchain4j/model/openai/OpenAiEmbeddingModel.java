@@ -16,7 +16,6 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Collections.unmodifiableMap;
 
 import dev.langchain4j.data.embedding.Embedding;
-import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.DimensionAwareEmbeddingModel;
@@ -30,7 +29,6 @@ import dev.langchain4j.model.embedding.response.EmbeddingResponseMetadata;
 import dev.langchain4j.model.openai.internal.OpenAiClient;
 import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.spi.OpenAiEmbeddingModelBuilderFactory;
-import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -140,9 +138,7 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
 
         EmbeddingRequestParameters parameters = request.parameters();
 
-        List<String> texts = request.inputs().stream()
-                .map(EmbeddingInput::text)
-                .toList();
+        List<String> texts = request.inputs().stream().map(EmbeddingInput::text).toList();
         List<List<String>> textBatches = partition(texts, maxSegmentsPerBatch);
 
         List<EmbeddedBatch> responses = new ArrayList<>();
@@ -224,11 +220,26 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         List<String> texts = request.inputs().stream().map(EmbeddingInput::text).toList();
         List<List<String>> textBatches = partition(texts, maxSegmentsPerBatch);
 
-        List<CompletableFuture<EmbeddedBatch>> batchFutures =
-                textBatches.stream().map(batch -> embedTextsAsync(batch, parameters)).toList();
+        List<CompletableFuture<EmbeddedBatch>> batchFutures = textBatches.stream()
+                .map(batch -> embedTextsAsync(batch, parameters))
+                .toList();
 
-        CompletableFuture<EmbeddingResponse> aggregate = CompletableFuture.allOf(
-                        batchFutures.toArray(new CompletableFuture[0]))
+        CompletableFuture<EmbeddingResponse> result = new CompletableFuture<>();
+        AtomicReference<Throwable> firstError = new AtomicReference<>();
+        // Observe real batch errors before the aggregate can report a sibling's cancellation.
+        List<CompletableFuture<EmbeddedBatch>> observedBatches = batchFutures.stream()
+                .map(batchFuture -> batchFuture.whenComplete((response, error) -> {
+                    if (error != null) {
+                        Throwable cause = unwrapCompletionException(error);
+                        if (!(cause instanceof CancellationException) && firstError.compareAndSet(null, cause)) {
+                            result.completeExceptionally(cause);
+                            batchFutures.forEach(sibling -> sibling.cancel(true));
+                        }
+                    }
+                }))
+                .toList();
+
+        CompletableFuture.allOf(observedBatches.toArray(new CompletableFuture[0]))
                 .thenApply(ignored -> {
                     List<EmbeddedBatch> responses =
                             batchFutures.stream().map(CompletableFuture::join).toList();
@@ -253,30 +264,21 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
                                     .tokenUsage(tokenUsage)
                                     .build())
                             .build();
+                })
+                .whenComplete((response, error) -> {
+                    if (error == null) {
+                        result.complete(response);
+                    } else {
+                        result.completeExceptionally(unwrapCompletionException(error));
+                    }
                 });
 
-        CompletableFuture<EmbeddingResponse> result = new CompletableFuture<>();
-        aggregate.whenComplete((response, error) -> {
-            if (error == null) {
-                result.complete(response);
-            }
-        });
-
-        AtomicReference<Throwable> firstError = new AtomicReference<>();
-        batchFutures.forEach(batchFuture -> batchFuture.whenComplete((response, error) -> {
-            if (error != null) {
-                Throwable cause = unwrapCompletionException(error);
-                if (!(cause instanceof CancellationException) && firstError.compareAndSet(null, cause)) {
-                    result.completeExceptionally(cause);
-                    batchFutures.forEach(sibling -> sibling.cancel(true));
-                }
-            }
-        }));
         batchFutures.forEach(batchFuture -> propagateCancellation(result, batchFuture));
         return result;
     }
 
-    private CompletableFuture<EmbeddedBatch> embedTextsAsync(List<String> texts, EmbeddingRequestParameters parameters) {
+    private CompletableFuture<EmbeddedBatch> embedTextsAsync(
+            List<String> texts, EmbeddingRequestParameters parameters) {
 
         dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest request =
                 dev.langchain4j.model.openai.internal.embedding.EmbeddingRequest.builder()
