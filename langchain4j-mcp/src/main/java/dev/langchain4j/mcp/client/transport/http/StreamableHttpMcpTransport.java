@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import javax.net.ssl.SSLContext;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,7 +88,15 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private final AtomicInteger stopCount = new AtomicInteger();
     private final Set<HttpExchange> activeExchanges = ConcurrentHashMap.newKeySet();
 
+    /**
+     * Creates the transport, after every {@link StreamableHttpMcpTransportListener} was notified
+     * and had the chance to adjust the builder. {@link Builder#build()} calls this constructor.
+     */
     public StreamableHttpMcpTransport(StreamableHttpMcpTransport.Builder builder) {
+        for (StreamableHttpMcpTransportListener listener : loadFactories(StreamableHttpMcpTransportListener.class)) {
+            LOG.debug("Notifying {} of a new Streamable HTTP MCP transport", listener.getClass().getName());
+            listener.onNewTransport(builder);
+        }
         url = ensureNotNull(builder.url, "Missing server endpoint URL");
         logRequests = builder.logRequests;
         logResponses = builder.logResponses;
@@ -1048,7 +1057,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
          *
          * @since 1.25.0
          */
-        public String getUrl() {
+        public @Nullable String getUrl() {
             return url;
         }
 
@@ -1233,10 +1242,6 @@ public class StreamableHttpMcpTransport implements McpTransport {
          * and had the chance to adjust this builder.
          */
         public StreamableHttpMcpTransport build() {
-            for (StreamableHttpMcpTransportListener listener :
-                    loadFactories(StreamableHttpMcpTransportListener.class)) {
-                listener.onNewTransport(this);
-            }
             return new StreamableHttpMcpTransport(this);
         }
     }

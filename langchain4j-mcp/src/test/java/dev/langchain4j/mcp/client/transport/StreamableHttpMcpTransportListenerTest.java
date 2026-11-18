@@ -112,6 +112,40 @@ class StreamableHttpMcpTransportListenerTest {
     }
 
     @Test
+    void should_notify_listeners_when_the_constructor_is_called() throws Exception {
+        register(RoutingThroughProxy.class);
+
+        transport = new StreamableHttpMcpTransport(builder());
+
+        assertThat(NOTIFICATIONS).containsExactly("proxy saw " + SERVER_URL);
+        assertThat(requestedUrl()).isEqualTo(PROXY_URL);
+    }
+
+    @Test
+    void should_look_up_listeners_each_time_a_transport_is_created() throws Exception {
+        StreamableHttpMcpTransport.Builder builder = builder();
+        register(Recording.class);
+        builder.build().close();
+        Thread.currentThread().setContextClassLoader(originalClassLoader);
+
+        transport = builder.build();
+
+        assertThat(NOTIFICATIONS).containsExactly("recorded " + SERVER_URL);
+    }
+
+    @Test
+    void should_fail_with_a_clear_message_when_no_url_is_set() throws Exception {
+        register(Recording.class);
+
+        assertThatThrownBy(() -> StreamableHttpMcpTransport.builder()
+                        .httpClient(httpClient)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Missing server endpoint URL");
+        assertThat(NOTIFICATIONS).containsExactly("recorded null");
+    }
+
+    @Test
     void should_fail_the_build_when_a_listener_fails() throws Exception {
         register(Failing.class);
 
