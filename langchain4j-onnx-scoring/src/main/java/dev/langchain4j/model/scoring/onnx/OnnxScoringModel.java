@@ -2,6 +2,17 @@ package dev.langchain4j.model.scoring.onnx;
 
 import ai.onnxruntime.OrtSession;
 
+/**
+ * A scoring (reranking) model that runs within your Java application's process
+ * using <a href="https://onnxruntime.ai/">ONNX runtime</a>.
+ * <br>
+ * Many models (e.g., from <a href="https://huggingface.co/">HuggingFace</a>) can be used,
+ * as long as they are in the ONNX format.
+ * <p>
+ * Load only model files you trust. ONNX runtime parses the model file with native code,
+ * and a crafted model file can exploit flaws in the runtime,
+ * for example to read other files on your machine or to crash the JVM.
+ */
 public class OnnxScoringModel extends AbstractInProcessScoringModel {
 
     private static final int DEFAULT_MODEL_MAX_LENGTH = 510; // 512 - 2 (special tokens [CLS] and [SEP])

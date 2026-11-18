@@ -14,6 +14,13 @@ Information on how to convert models into ONNX format can be found [here](https:
 
 Many models already converted to ONNX format are available [here](https://huggingface.co/Xenova).
 
+:::warning
+**Load only model files you trust.**
+An ONNX model file is not just data: ONNX runtime parses it with native code,
+and a crafted model file can exploit flaws in the runtime, for example to read other files on your machine or to crash the JVM.
+Use models from sources you trust, or models you converted yourself.
+:::
+
 ### Usage
 
 By default, scoring (reranking) model uses the CPU. 
