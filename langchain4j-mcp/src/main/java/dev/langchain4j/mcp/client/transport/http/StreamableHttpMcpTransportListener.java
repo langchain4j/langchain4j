@@ -1,13 +1,14 @@
 package dev.langchain4j.mcp.client.transport.http;
 
-import dev.langchain4j.Experimental;
+import dev.langchain4j.Internal;
 import dev.langchain4j.spi.PrioritizedFactory;
 import java.util.ServiceLoader;
 
 /**
  * Notified each time a {@link StreamableHttpMcpTransport} is about to be created, whoever creates it.
- * This is meant for integrations that need to know about, or adjust, every Streamable HTTP transport
- * of an application, for example to route its traffic through a proxy.
+ * This is meant for frameworks and libraries that need to know about, or adjust, every Streamable HTTP
+ * transport of an application, for example to route its traffic through a proxy. It is an internal SPI:
+ * it can change or be removed in any release.
  * <p>
  * Implementations are discovered with the {@link ServiceLoader}: list them in
  * {@code META-INF/services/dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransportListener}.
@@ -27,7 +28,7 @@ import java.util.ServiceLoader;
  *
  * @since 1.25.0
  */
-@Experimental
+@Internal
 public interface StreamableHttpMcpTransportListener {
 
     /**

@@ -207,47 +207,6 @@ McpTransport transport = DockerMcpTransport.builder()
     .build();
 ```
 
-#### Listening for new Streamable HTTP transports
-
-A library or framework can be notified each time a Streamable HTTP transport is about to be created,
-whether the application or another framework creates it. This is useful when every transport of an
-application has to be known or adjusted, for example to route its traffic through a proxy in tests.
-Implement `StreamableHttpMcpTransportListener` (experimental):
-
-```java
-public class ProxyingListener implements StreamableHttpMcpTransportListener {
-
-    @Override
-    public void onNewTransport(StreamableHttpMcpTransport.Builder builder) {
-        if ("https://mcp.example.com/mcp".equals(builder.getUrl())) { // getUrl() is null if no URL was set
-            builder.url("http://localhost:4444/mcp"); // a proxy that forwards to https://mcp.example.com/mcp
-        }
-    }
-}
-```
-
-A listener sees every transport of the application. To let it tell them apart, give a transport
-a name with `.name("weather")` on its builder; the listener reads it with `builder.getName()`.
-The transport does not use the name itself and never sends it to the server.
-
-Then register it: create the file
-`src/main/resources/META-INF/services/dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransportListener`
-containing the fully qualified name of your class, for example `com.example.ProxyingListener`.
-
-- Listeners are looked up with the Java `ServiceLoader` each time a transport is created. Each lookup
-  creates new instances, so a listener needs a public no-argument constructor, and anything that has to
-  live longer, such as a running proxy, must be kept outside of it.
-- A listener can change any setting through the builder. Listeners are called one after the other,
-  highest priority first: implement `dev.langchain4j.spi.PrioritizedFactory` to set a priority, the
-  default is 0. A listener sees the changes made by the listeners called before it, so the last one
-  to change a setting decides its value.
-- An exception thrown by a listener fails the creation of the transport.
-- The transport sends all its requests, including their headers (for example an API key), to the URL
-  the listeners leave on the builder. Only put listeners you trust on the classpath.
-
-Only the Streamable HTTP transport notifies these listeners. They are not the same as the
-[MCP listeners](#mcp-listeners), which observe the calls of one MCP client.
-
 ### MCP Client
 
 To create an MCP client from the transport:

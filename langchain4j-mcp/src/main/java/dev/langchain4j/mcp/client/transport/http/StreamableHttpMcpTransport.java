@@ -6,6 +6,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.Internal;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -979,7 +980,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private HttpClient httpClient;
         private Executor executor;
         private String url;
-        private String name;
+        private @Nullable String name;
         private McpHeadersSupplier customHeadersSupplier;
         private Duration timeout;
         private boolean logRequests = false;
@@ -1057,6 +1058,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
          *
          * @since 1.25.0
          */
+        @Internal
         public @Nullable String getUrl() {
             return url;
         }
@@ -1071,7 +1073,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
          * @return this builder
          * @since 1.25.0
          */
-        public StreamableHttpMcpTransport.Builder name(String name) {
+        public StreamableHttpMcpTransport.Builder name(@Nullable String name) {
             this.name = name;
             return this;
         }
@@ -1081,7 +1083,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
          *
          * @since 1.25.0
          */
-        public String getName() {
+        @Internal
+        public @Nullable String getName() {
             return name;
         }
 
