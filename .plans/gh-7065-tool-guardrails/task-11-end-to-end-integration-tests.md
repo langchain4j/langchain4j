@@ -82,7 +82,7 @@ Specific scenarios that must exist:
 
 ## Outcome
 
-**Implemented 2026-11-18; uncommitted, awaiting the user's review.** Upstream state at the start: [#7106](https://github.com/langchain4j/langchain4j/pull/7106) and [#7168](https://github.com/langchain4j/langchain4j/pull/7168) still open; the local branch and `origin/gh-7065-tool-guardrails` are both 0 behind / 12 ahead of `upstream/main`.
+**Implemented 2026-11-18; reviewed by the user, committed as `352dfea94` (tests) and `340dfdd51` (plan) and pushed to the fork as a fast-forward.** Upstream state at the start: [#7106](https://github.com/langchain4j/langchain4j/pull/7106) and [#7168](https://github.com/langchain4j/langchain4j/pull/7168) still open; the local branch and `origin/gh-7065-tool-guardrails` are both 0 behind / 12 ahead of `upstream/main`.
 
 ### What was built
 
