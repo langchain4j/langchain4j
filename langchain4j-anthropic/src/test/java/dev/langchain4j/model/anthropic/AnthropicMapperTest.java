@@ -559,6 +559,19 @@ class AnthropicMapperTest {
     }
 
     @Test
+    void should_keep_the_line_breaks_that_are_part_of_the_text_blocks() {
+        // given: a line break that Claude wants is part of the text (example from the citations docs)
+        List<AnthropicContent> contents =
+                List.of(text("grass_color: "), text("green"), text("\nsky_color: "), text("blue"));
+
+        // when
+        AiMessage aiMessage = toAiMessage(contents, false, false);
+
+        // then
+        assertThat(aiMessage.text()).isEqualTo("grass_color: green\nsky_color: blue");
+    }
+
+    @Test
     void should_separate_text_blocks_that_are_separated_by_another_block() {
         // given
         List<AnthropicContent> contents = List.of(
