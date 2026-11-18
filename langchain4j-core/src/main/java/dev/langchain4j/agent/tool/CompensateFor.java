@@ -10,9 +10,10 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 /**
  * Marks a method as the compensating action for a {@link Tool}.
- * When compensation is enabled via {@code .compensateOnToolErrors(true)}, if any tool
- * execution fails, all previously executed tools' compensating actions are called in
- * reverse order to undo their effects.
+ * When compensation is enabled with {@code .compensateOnToolErrors(true)}, if a tool fails
+ * (also when its error ends the invocation) or the invocation is cancelled, the compensating
+ * actions of the tool calls that succeeded in the same invocation are called in reverse order
+ * to undo their effects.
  * The annotated method must have the same parameter types as the tool it compensates for,
  * or accept a single {@code ToolExecution} parameter.
  * <p>

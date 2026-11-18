@@ -5,6 +5,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
@@ -315,6 +316,9 @@ public class AiServiceTokenStreamParameters {
          * firing the AI Service listener events and invoking
          * {@link TokenStream#onIntermediateResponse(java.util.function.Consumer)} and
          * {@link TokenStream#onCompleteResponse(java.util.function.Consumer)}.
+         * When the invocation is cancelled with {@link StreamingHandle#cancel()} and
+         * compensation on tool errors is enabled, the tool calls are rolled back on this executor too;
+         * a rollback that this executor rejects is logged at WARN level.
          * Partial responses are still delivered on the thread of the {@code StreamingChatModel}.
          * <p>
          * If not set (or {@code null}), the response is processed on the thread that delivers it, which is usually

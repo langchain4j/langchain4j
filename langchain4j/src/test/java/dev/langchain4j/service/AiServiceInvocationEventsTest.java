@@ -3329,6 +3329,8 @@ class AiServiceInvocationEventsTest {
                         + "hallucinatedToolNameStrategy on the AiService");
 
         assertSingleTerminalEvent(AiServiceErrorEvent.class);
+        // the booking made before the unknown tool call is rolled back before the invocation fails
+        assertThat(tools.cancelled).hasValue(1);
     }
 
     static class BookingTools {

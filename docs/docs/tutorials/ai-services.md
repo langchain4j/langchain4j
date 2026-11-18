@@ -733,7 +733,10 @@ tokenStream
 ```
 
 When `StreamingHandle.cancel()` is called, LangChain4j will close the connection and stop the streaming.
-Once `StreamingHandle.cancel()` has been called, `TokenStream` will not receive any further callbacks.
+Once `StreamingHandle.cancel()` has been called, `TokenStream` will not receive any further callbacks,
+except `beforeToolExecution` and `onToolExecuted` for the tool calls of a response that is already being processed.
+If the AI Service is built with `.compensateOnToolErrors(true)`, cancelling also rolls back the tool calls that
+already succeeded (see [Compensating Tool Actions](/tutorials/tools#compensating-tool-actions)).
 
 ### Flux
 You can also use `Flux<String>` instead of `TokenStream`.

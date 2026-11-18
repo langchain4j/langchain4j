@@ -85,7 +85,7 @@ information the callback-based `TokenStream` gives you:
 | `BeforeToolExecutionEvent`, `AfterToolExecutionEvent` | a tool about to run, and its result |
 | `IntermediateResponseEvent` | the response that closed one tool-calling round |
 | `RetrievedContentsEvent` | content retrieved by RAG |
-| `ToolCompensatedEvent` | a completed tool was compensated after the interaction was cancelled or failed |
+| `ToolCompensatedEvent` | a completed tool was compensated (rolled back), because another tool call failed (see [Compensating Tool Actions](/tutorials/tools#compensating-tool-actions)); `compensationError()` returns the error when the rollback failed. A rollback after a cancellation is not in the stream, because nothing is delivered after a cancel: register a `ToolCompensatedEventListener` for it (see [Observability](/tutorials/observability)) |
 | `RawEvent` | a provider-specific event LangChain4j does not map |
 | `FinalResponseEvent` | the final answer |
 
@@ -247,6 +247,8 @@ See [Error Handling](/tutorials/tools#error-handling) for what those handlers ca
 Because tools always run on an `Executor` in these modes, several tool calls in one LLM response run at the same
 time. If your tools are not safe to run concurrently, pass a single-threaded executor:
 `executeToolsConcurrently(Executors.newSingleThreadExecutor())`.
+If the executor rejects a tool call, the invocation fails once the tool calls that have already started have
+finished (see [Executing Tools Concurrently](/tutorials/tools#executing-tools-concurrently)).
 
 ### Event ordering
 

@@ -9,7 +9,8 @@ import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
  * {@link AiServiceListener}, specializing it for handling tool-compensation events.
  *
  * These events may occur multiple times within a single invocation, and they include the compensated tool's
- * request, its original result, and the reason it was rolled back.
+ * request, its original result, and the reason it was rolled back. They are also fired when the compensating action
+ * failed: then {@link ToolCompensatedEvent#compensationError()} returns its error.
  *
  * @since 1.20.0
  */
