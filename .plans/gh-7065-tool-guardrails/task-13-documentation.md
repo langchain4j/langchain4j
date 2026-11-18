@@ -76,10 +76,10 @@ PLAN.md "Documentation Must-Haves".
 
 ## Done When
 
-- [ ] Every PLAN.md "Documentation Must-Haves" item is covered.
-- [ ] All affected pages are updated and cross-linked.
-- [ ] Javadoc complete with `@since`.
-- [ ] Docs build (or links are validated).
+- [x] Every PLAN.md "Documentation Must-Haves" item is covered.
+- [x] All affected pages are updated and cross-linked.
+- [x] Javadoc complete (new public constructors and builder methods documented; the `@since` tags were already in place) with `@since`.
+- [x] Docs build: `npm run build` in `docs/` succeeds, no broken link or anchor on the touched pages.
 
 ## Extension points table (added 2026-11-16)
 
@@ -113,3 +113,11 @@ that must be updated by this task:
     and non-blocking (extended 2026-11-17).
   - Do not document `GenericGuardrailService` itself as something users or frameworks extend; it is the shared contract
     (`targetClass()`, execute / has by key) that the per-kind interfaces specialize.
+
+## Outcome
+
+Implemented 2026-11-18, uncommitted, awaiting review. See PLAN.md > Task Outcomes > Task 13 for the file list.
+
+- New page `tool-guardrails.md` instead of a section of `guardrails.md` (the question timed out; the task's first option).
+- Code samples were written against the final API but not compiled.
+- Not run: the full Maven test suite (docs and Javadoc only; `install -DskipTests` for core and `langchain4j` passes).
