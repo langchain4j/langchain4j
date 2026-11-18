@@ -154,8 +154,10 @@ jobs:
             EXCLUDES="$EXCLUDES,$EMBEDDING_MODULES_EXCLUDES"
           fi
 
-          # Exclude integration-tests and all its submodules
-          INTEGRATION_TEST_MODULES=$(find integration-tests -mindepth 1 -maxdepth 2 -type d -exec test -f "{}/pom.xml" \; -print | paste -sd , -)
+          # Exclude integration-tests and all its submodules. Only the modules of the default build are listed:
+          # modules added by a profile (e.g. test-assertions-frameworks) are not in this reactor, and Maven
+          # fails on an exclusion of a module it does not know.
+          INTEGRATION_TEST_MODULES=$(awk '/<modules>/ { in_modules = 1 } in_modules && /<module>/ { gsub(/.*<module>|<\/module>.*/, ""); print "integration-tests/" $0 } /<\/modules>/ { exit }' integration-tests/pom.xml | paste -sd , -)
           EXCLUDES="$EXCLUDES,!integration-tests"
           if [ -n "$INTEGRATION_TEST_MODULES" ]; then
             INTEGRATION_TEST_EXCLUDES=$(echo "$INTEGRATION_TEST_MODULES" | sed 's/[^,]*/!\0/g')
