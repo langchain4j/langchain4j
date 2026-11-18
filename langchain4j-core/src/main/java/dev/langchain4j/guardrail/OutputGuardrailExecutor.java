@@ -182,8 +182,8 @@ public non-sealed class OutputGuardrailExecutor
                                         .requestParams(accumulatedRequest.requestParams())
                                         .chatRequest(exchange.request())
                                         .build();
-                                var nextTokenUsage =
-                                        TokenUsage.sum(tokenUsage, exchange.response().tokenUsage());
+                                var nextTokenUsage = TokenUsage.sum(
+                                        tokenUsage, exchange.response().tokenUsage());
                                 return attemptAsync(
                                         request, nextRequest, nextTokenUsage, nextAttempt, maxAttempts, chain);
                             });
