@@ -15,7 +15,7 @@ RAG, and more.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-hibernate</artifactId>
-    <version>1.23.0-beta33</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 
@@ -27,17 +27,17 @@ It already includes `langchain4j-hibernate`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-hibernate-milvus</artifactId>
-    <version>1.23.0-beta33</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 
 ## Gradle Dependency
 
-```implementation 'dev.langchain4j:langchain4j-hibernate:1.23.0-beta33'```
+```implementation 'dev.langchain4j:langchain4j-hibernate:1.24.0-beta34'```
 
 and for Milvus
 
-```implementation 'dev.langchain4j:langchain4j-hibernate-milvus:1.23.0-beta33'```
+```implementation 'dev.langchain4j:langchain4j-hibernate-milvus:1.24.0-beta34'```
 
 ## APIs
 

@@ -44,7 +44,7 @@ To answer yes/no, choice and scale questions with probabilities, see the
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.23.0</version>
+    <version>1.24.0</version>
 </dependency>
 ```
 
