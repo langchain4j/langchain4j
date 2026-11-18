@@ -353,7 +353,7 @@ public class AnthropicMapper {
      * @param contents the content blocks of a response
      * @return the joined text, or an empty string if there is no text
      */
-    public static String joinTextBlocks(List<AnthropicContent> contents) {
+    private static String joinTextBlocks(List<AnthropicContent> contents) {
         List<String> paragraphs = new ArrayList<>();
         StringBuilder paragraph = new StringBuilder();
         for (AnthropicContent content : contents) {
