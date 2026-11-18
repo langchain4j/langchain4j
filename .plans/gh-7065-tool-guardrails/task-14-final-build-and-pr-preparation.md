@@ -75,3 +75,9 @@ commit or push without approval) the single tool guardrails PR.
   diff show a rename. Ask the user how they want 06a split before committing anything.
 - The `.tasks/` folder and the task 05 import-order fixes in `langchain4j-core` (four files) need to be placed in the
   right commits too (the fixes belong with task 05's files).
+
+## Post-PR step: comment on quarkus-langchain4j#3162 (user approved 2026-11-18)
+
+Once the PR is open, post the `resolveMethodKey` item on [quarkiverse/quarkus-langchain4j#3162](https://github.com/quarkiverse/quarkus-langchain4j/issues/3162),
+linking the PR. Draft: `~/.hermes/cache/scratch/issue-3162-comment.md` (fill in the PR link first). Show the user the final text before posting if
+anything changed. Do not post before the PR exists.
