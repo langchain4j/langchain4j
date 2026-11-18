@@ -17,7 +17,7 @@ import java.util.ServiceLoader;
  *     error tool result. A fatal failure stops the chain and throws a {@link ToolOutputGuardrailException}.
  * </p>
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public non-sealed class ToolOutputGuardrailExecutor
@@ -90,7 +90,7 @@ public non-sealed class ToolOutputGuardrailExecutor
     /**
      * Builder class for constructing instances of {@link ToolOutputGuardrailExecutor}.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public static non-sealed class ToolOutputGuardrailExecutorBuilder

@@ -8,7 +8,7 @@ import dev.langchain4j.service.guardrail.ToolGuardrailService;
  * {@link GuardrailServiceBuilderFactory}. It is looked up with {@link java.util.ServiceLoader} by
  * {@link ToolGuardrailService#builder(Class)}: the first one found replaces the default builder.
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public interface ToolGuardrailServiceBuilderFactory {

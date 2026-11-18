@@ -22,7 +22,7 @@ import java.util.concurrent.CompletionException;
  *     error tool result. A fatal failure stops the chain and throws a {@link ToolInputGuardrailException}.
  * </p>
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public non-sealed class ToolInputGuardrailExecutor
@@ -142,7 +142,7 @@ public non-sealed class ToolInputGuardrailExecutor
     /**
      * Builder class for constructing instances of {@link ToolInputGuardrailExecutor}.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public static non-sealed class ToolInputGuardrailExecutorBuilder

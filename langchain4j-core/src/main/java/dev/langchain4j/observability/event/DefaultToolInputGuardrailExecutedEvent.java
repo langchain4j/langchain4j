@@ -9,7 +9,7 @@ import dev.langchain4j.observability.api.event.ToolInputGuardrailExecutedEvent;
 /**
  * Default implementation of {@link ToolInputGuardrailExecutedEvent}.
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public class DefaultToolInputGuardrailExecutedEvent

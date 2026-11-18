@@ -70,7 +70,7 @@ public interface ClassMetadataProviderFactory<MethodKey> {
      *
      * @param method What identifies the method, usually a {@link java.lang.reflect.Method}. Never {@code null}.
      * @return The key this factory uses for the method, or {@code null} if the method has none.
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @SuppressWarnings("unchecked")
     default MethodKey resolveMethodKey(Object method) {

@@ -135,7 +135,7 @@ public class ToolServiceContext {
      * (an AI service always sets a {@link ToolGuardrailService}, so every one of its tools is bound): the service then
      * runs only the tool.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     public Map<String, ToolGuardrailBinding> toolGuardrailBindings() {
         return toolGuardrailBindings;
@@ -145,7 +145,7 @@ public class ToolServiceContext {
      * Returns the service that executes the tool guardrails, used to bind the tools that are provided while the
      * invocation runs (dynamic {@link ToolProvider}s), if one is set.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     public Optional<ToolGuardrailService> toolGuardrailService() {
         return Optional.ofNullable(toolGuardrailService);
@@ -160,7 +160,7 @@ public class ToolServiceContext {
      *     run with minimal parameters (an empty user message template and no variables).
      * </p>
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     public Optional<GuardrailRequestParams> guardrailRequestParams() {
         return Optional.ofNullable(guardrailRequestParams);
@@ -301,7 +301,7 @@ public class ToolServiceContext {
         }
 
         /**
-         * @since 1.24.0
+         * @since 1.25.0
          */
         public Builder toolGuardrailBindings(Map<String, ToolGuardrailBinding> toolGuardrailBindings) {
             this.toolGuardrailBindings = toolGuardrailBindings;
@@ -309,7 +309,7 @@ public class ToolServiceContext {
         }
 
         /**
-         * @since 1.24.0
+         * @since 1.25.0
          */
         public Builder toolGuardrailService(ToolGuardrailService toolGuardrailService) {
             this.toolGuardrailService = toolGuardrailService;
@@ -317,7 +317,7 @@ public class ToolServiceContext {
         }
 
         /**
-         * @since 1.24.0
+         * @since 1.25.0
          */
         public Builder guardrailRequestParams(GuardrailRequestParams guardrailRequestParams) {
             this.guardrailRequestParams = guardrailRequestParams;

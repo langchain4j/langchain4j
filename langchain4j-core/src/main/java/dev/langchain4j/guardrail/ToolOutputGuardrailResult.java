@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
  *     replaced.</li>
  * </ul>
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public final class ToolOutputGuardrailResult implements GuardrailResult<ToolOutputGuardrailResult> {
@@ -259,7 +259,7 @@ public final class ToolOutputGuardrailResult implements GuardrailResult<ToolOutp
      * Represents a tool output guardrail failure.
      * Its message is sent to the LLM verbatim as the content of an error tool result, unless the failure is fatal.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public static final class Failure implements GuardrailResult.Failure {

@@ -9,7 +9,7 @@ import dev.langchain4j.observability.api.event.ToolInputGuardrailExecutedEvent;
 /**
  * A listener for {@link ToolInputGuardrailExecutedEvent}s, triggered upon the execution of tool input guardrails.
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 @FunctionalInterface

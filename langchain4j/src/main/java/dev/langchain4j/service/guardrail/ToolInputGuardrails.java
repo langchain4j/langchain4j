@@ -57,7 +57,7 @@ import java.lang.annotation.Target;
  *     and is used as a tool, each annotation keeps its own meaning.
  * </p>
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 @Retention(RetentionPolicy.RUNTIME)

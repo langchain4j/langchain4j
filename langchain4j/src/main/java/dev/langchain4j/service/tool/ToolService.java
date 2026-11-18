@@ -201,7 +201,7 @@ public class ToolService {
      * registered later are bound when they are registered, and the tools of {@link ToolProvider}s when they are
      * provided). {@code null}, the default, means that tool guardrails are not executed.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     public void toolGuardrailService(ToolGuardrailService toolGuardrailService) {
         this.toolGuardrailService = toolGuardrailService;
@@ -212,7 +212,7 @@ public class ToolService {
     /**
      * The service that executes the tool guardrails, if one was set.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     public Optional<ToolGuardrailService> toolGuardrailService() {
         return Optional.ofNullable(this.toolGuardrailService);
@@ -630,7 +630,7 @@ public class ToolService {
      * the tool guardrails receive in their requests. A context without tools (so, without tool guardrails) is
      * returned as is.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     public ToolServiceContext createContext(
             InvocationContext invocationContext,
@@ -1244,7 +1244,7 @@ public class ToolService {
      * round whose results went through tool guardrails: a compensable tool is exposed for cross-agent compensation
      * when it ran successfully, whatever its output guardrails made of the result, and with the result it ran with.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     public ToolResultsOutcome processToolResults(
             AiServiceContext context,
@@ -1516,7 +1516,7 @@ public class ToolService {
      * compensable, and the result its compensating action gets, are the ones of the tool as it ran, and the reason of
      * the {@link ToolCompensatedEvent}s tells whether a guardrail made the step fail.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     public void compensateIfNeeded(
             List<ToolExecutionRequest> toolExecutionRequests,
@@ -1642,7 +1642,7 @@ public class ToolService {
      * @param preCollectedFailedStep the failed step that {@link #collectCompensableRound(List, Map, List,
      *                               InvocationContext, ToolRoundCompensation)} returned, when
      *                               {@code alreadyCollected}; otherwise ignored, may be {@code null}
-     * @since 1.24.0
+     * @since 1.25.0
      */
     public CompletableFuture<Void> compensateIfNeededAsync(
             List<ToolExecutionRequest> toolExecutionRequests,
@@ -1766,7 +1766,7 @@ public class ToolService {
      * AiServiceListenerRegistrar, BiConsumer)}, for a drained round whose results went through tool guardrails: a tool
      * that ran successfully is rolled back whatever its output guardrails made of the result.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     public CompletableFuture<Void> compensateOnCancellationAsync(
             List<ToolExecutionRequest> currentRoundRequests,
@@ -1851,7 +1851,7 @@ public class ToolService {
      * tool guardrails, returning the first failed step (the first call that ended as an error result the LLM sees) with
      * the reason it rolls the other tools back.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     public Optional<FailedStep> collectCompensableRound(
             List<ToolExecutionRequest> toolExecutionRequests,
@@ -1878,7 +1878,7 @@ public class ToolService {
      * @param reason a {@link CompensationReason#TOOL_INPUT_GUARDRAIL_FAILED} or
      *               {@link CompensationReason#TOOL_OUTPUT_GUARDRAIL_FAILED} when a tool guardrail made the call
      *               fail, otherwise {@link CompensationReason#TOOL_EXECUTION_FAILED}
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Internal
     public record FailedStep(String toolName, CompensationReason reason) {}

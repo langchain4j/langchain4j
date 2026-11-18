@@ -18,7 +18,7 @@ import java.util.stream.Stream;
 /**
  * Represents the parameter passed to a tool output guardrail, after a tool has been executed.
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOutputGuardrailRequest> {
@@ -186,7 +186,7 @@ public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOu
     /**
      * Builder for {@link ToolOutputGuardrailRequest}.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public static class Builder {

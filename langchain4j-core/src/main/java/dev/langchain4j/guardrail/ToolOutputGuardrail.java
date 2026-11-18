@@ -16,7 +16,7 @@ import java.util.List;
  *     aggregated. A fatal failure stops the chain and aborts the AI service invocation.
  * </p>
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public interface ToolOutputGuardrail extends Guardrail<ToolOutputGuardrailRequest, ToolOutputGuardrailResult> {

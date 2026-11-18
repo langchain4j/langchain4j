@@ -17,7 +17,7 @@ import java.util.Map;
 /**
  * Represents the parameter passed to a tool input guardrail, before a tool is executed.
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public final class ToolInputGuardrailRequest implements GuardrailRequest<ToolInputGuardrailRequest> {
@@ -94,7 +94,7 @@ public final class ToolInputGuardrailRequest implements GuardrailRequest<ToolInp
      * @return the parsed arguments, never null
      * @throws IllegalArgumentException if the arguments are not a valid JSON object (malformed JSON, a non-object
      *                                  root, or the JSON literal {@code null})
-     * @since 1.24.0
+     * @since 1.25.0
      */
     public Map<String, Object> argumentsAsMap() {
         try {
@@ -171,7 +171,7 @@ public final class ToolInputGuardrailRequest implements GuardrailRequest<ToolInp
     /**
      * Builder for {@link ToolInputGuardrailRequest}.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public static class Builder {

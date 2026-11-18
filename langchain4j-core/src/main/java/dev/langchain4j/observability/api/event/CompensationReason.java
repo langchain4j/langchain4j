@@ -23,7 +23,7 @@ public enum CompensationReason {
      * the invocation, so this tool - which had executed successfully - was rolled back. The rejected tool did not run,
      * so it is not rolled back itself.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     TOOL_INPUT_GUARDRAIL_FAILED,
 
@@ -34,7 +34,7 @@ public enum CompensationReason {
      * rejected result ran, so it is rolled back too, with its original result. A rewrite that keeps
      * {@code isError == false} does not roll anything back.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     TOOL_OUTPUT_GUARDRAIL_FAILED,
 

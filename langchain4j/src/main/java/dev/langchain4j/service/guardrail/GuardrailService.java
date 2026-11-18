@@ -63,7 +63,7 @@ public non-sealed interface GuardrailService
      * @return The {@code Class} object representing the AI service.
      * @deprecated use {@link #targetClass()} instead
      */
-    @Deprecated(since = "1.24.0")
+    @Deprecated(since = "1.25.0")
     Class<?> aiServiceClass();
 
     /**
@@ -71,7 +71,7 @@ public non-sealed interface GuardrailService
      * {@link #aiServiceClass()}, so that implementations written before {@code targetClass()} existed keep working.
      *
      * @return The {@code Class} object representing the AI service.
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Override
     default Class<?> targetClass() {

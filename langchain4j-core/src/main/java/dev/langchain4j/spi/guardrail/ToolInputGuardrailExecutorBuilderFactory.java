@@ -12,7 +12,7 @@ import dev.langchain4j.observability.api.event.ToolInputGuardrailExecutedEvent;
  * Represents a factory for creating instances of
  * {@link ToolInputGuardrailExecutor.ToolInputGuardrailExecutorBuilder}.
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public non-sealed interface ToolInputGuardrailExecutorBuilderFactory

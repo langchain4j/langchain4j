@@ -9,7 +9,7 @@ import dev.langchain4j.Experimental;
  *     This class is not intended to be thrown within guardrail implementations. It is for the framework only. It is ok to catch it.
  * </p>
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public final class ToolOutputGuardrailException extends GuardrailException {

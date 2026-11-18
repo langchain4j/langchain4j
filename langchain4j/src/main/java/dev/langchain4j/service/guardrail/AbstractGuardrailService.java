@@ -28,7 +28,7 @@ import java.util.Map;
  * {@link dev.langchain4j.service.guardrail.spi.GuardrailServiceBuilderFactory}.
  */
 @Internal
-@Deprecated(since = "1.24.0")
+@Deprecated(since = "1.25.0")
 public abstract non-sealed class AbstractGuardrailService
         extends AbstractKeyedGuardrailService<
                 InputGuardrailRequest,

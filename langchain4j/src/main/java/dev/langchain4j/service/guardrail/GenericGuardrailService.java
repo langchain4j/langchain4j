@@ -32,7 +32,7 @@ import java.util.concurrent.CompletableFuture;
  * @param <IR> The type of {@link GuardrailResult} of the input guardrails
  * @param <OP> The type of {@link GuardrailRequest} of the output guardrails
  * @param <OR> The type of {@link GuardrailResult} of the output guardrails
- * @since 1.24.0
+ * @since 1.25.0
  */
 public sealed interface GenericGuardrailService<
                 IP extends GuardrailRequest<IP>,
@@ -132,7 +132,7 @@ public sealed interface GenericGuardrailService<
      * @param <IC> The type of the configuration of the input guardrails
      * @param <OC> The type of the configuration of the output guardrails
      * @param <B>  The type of the builder, so that the methods can be chained
-     * @since 1.24.0
+     * @since 1.25.0
      */
     sealed interface Builder<
                     IP extends GuardrailRequest<IP>,

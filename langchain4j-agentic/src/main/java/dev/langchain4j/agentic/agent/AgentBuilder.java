@@ -713,7 +713,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      *
      * @param toolInputGuardrailsConfig the tool input guardrails configuration
      * @return {@code this}
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public B toolInputGuardrailsConfig(ToolInputGuardrailsConfig toolInputGuardrailsConfig) {
@@ -726,7 +726,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      *
      * @param toolOutputGuardrailsConfig the tool output guardrails configuration
      * @return {@code this}
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public B toolOutputGuardrailsConfig(ToolOutputGuardrailsConfig toolOutputGuardrailsConfig) {
@@ -745,7 +745,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      * @param toolInputGuardrailClasses the tool input guardrail classes
      * @param <I> the guardrail type
      * @return {@code this}
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public <I extends ToolInputGuardrail> B toolInputGuardrailClasses(Class<? extends I>... toolInputGuardrailClasses) {
@@ -764,7 +764,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      * @param toolInputGuardrails the tool input guardrails
      * @param <I> the guardrail type
      * @return {@code this}
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public <I extends ToolInputGuardrail> B toolInputGuardrails(I... toolInputGuardrails) {
@@ -783,7 +783,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      * @param toolOutputGuardrailClasses the tool output guardrail classes
      * @param <O> the guardrail type
      * @return {@code this}
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public <O extends ToolOutputGuardrail> B toolOutputGuardrailClasses(
@@ -803,7 +803,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      * @param toolOutputGuardrails the tool output guardrails
      * @param <O> the guardrail type
      * @return {@code this}
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public <O extends ToolOutputGuardrail> B toolOutputGuardrails(O... toolOutputGuardrails) {

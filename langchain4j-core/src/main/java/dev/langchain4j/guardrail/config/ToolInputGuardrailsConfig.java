@@ -11,7 +11,7 @@ import java.util.ServiceLoader;
  *     Frameworks that extend this library (like Quarkus or Spring) may provide their own implementations of this configuration.
  * </p>
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public interface ToolInputGuardrailsConfig extends GuardrailsConfig {
@@ -33,7 +33,7 @@ public interface ToolInputGuardrailsConfig extends GuardrailsConfig {
      *     implementations while also adhering to the interfaces and specs defined here.
      * </p>
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     interface ToolInputGuardrailsConfigBuilder extends GuardrailsConfigBuilder<ToolInputGuardrailsConfig> {}

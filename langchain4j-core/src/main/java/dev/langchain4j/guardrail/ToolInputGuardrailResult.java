@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
  *     tool execution request for the guardrails that follow and for the tool execution itself.
  * </p>
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public final class ToolInputGuardrailResult implements GuardrailResult<ToolInputGuardrailResult> {
@@ -157,7 +157,7 @@ public final class ToolInputGuardrailResult implements GuardrailResult<ToolInput
      * Represents a tool input guardrail failure.
      * Its message is sent to the LLM verbatim as the content of an error tool result, unless the failure is fatal.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public static final class Failure implements GuardrailResult.Failure {

@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
  * Leniently parses the JSON arguments of a tool execution request.
  * Shared by the tool executor and the tool guardrail requests so both interpret arguments identically.
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Internal
 public class ToolArgumentsParser {

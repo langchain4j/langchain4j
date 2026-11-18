@@ -11,7 +11,7 @@ import java.util.Map;
  * @deprecated Use {@link ToolArgumentsParser} instead. This class only delegates to it.
  */
 @Internal
-@Deprecated(since = "1.24.0")
+@Deprecated(since = "1.25.0")
 public class ToolExecutionRequestUtil {
 
     private ToolExecutionRequestUtil() {}

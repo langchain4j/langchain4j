@@ -64,7 +64,7 @@ public class AiServiceTool {
      * Returns where this tool comes from. It is trusted information, set by the framework or by the application,
      * and exposed to tool guardrails. Defaults to {@link ToolSource#programmatic()}.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public ToolSource toolSource() {
@@ -76,7 +76,7 @@ public class AiServiceTool {
      * {@link dev.langchain4j.service.AiServices AiServices} builder, after the guardrails of the class annotation and
      * after the ones of the method annotation, if any.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public List<ToolInputGuardrail> toolInputGuardrails() {
@@ -88,7 +88,7 @@ public class AiServiceTool {
      * {@link dev.langchain4j.service.AiServices AiServices} builder, after the guardrails of the class annotation and
      * after the ones of the method annotation, if any.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public List<ToolOutputGuardrail> toolOutputGuardrails() {
@@ -177,7 +177,7 @@ public class AiServiceTool {
          * Sets where this tool comes from. It is exposed to tool guardrails as trusted information, so it must be set
          * by the application, never derived from remote data. Defaults to {@link ToolSource#programmatic()}.
          *
-         * @since 1.24.0
+         * @since 1.25.0
          */
         @Experimental
         public Builder toolSource(ToolSource toolSource) {
@@ -190,7 +190,7 @@ public class AiServiceTool {
          * on the {@link dev.langchain4j.service.AiServices AiServices} builder, after the ones of the class
          * annotation and after the ones of the method annotation, if any. {@code null} means none.
          *
-         * @since 1.24.0
+         * @since 1.25.0
          */
         @Experimental
         public Builder toolInputGuardrails(List<? extends ToolInputGuardrail> toolInputGuardrails) {
@@ -202,7 +202,7 @@ public class AiServiceTool {
          * Sets the {@link ToolInputGuardrail}s of this tool.
          *
          * @see #toolInputGuardrails(List)
-         * @since 1.24.0
+         * @since 1.25.0
          */
         @Experimental
         public Builder toolInputGuardrails(ToolInputGuardrail... toolInputGuardrails) {
@@ -214,7 +214,7 @@ public class AiServiceTool {
          * on the {@link dev.langchain4j.service.AiServices AiServices} builder, after the ones of the class
          * annotation and after the ones of the method annotation, if any. {@code null} means none.
          *
-         * @since 1.24.0
+         * @since 1.25.0
          */
         @Experimental
         public Builder toolOutputGuardrails(List<? extends ToolOutputGuardrail> toolOutputGuardrails) {
@@ -226,7 +226,7 @@ public class AiServiceTool {
          * Sets the {@link ToolOutputGuardrail}s of this tool.
          *
          * @see #toolOutputGuardrails(List)
-         * @since 1.24.0
+         * @since 1.25.0
          */
         @Experimental
         public Builder toolOutputGuardrails(ToolOutputGuardrail... toolOutputGuardrails) {

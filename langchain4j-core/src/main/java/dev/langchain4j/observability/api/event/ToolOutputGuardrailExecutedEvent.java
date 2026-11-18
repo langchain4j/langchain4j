@@ -13,7 +13,7 @@ import dev.langchain4j.observability.event.DefaultToolOutputGuardrailExecutedEve
  *     is not notified of tool output guardrails.
  * </p>
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public interface ToolOutputGuardrailExecutedEvent
@@ -36,7 +36,7 @@ public interface ToolOutputGuardrailExecutedEvent
     /**
      * Builder for {@link ToolOutputGuardrailExecutedEvent} instances.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     class ToolOutputGuardrailExecutedEventBuilder

@@ -81,7 +81,7 @@ import java.util.function.Supplier;
  *     framework can also replace the whole builder with a {@link ToolGuardrailServiceBuilderFactory}.
  * </p>
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public non-sealed interface ToolGuardrailService
@@ -217,7 +217,7 @@ public non-sealed interface ToolGuardrailService
      * @param tool              Starts the tool for the request it is given (the call, or the call as the input
      *                          guardrails rewrote it) and returns the future of its result. Must not be null.
      * @return A future of the request as the input guardrails left it and of the result to send to the LLM.
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     default CompletableFuture<GuardedToolExecution> executeGuardrailsAsync(
@@ -255,7 +255,7 @@ public non-sealed interface ToolGuardrailService
      * @param failure The exception that ended the call, possibly wrapped in a
      *                {@link java.util.concurrent.CompletionException}; may be null.
      * @return The request as the guardrails left it, if the failure tells.
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     default Optional<ToolExecutionRequest> rejectedRequest(ToolExecutionRequest request, Throwable failure) {
@@ -487,7 +487,7 @@ public non-sealed interface ToolGuardrailService
      * as the key of the {@code execute*} and {@code has*} methods. It is only meaningful to that service: what else it
      * holds is up to the implementation of the service.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     interface ToolKey {
@@ -503,7 +503,7 @@ public non-sealed interface ToolGuardrailService
      * Builds a {@link ToolGuardrailService}. The guardrails and the guardrail classes it is given apply to every tool
      * and run first (see {@link ToolGuardrailService}); the configurations apply to the executors of every tool.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     non-sealed interface Builder

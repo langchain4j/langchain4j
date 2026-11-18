@@ -14,7 +14,7 @@ import dev.langchain4j.guardrail.ToolInputGuardrailResult.Failure;
  *     aggregated. A fatal failure stops the chain and aborts the AI service invocation.
  * </p>
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public interface ToolInputGuardrail extends Guardrail<ToolInputGuardrailRequest, ToolInputGuardrailResult> {

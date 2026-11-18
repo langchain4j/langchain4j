@@ -7,7 +7,7 @@ import java.util.function.Supplier;
 /**
  * SPI for overriding and/or extending the default {@link ToolOutputGuardrailsConfig.ToolOutputGuardrailsConfigBuilder} implementation.
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public interface ToolOutputGuardrailsConfigBuilderFactory

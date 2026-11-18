@@ -28,7 +28,7 @@ import java.util.Set;
  *     <li>{@link Programmatic}: a tool registered programmatically, without an explicit source</li>
  * </ul>
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public sealed interface ToolSource permits ToolSource.Local, ToolSource.Mcp, ToolSource.Programmatic {
@@ -117,7 +117,7 @@ public sealed interface ToolSource permits ToolSource.Local, ToolSource.Mcp, Too
     /**
      * A local {@code @Tool} method.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     sealed interface Local extends ToolSource permits LocalToolSource {
@@ -142,7 +142,7 @@ public sealed interface ToolSource permits ToolSource.Local, ToolSource.Mcp, Too
     /**
      * One or more MCP servers.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     sealed interface Mcp extends ToolSource permits McpToolSource {
@@ -162,7 +162,7 @@ public sealed interface ToolSource permits ToolSource.Local, ToolSource.Mcp, Too
     /**
      * A programmatically registered tool.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     sealed interface Programmatic extends ToolSource permits ProgrammaticToolSource {}

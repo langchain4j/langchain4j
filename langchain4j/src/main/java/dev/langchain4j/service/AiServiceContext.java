@@ -47,7 +47,7 @@ public class AiServiceContext {
     /**
      * Configures the tool guardrails that apply to every tool of the AI service.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     public final ToolGuardrailService.Builder toolGuardrailServiceBuilder;
 
@@ -114,7 +114,7 @@ public class AiServiceContext {
     /**
      * The service that executes the tool guardrails, built from {@link #toolGuardrailServiceBuilder} on first use.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public ToolGuardrailService toolGuardrailService() {

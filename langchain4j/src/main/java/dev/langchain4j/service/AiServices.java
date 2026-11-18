@@ -1327,7 +1327,7 @@ public abstract class AiServices<T> {
      *
      * @param config the configuration. Must not be null.
      * @return the current instance of {@link AiServices} to allow method chaining
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public AiServices<T> toolInputGuardrailsConfig(ToolInputGuardrailsConfig config) {
@@ -1346,7 +1346,7 @@ public abstract class AiServices<T> {
      *
      * @param config the configuration. Must not be null.
      * @return the current instance of {@link AiServices} to allow method chaining
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public AiServices<T> toolOutputGuardrailsConfig(ToolOutputGuardrailsConfig config) {
@@ -1367,7 +1367,7 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public <I extends ToolInputGuardrail> AiServices<T> toolInputGuardrails(List<I> guardrails) {
@@ -1388,7 +1388,7 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     @SuppressWarnings("unchecked")
@@ -1410,7 +1410,7 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public <I extends ToolInputGuardrail> AiServices<T> toolInputGuardrailClasses(
@@ -1432,7 +1432,7 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     @SuppressWarnings("unchecked")
@@ -1455,7 +1455,7 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public <O extends ToolOutputGuardrail> AiServices<T> toolOutputGuardrails(List<O> guardrails) {
@@ -1476,7 +1476,7 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     @SuppressWarnings("unchecked")
@@ -1498,7 +1498,7 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     public <O extends ToolOutputGuardrail> AiServices<T> toolOutputGuardrailClasses(
@@ -1520,7 +1520,7 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     @SuppressWarnings("unchecked")

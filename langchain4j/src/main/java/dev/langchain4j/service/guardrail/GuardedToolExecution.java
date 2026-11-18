@@ -15,7 +15,7 @@ import dev.langchain4j.service.tool.ToolExecutionResult;
  *     with {@link #request()}, not with the request the LLM sent.
  * </p>
  *
- * @since 1.24.0
+ * @since 1.25.0
  */
 @Experimental
 public sealed interface GuardedToolExecution permits DefaultGuardedToolExecution {
@@ -58,7 +58,7 @@ public sealed interface GuardedToolExecution permits DefaultGuardedToolExecution
     /**
      * Builds a {@link GuardedToolExecution}.
      *
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     final class Builder {
