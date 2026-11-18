@@ -74,6 +74,24 @@ class StreamableHttpMcpTransportListenerTest {
     }
 
     @Test
+    void should_let_a_listener_read_the_name() throws Exception {
+        register(Naming.class);
+
+        transport = builder().name("weather").build();
+
+        assertThat(NOTIFICATIONS).containsExactly("named weather");
+    }
+
+    @Test
+    void should_have_no_name_unless_one_is_set() throws Exception {
+        register(Naming.class);
+
+        transport = builder().build();
+
+        assertThat(NOTIFICATIONS).containsExactly("named null");
+    }
+
+    @Test
     void should_notify_listeners_on_every_build() throws Exception {
         register(Recording.class);
         StreamableHttpMcpTransport.Builder builder = builder();
@@ -150,6 +168,14 @@ class StreamableHttpMcpTransportListenerTest {
         @Override
         public void onNewTransport(StreamableHttpMcpTransport.Builder builder) {
             NOTIFICATIONS.add("recorded " + builder.getUrl());
+        }
+    }
+
+    public static class Naming implements StreamableHttpMcpTransportListener {
+
+        @Override
+        public void onNewTransport(StreamableHttpMcpTransport.Builder builder) {
+            NOTIFICATIONS.add("named " + builder.getName());
         }
     }
 

@@ -22,8 +22,9 @@ public interface StreamableHttpMcpTransportListener {
 
     /**
      * Called from {@link StreamableHttpMcpTransport.Builder#build()}, before the transport is created.
-     * The listener can read what was configured so far, for example
-     * {@link StreamableHttpMcpTransport.Builder#getUrl()}, and change it through the builder.
+     * The listener can read what was configured so far, that is
+     * {@link StreamableHttpMcpTransport.Builder#getUrl()} and {@link StreamableHttpMcpTransport.Builder#getName()},
+     * and change it through the builder.
      * An exception thrown here fails the build.
      *
      * @param builder the builder of the transport being created

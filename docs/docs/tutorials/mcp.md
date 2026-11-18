@@ -193,6 +193,10 @@ public class ProxyingListener implements StreamableHttpMcpTransportListener {
 }
 ```
 
+A listener sees every transport of the application. To let it tell them apart, give a transport
+a name with `.name("weather")` on its builder; the listener reads it with `builder.getName()`.
+The transport does not use the name itself and never sends it to the server.
+
 and list the class in the file
 `META-INF/services/dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransportListener`.
 
