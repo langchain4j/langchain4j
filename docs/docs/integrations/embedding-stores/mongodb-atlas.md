@@ -26,11 +26,13 @@ tutorial in the MongoDB Atlas documentation.
 
 ## Prerequisites
 
-You must have a deployment running the following MongoDB Server versions
-to use Atlas Vector Search:
+The minimum MongoDB Server versions for approximate nearest neighbor (ANN)
+queries with `$vectorSearch` on Atlas are 6.0.11 in the 6.0 series and 7.0.2
+in the 7.0 series. See [MongoDB Vector Search](https://www.mongodb.com/docs/vector-search/)
+for supported versions and deployment options.
 
--   6.0.11 or later
--   7.0.2 or later
+To match the local integration tests, use the
+`mongodb/mongodb-atlas-local:7.0.9` Docker image.
 
 MongoDB offers a free forever cluster. See the [Get Started with
 Atlas](https://www.mongodb.com/docs/atlas/getting-started/) tutorial to
@@ -89,9 +91,16 @@ We also recommend adding the LangChain4j BOM:
 1. Instantiate an [embedding model](https://docs.langchain4j.dev/category/embedding-models).
 2. Instantiate MongoDB Atlas as the embedding store.
 
-You can enable automatic index creation by passing `true` to the
-`createIndex()` method when building the `MongoDbEmbeddingStore`
-instance.
+To create the index automatically, set `createIndex(true)` when building
+the `MongoDbEmbeddingStore`. The deployment must support the
+[`createSearchIndexes` command](https://www.mongodb.com/docs/manual/reference/command/createsearchindexes/)
+with `indexes.type` set to `vectorSearch`.
+
+If an Atlas cluster rejects that field with error `40415`,
+[create a Vector Search index in the Atlas UI](https://www.mongodb.com/docs/vector-search/indexes/vector-search-type/)
+on the target collection's `embedding` field. Set `numDimensions` to
+`embeddingModel.dimension()`. Once the index is queryable, pass its name
+to `indexName(...)` and set `createIndex(false)`.
 
 ```java
 import com.mongodb.client.MongoClient;
