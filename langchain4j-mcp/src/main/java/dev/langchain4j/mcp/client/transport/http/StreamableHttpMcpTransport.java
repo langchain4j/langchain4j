@@ -3,6 +3,7 @@ package dev.langchain4j.mcp.client.transport.http;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.HttpException;
@@ -1041,6 +1042,16 @@ public class StreamableHttpMcpTransport implements McpTransport {
         }
 
         /**
+         * The URL of the MCP server that was set with {@link #url(String)}, or {@code null} if none was set yet.
+         * A {@link StreamableHttpMcpTransportListener} uses this to find out where the transport is going to connect.
+         *
+         * @since 1.25.0
+         */
+        public String getUrl() {
+            return url;
+        }
+
+        /**
          * The request headers of the MCP server.
          */
         public StreamableHttpMcpTransport.Builder customHeaders(Map<String, String> customHeaders) {
@@ -1192,7 +1203,15 @@ public class StreamableHttpMcpTransport implements McpTransport {
             return this;
         }
 
+        /**
+         * Creates the transport, after every {@link StreamableHttpMcpTransportListener} was notified
+         * and had the chance to adjust this builder.
+         */
         public StreamableHttpMcpTransport build() {
+            for (StreamableHttpMcpTransportListener listener :
+                    loadFactories(StreamableHttpMcpTransportListener.class)) {
+                listener.onNewTransport(this);
+            }
             return new StreamableHttpMcpTransport(this);
         }
     }

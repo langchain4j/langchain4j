@@ -175,6 +175,31 @@ valid for the whole connection, not in the context of a single user request.
 The transport restores the context only for its own work. A custom HTTP client must propagate it
 across any threads it starts itself.
 
+#### Listening for new transports
+
+An integration can be notified each time a Streamable HTTP transport is about to be built, whether
+the application or a framework builds it. This is useful when every transport of an application
+has to be known or adjusted, for example to route its traffic through a proxy.
+Implement `StreamableHttpMcpTransportListener` (experimental):
+
+```java
+public class ProxyingListener implements StreamableHttpMcpTransportListener {
+
+    @Override
+    public void onNewTransport(StreamableHttpMcpTransport.Builder builder) {
+        String serverUrl = builder.getUrl(); // what was configured so far
+        builder.url(proxyFor(serverUrl));    // and anything on the builder can be changed
+    }
+}
+```
+
+and list the class in the file
+`META-INF/services/dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransportListener`.
+
+Listeners are looked up with the Java `ServiceLoader` on every `build()`, and each of them is called
+before the transport is created. A listener that implements `PrioritizedFactory` is called before
+listeners with a lower priority. An exception thrown by a listener fails the `build()` call.
+
 For the WebSocket transport:
 ```java
 McpTransport transport = WebSocketMcpTransport.builder()
