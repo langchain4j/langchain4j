@@ -1434,7 +1434,11 @@ class DefaultAiServices<T> extends AiServices<T> {
                             }
                         }
 
-                        var parsedResponse = serviceOutputParser.parse((ChatResponse) response, returnType);
+                        // A result object attached by an output guardrail (OutputGuardrailResult.successfulResult())
+                        // is returned as it is, also as the content of a Result: only a ChatResponse is parsed.
+                        var parsedResponse = response == null || response instanceof ChatResponse
+                                ? serviceOutputParser.parse((ChatResponse) response, returnType)
+                                : response;
                         var actualResponse = (isReturnTypeResult)
                                 ? Result.builder()
                                         .content(parsedResponse)
