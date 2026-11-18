@@ -116,8 +116,8 @@ that must be updated by this task:
 
 ## Outcome
 
-Implemented 2026-11-18, uncommitted, awaiting review. See PLAN.md > Task Outcomes > Task 13 for the file list.
+Reviewed by the user, committed as `0baf7c3fd` and pushed to the fork, 2026-11-18. See PLAN.md > Task Outcomes > Task 13 for the file list.
 
-- New page `tool-guardrails.md` instead of a section of `guardrails.md` (the question timed out; the task's first option).
+- New page `tool-guardrails.md` instead of a section of `guardrails.md` (the question timed out; the user kept the page). The extension points table is a shared MDX partial shown on both pages.
 - Code samples were written against the final API but not compiled.
 - Not run: the full Maven test suite (docs and Javadoc only; `install -DskipTests` for core and `langchain4j` passes).
