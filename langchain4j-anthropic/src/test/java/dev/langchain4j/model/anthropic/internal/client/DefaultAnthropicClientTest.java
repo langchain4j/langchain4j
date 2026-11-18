@@ -467,16 +467,19 @@ class DefaultAnthropicClientTest {
             List<ServerSentEvent> events = new ArrayList<>();
             events.add(createMessageStartEvent());
             events.addAll(textBlock(0, "I'll search for that."));
-            events.add(new ServerSentEvent(
-                    "content_block_start",
-                    "{\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"server_tool_use\",\"id\":\"srvtoolu_1\",\"name\":\"web_search\",\"input\":{}}}"));
-            events.add(new ServerSentEvent(
-                    "content_block_delta",
-                    "{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"query\\\": \\\"Claude Shannon\\\"}\"}}"));
+            events.add(
+                    new ServerSentEvent(
+                            "content_block_start",
+                            "{\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"server_tool_use\",\"id\":\"srvtoolu_1\",\"name\":\"web_search\",\"input\":{}}}"));
+            events.add(
+                    new ServerSentEvent(
+                            "content_block_delta",
+                            "{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"query\\\": \\\"Claude Shannon\\\"}\"}}"));
             events.add(new ServerSentEvent("content_block_stop", "{\"type\":\"content_block_stop\",\"index\":1}"));
-            events.add(new ServerSentEvent(
-                    "content_block_start",
-                    "{\"type\":\"content_block_start\",\"index\":2,\"content_block\":{\"type\":\"web_search_tool_result\",\"tool_use_id\":\"srvtoolu_1\",\"content\":[]}}"));
+            events.add(
+                    new ServerSentEvent(
+                            "content_block_start",
+                            "{\"type\":\"content_block_start\",\"index\":2,\"content_block\":{\"type\":\"web_search_tool_result\",\"tool_use_id\":\"srvtoolu_1\",\"content\":[]}}"));
             events.add(new ServerSentEvent("content_block_stop", "{\"type\":\"content_block_stop\",\"index\":2}"));
             events.addAll(textBlock(3, "Claude Shannon was born in 1916"));
             events.addAll(textBlock(4, " in Petoskey, Michigan."));
@@ -876,8 +879,7 @@ class DefaultAnthropicClientTest {
                         "content_block_delta",
                         "{\"type\":\"content_block_delta\",\"index\":" + index
                                 + ",\"delta\":{\"type\":\"text_delta\",\"text\":\"" + text + "\"}}"),
-                new ServerSentEvent(
-                        "content_block_stop", "{\"type\":\"content_block_stop\",\"index\":" + index + "}"));
+                new ServerSentEvent("content_block_stop", "{\"type\":\"content_block_stop\",\"index\":" + index + "}"));
     }
 
     private static ChatResponse stream(List<ServerSentEvent> events, StringBuilder partialResponses) throws Exception {
