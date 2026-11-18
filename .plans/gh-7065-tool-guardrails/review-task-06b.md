@@ -1,4 +1,4 @@
-# Review: #7065 Task 06b (Annotations, Config, and Per-Tool Guardrail Resolution)
+# Review: [#7065](https://github.com/langchain4j/langchain4j/issues/7065) Task 06b (Annotations, Config, and Per-Tool Guardrail Resolution)
 
 **Date:** 2026-11-17
 

@@ -3,7 +3,7 @@
 **Type:** Communication (no code in this repo)
 
 > **Do this only after the PR is open** (task 14), so the issue can link to it. Nothing is sent before the user has
-> reviewed and approved the text. The `langchain4j-cdi` issue (langchain4j/langchain4j-cdi#339) is already filed and is
+> reviewed and approved the text. The `langchain4j-cdi` issue ([langchain4j/langchain4j-cdi#339](https://github.com/langchain4j/langchain4j-cdi/issues/339)) is already filed and is
 > left alone: no follow-up comment (user decision, 2026-11-16).
 
 ## Goal

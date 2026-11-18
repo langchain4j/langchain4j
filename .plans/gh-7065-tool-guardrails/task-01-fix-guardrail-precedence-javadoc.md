@@ -3,8 +3,8 @@
 **Type:** Documentation / Javadoc fix. **Separate PR, branched from `main`**, not part of the tool
 guardrails PR.
 
-> **Status (2026-11-13):** done, but our PR #7109 was closed unmerged in favor of #7088 (@PSchmitz-Valckenberg),
-> which contains the same fix, our extra parts, and @dliubarskyi's review fixes. Track #7088 in PLAN.md → "Upstream
+> **Status (2026-11-13):** done, but our PR [#7109](https://github.com/langchain4j/langchain4j/pull/7109) was closed unmerged in favor of [#7088](https://github.com/langchain4j/langchain4j/pull/7088) (@PSchmitz-Valckenberg),
+> which contains the same fix, our extra parts, and @dliubarskyi's review fixes. Track [#7088](https://github.com/langchain4j/langchain4j/pull/7088) in PLAN.md → "Upstream
 > Dependencies". Nothing is left to do here.
 
 ## Goal
@@ -51,5 +51,5 @@ https://github.com/langchain4j/langchain4j/discussions/7030#discussioncomment-19
 - [X] Typo `InptputGuardrails` fixed.
 - [X] No other source states the inverted precedence.
 - [X] `mvn -Pspotless validate` at the repo root passes.
-- [X] The user has reviewed. Commit and PR prepared separately (PR body references discussion #7030 and #7065;
+- [X] The user has reviewed. Commit and PR prepared separately (PR body references discussion [#7030](https://github.com/langchain4j/langchain4j/discussions/7030) and [#7065](https://github.com/langchain4j/langchain4j/issues/7065);
       no closing keywords in the title).

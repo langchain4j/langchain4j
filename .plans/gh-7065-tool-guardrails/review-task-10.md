@@ -72,7 +72,7 @@ The tests were not run during this review, so the "475 unit tests / 70 ITs pass"
 
 - `mcp.md` and `tools.md` still need the "set `key(..)` if you route on it" note (task 13).
 - Task 12 should re-run revapi on `langchain4j-mcp`. PLAN.md says it passed; not verified here.
-- #7106 touches `McpToolExecutor` and `DefaultMcpClient`, so a rebase conflict is possible.
+- [#7106](https://github.com/langchain4j/langchain4j/pull/7106) touches `McpToolExecutor` and `DefaultMcpClient`, so a rebase conflict is possible.
 
 ## Verdict
 

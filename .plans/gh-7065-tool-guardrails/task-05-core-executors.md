@@ -3,7 +3,7 @@
 **Type:** New Code + small change to an `@Internal` class (`langchain4j-core`)
 
 > **Before you start:** pull the latest from upstream `main` and check the in-flight PRs in PLAN.md →
-> "Upstream Dependencies" (Execution Step 2). Most relevant to this task: #7106 (`AbstractGuardrailExecutor` async failure handling).
+> "Upstream Dependencies" (Execution Step 2). Most relevant to this task: [#7106](https://github.com/langchain4j/langchain4j/pull/7106) (`AbstractGuardrailExecutor` async failure handling).
 
 ## Goal
 
@@ -27,7 +27,7 @@ rewrites (D8) chain correctly.
 4. **`ToolOutputGuardrailExecutor`**: same as the input executor, plus:
    - Override `rewriteRequest` so a contents+`isError` rewrite is applied to the next request, not just text.
    - Override `composeResult` (as `OutputGuardrailExecutor` does) so a content-level rewrite is not lost when a
-     later guardrail returns plain `success()`. Respect the rewrite-composition fix from #6425 / PR #6452.
+     later guardrail returns plain `success()`. Respect the rewrite-composition fix from [#6425](https://github.com/langchain4j/langchain4j/issues/6425) / PR [#6452](https://github.com/langchain4j/langchain4j/pull/6452).
 5. Define how **multiple non-fatal failure messages** are turned into the final error text. Proposal: join the
    failure messages with `\n` in chain order, with **no added framework text** (D3). Implement a single helper
    (e.g. on the result) that task 07/08 will use, and raise the choice with the user.

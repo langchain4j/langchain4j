@@ -3,7 +3,7 @@
 **Type:** Documentation
 
 > **Before you start:** pull the latest from upstream `main` and check the in-flight PRs in PLAN.md →
-> "Upstream Dependencies" (Execution Step 2). Most relevant to this task: #7088 (`guardrails.md`; it replaced our #7109) and #7106 (`non-blocking.md`).
+> "Upstream Dependencies" (Execution Step 2). Most relevant to this task: [#7088](https://github.com/langchain4j/langchain4j/pull/7088) (`guardrails.md`; it replaced our [#7109](https://github.com/langchain4j/langchain4j/pull/7109)) and [#7106](https://github.com/langchain4j/langchain4j/pull/7106) (`non-blocking.md`).
 
 ## Goal
 
@@ -96,7 +96,7 @@ that must be updated by this task:
   customize guardrails through `ClassMetadataProviderFactory` + `ClassInstanceFactory` with the default builder and
   service, and replace the whole builder through `GuardrailServiceBuilderFactory` only if they must; do not present
   `AbstractGuardrailService` as an extension point.
-- **Task 06a additions to document (and to put in the PR description):** `ClassMetadataProviderFactory#resolveMethodKey` (frameworks whose method keys are not `Method`s map the invocation-time `Method` to their keys, so the default builder and service work for them, blocking and non-blocking); the deprecation of `AbstractGuardrailService` and `GuardrailService#aiServiceClass()` (replacement: the SPIs and `targetClass()`), with the migration path for frameworks that subclass it (`langchain4j-cdi` issue langchain4j/langchain4j-cdi#339; Micronaut keys methods by string and overrides four methods, which `resolveMethodKey` makes unnecessary).
+- **Task 06a additions to document (and to put in the PR description):** `ClassMetadataProviderFactory#resolveMethodKey` (frameworks whose method keys are not `Method`s map the invocation-time `Method` to their keys, so the default builder and service work for them, blocking and non-blocking); the deprecation of `AbstractGuardrailService` and `GuardrailService#aiServiceClass()` (replacement: the SPIs and `targetClass()`), with the migration path for frameworks that subclass it (`langchain4j-cdi` issue [langchain4j/langchain4j-cdi#339](https://github.com/langchain4j/langchain4j-cdi/issues/339); Micronaut keys methods by string and overrides four methods, which `resolveMethodKey` makes unnecessary).
 - **Task 06a review additions (2026-11-17), same places (Extension points table and PR description):**
   - `resolveMethodKey` must return the same key for the same method: callers cache the result (the default service
     resolves each key once). Mention it in the `ClassMetadataProviderFactory` row next to `resolveMethodKey`.

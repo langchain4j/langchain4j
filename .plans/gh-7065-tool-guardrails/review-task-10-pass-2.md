@@ -46,7 +46,7 @@ to go in the PR body (finding B). The rest is cleanup.
 
 1. **Resource tools are now limited to the clients passed in.**
    - Before, they reached all clients through a live view, even when a subset was passed.
-   - This matches the stated goal of #5602 (requests for a subset of clients should "not call any methods on clients
+   - This matches the stated goal of [#5602](https://github.com/langchain4j/langchain4j/pull/5602) (requests for a subset of clients should "not call any methods on clients
      that should be ignored"), which is a good argument for it.
    - It changes what Quarkus `@McpToolBox` users get.
 2. **No clients passed in means no `list_resources` / `get_resource` tools.**

@@ -3,7 +3,7 @@
 **Type:** Code Modification (`langchain4j-mcp`)
 
 > **Before you start:** pull the latest from upstream `main` and check the in-flight PRs in PLAN.md →
-> "Upstream Dependencies" (Execution Step 2). Most relevant to this task: #7106 (touches `McpToolExecutor` and `DefaultMcpClient`).
+> "Upstream Dependencies" (Execution Step 2). Most relevant to this task: [#7106](https://github.com/langchain4j/langchain4j/pull/7106) (touches `McpToolExecutor` and `DefaultMcpClient`).
 
 ## Goal
 
@@ -12,7 +12,7 @@ tell MCP tools apart from local ones and one MCP server from another. Prove end 
 guarded exactly like local tools, with no `toolWrapper` needed.
 
 **Out of scope (D10):** guardrail configuration on `McpToolProvider.builder()` (a provider-wide list or a
-per-client function). That is a follow-up; ask @jmartisk whether it should absorb #5345.
+per-client function). That is a follow-up; ask @jmartisk whether it should absorb [#5345](https://github.com/langchain4j/langchain4j/pull/5345).
 
 ## What to Do
 

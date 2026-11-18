@@ -3,7 +3,7 @@
 **Type:** Code Modification (`langchain4j`)
 
 > **Before you start:** pull the latest from upstream `main` and check the in-flight PRs in PLAN.md →
-> "Upstream Dependencies" (Execution Step 2). Most relevant to this task: #7106 (async failure routing) and @dliubarskyi's rollback-before-rethrow PR (`TokenStream`).
+> "Upstream Dependencies" (Execution Step 2). Most relevant to this task: [#7106](https://github.com/langchain4j/langchain4j/pull/7106) (async failure routing) and @dliubarskyi's rollback-before-rethrow PR (`TokenStream`).
 
 ## Goal
 
@@ -80,7 +80,7 @@ instead of being thrown directly (D4).
 - Preserve `CurrentInvocation` / captured context across async stages (`CapturedContextSupport`).
 - Keep the internal original-vs-guarded result tracking from task 07 consistent across both paths, and report the
   rewritten request after an input rewrite exactly as the sync path does (D18).
-- #7106 (@dliubarskyi, open) makes `AbstractGuardrailExecutor.executeGuardrailsAsync(..)` / `validateAsync(..)`
+- [#7106](https://github.com/langchain4j/langchain4j/pull/7106) (@dliubarskyi, open) makes `AbstractGuardrailExecutor.executeGuardrailsAsync(..)` / `validateAsync(..)`
   report failures through the future instead of throwing. If it has merged, rely on it; otherwise make sure a
   synchronously thrown guardrail error still fails the future here.
 

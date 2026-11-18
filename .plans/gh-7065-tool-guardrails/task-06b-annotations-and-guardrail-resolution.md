@@ -10,10 +10,10 @@
 > task 06a**.
 >
 > **Before you start:** pull the latest from upstream `main` and check the in-flight PRs in PLAN.md →
-> "Upstream Dependencies" (Execution Step 2). Most relevant to this task: #7088 (guardrail precedence Javadoc, which this task mirrors; it replaced our #7109).
+> "Upstream Dependencies" (Execution Step 2). Most relevant to this task: [#7088](https://github.com/langchain4j/langchain4j/pull/7088) (guardrail precedence Javadoc, which this task mirrors; it replaced our [#7109](https://github.com/langchain4j/langchain4j/pull/7109)).
 > D6 is **settled** (run all, additive; @dliubarskyi in
 > https://github.com/langchain4j/langchain4j/discussions/7030#discussioncomment-19659065). Tool guardrails deliberately
-> resolve **differently** from AI service guardrails, so do not copy #7088's "not combined" wording.
+> resolve **differently** from AI service guardrails, so do not copy [#7088](https://github.com/langchain4j/langchain4j/pull/7088)'s "not combined" wording.
 
 ## Goal
 

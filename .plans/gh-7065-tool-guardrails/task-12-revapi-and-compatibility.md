@@ -39,7 +39,7 @@ justifications, and produce a compatibility summary for the PR body.
      2026-11-17); `AbstractGuardrailService` and `GuardrailService#aiServiceClass()` are deprecated; frameworks that
      subclass `AbstractGuardrailService` or implement `GuardrailService.Builder` (CDI, Micronaut) keep working
 5. Check whether Quarkus-relevant SPI types (`*ExecutorBuilderFactory`) changed in a way that affects
-   quarkus-langchain4j, and note it for quarkiverse/quarkus-langchain4j#3162.
+   quarkus-langchain4j, and note it for [quarkiverse/quarkus-langchain4j#3162](https://github.com/quarkiverse/quarkus-langchain4j/issues/3162).
 
 ## Files/Areas
 

@@ -31,21 +31,21 @@ commit or push without approval) the single tool guardrails PR.
      possible. Everything guardrail-specific is behind the public guardrail API
      (`ToolGuardrailService#executeGuardrails` / `executeGuardrailsAsync`, mirroring
      `GuardrailService#executeGuardrails`), so `ToolService` and downstream frameworks (Quarkus,
-     quarkiverse/quarkus-langchain4j#3162; CDI; Micronaut) only call it and use what it returns, without knowing the
+     [quarkiverse/quarkus-langchain4j#3162](https://github.com/quarkiverse/quarkus-langchain4j/issues/3162); CDI; Micronaut) only call it and use what it returns, without knowing the
      guardrail internals. Explain why the public API is shaped as it is (`GuardedToolExecution` exists only for the
      rejected-after-rewrite request) and what stays caller-side (the loop's history and event bookkeeping, like
      `DefaultAiServices` with the guarded user message)
    - behavior notes: verbatim failure message, runs on error results, resolution order (builder → class → method, all run; differs from AI service guardrails), compensation reasons
    - compatibility summary from task 12 (sealed permits, new enum constants → exhaustive `switch` caveat)
    - follow-ups: prompt-injection tool guardrail and injection-side tests (@PSchmitz-Valckenberg), Quarkus deprecation
-     (quarkiverse/quarkus-langchain4j#3162), opt-in idempotent retry, possible stop-on-first-failure, a per-tool opt-out from global / class guardrails (D6, if users ask), per-MCP-server guardrails on `McpToolProvider.builder()` (and whether it absorbs #5345,
+     ([quarkiverse/quarkus-langchain4j#3162](https://github.com/quarkiverse/quarkus-langchain4j/issues/3162)), opt-in idempotent retry, possible stop-on-first-failure, a per-tool opt-out from global / class guardrails (D6, if users ask), per-MCP-server guardrails on `McpToolProvider.builder()` (and whether it absorbs [#5345](https://github.com/langchain4j/langchain4j/pull/5345),
      @jmartisk)
-   - related PRs: #7088 (precedence Javadoc; it replaced our #7109 from task 01), @dliubarskyi's sync / `TokenStream` rollback-before-rethrow PR (fatal parity),
-     and #7106 if it affected the async wiring
+   - related PRs: [#7088](https://github.com/langchain4j/langchain4j/pull/7088) (precedence Javadoc; it replaced our [#7109](https://github.com/langchain4j/langchain4j/pull/7109) from task 01), @dliubarskyi's sync / `TokenStream` rollback-before-rethrow PR (fatal parity),
+     and [#7106](https://github.com/langchain4j/langchain4j/pull/7106) if it affected the async wiring
    - exact test commands run, with results
-   - `Fixes #7065` in the body only
+   - `Fixes [#7065](https://github.com/langchain4j/langchain4j/issues/7065)` in the body only
 5. Draft the commit message: the first line must not contain close(s/d) / fix(es/ed) / resolve(s/d), and
-   `Fixes #7065` goes at the end of the body.
+   `Fixes [#7065](https://github.com/langchain4j/langchain4j/issues/7065)` goes at the end of the body.
 6. @PSchmitz-Valckenberg's injection tests are a follow-up (already settled with him). Once the PR is open, offer
    the user a short discussion comment pointing him to it; never post without approval.
 7. **Stop and wait for the user's review and approval before committing, pushing, or opening the PR.**
@@ -57,7 +57,7 @@ commit or push without approval) the single tool guardrails PR.
 ## Key Points
 
 - Never commit before the user approves.
-- The Javadoc precedence fix (task 01) landed through #7088, not our #7109. Reference #7088 from this PR.
+- The Javadoc precedence fix (task 01) landed through [#7088](https://github.com/langchain4j/langchain4j/pull/7088), not our [#7109](https://github.com/langchain4j/langchain4j/pull/7109). Reference [#7088](https://github.com/langchain4j/langchain4j/pull/7088) from this PR.
 
 ## Done When
 
