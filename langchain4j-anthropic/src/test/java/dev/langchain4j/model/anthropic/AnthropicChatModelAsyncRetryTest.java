@@ -31,8 +31,7 @@ import org.junit.jupiter.api.Test;
 class AnthropicChatModelAsyncRetryTest {
 
     // language=json
-    private static final String SUCCESS_BODY =
-            """
+    private static final String SUCCESS_BODY = """
             {
               "id": "msg_123",
               "type": "message",
@@ -82,6 +81,17 @@ class AnthropicChatModelAsyncRetryTest {
 
     private static ChatRequest request() {
         return ChatRequest.builder().messages(UserMessage.from("hi")).build();
+    }
+
+    @Test
+    void chatAsync_propagates_cancellation_to_the_http_request() {
+        CompletableFuture<SuccessfulHttpResponse> httpFuture = new CompletableFuture<>();
+        ChatModel model = model(httpClient(() -> httpFuture), 0);
+
+        CompletableFuture<ChatResponse> future = model.chatAsync(request());
+        future.cancel(true);
+
+        assertThat(httpFuture).isCancelled();
     }
 
     @Test
