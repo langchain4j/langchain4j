@@ -164,8 +164,7 @@ class OutputGuardrailRepromptResponseTest {
     }
 
     @Test
-    void result_of_async_ai_service_should_have_the_final_response_and_the_token_usage_of_all_calls()
-            throws Exception {
+    void result_of_async_ai_service_should_have_the_final_response_and_the_token_usage_of_all_calls() throws Exception {
 
         // given
         AsyncResultAssistant assistant = AiServices.builder(AsyncResultAssistant.class)
