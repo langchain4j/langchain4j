@@ -13,6 +13,7 @@ import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
+import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.service.guardrail.GuardedToolExecution;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -362,7 +363,11 @@ public final class ToolRound {
                         .request())
                 .toList();
         return new Outcome(
-                requests, results(calls), updateHistory(aiMessage, calls, requests, chatMemory, messages), null);
+                requests,
+                results(calls),
+                updateHistory(aiMessage, calls, requests, chatMemory, messages),
+                null,
+                compensation(calls));
     }
 
     /**
@@ -416,7 +421,7 @@ public final class ToolRound {
             }
         }
         var requests = calls.stream().map(this::reportedRequest).toList();
-        return new Outcome(requests, results, messages, firstError);
+        return new Outcome(requests, results, messages, firstError, compensation(calls));
     }
 
     private CompletableFuture<ToolExecutionResult> future(ToolExecutionRequest call) {
@@ -430,12 +435,14 @@ public final class ToolRound {
      * @param results the result of each call, by the call as it was executed
      * @param messages the messages for the rest of the round
      * @param error the first failure of a call, in the order of the LLM, or {@code null}
+     * @param compensation what the compensation of the round needs besides {@code results}
      */
     public record Outcome(
             List<ToolExecutionRequest> requests,
             Map<ToolExecutionRequest, ToolExecutionResult> results,
             List<ChatMessage> messages,
-            Throwable error) {
+            Throwable error,
+            ToolRoundCompensation compensation) {
 
         /**
          * The first failure of a call of the round, in the order of the LLM, if a call failed.
@@ -445,7 +452,7 @@ public final class ToolRound {
         }
 
         private Outcome withMessages(List<ChatMessage> messages) {
-            return new Outcome(requests, results, messages, error);
+            return new Outcome(requests, results, messages, error, compensation);
         }
     }
 
@@ -460,6 +467,52 @@ public final class ToolRound {
                     .ifPresent(execution -> results.putIfAbsent(execution.request(), execution.result()));
         }
         return results;
+    }
+
+    /**
+     * What the compensation of the round needs besides the results the LLM sees, for {@code calls}: the result of each
+     * tool before its output guardrails, and the calls that a tool guardrail turned into an error result.
+     */
+    private ToolRoundCompensation compensation(List<ToolExecutionRequest> calls) {
+        var originalResults = new LinkedHashMap<ToolExecutionRequest, ToolExecutionResult>();
+        var guardrailFailures = new LinkedHashMap<ToolExecutionRequest, CompensationReason>();
+
+        calls.forEach(call -> {
+            var executed = reportedRequest(call);
+            var original = toolResults.get(call);
+
+            Optional.ofNullable(original).ifPresent(result -> originalResults.putIfAbsent(executed, result));
+
+            guardrailFailure(call, original).ifPresent(reason -> guardrailFailures.putIfAbsent(executed, reason));
+        });
+
+        return new ToolRoundCompensation(originalResults, guardrailFailures);
+    }
+
+    /**
+     * Why a call ended as an error result, if a tool guardrail made it one: its input guardrails rejected it (the tool
+     * did not run), or its output guardrails turned the successful result of the tool into an error (or failed fatally
+     * on it). A call that was canceled, a tool that did not run for another reason, and a tool that ended with an
+     * error of its own are not guardrail failures.
+     */
+    private Optional<CompensationReason> guardrailFailure(ToolExecutionRequest call, ToolExecutionResult original) {
+        var execution = executions.get(call);
+        var error = errors.get(call);
+        boolean hasEnded = (execution != null) || (error != null);
+        boolean isErrorOfGuardrail = (error != null) && !(error instanceof CancellationException);
+        boolean isErrorResult = (execution != null) && execution.result().isError();
+        boolean hasFailed = isErrorResult || isErrorOfGuardrail;
+        boolean hasStarted = startedRequests.containsKey(call);
+
+        if (hasEnded && hasFailed) {
+            if (!hasStarted && binding(call.name()).isPresent()) {
+                return Optional.of(CompensationReason.TOOL_INPUT_GUARDRAIL_FAILED);
+            } else if ((original != null) && !original.isError()) {
+                return Optional.of(CompensationReason.TOOL_OUTPUT_GUARDRAIL_FAILED);
+            }
+        }
+
+        return Optional.empty();
     }
 
     /**

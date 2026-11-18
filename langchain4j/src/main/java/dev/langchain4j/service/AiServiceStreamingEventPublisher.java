@@ -53,6 +53,7 @@ import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolRound;
+import dev.langchain4j.service.tool.ToolRoundCompensation;
 import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import java.util.ArrayList;
@@ -305,9 +306,10 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 } else {
                     CompletableFuture<?> persistence = toolResultsPersistence.get();
                     if (persistence != null) {
-                        persistence.whenComplete((ignored, error) -> doCancellationCompensation(null, null));
+                        persistence.whenComplete(
+                                (ignored, error) -> doCancellationCompensation(null, null, ToolRoundCompensation.NONE));
                     } else {
-                        doCancellationCompensation(null, null);
+                        doCancellationCompensation(null, null, ToolRoundCompensation.NONE);
                     }
                 }
             });
@@ -503,14 +505,20 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     fail(error);
                     return;
                 }
-                String[] failedToolNameHolder = new String[1];
+                ToolService.FailedStep[] failedStepHolder = new ToolService.FailedStep[1];
                 boolean won = underAccumulatorLock(() -> {
                     if (!inflightRound.compareAndSet(round, null)) {
                         return false;
                     }
                     if (compensableExecutions != null) {
-                        failedToolNameHolder[0] = context.toolService.collectCompensableRound(
-                                outcome.requests(), outcome.results(), compensableExecutions, invocationContext);
+                        failedStepHolder[0] = context.toolService
+                                .collectCompensableRound(
+                                        outcome.requests(),
+                                        outcome.results(),
+                                        compensableExecutions,
+                                        invocationContext,
+                                        outcome.compensation())
+                                .orElse(null);
                     }
                     return true;
                 });
@@ -518,7 +526,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     return; // the cancel path claimed the round; it compensates
                 }
                 if (tube.cancelled()) {
-                    doCancellationCompensation(null, null); // this round already collected above
+                    doCancellationCompensation(null, null, ToolRoundCompensation.NONE); // round collected above
                     return;
                 }
                 try {
@@ -529,8 +537,9 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                             parameters,
                             outcome.requests(),
                             outcome.results(),
+                            outcome.compensation(),
                             outcome.firstError().orElse(null),
-                            failedToolNameHolder[0]);
+                            failedStepHolder[0]);
                 } catch (Throwable t) {
                     fail(t);
                 }
@@ -562,10 +571,12 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
          */
         private void doCancellationCompensation(
                 List<ToolExecutionRequest> currentRoundRequests,
-                Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults) {
+                Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults,
+                ToolRoundCompensation currentRoundCompensation) {
             context.toolService.compensateOnCancellationAsync(
                     currentRoundRequests,
                     currentRoundResults,
+                    currentRoundCompensation,
                     compensableExecutions,
                     getMemory(),
                     null,
@@ -576,7 +587,9 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
         private void compensateCanceledRound(ToolRound.Outcome outcome) {
             doCancellationCompensation(
-                    outcome != null ? outcome.requests() : null, outcome != null ? outcome.results() : null);
+                    (outcome != null) ? outcome.requests() : null,
+                    (outcome != null) ? outcome.results() : null,
+                    (outcome != null) ? outcome.compensation() : ToolRoundCompensation.NONE);
         }
 
         private record InflightRound(CompletableFuture<ToolRound.Outcome> outcome) {}
@@ -637,11 +650,18 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 ChatRequestParameters parameters,
                 List<ToolExecutionRequest> toolRequests,
                 Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+                ToolRoundCompensation compensation,
                 Throwable firstError,
-                String preCollectedFailedToolName) {
+                ToolService.FailedStep preCollectedFailedStep) {
 
             ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
-                    context, toolRequests, toolResults, new ArrayList<>(), invocationContext, currentToolContext);
+                    context,
+                    toolRequests,
+                    toolResults,
+                    new ArrayList<>(),
+                    invocationContext,
+                    currentToolContext,
+                    compensation);
 
             CompletableFuture<Void> compensated = context.toolService.compensateIfNeededAsync(
                     toolRequests,
@@ -656,12 +676,13 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     context.eventListenerRegistrar,
                     (toolExecution, reason) ->
                             tube.send(new ToolCompensatedEvent(toolExecution, reason, invocationContext)),
+                    compensation,
                     true,
-                    preCollectedFailedToolName);
+                    preCollectedFailedStep);
 
             compensated.whenComplete((ignoredCompensation, compensationError) -> {
                 if (tube.cancelled()) {
-                    doCancellationCompensation(null, null);
+                    doCancellationCompensation(null, null, ToolRoundCompensation.NONE);
                     return;
                 }
                 // The default asynchronous ToolExecutionErrorHandler rethrows a tool execution error. The tools that
@@ -690,7 +711,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     return false;
                 });
                 if (alreadyCancelled) {
-                    doCancellationCompensation(null, null);
+                    doCancellationCompensation(null, null, ToolRoundCompensation.NONE);
                     return;
                 }
 

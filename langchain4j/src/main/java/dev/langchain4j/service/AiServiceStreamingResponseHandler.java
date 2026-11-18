@@ -410,7 +410,13 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults = round.results();
 
             ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
-                    context, round.requests(), toolResults, new ArrayList<>(), invocationContext, toolServiceContext);
+                    context,
+                    round.requests(),
+                    toolResults,
+                    new ArrayList<>(),
+                    invocationContext,
+                    toolServiceContext,
+                    round.compensation());
 
             List<ChatMessage> nextMessages = context.toolService.persistToolResultsAndResolveMessagesSync(
                     context, getMemory(), null, outcome.resultMessages(), invocationContext);
