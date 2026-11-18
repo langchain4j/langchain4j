@@ -4,14 +4,21 @@ import static dev.langchain4j.data.message.ImageContent.DetailLevel.AUTO;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.is;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSource;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.exception.ToolErrorVisibleToLlm;
 import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.guardrail.ToolOutputGuardrail;
+import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
+import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.McpToolExecutor;
 import dev.langchain4j.mcp.McpToolProvider;
@@ -28,7 +35,10 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProviderResult;
+import dev.langchain4j.test.mock.MockChatModel;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -179,6 +189,94 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                                 .toolExecutorByName("wasCancellationReceived")
                                 .execute(checkCancellationRequest, null),
                         is("true"));
+    }
+
+    @Test
+    public void rewriteToolOutputIncludingErrorResponseWithGlobalGuardrail() {
+        var toolResults = executeEchoAndErrorToolsWithOutputGuardrail(new ToolOutputGuardrail() {
+            @Override
+            public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
+                return successWith("[rewritten:%s] %s".formatted(request.isError(), request.text()));
+            }
+        });
+
+        assertThat(toolResults)
+                .extracting(
+                        ToolExecutionResultMessage::toolName,
+                        ToolExecutionResultMessage::isError,
+                        ToolExecutionResultMessage::text)
+                .containsExactly(
+                        tuple("echoString", false, "[rewritten:false] hello"),
+                        tuple("errorResponse", true, "[rewritten:true] This is an actual error"));
+    }
+
+    @Test
+    public void rejectToolOutputIncludingErrorResponseWithGlobalGuardrail() {
+        var toolResults = executeEchoAndErrorToolsWithOutputGuardrail(new ToolOutputGuardrail() {
+            @Override
+            public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
+                return failure("rejected %s (isError=%s)".formatted(request.toolName(), request.isError()));
+            }
+        });
+
+        assertThat(toolResults)
+                .extracting(
+                        ToolExecutionResultMessage::toolName,
+                        ToolExecutionResultMessage::isError,
+                        ToolExecutionResultMessage::text)
+                .containsExactly(
+                        tuple("echoString", true, "rejected echoString (isError=false)"),
+                        tuple("errorResponse", true, "rejected errorResponse (isError=true)"));
+    }
+
+    private static List<ToolExecutionResultMessage> executeEchoAndErrorToolsWithOutputGuardrail(
+            ToolOutputGuardrail delegateGuardrail) {
+        var echoRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("echoString")
+                .arguments("{\"input\": \"hello\"}")
+                .build();
+        var errorRequest = ToolExecutionRequest.builder()
+                .id("2")
+                .name("errorResponse")
+                .arguments("{}")
+                .build();
+        var chatModel = MockChatModel.thatResponds(
+                AiMessage.from(echoRequest), AiMessage.from(errorRequest), AiMessage.from("done"));
+        var chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        var seenRequests = new ArrayList<ToolOutputGuardrailRequest>();
+        ToolOutputGuardrail recordingGuardrail = new ToolOutputGuardrail() {
+            @Override
+            public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
+                seenRequests.add(request);
+                return delegateGuardrail.validate(request);
+            }
+        };
+
+        var service = AiServices.builder(ChatService.class)
+                .chatModel(chatModel)
+                .chatMemory(chatMemory)
+                .toolProvider(createMcpToolProvider())
+                .toolOutputGuardrails(recordingGuardrail)
+                .build();
+
+        var response = service.chat("Run echoString and errorResponse");
+
+        assertThat(response).isEqualTo("done");
+        var expectedSource = ToolSource.mcp(mcpClient.key());
+        assertThat(seenRequests)
+                .extracting(
+                        ToolOutputGuardrailRequest::toolName,
+                        ToolOutputGuardrailRequest::toolSource,
+                        ToolOutputGuardrailRequest::isError,
+                        ToolOutputGuardrailRequest::text)
+                .containsExactly(
+                        tuple("echoString", expectedSource, false, "hello"),
+                        tuple("errorResponse", expectedSource, true, "This is an actual error"));
+        return chatMemory.messages().stream()
+                .filter(ToolExecutionResultMessage.class::isInstance)
+                .map(ToolExecutionResultMessage.class::cast)
+                .toList();
     }
 
     @Test

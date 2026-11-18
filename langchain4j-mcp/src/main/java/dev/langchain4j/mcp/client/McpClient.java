@@ -20,6 +20,10 @@ public interface McpClient extends AutoCloseable {
 
     /**
      * Returns the unique key of this client.
+     * <p>
+     * {@link dev.langchain4j.mcp.McpToolProvider} stamps this key onto the {@link dev.langchain4j.agent.tool.ToolSource}
+     * of every tool obtained from this client. Note that {@link DefaultMcpClient} defaults the key to a random UUID;
+     * configure an explicit key via {@link DefaultMcpClient.Builder#key(String)} if tool guardrails route on the server key.
      */
     String key();
 
