@@ -61,9 +61,9 @@ commit or push without approval) the single tool guardrails PR.
 
 ## Done When
 
-- [ ] All builds, tests, revapi and root `spotless validate` pass (commands and results recorded in PLAN.md).
-- [ ] Code review done; findings addressed or explicitly deferred with the user.
-- [ ] PR body (template-compliant) and commit message drafted and shown to the user.
+- [x] All builds, tests, revapi and root `spotless validate` pass (commands and results recorded in PLAN.md; the Ollama IT failure outside the diff is noted there).
+- [ ] Code review done; findings addressed or explicitly deferred with the user (item 1 fixed, item 3 open; see PLAN.md Task Outcomes).
+- [x] PR body (template-compliant) and commit message drafted and shown to the user (scratch `t14/pr-body.md`, `commit-msg.txt`).
 - [ ] User approval received before any commit or push.
 
 ## Commit structure notes (added 2026-11-16, from task 06a)
