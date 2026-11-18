@@ -13,6 +13,9 @@ import java.util.Arrays;
  * The maximum number of times a response of the model is validated, including the first one, is configurable with
  * {@link OutputGuardrailsConfig#maxRetries()}, and defaults to {@link OutputGuardrailsConfig#MAX_RETRIES_DEFAULT} (one
  * retry or reprompt).
+ * <p>
+ * This guardrail checks the response of the LLM to the user. To check the result of a tool before the LLM sees it,
+ * see {@link ToolOutputGuardrail}, which has no retry or reprompt.
  */
 public interface OutputGuardrail extends Guardrail<OutputGuardrailRequest, OutputGuardrailResult> {
     /**

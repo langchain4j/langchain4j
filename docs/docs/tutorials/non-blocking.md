@@ -85,7 +85,7 @@ information the callback-based `TokenStream` gives you:
 | `BeforeToolExecutionEvent`, `AfterToolExecutionEvent` | a tool about to run, and its result |
 | `IntermediateResponseEvent` | the response that closed one tool-calling round |
 | `RetrievedContentsEvent` | content retrieved by RAG |
-| `ToolCompensatedEvent` | a completed tool was compensated after the interaction was cancelled or failed |
+| `ToolCompensatedEvent` | a completed tool was compensated after the interaction was cancelled or failed, or because a [tool guardrail](/tutorials/tool-guardrails#compensation) rejected a call or a result |
 | `RawEvent` | a provider-specific event LangChain4j does not map |
 | `FinalResponseEvent` | the final answer |
 
@@ -404,7 +404,7 @@ interaction fails the call the same way. In practice that means:
 | Component | What it must implement | Bundled implementations |
 |---|---|---|
 | Chat memory | `addAsync` / `messagesAsync` / `setAsync` | `MessageWindowChatMemory` and `InMemoryChatMemoryStore` already do |
-| Guardrails | `validateAsync` | none — a guardrail you write must override it, even if it does no I/O |
+| Guardrails, including [tool guardrails](/tutorials/tool-guardrails) | `validateAsync` | none — a guardrail you write must override it, even if it does no I/O |
 | Content retriever, query router, aggregator | `retrieveAsync`, `routeAsync`, `aggregateAsync` | opt into offloading instead with `offloadBlocking(true)` |
 | Embedding store | `searchAsync` | as above, via the retriever's `offloadBlocking(true)` |
 | Custom `ToolExecutor` | `executeAsync` | `@Tool`-annotated methods are offloaded for you |
@@ -418,6 +418,8 @@ public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailReque
     return CompletableFuture.completedFuture(validate(request));
 }
 ```
+
+[Tool guardrails](/tutorials/tool-guardrails) have the same contract, and `ToolInputGuardrail` and `ToolOutputGuardrail` have a `validateAsync` too. A tool guardrail that does not implement it fails the call with an `AsyncNotSupportedException`, reported as a fatal `ToolInputGuardrailException` or `ToolOutputGuardrailException`. In this mode, a fatal tool guardrail failure fails the future (or the publisher), it is never thrown from a callback thread, and the [compensable tools](/tutorials/tools#compensating-tool-actions) are rolled back before failing in the `CompletableFuture` mode.
 
 ### Spring Boot
 

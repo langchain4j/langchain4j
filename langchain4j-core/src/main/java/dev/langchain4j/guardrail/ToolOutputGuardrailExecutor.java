@@ -102,6 +102,9 @@ public non-sealed class ToolOutputGuardrailExecutor
                     ToolOutputGuardrailExecutedEvent,
                     ToolOutputGuardrailExecutorBuilder> {
 
+        /**
+         * Creates a builder with the default configuration.
+         */
         public ToolOutputGuardrailExecutorBuilder() {
             super(ToolOutputGuardrailsConfig.builder().build());
         }

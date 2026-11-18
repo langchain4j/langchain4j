@@ -154,6 +154,9 @@ public non-sealed class ToolInputGuardrailExecutor
                     ToolInputGuardrailExecutedEvent,
                     ToolInputGuardrailExecutorBuilder> {
 
+        /**
+         * Creates a builder with the default configuration.
+         */
         public ToolInputGuardrailExecutorBuilder() {
             super(ToolInputGuardrailsConfig.builder().build());
         }

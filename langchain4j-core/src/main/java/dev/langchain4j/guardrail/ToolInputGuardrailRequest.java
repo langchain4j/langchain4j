@@ -189,26 +189,55 @@ public final class ToolInputGuardrailRequest implements GuardrailRequest<ToolInp
             this.requestParams = request.requestParams;
         }
 
+        /**
+         * Sets the tool execution request, required.
+         *
+         * @param toolExecutionRequest the tool execution request
+         * @return this builder
+         */
         public Builder toolExecutionRequest(ToolExecutionRequest toolExecutionRequest) {
             this.toolExecutionRequest = toolExecutionRequest;
             return this;
         }
 
+        /**
+         * Sets the specification of the tool, if known.
+         *
+         * @param toolSpecification the tool specification
+         * @return this builder
+         */
         public Builder toolSpecification(ToolSpecification toolSpecification) {
             this.toolSpecification = toolSpecification;
             return this;
         }
 
+        /**
+         * Sets where the tool comes from. Defaults to {@link ToolSource#programmatic()}.
+         *
+         * @param toolSource the tool source
+         * @return this builder
+         */
         public Builder toolSource(ToolSource toolSource) {
             this.toolSource = toolSource;
             return this;
         }
 
+        /**
+         * Sets the parameters of the AI service invocation, required.
+         *
+         * @param requestParams the request params
+         * @return this builder
+         */
         public Builder requestParams(GuardrailRequestParams requestParams) {
             this.requestParams = requestParams;
             return this;
         }
 
+        /**
+         * Builds the request.
+         *
+         * @return the request
+         */
         public ToolInputGuardrailRequest build() {
             return new ToolInputGuardrailRequest(this);
         }

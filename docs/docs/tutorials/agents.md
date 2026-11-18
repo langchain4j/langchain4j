@@ -949,6 +949,8 @@ If `notificationAgent` throws an exception, the tools invoked by `creditAgent` a
 
 Tools without a `@CompensateFor` annotation are simply skipped during compensation.
 
+A rolled-back failure reaches every compensable tool of the hierarchy that ran before it, including the tools that **other agents** ran earlier, not only the ones of the failing agent. A [tool guardrail](/tutorials/tool-guardrails#compensation) that rejects a call or turns a tool result into an error result is a failure like a tool that throws: the tools are rolled back with the reasons `TOOL_INPUT_GUARDRAIL_FAILED` and `TOOL_OUTPUT_GUARDRAIL_FAILED`, and the tool whose output was rejected is compensated with its original result. A guardrail rewrite that keeps `isError == false` rolls nothing back.
+
 Compensating actions are defined on tool classes using `@CompensateFor`, the same annotation used for per-agent tool compensation:
 
 ```java
@@ -968,6 +970,23 @@ public class AccountService {
 ```
 
 Note that the compensating actions are executed with a best-effort policy: if one of them fails, the error is logged and the remaining compensations continue.
+
+## Tool guardrails
+
+The builder of an AI agent has the same setters as `AiServices` to set [tool guardrails](/tutorials/tool-guardrails) that
+apply to every tool of the agent: `toolInputGuardrails(...)`, `toolInputGuardrailClasses(...)`,
+`toolOutputGuardrails(...)`, `toolOutputGuardrailClasses(...)`, and `toolInputGuardrailsConfig(...)` /
+`toolOutputGuardrailsConfig(...)`. They are passed to the `AiServices` of the agent, and run together with the
+`@ToolInputGuardrails` and `@ToolOutputGuardrails` annotations of the tool classes (all of them run, they do not
+replace each other, unlike `inputGuardrails(...)` and `outputGuardrails(...)`):
+
+```java
+CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.class)
+        .chatModel(chatModel)
+        .tools(new WebTools())
+        .toolOutputGuardrails(new InjectionOutputGuardrail())
+        .build();
+```
 
 ## Observability
 

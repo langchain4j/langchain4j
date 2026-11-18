@@ -13,10 +13,21 @@ import dev.langchain4j.Experimental;
  */
 @Experimental
 public final class ToolOutputGuardrailException extends GuardrailException {
+    /**
+     * Creates the exception with a message.
+     *
+     * @param message the message
+     */
     public ToolOutputGuardrailException(String message) {
         super(message);
     }
 
+    /**
+     * Creates the exception with a message and a cause.
+     *
+     * @param message the message
+     * @param cause the cause
+     */
     public ToolOutputGuardrailException(String message, Throwable cause) {
         super(message, cause);
     }

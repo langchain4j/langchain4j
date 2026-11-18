@@ -30,6 +30,9 @@ public record ToolRoundCompensation(
      */
     public static final ToolRoundCompensation NONE = new ToolRoundCompensation(Map.of(), Map.of());
 
+    /**
+     * Copies the maps, so the record is immutable.
+     */
     public ToolRoundCompensation {
         originalResults = Map.copyOf(originalResults);
         guardrailFailures = Map.copyOf(guardrailFailures);

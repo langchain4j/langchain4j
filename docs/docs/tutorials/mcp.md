@@ -367,6 +367,68 @@ Bot bot = AiServices.builder(Bot.class)
 
 More information on tool support in LangChain4j can be found [here](/tutorials/tools).
 
+### Guarding MCP tools
+
+The text that an MCP server returns, including the text of an error result (`isError: true`), reaches the LLM, and it
+may carry [indirect prompt injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/). Use
+[tool guardrails](/tutorials/tool-guardrails) to check it. They run for MCP tools like for any other tool, so
+there is no need to wrap the `ToolExecutor` of MCP tools, and the `toolWrapper` of the `McpToolProvider` builder is
+no longer needed to validate anything (it is kept for other uses, and it runs inside the guardrails: tool guardrails
+run outside the tool executor).
+
+Set the guardrails on the `AiServices` builder. They apply to every tool, so they tell the MCP tools apart by the
+[`ToolSource`](/tutorials/tool-guardrails#telling-the-tools-apart-toolsource) of the request, which the
+`McpToolProvider` sets to `ToolSource.mcp(key)`, with the `key` of the `McpClient` of the tool:
+
+```java
+McpClient githubClient = DefaultMcpClient.builder()
+        .key("github") // set a key: see the note below
+        .transport(transport)
+        .build();
+
+McpToolProvider toolProvider = McpToolProvider.builder()
+        .mcpClients(githubClient)
+        .build();
+
+public class GithubOutputGuardrail implements ToolOutputGuardrail {
+
+    @Override
+    public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
+        boolean fromGithub = request.toolSource() instanceof ToolSource.Mcp mcp && mcp.involves("github");
+        if (!fromGithub) {
+            return success();
+        }
+
+        // the text is untrusted, also when request.isError() is true
+        return looksLikeAnInjection(request.text())
+                ? failure("The result of this tool was blocked. Do not call it again with the same arguments.")
+                : success();
+    }
+}
+
+Bot bot = AiServices.builder(Bot.class)
+        .chatModel(model)
+        .toolProvider(toolProvider)
+        .toolOutputGuardrails(new GithubOutputGuardrail())
+        .build();
+```
+
+:::warning
+`McpClient.key()` defaults to a **random UUID** when you do not set one with `DefaultMcpClient.builder().key(...)`, so
+a guardrail cannot recognize the server by it, and the key changes at every start. **Set a stable `key(...)` on every
+client that you route on.** A client whose key is `null` or blank makes `McpToolProvider.provideTools(...)` fail with
+an `IllegalConfigurationException`.
+:::
+
+The tools of the [resources as tools](#exposing-resources-automatically-via-synthetic-tools) (`list_resources` and
+`get_resource`) span all the MCP clients of the call, so their source is a `ToolSource.Mcp` with **several**
+`serverKeys()`. `involves("github")` is true for them as well, so a guardrail that routes on `involves` also
+guards the resources of that server. To guard only the regular tools of one server, compare
+`serverKeys()` with `Set.of("github")`.
+
+Guardrails per MCP server, configured on the `McpToolProvider` builder, are not available yet. Until then, route on
+the `ToolSource` as shown above.
+
 ### MCP Tool Name Mapping
 
 If you use multiple MCP servers, and they expose tools with clashing names (or you simply want to
@@ -616,6 +678,8 @@ the MCP tool provider will automatically add two synthetic tools to the result o
 along the 'regular' tools that are supported by the backing MCP servers. One tool should serve for obtaining
 a list of resources and the other for obtaining a particular resource. LangChain4j provides
 a default implementation named `DefaultMcpResourcesAsToolsPresenter` that adds these two tools:
+
+**_NOTE:_** `list_resources` and `get_resource` reach only the MCP clients passed to that `provideTools(...)` call (a snapshot taken when the call starts), and they are not emitted when there are none. They can be guarded like any other tool, see [Guarding MCP tools](#guarding-mcp-tools).
 
 **_NOTE:_** The rest of this section describes `DefaultMcpResourcesAsToolsPresenter`. You may plug in your own implementation
 that behaves differently.

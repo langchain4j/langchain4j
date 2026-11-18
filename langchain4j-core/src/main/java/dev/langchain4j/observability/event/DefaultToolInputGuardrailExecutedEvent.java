@@ -20,6 +20,11 @@ public class DefaultToolInputGuardrailExecutedEvent
                 ToolInputGuardrailExecutedEvent>
         implements ToolInputGuardrailExecutedEvent {
 
+    /**
+     * Creates the event from a builder.
+     *
+     * @param builder the builder
+     */
     public DefaultToolInputGuardrailExecutedEvent(ToolInputGuardrailExecutedEventBuilder builder) {
         super(builder);
     }

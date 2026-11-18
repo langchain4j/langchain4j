@@ -17,10 +17,21 @@ public final class ToolInputGuardrailException extends GuardrailException {
 
     private String arguments;
 
+    /**
+     * Creates the exception with a message.
+     *
+     * @param message the message
+     */
     public ToolInputGuardrailException(String message) {
         super(message);
     }
 
+    /**
+     * Creates the exception with a message and a cause.
+     *
+     * @param message the message
+     * @param cause the cause
+     */
     public ToolInputGuardrailException(String message, Throwable cause) {
         super(message, cause);
     }
