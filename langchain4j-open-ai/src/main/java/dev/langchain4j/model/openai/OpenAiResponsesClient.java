@@ -92,6 +92,7 @@ class OpenAiResponsesClient {
     private static final String EVENT_RESPONSE_INCOMPLETE = "response.incomplete";
     private static final String EVENT_RESPONSE_FAILED = "response.failed";
     private static final String EVENT_RESPONSE_ERROR = "response.error";
+    private static final String EVENT_ERROR = "error";
 
     private static final String FIELD_TYPE = "type";
     private static final String FIELD_ROLE = "role";
@@ -117,6 +118,7 @@ class OpenAiResponsesClient {
     private static final String FIELD_RESPONSE = "response";
     private static final String FIELD_ERROR = "error";
     private static final String FIELD_MESSAGE = "message";
+    private static final String FIELD_CODE = "code";
     private static final String FIELD_OUTPUT = "output";
     private static final String FIELD_USAGE = "usage";
     private static final String FIELD_INPUT_TOKENS = "input_tokens";
@@ -1066,6 +1068,7 @@ class OpenAiResponsesClient {
         private final Set<String> completedToolCallItemIds = new HashSet<>();
         private final List<ServerSentEvent> rawServerSentEvents = new ArrayList<>();
         private SuccessfulHttpResponse rawHttpResponse;
+        private boolean terminated;
 
         ResponsesApiEventListener(StreamingChatResponseHandler handler) {
             this.handler = new MappingTrackingStreamingChatResponseHandler(handler);
@@ -1120,7 +1123,22 @@ class OpenAiResponsesClient {
 
         @Override
         public void onError(Throwable error) {
+            if (terminated) {
+                return;
+            }
+            terminated = true;
             withLoggingExceptions(() -> handler.onError(ExceptionMapper.DEFAULT.mapException(error)));
+        }
+
+        @Override
+        public void onClose() {
+            if (terminated || isCancelled()) {
+                return;
+            }
+            terminated = true;
+            withLoggingExceptions(() -> handler.onError(new OpenAiResponsesStreamingException(
+                    "Response stream closed before a response.completed, response.incomplete, response.failed or error event was received",
+                    null)));
         }
 
         private void handleDelta(String data) {
@@ -1186,6 +1204,9 @@ class OpenAiResponsesClient {
                     handleResponseCompleted(node);
                 } else if (EVENT_RESPONSE_FAILED.equals(type) || EVENT_RESPONSE_ERROR.equals(type)) {
                     handleResponseFailure(node);
+                } else if (EVENT_ERROR.equals(type)) {
+                    // the error event carries code and message either in a nested error object or at the top level
+                    handleResponseFailure(at(node, FIELD_ERROR) != null ? node : Map.of(FIELD_ERROR, node));
                 }
             } catch (Exception e) {
                 throw new RuntimeException(e);
@@ -1219,6 +1240,9 @@ class OpenAiResponsesClient {
         }
 
         private void handleResponseCompleted(Object node) {
+            if (terminated) {
+                return;
+            }
             var responseNode = at(node, FIELD_RESPONSE);
 
             Object outputNode = at(responseNode, FIELD_OUTPUT);
@@ -1268,9 +1292,11 @@ class OpenAiResponsesClient {
 
             var responseBuilder = ChatResponse.builder().aiMessage(aiMessage).metadata(metadataBuilder.build());
 
+            ChatResponse chatResponse = responseBuilder.build();
+            terminated = true;
             if (!isCancelled()) {
                 try {
-                    handler.onCompleteResponse(responseBuilder.build());
+                    handler.onCompleteResponse(chatResponse);
                 } catch (Exception e) {
                     withLoggingExceptions(() -> handler.onError(e));
                 }
@@ -1278,12 +1304,17 @@ class OpenAiResponsesClient {
         }
 
         private void handleResponseFailure(Object node) {
+            if (terminated) {
+                return;
+            }
             Object errorNode = at(node, FIELD_ERROR);
             if (errorNode == null) {
                 errorNode = at(at(node, FIELD_RESPONSE), FIELD_ERROR);
             }
             String message = extractErrorMessage(errorNode);
-            withLoggingExceptions(() -> handler.onError(new RuntimeException(message)));
+            String code = str(at(errorNode, FIELD_CODE), null);
+            terminated = true;
+            withLoggingExceptions(() -> handler.onError(new OpenAiResponsesStreamingException(message, code)));
         }
 
         private String extractErrorMessage(Object errorNode) {
