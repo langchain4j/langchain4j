@@ -22,13 +22,24 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
     private final AiMessage successfulAiMessage;
     private final Object successfulResult;
     private final List<Failure> failures;
+    private final ChatResponse validatedResponse;
 
     private OutputGuardrailResult(
             Result result, AiMessage successfulAiMessage, Object successfulResult, List<Failure> failures) {
+        this(result, successfulAiMessage, successfulResult, failures, null);
+    }
+
+    private OutputGuardrailResult(
+            Result result,
+            AiMessage successfulAiMessage,
+            Object successfulResult,
+            List<Failure> failures,
+            ChatResponse validatedResponse) {
         this.result = ensureNotNull(result, "result");
         this.successfulAiMessage = successfulAiMessage;
         this.successfulResult = successfulResult;
         this.failures = Optional.ofNullable(failures).orElseGet(List::of);
+        this.validatedResponse = validatedResponse;
     }
 
     private OutputGuardrailResult(
@@ -201,17 +212,19 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
         return result == that.result
                 && Objects.equals(successfulAiMessage, that.successfulAiMessage)
                 && Objects.equals(successfulResult, that.successfulResult)
-                && Objects.equals(failures, that.failures);
+                && Objects.equals(failures, that.failures)
+                && Objects.equals(validatedResponse, that.validatedResponse);
     }
 
     @Override
     @JacocoIgnoreCoverageGenerated
     public int hashCode() {
-        return Objects.hash(result, successfulAiMessage, successfulResult, failures);
+        return Objects.hash(result, successfulAiMessage, successfulResult, failures, validatedResponse);
     }
 
     /**
      * Gets the response computed from the combination of the original {@link ChatResponse} in the {@link OutputGuardrailRequest}
+     * (or, after a successful retry or reprompt, the response of the last model call, which the guardrails validated)
      * and this result
      * @param request The output guardrail request
      * @param <T> The type of response
@@ -223,7 +236,7 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
     }
 
     private ChatResponse createResponse(OutputGuardrailRequest params) {
-        var response = params.responseFromLLM();
+        var response = validatedResponse != null ? validatedResponse : params.responseFromLLM();
         return response.toBuilder()
                 .aiMessage(hasRewrittenResult() ? successfulAiMessage : response.aiMessage())
                 .build();
@@ -252,7 +265,16 @@ public final class OutputGuardrailResult implements GuardrailResult<OutputGuardr
     OutputGuardrailResult withSuccessfulResult(Object successfulResult) {
         return Objects.equals(this.successfulResult, successfulResult)
                 ? this
-                : new OutputGuardrailResult(result, successfulAiMessage, successfulResult, failures);
+                : new OutputGuardrailResult(result, successfulAiMessage, successfulResult, failures, validatedResponse);
+    }
+
+    /**
+     * Returns this result for a response that the guardrails validated instead of the response of the
+     * {@link OutputGuardrailRequest}, after a successful retry or reprompt: {@link #response(OutputGuardrailRequest)} is then
+     * computed from that response.
+     */
+    OutputGuardrailResult withValidatedResponse(ChatResponse validatedResponse) {
+        return new OutputGuardrailResult(result, successfulAiMessage, successfulResult, failures, validatedResponse);
     }
 
     /**
