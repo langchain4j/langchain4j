@@ -1,7 +1,10 @@
 package dev.langchain4j.model.mistralai.common;
 
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMALL_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MISTRAL_7B;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeast;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.common.AbstractStreamingChatModelIT;
@@ -31,9 +34,25 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
             .logResponses(true)
             .build();
 
+    // mistral-small-latest does not recognise the dice in the image tests
+    static final StreamingChatModel MISTRAL_LARGE_STREAMING_CHAT_MODEL = MistralAiStreamingChatModel.builder()
+            .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .modelName(MISTRAL_LARGE_LATEST)
+            .maxTokens(2000)
+            .temperature(0.0)
+            .topP(1.0) // Mistral rejects temperature 0 (greedy sampling) on mistral-large-latest unless top_p is 1
+            .logRequests(false) // images are huge in logs
+            .logResponses(true)
+            .build();
+
     @Override
     protected List<StreamingChatModel> models() {
         return List.of(MISTRAL_STREAMING_CHAT_MODEL);
+    }
+
+    @Override
+    protected List<StreamingChatModel> modelsSupportingImageInputs() {
+        return List.of(MISTRAL_LARGE_STREAMING_CHAT_MODEL);
     }
 
     @Override
@@ -79,6 +98,9 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
 
     @Override
     protected void verifyToolCallbacks(StreamingChatResponseHandler handler, InOrder io, String id) {
+        // Mistral can talk before calling a tool. "atLeast(0)" is meant to ignore it.
+        io.verify(handler, atLeast(0)).onPartialResponse(any(), any());
+
         io.verify(handler).onCompleteToolCall(complete(0, id, "getWeather", "{\"city\": \"Munich\"}"));
     }
 
