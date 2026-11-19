@@ -54,7 +54,7 @@ class MistralAiStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     protected String customModelName() {
         // Must differ from the model above, and must be a name Mistral echoes back unchanged:
-        // retired ids such as mistral-medium-2508 are silently served by their successor.
+        // a retired id is either rejected or served by its successor, which reports its own name.
         return "ministral-8b-latest";
     }
 
