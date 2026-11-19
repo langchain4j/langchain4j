@@ -1,18 +1,17 @@
 package dev.langchain4j.store.embedding.weaviate;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreIT;
+import java.util.Arrays;
+import java.util.List;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.weaviate.WeaviateContainer;
-
-import java.util.Arrays;
-import java.util.List;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
 
 @Testcontainers
 class LocalWeaviateEmbeddingStoreIT extends EmbeddingStoreIT {
@@ -54,6 +53,7 @@ class LocalWeaviateEmbeddingStoreIT extends EmbeddingStoreIT {
             .scheme("http")
             .host(weaviate.getHost())
             .port(weaviate.getFirstMappedPort())
+            .grpcPort(weaviate.getMappedPort(50051))
             .objectClass("Test" + randomUUID().replace("-", ""))
             .metadataKeys(METADATA_KEYS)
             .build();
