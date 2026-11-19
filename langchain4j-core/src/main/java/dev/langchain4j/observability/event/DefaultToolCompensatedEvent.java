@@ -11,6 +11,7 @@ import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
 
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Default implementation of {@link ToolCompensatedEvent}.
@@ -22,11 +23,17 @@ public class DefaultToolCompensatedEvent extends AbstractAiServiceEvent implemen
     private final ToolExecutionRequest request;
     private final List<Content> resultContents;
     private final CompensationReason reason;
+    private final @Nullable Throwable compensationError;
 
     public DefaultToolCompensatedEvent(ToolCompensatedEventBuilder builder) {
         super(builder);
         this.request = ensureNotNull(builder.request(), "request");
         this.reason = ensureNotNull(builder.reason(), "reason");
+        if (!builder.isCompensationErrorSet()) {
+            throw new IllegalArgumentException(
+                    "compensationError must be set: null when the compensating action worked, otherwise its error");
+        }
+        this.compensationError = builder.compensationError();
 
         boolean hasResultText = builder.resultText() != null;
         boolean hasResultContents = builder.resultContents() != null && !builder.resultContents().isEmpty();
@@ -66,5 +73,10 @@ public class DefaultToolCompensatedEvent extends AbstractAiServiceEvent implemen
     @Override
     public CompensationReason reason() {
         return reason;
+    }
+
+    @Override
+    public @Nullable Throwable compensationError() {
+        return compensationError;
     }
 }

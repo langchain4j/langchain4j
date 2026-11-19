@@ -8,6 +8,7 @@ import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -64,6 +65,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -680,6 +682,13 @@ public abstract class AiServices<T> {
      * are then submitted in request order and executed serially, while still being kept off the
      * model-response thread. (The synchronous and {@link TokenStream} modes already execute tools sequentially
      * by default.)
+     * <p>
+     * <b>Rejected tool calls.</b> When the {@code executor} rejects a tool call (it throws a
+     * {@link RejectedExecutionException}), the rejected tool call counts as a tool call that failed: the other tool
+     * calls of the same response still run, also the ones requested after the rejected one, the AI Service waits for
+     * all of them, and then fails with the rejection (or with the error of a tool call requested before the rejected
+     * one, when that error ends the call). With {@link #compensateOnToolErrors(boolean)} enabled, the tool calls that
+     * succeeded, also the ones that ran after the rejected one, are rolled back first.
      *
      * @param executor The {@link Executor} to be used to execute tools.
      * @return builder
@@ -1333,12 +1342,16 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Enables or disables compensating actions on tool errors.
-     * When enabled, if any tool execution fails, all previously executed tools'
-     * compensating actions (declared via {@link dev.langchain4j.agent.tool.CompensateFor}) are called
-     * in reverse order to undo the effects of the successful tool calls.
+     * Enables or disables compensating actions on tool errors and on cancellation.
+     * When enabled, if a tool fails or the invocation is cancelled, the compensating actions (declared with
+     * {@link CompensateFor}) of the tool calls that succeeded in the same invocation are called in reverse order, to
+     * undo their effects.
+     * A tool error starts the rollback also when it ends the invocation (for example when the
+     * {@link ToolExecutionErrorHandler} or the {@link ToolArgumentsErrorHandler} rethrows it, or when the LLM calls a
+     * tool that does not exist): the tool calls are rolled back before the error reaches the caller.
      *
-     * @param compensateOnToolErrors whether to run compensating actions on tool errors
+     * @param compensateOnToolErrors whether to run compensating actions when a tool fails or the invocation is
+     *                               cancelled
      * @return builder
      */
     public AiServices<T> compensateOnToolErrors(boolean compensateOnToolErrors) {

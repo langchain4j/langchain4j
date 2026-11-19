@@ -279,7 +279,8 @@ public class AiServiceTokenStream implements TokenStream {
                 toolExecutor,
                 completeResponseProcessingExecutor,
                 guardrailParams(runContext),
-                methodKey);
+                methodKey,
+                context.toolService.newCompensableExecutionsAccumulator());
 
         if (contentsHandler != null && retrievedContents != null) {
             contentsHandler.accept(retrievedContents);

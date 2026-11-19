@@ -28,6 +28,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.CapturedContextSupport;
@@ -46,11 +47,14 @@ import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.AiServiceContext;
+import dev.langchain4j.service.AiServiceStreamingEvent;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.Type;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -60,6 +64,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
@@ -73,6 +78,7 @@ import java.util.function.BiFunction;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -350,7 +356,11 @@ public class ToolService {
                     Method compensatingMethod = method;
                     compensatingActions.put(toolName, (toolExecution, ctx) -> CurrentInvocation.callWith(ctx, () -> {
                         try {
-                            return toVoidFuture(compensatingMethod.invoke(objectWithTools, toolExecution));
+                            return toVoidFuture(
+                                    compensatingMethod.invoke(objectWithTools, toolExecution),
+                                    compensatingMethod.getGenericReturnType());
+                        } catch (InvocationTargetException e) {
+                            return CompletableFuture.failedFuture(e.getCause());
                         } catch (Exception e) {
                             return CompletableFuture.failedFuture(e);
                         }
@@ -366,7 +376,10 @@ public class ToolService {
                             toolName,
                             (toolExecution, ctx) -> CurrentInvocation.callWith(
                                             ctx, () -> executor.executeAsync(toolExecution.request(), ctx))
-                                    .thenApply(result -> (Void) null));
+                                    .handle((result, error) -> error == null
+                                            ? CompletableFuture.<Void>completedFuture(null)
+                                            : CompletableFuture.<Void>failedFuture(withoutExecutorWrapper(error)))
+                                    .thenCompose(future -> future));
                 }
             }
         }
@@ -678,12 +691,24 @@ public class ToolService {
             intermediateResponses.add(chatResponse);
 
             List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
-            Map<ToolExecutionRequest, ToolExecutionResult> toolResults =
-                    execute(
-                            toolExecutionRequests,
-                            toolServiceContext.toolExecutors(),
-                            invocationContext,
-                            context.eventListenerRegistrar);
+            ExecutedRound round = execute(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext);
+            if (round.errorToRethrow() != null) {
+                failRoundBeforeRethrow(
+                        toolExecutionRequests,
+                        round.results(),
+                        round.errors(),
+                        round.errorToRethrow(),
+                        compensableExecutions,
+                        chatMemory,
+                        messages,
+                        invocationContext,
+                        context.eventListenerRegistrar);
+                if (round.errorToRethrow() instanceof Error error) {
+                    throw error;
+                }
+                throw (RuntimeException) round.errorToRethrow();
+            }
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults = round.results();
 
             ToolResultsOutcome outcome = processToolResults(
                     context,
@@ -838,6 +863,8 @@ public class ToolService {
 
         private final AtomicReference<CompletableFuture<ChatResponse>> inFlightModelCall = new AtomicReference<>();
         private volatile ChatRequest lastChatRequest;
+        // the requests of a round cancelled before its results were saved to the chat memory
+        private volatile List<ToolExecutionRequest> unsavedRoundRequests;
 
         AsyncToolLoop(
                 AiServiceContext context,
@@ -953,6 +980,7 @@ public class ToolService {
                     collectCompensable(
                             toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
                 }
+                unsavedRoundRequests = toolExecutionRequests;
                 return CompletableFuture.failedFuture(
                         firstError instanceof CancellationException ? firstError : new CancellationException());
             }
@@ -969,9 +997,11 @@ public class ToolService {
                             chatMemory,
                             accumulator,
                             invocationContext,
-                            CompensationReason.TOOL_EXECUTION_FAILED,
                             context.eventListenerRegistrar,
-                            null)
+                            null,
+                            false,
+                            null,
+                            firstError)
                     .handle((ignored, compensationError) -> compensationError)
                     .thenCompose(compensationError -> {
                         if (firstError != null) {
@@ -986,6 +1016,7 @@ public class ToolService {
                         }
 
                         if (isCancelled(cancellation)) {
+                            unsavedRoundRequests = toolExecutionRequests;
                             return CompletableFuture.<ToolServiceResult>failedFuture(new CancellationException());
                         }
 
@@ -1019,7 +1050,8 @@ public class ToolService {
          * Wraps the loop so that a cancellation rolls back every compensable tool that had already executed
          * successfully (across all rounds) before the {@link CancellationException} is surfaced - the "drain the
          * round, then roll back" contract. Individual rounds only accumulate their compensable tools; this single
-         * handler runs their compensating actions, whether the cancellation arrived mid-round or between rounds.
+         * handler runs their compensating actions, whether the cancellation arrived mid-round or between rounds. A
+         * failure of the rollback is logged, as the invocation was cancelled and there is nobody to report it to.
          */
         CompletableFuture<ToolServiceResult> withCancellationCompensation(CompletableFuture<ToolServiceResult> result) {
             return result.exceptionallyCompose(error -> {
@@ -1031,12 +1063,20 @@ public class ToolService {
                     return compensateOnCancellationAsync(
                                     null,
                                     null,
+                                    unsavedRoundRequests,
                                     compensableExecutions,
                                     chatMemory,
                                     null,
                                     invocationContext,
-                                    context.eventListenerRegistrar,
-                                    null)
+                                    context.eventListenerRegistrar)
+                            .handle((ignored, rollbackError) -> {
+                                if (rollbackError != null) {
+                                    log.warn(
+                                            "Failed to roll back the tools after the invocation was cancelled",
+                                            unwrapCompletionException(rollbackError));
+                                }
+                                return null;
+                            })
                             .thenCompose(ignored -> CompletableFuture.<ToolServiceResult>failedFuture(cause));
                 }
                 return CompletableFuture.failedFuture(error);
@@ -1121,18 +1161,7 @@ public class ToolService {
 
             fireToolExecutedEvent(invocationContext, request, toolExecution, context.eventListenerRegistrar);
 
-            // Expose a successfully-executed compensable tool to the agentic layer (when it registered an observer via
-            // onCompensableToolExecution) so cross-agent compensation can undo it later. Our compensating action is the
-            // async BiFunction; adapt it to the Consumer<ToolExecution> the observer expects by awaiting it when
-            // invoked - cross-agent compensation runs off the reactive path, so blocking there is fine.
-            if (onCompensableToolExecution != null
-                    && !result.isError()
-                    && compensatingExecutors.containsKey(request.name())) {
-                BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>> compensatingAction =
-                        compensatingExecutors.get(request.name());
-                onCompensableToolExecution.accept(
-                        toolExecution, te -> compensatingAction.apply(te, te.invocationContext()).join());
-            }
+            reportCompensableToolExecution(toolExecution);
 
             anyToolErrored = anyToolErrored || result.isError();
             returnBehaviors.add(toolServiceContext.returnBehavior(request.name()));
@@ -1143,6 +1172,24 @@ public class ToolService {
         }
 
         return new ToolResultsOutcome(anyToolErrored, returnBehaviors, resultMessages);
+    }
+
+    /**
+     * Exposes a successfully executed tool that has a compensating action to the agentic layer, when it registered an
+     * observer with {@link #onCompensableToolExecution(BiConsumer)}, so that cross-agent compensation can undo it
+     * later. The compensating action returns a {@link CompletableFuture}; the {@code Consumer<ToolExecution>} given to
+     * the observer waits for it, because cross-agent compensation runs off the reactive path, where blocking is fine.
+     */
+    private void reportCompensableToolExecution(ToolExecution toolExecution) {
+        ToolExecutionRequest request = toolExecution.request();
+        if (onCompensableToolExecution != null
+                && !toolExecution.hasFailed()
+                && compensatingExecutors.containsKey(request.name())) {
+            BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>> compensatingAction =
+                    compensatingExecutors.get(request.name());
+            onCompensableToolExecution.accept(
+                    toolExecution, te -> compensatingAction.apply(te, te.invocationContext()).join());
+        }
     }
 
     /**
@@ -1163,17 +1210,42 @@ public class ToolService {
             List<ChatMessage> accumulator,
             List<ToolExecutionResultMessage> resultMessages,
             InvocationContext invocationContext) {
+        return persistToolResultsAndResolveMessages(
+                context, chatMemory, accumulator, resultMessages, invocationContext, () -> {});
+    }
 
-        if (chatMemory == null) {
-            accumulator.addAll(resultMessages);
-            return CompletableFuture.completedFuture(accumulator);
-        }
+    /**
+     * Like {@link #persistToolResultsAndResolveMessages(AiServiceContext, ChatMemory, List, List, InvocationContext)},
+     * and runs {@code onSaved} as soon as the result messages are saved, before the messages are read back, so that a
+     * caller knows that they are saved even when reading the messages back fails.
+     *
+     * @param chatMemory the chat memory, or {@code null} when the AI Service has none
+     * @param onSaved    run once the result messages are saved; not run when saving them fails
+     * @since 1.25.0
+     */
+    @Internal
+    public CompletionStage<List<ChatMessage>> persistToolResultsAndResolveMessages(
+            AiServiceContext context,
+            @Nullable ChatMemory chatMemory,
+            List<ChatMessage> accumulator,
+            List<ToolExecutionResultMessage> resultMessages,
+            InvocationContext invocationContext,
+            Runnable onSaved) {
 
-        List<ChatMessage> messagesToAdd = new ArrayList<>(resultMessages);
         try {
+            if (chatMemory == null) {
+                accumulator.addAll(resultMessages);
+                onSaved.run();
+                return CompletableFuture.completedFuture(accumulator);
+            }
+
+            List<ChatMessage> messagesToAdd = new ArrayList<>(resultMessages);
             return chatMemory
                     .addAsync(messagesToAdd)
-                    .thenCompose(ignored -> chatMemory.messagesAsync())
+                    .thenCompose(ignored -> {
+                        onSaved.run();
+                        return chatMemory.messagesAsync();
+                    })
                     .thenApply(
                             memoryMessages -> resolveMessagesForNextRequest(memoryMessages, context, invocationContext))
                     .exceptionallyCompose(ToolService::translateBlockingChatMemory);
@@ -1321,9 +1393,12 @@ public class ToolService {
     /**
      * Synchronous tool compensation, used by the synchronous / {@code TokenStream} modes. Collects this round's
      * successful compensable tools (accumulated across rounds) and, if any tool in this round errored, rolls them
-     * all back — running their compensating actions, rewriting the chat memory (synchronously), and rewriting this
+     * all back — running their compensating actions, then rewriting the chat memory (synchronously) and this
      * round's {@code resultMessages} in place — before the result messages are persisted. A compensating action
-     * that returns a {@link CompletableFuture} is awaited. Returns immediately when compensation is disabled.
+     * that returns a {@link CompletableFuture} is awaited. A compensating action that fails is logged, and the result
+     * of its tool says that the rollback failed. A {@link ToolCompensatedEvent} is fired for each rolled-back tool once
+     * the chat memory is rewritten, also when rewriting it fails, and that failure is then thrown. Returns immediately
+     * when compensation is disabled.
      *
      * @since 1.20.0
      */
@@ -1337,46 +1412,7 @@ public class ToolService {
             List<ChatMessage> messages,
             InvocationContext invocationContext,
             AiServiceListenerRegistrar listenerRegistrar) {
-
-        if (!compensateOnToolErrors) {
-            return;
-        }
-        String failedToolName =
-                collectCompensable(toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
-        if (anyToolErrored && !compensableExecutions.isEmpty()) {
-            List<CompensableToolExecution> compensated = List.copyOf(compensableExecutions);
-            compensateToolsActions(compensableExecutions, invocationContext).join();
-            rewriteChatMemoryForCompensatedTools(
-                    messages, chatMemory, compensableExecutions, CompensationReason.TOOL_EXECUTION_FAILED, failedToolName);
-            compensableExecutions.clear();
-            rewriteCurrentResults(
-                    toolExecutionRequests, toolResults, resultMessages, CompensationReason.TOOL_EXECUTION_FAILED, failedToolName);
-            fireCompensatedEvents(
-                    compensated, CompensationReason.TOOL_EXECUTION_FAILED, invocationContext, listenerRegistrar, null);
-        }
-    }
-
-    /**
-     * Non-blocking counterpart of {@link #compensateIfNeeded}, used by the {@code CompletableFuture} and reactive
-     * modes. The compensating actions and the chat-memory rewrite run without blocking the model-delivery thread: a
-     * compensating action that performs blocking I/O should return a {@link CompletableFuture}, and the rewrite uses
-     * {@link ChatMemory#setAsync(List)}.
-     *
-     * @since 1.20.0
-     */
-    public CompletableFuture<Void> compensateIfNeededAsync(
-            List<ToolExecutionRequest> toolExecutionRequests,
-            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
-            List<ToolExecutionResultMessage> resultMessages,
-            List<CompensableToolExecution> compensableExecutions,
-            boolean anyToolErrored,
-            ChatMemory chatMemory,
-            List<ChatMessage> messages,
-            InvocationContext invocationContext,
-            CompensationReason reason,
-            AiServiceListenerRegistrar listenerRegistrar,
-            BiConsumer<ToolExecution, CompensationReason> streamEmitter) {
-        return compensateIfNeededAsync(
+        rollBackIfNeeded(
                 toolExecutionRequests,
                 toolResults,
                 resultMessages,
@@ -1385,84 +1421,220 @@ public class ToolService {
                 chatMemory,
                 messages,
                 invocationContext,
-                reason,
                 listenerRegistrar,
-                streamEmitter,
-                false,
                 null);
     }
 
     /**
-     * As {@link #compensateIfNeededAsync}, but when {@code alreadyCollected} is {@code true} this round's compensable
-     * tools have already been recorded into {@code compensableExecutions} (via {@link #collectCompensableRound}) and
-     * {@code preCollectedFailedToolName} carries the collect's result; the collection step is then skipped. The
-     * reactive streaming path uses this so a round's compensable tools are collected <em>before</em> the inflight-round
-     * handoff, closing the window where a concurrent cancellation could snapshot the accumulator before the collection.
+     * {@link #compensateIfNeeded}. When a compensating action fails, its error is added as suppressed to
+     * {@code invocationError} right after the compensating actions ran, so that a failure while rewriting the chat
+     * memory or in a listener cannot hide it.
      *
-     * @since 1.20.0
+     * @param invocationError the error that fails the invocation after the rollback, or {@code null} when the
+     *                        invocation goes on (the tool error is sent to the LLM)
      */
+    private void rollBackIfNeeded(
+            List<ToolExecutionRequest> toolExecutionRequests,
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            List<ToolExecutionResultMessage> resultMessages,
+            List<CompensableToolExecution> compensableExecutions,
+            boolean anyToolErrored,
+            @Nullable ChatMemory chatMemory,
+            @Nullable List<ChatMessage> messages,
+            InvocationContext invocationContext,
+            AiServiceListenerRegistrar listenerRegistrar,
+            @Nullable Throwable invocationError) {
+
+        if (!compensateOnToolErrors) {
+            return;
+        }
+        String failedToolName =
+                collectCompensable(toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
+        if (!anyToolErrored || compensableExecutions.isEmpty()) {
+            return;
+        }
+        List<RolledBackTool> rolledBack =
+                compensateToolsActions(compensableExecutions, invocationContext).join();
+        compensableExecutions.clear();
+        if (invocationError != null) {
+            addCompensationErrorsAsSuppressed(rolledBack, invocationError);
+        }
+        CompensationReason reason = CompensationReason.TOOL_EXECUTION_FAILED;
+        List<RolledBackTool> ofEarlierRounds =
+                rewriteCurrentResults(toolExecutionRequests, resultMessages, rolledBack, reason, failedToolName);
+        try {
+            rewriteChatMemoryForCompensatedTools(messages, chatMemory, ofEarlierRounds, reason, failedToolName);
+        } catch (RuntimeException rewriteFailure) {
+            fireCompensatedEventsAfterRewrite(
+                    rewriteFailure, rolledBack, reason, invocationContext, listenerRegistrar, null);
+            throw rewriteFailure;
+        }
+        fireCompensatedEvents(rolledBack, reason, invocationContext, listenerRegistrar, null);
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #compensateIfNeeded}, used by the {@code CompletableFuture} and reactive
+     * modes. The compensating actions and the chat-memory rewrite run without blocking the model-delivery thread: a
+     * compensating action that performs blocking I/O should return a {@link CompletableFuture}, and the rewrite uses
+     * {@link ChatMemory#setAsync(List)}. This round's {@code resultMessages} are rewritten once the compensating actions
+     * have run, so they must be read after the returned future completes. A compensating action that fails is logged,
+     * and the result of its tool says that the rollback failed; its error is also added as suppressed to
+     * {@code invocationError}, and the events relayed into the event stream carry it
+     * ({@link AiServiceStreamingEvent.ToolCompensatedEvent#compensationError()}). The events are fired once the chat
+     * memory is rewritten, also when rewriting it fails; the returned future then fails with that failure.
+     * <p>
+     * When {@code alreadyCollected} is {@code true}, this round's compensable tools have already been recorded into
+     * {@code compensableExecutions} (via {@link #collectCompensableRound}) and {@code preCollectedFailedToolName}
+     * carries the collect's result; the collection step is then skipped. The reactive streaming path uses this so a
+     * round's compensable tools are collected <em>before</em> the inflight-round handoff, closing the window where a
+     * concurrent cancellation could snapshot the accumulator before the collection.
+     *
+     * @param chatMemory                 the chat memory, or {@code null} when the AI Service has none
+     * @param messages                   the messages of the invocation, rewritten when {@code chatMemory} is
+     *                                   {@code null}; may be {@code null} when there is a chat memory
+     * @param streamEventEmitter         receives an event per rolled-back tool to relay into the event stream, or
+     *                                   {@code null} when there is no event stream
+     * @param preCollectedFailedToolName the name of the first tool of this round that failed, when
+     *                                   {@code alreadyCollected} is {@code true}; {@code null} when no tool failed or
+     *                                   when {@code alreadyCollected} is {@code false}
+     * @param invocationError            the error that fails the invocation after the rollback, or {@code null} when
+     *                                   the invocation goes on (the tool error is sent to the LLM)
+     * @since 1.25.0
+     */
+    @Internal
     public CompletableFuture<Void> compensateIfNeededAsync(
             List<ToolExecutionRequest> toolExecutionRequests,
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
             List<ToolExecutionResultMessage> resultMessages,
             List<CompensableToolExecution> compensableExecutions,
             boolean anyToolErrored,
-            ChatMemory chatMemory,
-            List<ChatMessage> messages,
+            @Nullable ChatMemory chatMemory,
+            @Nullable List<ChatMessage> messages,
             InvocationContext invocationContext,
-            CompensationReason reason,
             AiServiceListenerRegistrar listenerRegistrar,
-            BiConsumer<ToolExecution, CompensationReason> streamEmitter,
+            @Nullable Consumer<AiServiceStreamingEvent.ToolCompensatedEvent> streamEventEmitter,
             boolean alreadyCollected,
-            String preCollectedFailedToolName) {
+            @Nullable String preCollectedFailedToolName,
+            @Nullable Throwable invocationError) {
 
         if (!compensateOnToolErrors) {
             return CompletableFuture.completedFuture(null);
         }
         List<CompensableToolExecution> toCompensate;
         String failedToolName;
-        synchronized (compensableExecutions) {
-            failedToolName = alreadyCollected
-                    ? preCollectedFailedToolName
-                    : collectCompensable(
-                            toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
-            boolean triggered = reason == CompensationReason.INVOCATION_CANCELLED || anyToolErrored;
-            if (!triggered || compensableExecutions.isEmpty()) {
-                return CompletableFuture.completedFuture(null);
+        try {
+            synchronized (compensableExecutions) {
+                failedToolName = alreadyCollected
+                        ? preCollectedFailedToolName
+                        : collectCompensable(
+                                toolExecutionRequests,
+                                toolResults,
+                                resultMessages,
+                                compensableExecutions,
+                                invocationContext);
+                if (!anyToolErrored || compensableExecutions.isEmpty()) {
+                    return CompletableFuture.completedFuture(null);
+                }
+                toCompensate = List.copyOf(compensableExecutions);
+                compensableExecutions.clear();
             }
-            toCompensate = List.copyOf(compensableExecutions);
-            compensableExecutions.clear();
+        } catch (RuntimeException e) {
+            return CompletableFuture.failedFuture(e);
         }
-        rewriteCurrentResults(toolExecutionRequests, toolResults, resultMessages, reason, failedToolName);
         String rolledBackByToolName = failedToolName;
-        return compensateToolsActions(toCompensate, invocationContext)
-                .thenCompose(ignored -> rewriteChatMemoryForCompensatedToolsAsync(
-                        messages, chatMemory, toCompensate, reason, rolledBackByToolName))
-                .thenRun(() -> fireCompensatedEvents(toCompensate, reason, invocationContext, listenerRegistrar, streamEmitter));
+        CompensationReason reason = CompensationReason.TOOL_EXECUTION_FAILED;
+        return compensateToolsActions(toCompensate, invocationContext).thenCompose(rolledBack -> {
+            if (invocationError != null) {
+                addCompensationErrorsAsSuppressed(rolledBack, invocationError);
+            }
+            List<RolledBackTool> ofEarlierRounds = rewriteCurrentResults(
+                    toolExecutionRequests, resultMessages, rolledBack, reason, rolledBackByToolName);
+            return rewriteChatMemoryForCompensatedToolsAsync(
+                            messages, chatMemory, ofEarlierRounds, reason, rolledBackByToolName)
+                    .whenComplete((ignored, rewriteFailure) -> fireCompensatedEventsAfterRewrite(
+                            rewriteFailure,
+                            rolledBack,
+                            reason,
+                            invocationContext,
+                            listenerRegistrar,
+                            streamEventEmitter));
+        });
+    }
+
+    /**
+     * The exception the compensating method failed with, without the {@link ToolExecutionException} that
+     * {@link DefaultToolExecutor} wraps it in.
+     */
+    private static Throwable withoutExecutorWrapper(Throwable error) {
+        Throwable cause = unwrapCompletionException(error);
+        if (cause instanceof ToolExecutionException && cause.getCause() != null) {
+            return cause.getCause();
+        }
+        return cause;
+    }
+
+    private static void addCompensationErrorsAsSuppressed(List<RolledBackTool> rolledBack, Throwable error) {
+        for (RolledBackTool tool : rolledBack) {
+            if (tool.compensationError() != null && tool.compensationError() != error) {
+                error.addSuppressed(tool.compensationError());
+            }
+        }
+    }
+
+    /**
+     * Fires the events of the rolled-back tools (see {@link #fireCompensatedEvents}) once the chat memory has been
+     * rewritten, also when the rewrite failed with {@code rewriteFailure}: the compensating actions ran either way. When
+     * the rewrite failed, a failure while firing the events is added as suppressed to {@code rewriteFailure}, which
+     * the caller reports.
+     *
+     * @param rewriteFailure the failure of the rewrite, or {@code null} when the rewrite worked
+     */
+    private void fireCompensatedEventsAfterRewrite(
+            @Nullable Throwable rewriteFailure,
+            List<RolledBackTool> rolledBack,
+            CompensationReason reason,
+            InvocationContext invocationContext,
+            AiServiceListenerRegistrar listenerRegistrar,
+            @Nullable Consumer<AiServiceStreamingEvent.ToolCompensatedEvent> streamEventEmitter) {
+        if (rewriteFailure == null) {
+            fireCompensatedEvents(rolledBack, reason, invocationContext, listenerRegistrar, streamEventEmitter);
+            return;
+        }
+        try {
+            fireCompensatedEvents(rolledBack, reason, invocationContext, listenerRegistrar, streamEventEmitter);
+        } catch (RuntimeException eventFailure) {
+            Throwable failure = unwrapCompletionException(rewriteFailure);
+            if (eventFailure != failure) {
+                failure.addSuppressed(eventFailure);
+            }
+        }
     }
 
     /**
      * Fires a {@link ToolCompensatedEvent} to the observability listeners for each rolled-back tool, and (when a
-     * {@code streamEmitter} is provided, i.e. on the reactive streaming path) relays the same into the event stream.
+     * {@code streamEventEmitter} is provided, i.e. on the reactive streaming path) relays the same into the event
+     * stream. Both carry the error of the compensating action when it failed.
      */
     private void fireCompensatedEvents(
-            List<CompensableToolExecution> compensated,
+            List<RolledBackTool> rolledBack,
             CompensationReason reason,
             InvocationContext invocationContext,
             AiServiceListenerRegistrar listenerRegistrar,
-            BiConsumer<ToolExecution, CompensationReason> streamEmitter) {
-        for (CompensableToolExecution compensable : compensated) {
-            ToolExecution toolExecution = compensable.toolExecution();
+            @Nullable Consumer<AiServiceStreamingEvent.ToolCompensatedEvent> streamEventEmitter) {
+        for (RolledBackTool tool : rolledBack) {
+            ToolExecution toolExecution = tool.compensable().toolExecution();
             if (listenerRegistrar != null) {
                 listenerRegistrar.fireEvent(ToolCompensatedEvent.builder()
                         .invocationContext(invocationContext)
                         .request(toolExecution.request())
                         .resultContents(toolExecution.resultContents())
                         .reason(reason)
+                        .compensationError(tool.compensationError())
                         .build());
             }
-            if (streamEmitter != null) {
-                streamEmitter.accept(toolExecution, reason);
+            if (streamEventEmitter != null) {
+                streamEventEmitter.accept(new AiServiceStreamingEvent.ToolCompensatedEvent(
+                        toolExecution, reason, tool.compensationError(), invocationContext));
             }
         }
     }
@@ -1471,28 +1643,118 @@ public class ToolService {
      * Rolls back, on cancellation, every compensable tool that had already executed successfully - across all
      * rounds - implementing the "drain the round, then roll back" contract for the asynchronous and reactive modes.
      * If the current (drained) round's requests/results are supplied, its successful compensable tools are recorded
-     * first so they roll back together with those accumulated from earlier rounds. Runs the compensating actions,
-     * rewrites the chat memory, clears the accumulator, and fires a {@link ToolCompensatedEvent} per rolled-back tool
-     * (reason {@link CompensationReason#INVOCATION_CANCELLED}). A no-op when compensation is disabled or nothing is
-     * pending.
+     * first so they roll back together with those accumulated from earlier rounds; pass {@code null} as the current
+     * round when it was already collected, so that a round is never collected twice. Runs the compensating actions,
+     * rewrites the results of the rolled-back tools in the chat memory, except those of {@code unsavedRequests},
+     * clears the accumulator, and then fires a {@link ToolCompensatedEvent} per rolled-back tool (reason
+     * {@link CompensationReason#INVOCATION_CANCELLED}), also when rewriting the chat memory fails. Nothing is relayed
+     * into the event stream of the reactive mode, as it delivers nothing after a cancellation. A no-op when compensation
+     * is disabled or nothing is pending.
      *
-     * @since 1.20.0
+     * @param currentRoundRequests  the requests of the cancelled round, or {@code null} when it was already collected
+     * @param currentRoundResults   the results of the tools of the cancelled round, or {@code null} when it was already
+     *                              collected
+     * @param unsavedRequests       the requests of the round whose results are not in the chat memory, or {@code null}
+     *                              when all results are saved there
+     * @param compensableExecutions the compensable tools collected across rounds, or {@code null} when compensation
+     *                              is disabled
+     * @param chatMemory            the chat memory, or {@code null} when the AI Service has none
+     * @param messages              the messages of the invocation, rewritten when {@code chatMemory} is {@code null};
+     *                              may be {@code null} when there is a chat memory
+     * @since 1.25.0
      */
+    @Internal
     public CompletableFuture<Void> compensateOnCancellationAsync(
-            List<ToolExecutionRequest> currentRoundRequests,
-            Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults,
-            List<CompensableToolExecution> compensableExecutions,
-            ChatMemory chatMemory,
-            List<ChatMessage> messages,
+            @Nullable List<ToolExecutionRequest> currentRoundRequests,
+            @Nullable Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults,
+            @Nullable List<ToolExecutionRequest> unsavedRequests,
+            @Nullable List<CompensableToolExecution> compensableExecutions,
+            @Nullable ChatMemory chatMemory,
+            @Nullable List<ChatMessage> messages,
             InvocationContext invocationContext,
-            AiServiceListenerRegistrar listenerRegistrar,
-            BiConsumer<ToolExecution, CompensationReason> streamEmitter) {
+            AiServiceListenerRegistrar listenerRegistrar) {
 
-        if (!compensateOnToolErrors || compensableExecutions == null) {
+        List<CompensableToolExecution> toCompensate;
+        try {
+            toCompensate = takeCompensableOnCancellation(
+                    currentRoundRequests, currentRoundResults, compensableExecutions, invocationContext);
+        } catch (RuntimeException e) {
+            return CompletableFuture.failedFuture(e);
+        }
+        if (toCompensate.isEmpty()) {
             return CompletableFuture.completedFuture(null);
         }
-        List<CompensableToolExecution> toCompensate;
-        // Same accumulator serialization as compensateIfNeededAsync (see its note): collect the drained round and
+        CompensationReason reason = CompensationReason.INVOCATION_CANCELLED;
+        return compensateToolsActions(toCompensate, invocationContext)
+                .thenCompose(rolledBack -> rewriteChatMemoryForCompensatedToolsAsync(
+                                messages, chatMemory, withoutToolsOf(rolledBack, unsavedRequests), reason, null)
+                        .whenComplete((ignored, rewriteFailure) -> fireCompensatedEventsAfterRewrite(
+                                rewriteFailure, rolledBack, reason, invocationContext, listenerRegistrar, null)));
+    }
+
+    /**
+     * Blocking counterpart of {@link #compensateOnCancellationAsync}, used by the {@code TokenStream} mode, which uses
+     * the chat memory synchronously: rolls back, on cancellation, every compensable tool that had already executed
+     * successfully, across all rounds, on the calling thread. The compensating actions run in reverse order (one that
+     * returns a {@link CompletableFuture} is waited for), the results of the rolled-back tools are rewritten in the
+     * chat memory with its blocking methods, except those of {@code unsavedRequests}, and then a
+     * {@link ToolCompensatedEvent} is fired per rolled-back tool (reason {@link CompensationReason#INVOCATION_CANCELLED}),
+     * also when rewriting the chat memory fails, and that failure is then thrown. A no-op when compensation is disabled
+     * or nothing is pending.
+     *
+     * @param currentRoundResults   the results of the tools of the cancelled round that ran, in the order they were
+     *                              requested; empty when no tool of that round has to be rolled back
+     * @param unsavedRequests       the requests of the cancelled round whose results are not in the chat memory, or
+     *                              {@code null} when all its results are saved there
+     * @param compensableExecutions the compensable tools collected across rounds, or {@code null} when compensation
+     *                              is disabled
+     * @param chatMemory            the chat memory, or {@code null} when the AI Service has none
+     * @since 1.25.0
+     */
+    @Internal
+    public void compensateOnCancellation(
+            Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults,
+            @Nullable List<ToolExecutionRequest> unsavedRequests,
+            @Nullable List<CompensableToolExecution> compensableExecutions,
+            @Nullable ChatMemory chatMemory,
+            InvocationContext invocationContext,
+            AiServiceListenerRegistrar listenerRegistrar) {
+        List<ToolExecutionRequest> currentRoundRequests = new ArrayList<>(currentRoundResults.keySet());
+        List<CompensableToolExecution> toCompensate = takeCompensableOnCancellation(
+                currentRoundRequests, currentRoundResults, compensableExecutions, invocationContext);
+        if (toCompensate.isEmpty()) {
+            return;
+        }
+        List<RolledBackTool> rolledBack =
+                compensateToolsActions(toCompensate, invocationContext).join();
+        CompensationReason reason = CompensationReason.INVOCATION_CANCELLED;
+        try {
+            rewriteChatMemoryForCompensatedTools(
+                    null, chatMemory, withoutToolsOf(rolledBack, unsavedRequests), reason, null);
+        } catch (RuntimeException rewriteFailure) {
+            fireCompensatedEventsAfterRewrite(
+                    rewriteFailure, rolledBack, reason, invocationContext, listenerRegistrar, null);
+            throw rewriteFailure;
+        }
+        fireCompensatedEvents(rolledBack, reason, invocationContext, listenerRegistrar, null);
+    }
+
+    /**
+     * Records the successful compensable tools of the current (drained) round, if given (callers pass it only when it
+     * was not recorded yet), then
+     * takes every compensable tool collected so far out of {@code compensableExecutions}, atomically, so that each tool
+     * is rolled back once.
+     * Returns an empty list when compensation is disabled or nothing is pending.
+     */
+    private List<CompensableToolExecution> takeCompensableOnCancellation(
+            @Nullable List<ToolExecutionRequest> currentRoundRequests,
+            @Nullable Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults,
+            @Nullable List<CompensableToolExecution> compensableExecutions,
+            InvocationContext invocationContext) {
+        if (!compensateOnToolErrors || compensableExecutions == null) {
+            return List.of();
+        }
+        // Same accumulator serialization as compensateIfNeededAsync (see its Javadoc): collect the drained round and
         // snapshot+clear atomically so the async rollback runs on an immutable copy and each tool rolls back once.
         synchronized (compensableExecutions) {
             if (currentRoundRequests != null && currentRoundResults != null) {
@@ -1502,23 +1764,10 @@ public class ToolService {
                 collectCompensable(
                         currentRoundRequests, currentRoundResults, resultMessages, compensableExecutions, invocationContext);
             }
-            if (compensableExecutions.isEmpty()) {
-                return CompletableFuture.completedFuture(null);
-            }
-            toCompensate = List.copyOf(compensableExecutions);
+            List<CompensableToolExecution> toCompensate = List.copyOf(compensableExecutions);
             compensableExecutions.clear();
+            return toCompensate;
         }
-        return compensateToolsActions(toCompensate, invocationContext)
-                .thenCompose(ignored -> (chatMemory != null || messages != null)
-                        ? rewriteChatMemoryForCompensatedToolsAsync(
-                                messages, chatMemory, toCompensate, CompensationReason.INVOCATION_CANCELLED, null)
-                        : CompletableFuture.completedFuture(null))
-                .thenRun(() -> fireCompensatedEvents(
-                        toCompensate,
-                        CompensationReason.INVOCATION_CANCELLED,
-                        invocationContext,
-                        listenerRegistrar,
-                        streamEmitter));
     }
 
     /**
@@ -1573,11 +1822,12 @@ public class ToolService {
         return failedToolName;
     }
 
-    private static CompletableFuture<Void> toVoidFuture(Object result) {
-        if (result instanceof CompletionStage<?> stage) {
-            return stage.thenApply(ignored -> (Void) null).toCompletableFuture();
+    private static CompletableFuture<Void> toVoidFuture(@Nullable Object result, Type declaredType) {
+        CompletableFuture<?> future = DefaultToolExecutor.toCompletableFuture(result, declaredType);
+        if (future == null) {
+            return CompletableFuture.completedFuture(null);
         }
-        return CompletableFuture.completedFuture(null);
+        return future.thenApply(ignored -> null);
     }
 
     /**
@@ -1590,79 +1840,174 @@ public class ToolService {
         return compensateOnToolErrors ? new ArrayList<>() : null;
     }
 
-    private void rewriteCurrentResults(List<ToolExecutionRequest> toolExecutionRequests,
-                                       Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
-                                       List<ToolExecutionResultMessage> resultMessages,
-                                       CompensationReason reason,
-                                       String failedToolName) {
-        for (int i = 0; i < toolExecutionRequests.size(); i++) {
-            ToolExecutionRequest request = toolExecutionRequests.get(i);
-            if (!toolResults.get(request).isError()
-                    && compensatingExecutors.containsKey(request.name())) {
-                resultMessages.set(i, rolledBackResultMessage(resultMessages.get(i), reason, failedToolName));
+    /**
+     * Replaces, in this round's {@code resultMessages}, the results of the tools of this round that were rolled back,
+     * and returns the other rolled-back tools: those of the earlier rounds, whose results are in the chat memory. The
+     * results of this round are not in the chat memory yet.
+     */
+    private List<RolledBackTool> rewriteCurrentResults(
+            List<ToolExecutionRequest> toolExecutionRequests,
+            List<ToolExecutionResultMessage> resultMessages,
+            List<RolledBackTool> rolledBack,
+            CompensationReason reason,
+            @Nullable String failedToolName) {
+        List<RolledBackTool> ofEarlierRounds = new ArrayList<>();
+        for (RolledBackTool tool : rolledBack) {
+            int index = indexOf(toolExecutionRequests, tool.compensable().toolExecution().request());
+            if (index >= 0) {
+                resultMessages.set(
+                        index, rolledBackResultMessage(resultMessages.get(index), tool, reason, failedToolName));
+            } else {
+                ofEarlierRounds.add(tool);
             }
         }
+        return ofEarlierRounds;
     }
 
-    private static void rewriteChatMemoryForCompensatedTools(List<ChatMessage> messages,
-                                                             ChatMemory chatMemory,
-                                                             List<CompensableToolExecution> compensableExecutions,
-                                                             CompensationReason reason,
-                                                             String failedToolName) {
+    // by identity: the same tool call can be requested again, with the same id or without an id
+    private static int indexOf(List<ToolExecutionRequest> requests, ToolExecutionRequest request) {
+        for (int i = 0; i < requests.size(); i++) {
+            if (requests.get(i) == request) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static List<RolledBackTool> withoutToolsOf(
+            List<RolledBackTool> rolledBack, @Nullable Collection<ToolExecutionRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return rolledBack;
+        }
+        List<ToolExecutionRequest> excluded = List.copyOf(requests);
+        return rolledBack.stream()
+                .filter(tool -> indexOf(excluded, tool.compensable().toolExecution().request()) < 0)
+                .toList();
+    }
+
+    private void rewriteChatMemoryForCompensatedTools(
+            @Nullable List<ChatMessage> messages,
+            @Nullable ChatMemory chatMemory,
+            List<RolledBackTool> rolledBack,
+            CompensationReason reason,
+            @Nullable String failedToolName) {
+        if (rolledBack.isEmpty() || (chatMemory == null && messages == null)) {
+            return;
+        }
         List<ChatMessage> memoryMessages = chatMemory != null ? new ArrayList<>(chatMemory.messages()) : messages;
-        replaceCompensatedMessages(memoryMessages, compensableExecutions, reason, failedToolName);
+        replaceCompensatedMessages(memoryMessages, rolledBack, reason, failedToolName);
         if (chatMemory != null) {
             chatMemory.set(memoryMessages);
         }
     }
 
-    private static CompletableFuture<Void> rewriteChatMemoryForCompensatedToolsAsync(
-            List<ChatMessage> messages,
-            ChatMemory chatMemory,
-            List<CompensableToolExecution> compensableExecutions,
+    private CompletableFuture<Void> rewriteChatMemoryForCompensatedToolsAsync(
+            @Nullable List<ChatMessage> messages,
+            @Nullable ChatMemory chatMemory,
+            List<RolledBackTool> rolledBack,
             CompensationReason reason,
-            String failedToolName) {
-        if (chatMemory == null) {
-            replaceCompensatedMessages(messages, compensableExecutions, reason, failedToolName);
+            @Nullable String failedToolName) {
+        if (rolledBack.isEmpty() || (chatMemory == null && messages == null)) {
             return CompletableFuture.completedFuture(null);
         }
-        return chatMemory.messagesAsync().thenCompose(memoryMessages -> {
-            List<ChatMessage> rewritten = new ArrayList<>(memoryMessages);
-            replaceCompensatedMessages(rewritten, compensableExecutions, reason, failedToolName);
-            return chatMemory.setAsync(rewritten);
-        });
-    }
-
-    private static void replaceCompensatedMessages(
-            List<ChatMessage> memoryMessages,
-            List<CompensableToolExecution> compensableExecutions,
-            CompensationReason reason,
-            String failedToolName) {
-        for (CompensableToolExecution entry : compensableExecutions) {
-            ToolExecutionResultMessage originalMsg = entry.resultMessage();
-            ToolExecutionResultMessage replacementMsg = rolledBackResultMessage(originalMsg, reason, failedToolName);
-            for (int j = 0; j < memoryMessages.size(); j++) {
-                if (memoryMessages.get(j) instanceof ToolExecutionResultMessage msg
-                        && msg.id().equals(originalMsg.id())) {
-                    memoryMessages.set(j, replacementMsg);
-                    break;
-                }
+        try {
+            if (chatMemory == null) {
+                replaceCompensatedMessages(messages, rolledBack, reason, failedToolName);
+                return CompletableFuture.completedFuture(null);
             }
+            return chatMemory.messagesAsync().thenCompose(memoryMessages -> {
+                List<ChatMessage> rewritten = new ArrayList<>(memoryMessages);
+                replaceCompensatedMessages(rewritten, rolledBack, reason, failedToolName);
+                return chatMemory.setAsync(rewritten);
+            });
+        } catch (RuntimeException e) {
+            return CompletableFuture.failedFuture(e);
         }
     }
 
-    private static ToolExecutionResultMessage rolledBackResultMessage(
-            ToolExecutionResultMessage original, CompensationReason reason, String failedToolName) {
-        String cause = reason == CompensationReason.INVOCATION_CANCELLED
-                ? "the invocation was cancelled"
-                : "failure of tool '" + failedToolName + "'";
-        String rolledBackText = "Tool '" + original.toolName() + "' was executed successfully"
-                + " but was rolled back due to " + cause;
+    /**
+     * Replaces the results of the rolled-back tools in {@code memoryMessages}. A tool call id can repeat (also within
+     * an invocation) or be missing, so a result is matched by id, tool name and contents, and the tools are matched
+     * newest first, each one below the result matched for the tool after it, so that each tool gets its own result. A
+     * result that is not found (for example because the chat memory evicted or changed it) is left as it is, and this
+     * is logged at DEBUG level.
+     */
+    private void replaceCompensatedMessages(
+            List<ChatMessage> memoryMessages,
+            List<RolledBackTool> rolledBack,
+            CompensationReason reason,
+            @Nullable String failedToolName) {
+        int searchBefore = memoryMessages.size();
+        for (int i = rolledBack.size() - 1; i >= 0; i--) {
+            RolledBackTool tool = rolledBack.get(i);
+            ToolExecutionResultMessage original = tool.compensable().resultMessage();
+            int index = lastIndexOfResult(memoryMessages, original, searchBefore);
+            if (index < 0) {
+                log.debug(
+                        "Tool '{}' (tool call id: {}) was rolled back, but its result was not found in the chat"
+                                + " memory, so it was not rewritten there",
+                        original.toolName(),
+                        original.id());
+                continue;
+            }
+            memoryMessages.set(index, rolledBackResultMessage(original, tool, reason, failedToolName));
+            searchBefore = index;
+        }
+    }
+
+    private static int lastIndexOfResult(
+            List<ChatMessage> memoryMessages, ToolExecutionResultMessage original, int searchBefore) {
+        for (int i = searchBefore - 1; i >= 0; i--) {
+            if (memoryMessages.get(i) instanceof ToolExecutionResultMessage candidate
+                    && isResultOfSameToolCall(candidate, original)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    private static boolean isResultOfSameToolCall(
+            ToolExecutionResultMessage candidate, ToolExecutionResultMessage original) {
+        return Objects.equals(candidate.id(), original.id())
+                && Objects.equals(candidate.toolName(), original.toolName())
+                && Objects.equals(candidate.contents(), original.contents())
+                && !Boolean.TRUE.equals(candidate.isError());
+    }
+
+    /**
+     * Builds the result that replaces {@code original}, the result of a tool that was rolled back: it tells the LLM
+     * that the tool was executed successfully, why it was rolled back, and whether the rollback failed. The exception
+     * of a failed compensating action is not included, so that nothing internal reaches the LLM.
+     */
+    private ToolExecutionResultMessage rolledBackResultMessage(
+            ToolExecutionResultMessage original,
+            RolledBackTool rolledBack,
+            CompensationReason reason,
+            @Nullable String failedToolName) {
+        String toolName = rolledBack.compensable().toolExecution().request().name();
+        String cause;
+        if (reason == CompensationReason.INVOCATION_CANCELLED) {
+            cause = "the invocation was cancelled";
+        } else if (failedToolName != null) {
+            cause = "tool '" + failedToolName + "' failed";
+        } else {
+            cause = "another tool failed";
+        }
+        String text = rolledBack.compensationError() == null
+                ? "Tool '" + toolName + "' was executed successfully but was rolled back because " + cause
+                : "Tool '" + toolName + "' was executed successfully. It had to be rolled back because " + cause
+                        + ", but the rollback failed, so its effects may still be in place";
         return original.toBuilder()
-                .contents(List.of(TextContent.from(rolledBackText)))
+                .contents(List.of(TextContent.from(text)))
                 .isError(true)
                 .build();
     }
+
+    /**
+     * A tool that was rolled back, with the error of its compensating action, or {@code null} when the compensating
+     * action succeeded.
+     */
+    private record RolledBackTool(CompensableToolExecution compensable, @Nullable Throwable compensationError) {}
 
     // Public only so the streaming publisher (a different package) can hold the compensable-execution accumulator
     // and pass it back to compensateOnCancellationAsync(...); not part of the user-facing API.
@@ -1671,15 +2016,19 @@ public class ToolService {
 
     /**
      * Runs the compensating actions in reverse order, composed into a single future. Each action runs after the
-     * previous one completes (compensation order matters); a failing action is logged and does not abort the rest,
-     * mirroring the previous synchronous behavior. A {@code void} compensating method completes immediately; a
-     * {@code CompletableFuture}-returning one runs without blocking. The synchronous mode awaits the result.
+     * previous one completes (compensation order matters); a failing action is logged and does not abort the rest.
+     * A {@code void} compensating method completes immediately; a {@code CompletableFuture}-returning one runs
+     * without blocking. The synchronous mode awaits the result. The future completes with the tools in the order of
+     * {@code compensableExecutions}, each with the error of its compensating action, if it failed.
      */
-    private CompletableFuture<Void> compensateToolsActions(
+    private CompletableFuture<List<RolledBackTool>> compensateToolsActions(
             List<CompensableToolExecution> compensableExecutions, InvocationContext invocationContext) {
+        List<CompensableToolExecution> toCompensate = List.copyOf(compensableExecutions);
+        Throwable[] compensationErrors = new Throwable[toCompensate.size()];
         CompletableFuture<Void> chain = CompletableFuture.completedFuture(null);
-        for (int i = compensableExecutions.size() - 1; i >= 0; i--) {
-            ToolExecution toolExecution = compensableExecutions.get(i).toolExecution();
+        for (int i = toCompensate.size() - 1; i >= 0; i--) {
+            int index = i;
+            ToolExecution toolExecution = toCompensate.get(i).toolExecution();
             String toolName = toolExecution.request().name();
             BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>> compensatingAction =
                     compensatingExecutors.get(toolName);
@@ -1691,12 +2040,20 @@ public class ToolService {
                     action = CompletableFuture.failedFuture(e);
                 }
                 return action.exceptionally(error -> {
-                    log.warn("Compensating action failed for tool '{}': {}", toolName, error.getMessage(), error);
+                    Throwable cause = unwrapCompletionException(error);
+                    log.warn("Compensating action failed for tool '{}': {}", toolName, cause.getMessage(), cause);
+                    compensationErrors[index] = cause;
                     return null;
                 });
             });
         }
-        return chain;
+        return chain.thenApply(ignored -> {
+            List<RolledBackTool> rolledBack = new ArrayList<>(toCompensate.size());
+            for (int i = 0; i < toCompensate.size(); i++) {
+                rolledBack.add(new RolledBackTool(toCompensate.get(i), compensationErrors[i]));
+            }
+            return rolledBack;
+        });
     }
 
     public static boolean shouldReturnImmediately(boolean anyToolErrored, List<ReturnBehavior> returnBehaviors) {
@@ -1831,16 +2188,24 @@ public class ToolService {
                 .build());
     }
 
-    private Map<ToolExecutionRequest, ToolExecutionResult> execute(
+    /**
+     * The tools of a round that have terminated: the results of those that succeeded and the errors of those that
+     * failed, in request order, plus the error that fails the invocation ({@code null} when no tool failed).
+     */
+    private record ExecutedRound(
+            Map<ToolExecutionRequest, ToolExecutionResult> results,
+            Map<ToolExecutionRequest, Throwable> errors,
+            @Nullable Throwable errorToRethrow) {}
+
+    private ExecutedRound execute(
             List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
-            InvocationContext invocationContext,
-            AiServiceListenerRegistrar listenerRegistrar) {
+            InvocationContext invocationContext) {
         if (executor != null && toolRequests.size() > 1) {
-            return executeConcurrently(toolRequests, toolExecutors, invocationContext, listenerRegistrar);
+            return executeConcurrently(toolRequests, toolExecutors, invocationContext);
         } else {
             // when there is only one tool to execute, it doesn't make sense to do it in a separate thread
-            return executeSequentially(toolRequests, toolExecutors, invocationContext, listenerRegistrar);
+            return executeSequentially(toolRequests, toolExecutors, invocationContext);
         }
     }
 
@@ -1873,7 +2238,8 @@ public class ToolService {
      * Initiates a single tool execution on the given {@code executor}, returning a future of its result. Used
      * by the non-blocking streaming AI Service to start a tool as soon as its {@code CompleteToolCall} arrives
      * (rather than waiting for the whole model response), so that concurrent tools overlap each other and the
-     * tail of the model stream.
+     * tail of the model stream. When the {@code executor} rejects the tool, the returned future fails with the
+     * rejection.
      *
      * @since 1.20.0
      */
@@ -1884,15 +2250,19 @@ public class ToolService {
             Consumer<BeforeToolExecution> externalBeforeToolExecution,
             Consumer<ToolExecution> externalAfterToolExecution,
             Executor executor) {
-        return CompletableFuture.supplyAsync(
-                        () -> executeToolAsync(
-                                invocationContext,
-                                toolExecutors,
-                                toolRequest,
-                                externalBeforeToolExecution,
-                                externalAfterToolExecution),
-                        executor)
-                .thenCompose(toolResultFuture -> toolResultFuture);
+        try {
+            return CompletableFuture.supplyAsync(
+                            () -> executeToolAsync(
+                                    invocationContext,
+                                    toolExecutors,
+                                    toolRequest,
+                                    externalBeforeToolExecution,
+                                    externalAfterToolExecution),
+                            executor)
+                    .thenCompose(toolResultFuture -> toolResultFuture);
+        } catch (RuntimeException e) {
+            return CompletableFuture.failedFuture(e);
+        }
     }
 
     /**
@@ -2087,17 +2457,21 @@ public class ToolService {
         }
     }
 
-    private Map<ToolExecutionRequest, ToolExecutionResult> executeConcurrently(
+    private ExecutedRound executeConcurrently(
             List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
-            InvocationContext invocationContext,
-            AiServiceListenerRegistrar listenerRegistrar) {
+            InvocationContext invocationContext) {
         Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures = new LinkedHashMap<>();
-
         for (ToolExecutionRequest toolRequest : toolRequests) {
-            CompletableFuture<ToolExecutionResult> future = CompletableFuture.supplyAsync(
-                    () -> executeTool(invocationContext, toolExecutors, toolRequest),
-                    CapturedContextSupport.restoringIn(executor, invocationContext));
+            CompletableFuture<ToolExecutionResult> future;
+            try {
+                future = CompletableFuture.supplyAsync(
+                        () -> executeTool(invocationContext, toolExecutors, toolRequest),
+                        CapturedContextSupport.restoringIn(executor, invocationContext));
+            } catch (RuntimeException e) {
+                // the executor rejected the tool: it fails like a tool that threw, and the other tools still run
+                future = CompletableFuture.failedFuture(e);
+            }
             futures.put(toolRequest, future);
         }
 
@@ -2118,22 +2492,18 @@ public class ToolService {
         }
 
         if (!errors.isEmpty()) {
-            fireToolExecutedEventsOfFailedRound(invocationContext, toolRequests, results, errors, listenerRegistrar);
             Throwable error = errors.values().iterator().next();
-            if (error instanceof RuntimeException re) {
-                throw re;
-            }
-            throw new RuntimeException(error);
+            return new ExecutedRound(
+                    results, errors, error instanceof RuntimeException ? error : new RuntimeException(error));
         }
 
-        return results;
+        return new ExecutedRound(results, errors, null);
     }
 
-    private Map<ToolExecutionRequest, ToolExecutionResult> executeSequentially(
+    private ExecutedRound executeSequentially(
             List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
-            InvocationContext invocationContext,
-            AiServiceListenerRegistrar listenerRegistrar) {
+            InvocationContext invocationContext) {
         Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
         for (ToolExecutionRequest toolRequest : toolRequests) {
             try {
@@ -2141,12 +2511,106 @@ public class ToolService {
             } catch (VirtualMachineError e) {
                 throw e;
             } catch (RuntimeException | Error e) {
-                fireToolExecutedEventsOfFailedRound(
-                        invocationContext, toolRequests, toolResults, Map.of(toolRequest, e), listenerRegistrar);
-                throw e;
+                return new ExecutedRound(toolResults, Map.of(toolRequest, e), e);
             }
         }
-        return toolResults;
+        return new ExecutedRound(toolResults, Map.of(), null);
+    }
+
+    /**
+     * Fails a tool-calling round in the synchronous and {@code TokenStream} modes, right before the caller rethrows
+     * {@code errorToRethrow}, the way the non-blocking modes do before they fail the invocation:
+     * <ol>
+     *     <li>fires a {@link ToolExecutedEvent} for each tool of the round that has terminated (see
+     *     {@link #fireToolExecutedEventsOfFailedRound});</li>
+     *     <li>when cross-agent compensation is enabled, reports the tools of the round that succeeded and have a
+     *     compensating action to it, and then tells it that a tool failed, so it rolls back the compensable tools of
+     *     the agentic system right away, as for any other tool error;</li>
+     *     <li>when compensation on tool errors is enabled, rolls back the tools with a compensating action that
+     *     succeeded in this round and in the earlier rounds: their compensating actions run, their results in the
+     *     chat memory are rewritten, and a {@link ToolCompensatedEvent} is fired for each of them.</li>
+     * </ol>
+     * A failure of a listener of the {@link ToolExecutedEvent}s is added as suppressed to the first error in
+     * {@code errors}. A failure of cross-agent compensation, or while rolling back (for example while rewriting the
+     * chat memory), is added as suppressed to {@code errorToRethrow}. A compensating action that fails does not stop
+     * the others: it is logged, the result of its tool says that the rollback failed, and its error is added as
+     * suppressed to {@code errorToRethrow}.
+     *
+     * @param toolRequests          the requests of the round, in the order the tools were requested
+     * @param results               the results of the tools that succeeded
+     * @param errors                the errors of the tools that failed, in request order
+     * @param errorToRethrow        the error the caller rethrows once this method returns: the first error in
+     *                              {@code errors}, as the caller rethrows it (wrapped in a {@link RuntimeException}
+     *                              when the caller cannot rethrow it as it is)
+     * @param compensableExecutions the compensable tools collected across rounds, or {@code null} when compensation
+     *                              is disabled
+     * @param chatMemory            the chat memory, or {@code null} when the AI Service has none
+     * @param messages              the messages of the invocation, rewritten when {@code chatMemory} is {@code null};
+     *                              {@code null} when there is a chat memory
+     * @since 1.25.0
+     */
+    @Internal
+    public void failRoundBeforeRethrow(
+            List<ToolExecutionRequest> toolRequests,
+            Map<ToolExecutionRequest, ToolExecutionResult> results,
+            Map<ToolExecutionRequest, Throwable> errors,
+            Throwable errorToRethrow,
+            @Nullable List<CompensableToolExecution> compensableExecutions,
+            @Nullable ChatMemory chatMemory,
+            @Nullable List<ChatMessage> messages,
+            InvocationContext invocationContext,
+            AiServiceListenerRegistrar listenerRegistrar) {
+        fireToolExecutedEventsOfFailedRound(invocationContext, toolRequests, results, errors, listenerRegistrar);
+        if (onCompensableToolExecution == null && onToolExecutionError == null && !compensateOnToolErrors) {
+            return;
+        }
+        List<ToolExecutionRequest> executedRequests = new ArrayList<>();
+        Map<ToolExecutionRequest, ToolExecutionResult> roundResults = new LinkedHashMap<>();
+        for (ToolExecutionRequest request : toolRequests) {
+            if (results.containsKey(request)) {
+                executedRequests.add(request);
+                roundResults.put(request, results.get(request));
+            } else if (errors.containsKey(request)) {
+                executedRequests.add(request);
+                roundResults.put(
+                        request,
+                        ToolExecutionResult.builder()
+                                .isError(true)
+                                .resultText(errorText(errors.get(request)))
+                                .build());
+            }
+        }
+        try {
+            for (ToolExecutionRequest request : executedRequests) {
+                reportCompensableToolExecution(ToolExecution.builder()
+                        .request(request)
+                        .result(roundResults.get(request))
+                        .invocationContext(invocationContext)
+                        .build());
+            }
+            if (onToolExecutionError != null) {
+                onToolExecutionError.accept(invocationContext);
+            }
+            if (compensateOnToolErrors) {
+                List<ToolExecutionResultMessage> resultMessages = new ArrayList<>();
+                for (ToolExecutionRequest request : executedRequests) {
+                    resultMessages.add(toResultMessage(request, roundResults.get(request)));
+                }
+                rollBackIfNeeded(
+                        executedRequests,
+                        roundResults,
+                        resultMessages,
+                        compensableExecutions,
+                        true,
+                        chatMemory,
+                        messages,
+                        invocationContext,
+                        listenerRegistrar,
+                        errorToRethrow);
+            }
+        } catch (RuntimeException compensationError) {
+            errorToRethrow.addSuppressed(compensationError);
+        }
     }
 
     /**
