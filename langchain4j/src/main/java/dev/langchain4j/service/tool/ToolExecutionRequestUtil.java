@@ -21,7 +21,9 @@ public class ToolExecutionRequestUtil {
      *
      * @param arguments json string
      * @return map
+     * @deprecated Use {@link ToolArgumentsParser#argumentsAsMap(String)} instead.
      */
+    @Deprecated(since = "1.25.0")
     public static Map<String, Object> argumentsAsMap(String arguments) {
         return ToolArgumentsParser.argumentsAsMap(arguments);
     }
