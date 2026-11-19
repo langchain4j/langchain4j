@@ -69,6 +69,31 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 
 class AnthropicMapperTest {
 
+    @Test
+    void should_cache_mid_conversation_system_message_with_requested_ttl() {
+        for (String ttl : List.of("5m", "1h")) {
+            List<ChatMessage> messages = List.of(
+                    SystemMessage.from("Shared instructions"),
+                    UserMessage.from("Load the skill"),
+                    SystemMessage.builder()
+                            .text("Retained skill instructions")
+                            .attributes(Map.of("cache_control", "ephemeral"))
+                            .build(),
+                    SystemMessage.from("Later instructions"));
+
+            List<AnthropicMessage> wire = toAnthropicMessages(messages, false, true, ttl);
+
+            assertThat(wire).hasSize(3);
+            assertThat(wire.get(0).content.get(0).cacheControl).isNull();
+            assertThat(wire.get(1).role).isEqualTo(dev.langchain4j.model.anthropic.internal.api.AnthropicRole.SYSTEM);
+            AnthropicCacheControl marker = wire.get(1).content.get(0).cacheControl;
+            assertThat(marker.getType()).isEqualTo("ephemeral");
+            assertThat(marker.getTtl()).isEqualTo(ttl);
+            assertThat(wire.get(2).content.get(0).cacheControl).isNull();
+            assertThat(toAnthropicMessages(messages, false, false, ttl)).hasSize(1);
+        }
+    }
+
     static final String DICE_IMAGE_URL =
             "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png";
 
