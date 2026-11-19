@@ -465,8 +465,34 @@ class CustomMimeTypesFileTypeDetectorTest {
 
         // when-then
         assertThat(detector.probeContentTypeFromName(file.toUri())).isNull();
-        assertThat(detector.probeContentTypeFromName(URI.create(file.toUri().getPath()))).isNull();
-        assertThat(detector.probeContentTypeFromName(directory.resolve("picture.png").toUri()))
+        assertThat(detector.probeContentTypeFromName(URI.create(file.toUri().getPath())))
+                .isNull();
+        assertThat(detector.probeContentTypeFromName(
+                        directory.resolve("picture.png").toUri()))
+                .isEqualTo("image/png");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"picture", "picture with spaces", "caf\u00e9"})
+    void should_detect_content_from_local_file_uri(String name, @TempDir Path directory) throws Exception {
+        Path file = directory.resolve(name);
+        byte[] pngHeader = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n', 0, 0, 0, 0x0D, 'I', 'H', 'D', 'R'};
+        Files.write(file, pngHeader);
+
+        assertThat(new CustomMimeTypesFileTypeDetector().probeContentType(file.toUri()))
+                .isEqualTo("image/png");
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "images/picture.png",
+                "file://server/share/picture.png",
+                "file:/tmp/picture.png?version=1",
+                "file:/tmp/picture.png#preview"
+            })
+    void should_preserve_decoded_path_fallback(String value) {
+        assertThat(new CustomMimeTypesFileTypeDetector().probeContentType(URI.create(value)))
                 .isEqualTo("image/png");
     }
 
