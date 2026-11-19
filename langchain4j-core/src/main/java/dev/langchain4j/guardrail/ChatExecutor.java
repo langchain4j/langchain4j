@@ -254,7 +254,8 @@ public interface ChatExecutor {
          * <p>
          * The error handler is called first; then {@link ChatExecutor#execute()} fails with the same error, and the
          * future returned by {@link ChatExecutor#executeAsync()} completes exceptionally with it. So a caller that also
-         * handles the thrown error or the failed future sees the error twice.
+         * handles the thrown error or the failed future sees the error twice. An error that the model reports after
+         * the complete response goes to the error handler only: {@link ChatExecutor#execute()} returns the response.
          *
          * @param errorHandler a {@link Consumer} of {@link Throwable} that processes the error
          * @return the current {@link StreamingToSynchronousBuilder} instance for method chaining

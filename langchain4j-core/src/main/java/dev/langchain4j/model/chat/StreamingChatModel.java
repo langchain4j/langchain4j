@@ -54,7 +54,8 @@ public interface StreamingChatModel {
      * {@link StreamingChatResponseHandler#onError(Throwable)}. {@code onError} may be called on the calling thread,
      * before this method returns. If {@code onError} itself throws while a failure is reported on the calling thread,
      * before this method returns, that exception is thrown from this method. If it throws on another thread, or after
-     * this method returned, the exception is logged.
+     * this method returned, the exception is logged. If the model implementation throws after the handler already
+     * received the complete response or an error, that exception is logged instead of being reported.
      *
      * @param request a {@link ChatRequest}, containing all the inputs to the LLM
      * @param handler a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM; must not
@@ -71,7 +72,8 @@ public interface StreamingChatModel {
      * {@link StreamingChatResponseHandler#onError(Throwable)}. {@code onError} may be called on the calling thread,
      * before this method returns. If {@code onError} itself throws while a failure is reported on the calling thread,
      * before this method returns, that exception is thrown from this method. If it throws on another thread, or after
-     * this method returned, the exception is logged.
+     * this method returned, the exception is logged. If the model implementation throws after the handler already
+     * received the complete response or an error, that exception is logged instead of being reported.
      *
      * @param request a {@link ChatRequest}, containing all the inputs to the LLM
      * @param options a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata

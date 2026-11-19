@@ -392,10 +392,12 @@ Support is opt-in per provider and is being rolled out gradually. Today:
 | OpenAI — Responses | ✅ | ✅ |
 | Anthropic | ✅ | ✅ |
 | Bedrock | ✅ | ✅ |
+| Google GenAI | ✅ | ❌ |
 | every other provider | ❌ | ❌ |
 
 Beyond chat models: OpenAI implements asynchronous embeddings (`embedAsync`), Cohere asynchronous scoring
-(`scoreAsync`) and Tavily asynchronous web search (`searchAsync`).
+(`scoreAsync`) and Tavily asynchronous web search (`searchAsync`). The decision models of OpenAI, OpenAI Official,
+Ollama, TypeSafe, Google AI Gemini and Google GenAI implement asynchronous decisions (`decideAsync`).
 
 A provider that has not opted in is unaffected on the synchronous and `TokenStream` APIs — those keep working
 exactly as before.

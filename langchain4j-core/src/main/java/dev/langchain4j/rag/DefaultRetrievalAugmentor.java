@@ -302,7 +302,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                                     DefaultExecutorProvider.getDefaultExecutor(), invocationContextOf(query)));
                 }
                 return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
-                        + " The RAG pipeline is not fully asynchronous. Either use async-capable components, or build"
+                        + ". The RAG pipeline is not fully asynchronous. Either use async-capable components, or build"
                         + " this DefaultRetrievalAugmentor with offloadBlocking(true) to offload the blocking stage to"
                         + " the configured executor."));
             }

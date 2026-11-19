@@ -95,7 +95,7 @@ public interface ChatModel {
      * <p>
      * Registered {@link ChatModelListener}s are invoked: {@code onRequest} when the request is initiated,
      * then {@code onResponse} once the response is available, or {@code onError} on failure. A failure before
-     * {@code onRequest}, for example an invalid request, notifies no listener.
+     * {@code onRequest}, for example a {@code null} request, notifies no listener.
      * <p>
      * <b>Threading.</b> The returned future is completed on the model's own thread - for HTTP models, the
      * transport's I/O worker that reads the response (the JDK HTTP client's {@code HttpClient-*} workers). A

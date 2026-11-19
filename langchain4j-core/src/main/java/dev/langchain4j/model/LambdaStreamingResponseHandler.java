@@ -18,9 +18,9 @@ import java.util.function.Consumer;
  * import static dev.langchain4j.model.LambdaStreamingResponseHandler.*;
  *
  * model.chat("Why is the sky blue?",
- *       onPartialResponse(text -&gt; System.out.println(text));
+ *       onPartialResponse(text -&gt; System.out.println(text)));
  * model.chat("Why is the sky blue?",
- *       onPartialResponse(System.out::println);
+ *       onPartialResponse(System.out::println));
  * model.chat("Why is the sky blue?",
  *       onPartialResponseAndError(System.out::println, Throwable::printStackTrace));
  *
@@ -35,6 +35,18 @@ import java.util.function.Consumer;
  */
 public class LambdaStreamingResponseHandler {
 
+    /**
+     * Creates a streaming response handler that passes each partial response to the given consumer.
+     * <p>
+     * The handler has no error handler of its own: its {@code onError} throws the error ({@link RuntimeException}s
+     * and {@link Error}s as they are, other exceptions wrapped in a {@link RuntimeException}). So an invalid request
+     * is thrown from {@code model.chat(...)}, and a failure that the model reports on another thread while the
+     * response streams in is only logged. To handle failures, use
+     * {@link #onPartialResponseAndError(Consumer, Consumer)}.
+     *
+     * @param onPartialResponse consumer to handle each partial response
+     * @return the streaming response handler
+     */
     public static StreamingChatResponseHandler onPartialResponse(Consumer<String> onPartialResponse) {
         return new StreamingChatResponseHandler() {
 
