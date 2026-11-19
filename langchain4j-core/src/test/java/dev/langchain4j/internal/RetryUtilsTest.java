@@ -14,8 +14,12 @@ import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.spi.ExecutorProvider;
+import java.time.Duration;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
@@ -271,6 +275,35 @@ class RetryUtilsTest {
 
         assertThatThrownBy(() -> result.get(5, SECONDS)).hasRootCauseInstanceOf(IllegalStateException.class);
         assertThat(attempts).hasValue(2);
+    }
+
+    @Test
+    void withRetryAsync_fails_instead_of_hanging_when_the_executor_rejects_the_retry() {
+        AtomicInteger attempts = new AtomicInteger();
+        RejectedExecutionException rejected = new RejectedExecutionException("closed");
+        ExecutorProvider previous = ExecutorProvider.get();
+        ExecutorProvider.set(() -> task -> {
+            throw rejected;
+        });
+        try {
+            CompletableFuture<String> result = fastPolicy()
+                    .withRetryAsync(
+                            () -> {
+                                attempts.incrementAndGet();
+                                return CompletableFuture.failedFuture(new HttpException(503, "unavailable"));
+                            },
+                            1,
+                            ExceptionMapper.DEFAULT);
+
+            assertThat(result)
+                    .failsWithin(Duration.ofSeconds(5))
+                    .withThrowableOfType(ExecutionException.class)
+                    .havingCause()
+                    .isSameAs(rejected);
+            assertThat(attempts).hasValue(1);
+        } finally {
+            ExecutorProvider.set(previous);
+        }
     }
 
     @Test
