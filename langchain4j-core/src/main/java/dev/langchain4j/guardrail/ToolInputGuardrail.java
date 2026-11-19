@@ -45,7 +45,9 @@ public interface ToolInputGuardrail extends Guardrail<ToolInputGuardrailRequest,
      * following guardrails and for the tool execution.
      *
      * @param rewrittenArguments
-     *            the new arguments of the tool, as a JSON string
+     *            the new arguments of the tool, as a JSON object. Anything else (malformed JSON, an array, a number)
+     *            is a fatal failure of the guardrail: it aborts the invocation with a
+     *            {@link ToolInputGuardrailException}, before the tool runs and before the arguments are stored.
      * @return the result of a successful tool input guardrail validation carrying the rewritten arguments
      */
     default ToolInputGuardrailResult successWith(String rewrittenArguments) {

@@ -70,7 +70,8 @@ public final class ToolInputGuardrailResult implements GuardrailResult<ToolInput
      * Produces a successful result with rewritten tool arguments.
      *
      * @param rewrittenArguments
-     *            the new arguments of the tool, as a JSON string. When {@code null}, the result is a plain
+     *            the new arguments of the tool, as a JSON object (otherwise the executor fails the call with a
+     *            {@link ToolInputGuardrailException}). When {@code null}, the result is a plain
      *            {@linkplain #success() success}.
      * @return a successful result carrying the rewritten arguments
      */

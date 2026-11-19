@@ -25,6 +25,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class ToolGuardrailExecutorTest {
 
@@ -375,6 +377,43 @@ class ToolGuardrailExecutorTest {
         assertThatThrownBy(() -> output(throwing).execute(outputRequest(false, TextContent.from("x"))))
                 .isExactlyInstanceOf(ToolOutputGuardrailException.class)
                 .hasCauseExactlyInstanceOf(ToolArgumentsException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"not json", "[1,2]", "42", "null", ""})
+    void input_rewrite_that_is_not_a_json_object_is_a_fatal_failure_and_stops_the_chain(String rewritten) {
+        var calls = new AtomicInteger();
+        ToolInputGuardrail rewrite = r -> ToolInputGuardrailResult.successWith(rewritten);
+        ToolInputGuardrail never = r -> {
+            calls.incrementAndGet();
+            return ToolInputGuardrailResult.success();
+        };
+
+        assertThatThrownBy(() -> input(rewrite, never).execute(inputRequest()))
+                .isExactlyInstanceOf(ToolInputGuardrailException.class)
+                .hasMessageContaining("not a JSON object")
+                .hasMessageContaining("'search'")
+                .asInstanceOf(InstanceOfAssertFactories.type(ToolInputGuardrailException.class))
+                .returns(Optional.of(EXEC.arguments()), ToolInputGuardrailException::arguments);
+        assertThat(calls).hasValue(0);
+    }
+
+    @Test
+    void input_async_rewrite_that_is_not_a_json_object_fails_the_future() {
+        ToolInputGuardrail rewrite = r -> ToolInputGuardrailResult.successWith("not json");
+
+        assertThat(rootOf(input(async(rewrite)).executeAsync(inputRequest())))
+                .isExactlyInstanceOf(ToolInputGuardrailException.class)
+                .hasMessageContaining("not a JSON object");
+    }
+
+    @Test
+    void input_rewrite_to_an_empty_json_object_is_valid() {
+        ToolInputGuardrail rewrite = r -> ToolInputGuardrailResult.successWith("{}");
+
+        assertThat(input(rewrite).execute(inputRequest()))
+                .returns(true, ToolInputGuardrailResult::isSuccess)
+                .returns("{}", ToolInputGuardrailResult::successfulText);
     }
 
     @Test

@@ -381,6 +381,35 @@ class ToolGuardrailExecutionTest {
     }
 
     @Test
+    void an_input_rewrite_that_is_not_a_json_object_aborts_the_invocation_before_the_tool_and_the_memory() {
+        ToolInputGuardrail invalid = request -> ToolInputGuardrailResult.successWith("not json");
+        var tool = new RecordingTool(false);
+        var model = modelCallingSearch();
+        var memory = MessageWindowChatMemory.withMaxMessages(20);
+
+        var assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .chatMemory(memory)
+                .tools(List.<AiServiceTool>of(AiServiceTool.builder()
+                        .toolSpecification(SEARCH)
+                        .toolExecutor(tool)
+                        .toolInputGuardrails(invalid)
+                        .build()))
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("hello"))
+                .isInstanceOf(ToolInputGuardrailException.class)
+                .hasMessageContaining("not a JSON object");
+        assertThat(tool.receivedArguments).isEmpty();
+        assertThat(memory.messages().stream()
+                        .filter(AiMessage.class::isInstance)
+                        .map(AiMessage.class::cast)
+                        .flatMap(message -> message.toolExecutionRequests().stream()))
+                .extracting(ToolExecutionRequest::arguments)
+                .doesNotContain("not json");
+    }
+
+    @Test
     void a_rejected_call_after_a_rewrite_is_reported_with_the_rewritten_request() {
         ToolInputGuardrail rewrite = request -> ToolInputGuardrailResult.successWith(REWRITTEN_ARGUMENTS);
         ToolInputGuardrail reject = request -> failInput("no");
