@@ -35,29 +35,50 @@ final class GuardrailServiceBuilder
                 OutputGuardrail,
                 InputGuardrailsConfig,
                 OutputGuardrailsConfig,
-                InputGuardrailExecutor,
-                OutputGuardrailExecutor,
                 Builder>
         implements Builder {
     GuardrailServiceBuilder(Class<?> aiServiceClass) {
         super(aiServiceClass);
     }
 
-    @Override
-    protected InputGuardrailExecutor newInputExecutor(InputGuardrailsConfig config, List<InputGuardrail> guardrails) {
+    /**
+     * Creates an executor for input guardrails; a {@code null} configuration means the default.
+     */
+    private static InputGuardrailExecutor newInputExecutor(
+            InputGuardrailsConfig config, List<InputGuardrail> guardrails) {
         return InputGuardrailExecutor.builder()
                 .config(config)
                 .guardrails(guardrails)
                 .build();
     }
 
-    @Override
-    protected OutputGuardrailExecutor newOutputExecutor(
+    /**
+     * Creates an executor for output guardrails; a {@code null} configuration means the default.
+     */
+    private static OutputGuardrailExecutor newOutputExecutor(
             OutputGuardrailsConfig config, List<OutputGuardrail> guardrails) {
         return OutputGuardrailExecutor.builder()
                 .config(config)
                 .guardrails(guardrails)
                 .build();
+    }
+
+    /**
+     * The executor for the input guardrails the builder was given, with the configuration it was given. It runs no
+     * guardrail if the builder was given none.
+     */
+    private InputGuardrailExecutor defaultInputExecutor() {
+        return newInputExecutor(
+                inputSettings().config().orElse(null), inputSettings().resolveGuardrails());
+    }
+
+    /**
+     * The executor for the output guardrails the builder was given, with the configuration it was given. It runs no
+     * guardrail if the builder was given none.
+     */
+    private OutputGuardrailExecutor defaultOutputExecutor() {
+        return newOutputExecutor(
+                outputSettings().config().orElse(null), outputSettings().resolveGuardrails());
     }
 
     /**

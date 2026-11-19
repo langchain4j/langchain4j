@@ -3,11 +3,9 @@ package dev.langchain4j.service.guardrail;
 import dev.langchain4j.classloading.ClassMetadataProvider;
 import dev.langchain4j.guardrail.Guardrail;
 import dev.langchain4j.guardrail.ToolInputGuardrail;
-import dev.langchain4j.guardrail.ToolInputGuardrailExecutor;
 import dev.langchain4j.guardrail.ToolInputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolInputGuardrailResult;
 import dev.langchain4j.guardrail.ToolOutputGuardrail;
-import dev.langchain4j.guardrail.ToolOutputGuardrailExecutor;
 import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
 import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
@@ -31,25 +29,11 @@ final class ToolGuardrailServiceBuilder
                 ToolOutputGuardrail,
                 ToolInputGuardrailsConfig,
                 ToolOutputGuardrailsConfig,
-                ToolInputGuardrailExecutor,
-                ToolOutputGuardrailExecutor,
                 Builder>
         implements Builder {
 
     ToolGuardrailServiceBuilder(Class<?> aiServiceClass) {
         super(aiServiceClass);
-    }
-
-    @Override
-    protected ToolInputGuardrailExecutor newInputExecutor(
-            ToolInputGuardrailsConfig config, List<ToolInputGuardrail> guardrails) {
-        return ToolGuardrailChainResolver.newInputExecutor(config, guardrails);
-    }
-
-    @Override
-    protected ToolOutputGuardrailExecutor newOutputExecutor(
-            ToolOutputGuardrailsConfig config, List<ToolOutputGuardrail> guardrails) {
-        return ToolGuardrailChainResolver.newOutputExecutor(config, guardrails);
     }
 
     /**

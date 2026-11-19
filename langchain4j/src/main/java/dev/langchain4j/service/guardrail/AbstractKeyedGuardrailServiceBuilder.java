@@ -3,7 +3,6 @@ package dev.langchain4j.service.guardrail;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.guardrail.Guardrail;
-import dev.langchain4j.guardrail.GuardrailExecutor;
 import dev.langchain4j.guardrail.GuardrailRequest;
 import dev.langchain4j.guardrail.GuardrailResult;
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
@@ -28,10 +27,6 @@ import java.util.List;
  * @param <OG> The type of the output guardrails
  * @param <IC> The type of the configuration of the input guardrails
  * @param <OC> The type of the configuration of the output guardrails
- * @param <IE> The type of the executors of the input guardrails, which run guardrails of type {@code IG} with a
- *             configuration of type {@code IC}
- * @param <OE> The type of the executors of the output guardrails, which run guardrails of type {@code OG} with a
- *             configuration of type {@code OC}
  * @param <B>  The type of the builder, so that the methods can be chained
  */
 abstract sealed class AbstractKeyedGuardrailServiceBuilder<
@@ -44,8 +39,6 @@ abstract sealed class AbstractKeyedGuardrailServiceBuilder<
                 OG extends Guardrail<OP, OR>,
                 IC extends GuardrailsConfig,
                 OC extends GuardrailsConfig,
-                IE extends GuardrailExecutor<IC, IP, IR, IG, ?>,
-                OE extends GuardrailExecutor<OC, OP, OR, OG, ?>,
                 B extends GenericGuardrailService.Builder<IP, IR, OP, OR, S, IG, OG, IC, OC, B>>
         implements GenericGuardrailService.Builder<IP, IR, OP, OR, S, IG, OG, IC, OC, B>
         permits GuardrailServiceBuilder, ToolGuardrailServiceBuilder {
@@ -80,38 +73,6 @@ abstract sealed class AbstractKeyedGuardrailServiceBuilder<
      */
     protected GuardrailBuilderSettings<OG, OC> outputSettings() {
         return this.output;
-    }
-
-    /**
-     * Creates an executor for the input guardrails.
-     *
-     * @param config     The configuration of the executor. {@code null} means the default.
-     * @param guardrails The guardrails the executor runs.
-     */
-    protected abstract IE newInputExecutor(IC config, List<IG> guardrails);
-
-    /**
-     * Creates an executor for the output guardrails.
-     *
-     * @param config     The configuration of the executor. {@code null} means the default.
-     * @param guardrails The guardrails the executor runs.
-     */
-    protected abstract OE newOutputExecutor(OC config, List<OG> guardrails);
-
-    /**
-     * The executor for the input guardrails the builder was given, with the configuration it was given. It runs no
-     * guardrail if the builder was given none.
-     */
-    protected IE defaultInputExecutor() {
-        return newInputExecutor(this.input.config().orElse(null), this.input.resolveGuardrails());
-    }
-
-    /**
-     * The executor for the output guardrails the builder was given, with the configuration it was given. It runs no
-     * guardrail if the builder was given none.
-     */
-    protected OE defaultOutputExecutor() {
-        return newOutputExecutor(this.output.config().orElse(null), this.output.resolveGuardrails());
     }
 
     @Override
