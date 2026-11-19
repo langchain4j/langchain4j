@@ -538,7 +538,11 @@ public class CrossAgentCompensationTest {
     }
 
     static ToolExecutionRequest toolCall(String id, String name, String arguments) {
-        return ToolExecutionRequest.builder().id(id).name(name).arguments(arguments).build();
+        return ToolExecutionRequest.builder()
+                .id(id)
+                .name(name)
+                .arguments(arguments)
+                .build();
     }
 
     @Test
