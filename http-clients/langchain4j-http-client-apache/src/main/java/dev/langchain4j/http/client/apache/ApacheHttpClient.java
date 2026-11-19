@@ -505,6 +505,10 @@ public class ApacheHttpClient implements HttpClient {
             }
         });
 
+        if (request.headers().keySet().stream().noneMatch(k -> k.equalsIgnoreCase("User-Agent"))) {
+            apacheRequest.addHeader("User-Agent", "LangChain4j");
+        }
+
         return apacheRequest;
     }
 
@@ -544,6 +548,10 @@ public class ApacheHttpClient implements HttpClient {
                 }
             }
         });
+
+        if (request.headers().keySet().stream().noneMatch(k -> k.equalsIgnoreCase("User-Agent"))) {
+            builder.addHeader("User-Agent", "LangChain4j");
+        }
 
         return builder.build();
     }
