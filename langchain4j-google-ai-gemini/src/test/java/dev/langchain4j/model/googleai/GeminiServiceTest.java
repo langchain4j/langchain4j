@@ -95,6 +95,34 @@ class GeminiServiceTest {
         }
 
         @Test
+        void shouldNotDuplicateSlashWhenBaseUrlEndsWithSlash() {
+            // Given
+            GeminiGenerateContentResponse expectedResponse = createGenerateContentResponse("Test");
+            SuccessfulHttpResponse httpResponse = SuccessfulHttpResponse.builder()
+                    .statusCode(200)
+                    .body(Json.toJson(expectedResponse))
+                    .build();
+            MockHttpClient mockHttpClient = MockHttpClient.thatAlwaysResponds(httpResponse);
+
+            GeminiService subject = createService(mockHttpClient, TEST_BASE_URL + "/", null);
+
+            GeminiGenerateContentRequest request = GeminiGenerateContentRequest.builder()
+                    .contents(List.of(new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text("Hi")
+                                    .build()),
+                            "user")))
+                    .build();
+
+            // When
+            subject.generateContent(TEST_MODEL_NAME, request);
+
+            // Then
+            assertThat(mockHttpClient.request().url())
+                    .isEqualTo(TEST_BASE_URL + "/models/" + TEST_MODEL_NAME + ":generateContent");
+        }
+
+        @Test
         void shouldUseDefaultBaseUrl() {
             // Given
             GeminiGenerateContentResponse expectedResponse = createGenerateContentResponse("Test");
