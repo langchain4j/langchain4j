@@ -27,6 +27,7 @@ import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -347,6 +348,7 @@ public non-sealed interface ToolGuardrailService
 
         var inputStage = hasInputGuardrails(key)
                 ? startStage(
+                        result,
                         inFlight,
                         () -> executeInputGuardrailsAsync(
                                 key, inputRequest(request, toolSpecification, toolSource, requestParams)),
@@ -357,8 +359,9 @@ public non-sealed interface ToolGuardrailService
                 .thenCompose(inputResult -> {
                     var effectiveRequest = effectiveRequest(inputResult, request);
                     return inputResult.isSuccess()
-                            ? startStage(inFlight, () -> tool.apply(effectiveRequest), "future of the tool")
+                            ? startStage(result, inFlight, () -> tool.apply(effectiveRequest), "future of the tool")
                                     .thenCompose(toolResult -> applyOutputGuardrailsAsync(
+                                                    result,
                                                     inFlight,
                                                     key,
                                                     effectiveRequest,
@@ -388,16 +391,30 @@ public non-sealed interface ToolGuardrailService
 
     /**
      * Starts a stage of {@link #executeGuardrailsAsync}, turning an exception thrown while starting it into a failed
-     * future, and makes it the stage that a cancellation cancels.
+     * future, and makes it the stage that a cancellation cancels. Once {@code execution} is canceled, no stage starts
+     * any more: a cancellation that comes after the previous stage ended, but before this one is the stage in flight,
+     * would otherwise cancel nothing.
      */
     private static <T> CompletableFuture<T> startStage(
-            AtomicReference<CompletableFuture<?>> inFlight, Supplier<CompletableFuture<T>> stage, String name) {
-        var future = startSafely(stage, name);
+            CompletableFuture<?> execution,
+            AtomicReference<CompletableFuture<?>> inFlight,
+            Supplier<CompletableFuture<T>> stage,
+            String name) {
+        CompletableFuture<T> future = execution.isCancelled()
+                ? CompletableFuture.failedFuture(new CancellationException())
+                : startSafely(stage, name);
         inFlight.set(future);
+
+        // a cancellation that came after the check above canceled the previous stage, not this one
+        if (execution.isCancelled()) {
+            future.cancel(true);
+        }
+
         return future;
     }
 
     private CompletableFuture<ToolExecutionResult> applyOutputGuardrailsAsync(
+            CompletableFuture<?> execution,
             AtomicReference<CompletableFuture<?>> inFlight,
             ToolKey key,
             ToolExecutionRequest request,
@@ -411,6 +428,7 @@ public non-sealed interface ToolGuardrailService
         if (hasOutputGuardrails(key)) {
             var guardrailRequest = outputRequest(request, toolResult, toolSpecification, toolSource, requestParams);
             guarded = startStage(
+                            execution,
                             inFlight,
                             () -> executeOutputGuardrailsAsync(key, guardrailRequest),
                             "future of the tool output guardrails")

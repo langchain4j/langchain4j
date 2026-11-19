@@ -550,6 +550,108 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
     }
 
     @Test
+    void async_a_cancellation_after_the_input_guardrails_ended_does_not_start_the_tool() {
+        var service = new ControlledInputService();
+        var key = service.bind(
+                null,
+                AiServiceTool.builder()
+                        .toolSpecification(SPECIFICATION)
+                        .toolExecutor((request, memoryId) -> "unused")
+                        .toolInputGuardrails(INPUT_PASS)
+                        .build());
+        var tool = new Tool(toolResult(false));
+
+        var execution = service.executeGuardrailsAsync(key, CALL, SPECIFICATION, SOURCE, PARAMS, async(tool));
+        // registered after the service's own continuation, so it runs first: the input stage has ended, and the tool
+        // stage has not started yet
+        service.inputStage.whenComplete((ignored, error) -> execution.cancel(true));
+        service.inputStage.complete(ToolInputGuardrailResult.success());
+
+        assertThat(execution).isCancelled();
+        assertThat(tool.requests).isEmpty();
+    }
+
+    @Test
+    void async_a_cancellation_after_the_tool_ended_does_not_start_the_output_guardrails() {
+        var outputCalls = new ArrayList<ToolOutputGuardrailRequest>();
+        var output = new ToolOutputGuardrail() {
+            @Override
+            public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
+                outputCalls.add(request);
+                return ToolOutputGuardrailResult.success();
+            }
+
+            @Override
+            public CompletableFuture<ToolOutputGuardrailResult> validateAsync(ToolOutputGuardrailRequest request) {
+                return CompletableFuture.completedFuture(validate(request));
+            }
+        };
+        var toolFuture = new CompletableFuture<ToolExecutionResult>();
+
+        var execution = executeAsync(List.of(), List.of(output), request -> toolFuture);
+        // registered after the service's own continuation, so it runs first: the tool has ended, and the output
+        // stage has not started yet
+        toolFuture.whenComplete((ignored, error) -> execution.cancel(true));
+        toolFuture.complete(toolResult(false));
+
+        assertThat(execution).isCancelled();
+        assertThat(outputCalls).isEmpty();
+    }
+
+    /**
+     * A tool guardrail service whose input stage is a future the test completes, delegating everything else to the
+     * default service.
+     */
+    private static final class ControlledInputService implements ToolGuardrailService {
+
+        final CompletableFuture<ToolInputGuardrailResult> inputStage = new CompletableFuture<>();
+        private final ToolGuardrailService delegate =
+                ToolGuardrailService.builder(Assistant.class).build();
+
+        @Override
+        public ToolKey bind(Class<?> toolClass, AiServiceTool tool) {
+            return delegate.bind(toolClass, tool);
+        }
+
+        @Override
+        public Class<?> targetClass() {
+            return delegate.targetClass();
+        }
+
+        @Override
+        public <K> ToolInputGuardrailResult executeInputGuardrails(K key, ToolInputGuardrailRequest request) {
+            return delegate.executeInputGuardrails(key, request);
+        }
+
+        @Override
+        public <K> CompletableFuture<ToolInputGuardrailResult> executeInputGuardrailsAsync(
+                K key, ToolInputGuardrailRequest request) {
+            return inputStage;
+        }
+
+        @Override
+        public <K> ToolOutputGuardrailResult executeOutputGuardrails(K key, ToolOutputGuardrailRequest request) {
+            return delegate.executeOutputGuardrails(key, request);
+        }
+
+        @Override
+        public <K> CompletableFuture<ToolOutputGuardrailResult> executeOutputGuardrailsAsync(
+                K key, ToolOutputGuardrailRequest request) {
+            return delegate.executeOutputGuardrailsAsync(key, request);
+        }
+
+        @Override
+        public <K> boolean hasInputGuardrails(K key) {
+            return delegate.hasInputGuardrails(key);
+        }
+
+        @Override
+        public <K> boolean hasOutputGuardrails(K key) {
+            return delegate.hasOutputGuardrails(key);
+        }
+    }
+
+    @Test
     void async_without_guardrails_canceling_the_returned_future_cancels_the_tool() {
         var toolFuture = new CompletableFuture<ToolExecutionResult>();
 
