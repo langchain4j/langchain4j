@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.sun.net.httpserver.HttpServer;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.MockHttpClient;
+import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.CompleteResponse;
@@ -126,6 +128,56 @@ class AnthropicStreamingChatModelPublisherTest {
         });
 
         assertThat(signals).containsExactly("onSubscribe", "onError: UnsupportedFeatureException");
+    }
+
+    @Test
+    void publisher_hook_should_signal_a_failing_custom_headers_supplier_instead_of_throwing() {
+        // the client builds the HTTP request, with the custom headers, when the hook is called
+        MockHttpClient httpClient = new MockHttpClient();
+        IllegalStateException failure = new IllegalStateException("no token");
+        AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .apiKey("dummy-key")
+                .modelName(AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001)
+                .maxTokens(10)
+                .customHeaders(() -> {
+                    throw failure;
+                })
+                .build();
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("Hi"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .modelName(AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001.toString())
+                        .maxOutputTokens(10)
+                        .build())
+                .build();
+
+        List<Object> signals = new CopyOnWriteArrayList<>();
+        model.doChat(request).subscribe(new Flow.Subscriber<>() {
+
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                signals.add("onSubscribe");
+            }
+
+            @Override
+            public void onNext(ChatModelStreamingEvent event) {
+                signals.add(event);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                signals.add(error);
+            }
+
+            @Override
+            public void onComplete() {
+                signals.add("onComplete");
+            }
+        });
+
+        assertThat(signals).containsExactly("onSubscribe", failure);
+        assertThat(httpClient.requests()).isEmpty();
     }
 
     @Test

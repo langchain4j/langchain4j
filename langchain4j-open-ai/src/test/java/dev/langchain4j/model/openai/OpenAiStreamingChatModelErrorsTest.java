@@ -14,6 +14,8 @@ import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.MockHttpClient;
+import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -22,7 +24,9 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import io.ktor.http.HttpStatusCode;
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Flow;
 import java.util.stream.Stream;
 import me.kpavlov.aimocks.openai.MockOpenai;
@@ -178,6 +182,66 @@ class OpenAiStreamingChatModelErrorsTest {
         // when-then: the handler has no error handler of its own, so its onError throws, and chat(...) throws that
         assertThatThrownBy(() -> model.chat("hi", onPartialResponse(token -> {})))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void publisher_hook_should_signal_a_failing_custom_headers_supplier_instead_of_throwing() {
+
+        // given
+        MockHttpClient httpClient = new MockHttpClient();
+        IllegalStateException failure = new IllegalStateException("no token");
+        OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .apiKey("test-key")
+                .modelName(GPT_4_O_MINI)
+                .customHeaders(() -> {
+                    throw failure;
+                })
+                .build();
+
+        // when
+        List<Object> signals = signals(model.doChat(hookRequest()));
+
+        // then
+        assertThat(signals).containsExactly("onSubscribe", failure);
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    private static ChatRequest hookRequest() {
+        // the hook is called directly, so the parameters are those of this model, as chat(ChatRequest) passes them
+        return ChatRequest.builder()
+                .messages(UserMessage.from("Hi"))
+                .parameters(OpenAiChatRequestParameters.builder()
+                        .modelName(GPT_4_O_MINI.toString())
+                        .build())
+                .build();
+    }
+
+    private static List<Object> signals(Flow.Publisher<ChatModelStreamingEvent> publisher) {
+        List<Object> signals = new CopyOnWriteArrayList<>();
+        publisher.subscribe(new Flow.Subscriber<>() {
+
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                signals.add("onSubscribe");
+            }
+
+            @Override
+            public void onNext(ChatModelStreamingEvent event) {
+                signals.add(event);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                signals.add(error);
+            }
+
+            @Override
+            public void onComplete() {
+                signals.add("onComplete");
+            }
+        });
+        return signals;
     }
 
     private record ErrorHandler(CompletableFuture<Throwable> futureError) implements StreamingChatResponseHandler {

@@ -2,7 +2,7 @@ package dev.langchain4j.model.chat.router;
 
 import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
-import static dev.langchain4j.internal.InternalFlowUtils.failedPublisher;
+import static dev.langchain4j.internal.InternalFlowUtils.failPublisherOnThrow;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -104,33 +104,34 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
 
     @Override
     public Publisher<ChatModelStreamingEvent> chat(ChatRequest request) {
-        if (request == null) {
-            return failedPublisher(new IllegalArgumentException("request cannot be null"));
-        }
-        UUID invocationId = CurrentInvocation.invocationId();
-        return downstream -> {
-            DeferredSubscription subscription = new DeferredSubscription(downstream);
-            downstream.onSubscribe(subscription);
-            CompletableFuture<String> route = CurrentInvocation.callWithIdOrWithout(
-                    invocationId, () -> selector.selectAsync(request, ChatRequestOptions.EMPTY));
-            subscription.setRouting(route);
-            route.whenComplete((routeName, routingError) -> {
-                if (subscription.isCancelled()) {
-                    return;
-                }
-                if (routingError != null) {
-                    downstream.onError(unwrapCompletionException(routingError));
-                    return;
-                }
-                try {
-                    CurrentInvocation.callWithIdOrWithout(invocationId, () -> selector.model(routeName).chat(request))
-                            .subscribe(new RouteRecordingSubscriber(downstream, subscription, routeName));
-                } catch (Throwable error) {
-                    restoreInterruptIfInterrupted(error);
-                    downstream.onError(error);
-                }
-            });
-        };
+        return failPublisherOnThrow(() -> {
+            ensureNotNull(request, "request");
+            UUID invocationId = CurrentInvocation.invocationId();
+            return downstream -> {
+                DeferredSubscription subscription = new DeferredSubscription(downstream);
+                downstream.onSubscribe(subscription);
+                CompletableFuture<String> route = CurrentInvocation.callWithIdOrWithout(
+                        invocationId, () -> selector.selectAsync(request, ChatRequestOptions.EMPTY));
+                subscription.setRouting(route);
+                route.whenComplete((routeName, routingError) -> {
+                    if (subscription.isCancelled()) {
+                        return;
+                    }
+                    if (routingError != null) {
+                        downstream.onError(unwrapCompletionException(routingError));
+                        return;
+                    }
+                    try {
+                        CurrentInvocation.callWithIdOrWithout(
+                                        invocationId, () -> selector.model(routeName).chat(request))
+                                .subscribe(new RouteRecordingSubscriber(downstream, subscription, routeName));
+                    } catch (Throwable error) {
+                        restoreInterruptIfInterrupted(error);
+                        downstream.onError(error);
+                    }
+                });
+            };
+        });
     }
 
     private static final class RouteRecordingSubscriber implements Subscriber<ChatModelStreamingEvent> {

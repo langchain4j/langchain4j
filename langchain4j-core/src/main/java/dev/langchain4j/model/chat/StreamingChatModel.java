@@ -25,8 +25,7 @@ import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
 
 import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
-import static dev.langchain4j.internal.InternalFlowUtils.EMPTY_SUBSCRIPTION;
-import static dev.langchain4j.internal.InternalFlowUtils.failedPublisher;
+import static dev.langchain4j.internal.InternalFlowUtils.failPublisherOnThrow;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.notifyListenersIgnoringFailures;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -244,85 +243,66 @@ public interface StreamingChatModel {
      */
     @Experimental
     default Publisher<ChatModelStreamingEvent> chat(ChatRequest request) {
-
-        ChatRequest finalChatRequest;
-        List<ChatModelListener> listeners;
-        ModelProvider provider;
-        UUID invocationId;
-        try {
+        return failPublisherOnThrow(() -> {
             ensureNotNull(request, "request");
-            finalChatRequest = ChatRequest.builder()
+            ChatRequest finalChatRequest = ChatRequest.builder()
                     .messages(request.messages())
                     .parameters(defaultRequestParameters().overrideWith(request.parameters()))
                     .build();
 
-            listeners = ObservabilityListeners.chat(listeners());
+            List<ChatModelListener> listeners = ObservabilityListeners.chat(listeners());
 
-            provider = provider();
-            invocationId = CurrentInvocation.invocationId();
-        } catch (Throwable error) {
-            restoreInterruptIfInterrupted(error);
-            return failedPublisher(error);
-        }
+            ModelProvider provider = provider();
+            UUID invocationId = CurrentInvocation.invocationId();
 
-        return new Publisher<ChatModelStreamingEvent>() {
+            return new Publisher<ChatModelStreamingEvent>() {
 
-            @Override
-            public void subscribe(Subscriber<? super ChatModelStreamingEvent> downstream) {
+                @Override
+                public void subscribe(Subscriber<? super ChatModelStreamingEvent> downstream) {
 
-                Map<Object, Object> attributes = new ConcurrentHashMap<>();
+                    Map<Object, Object> attributes = new ConcurrentHashMap<>();
 
-                Publisher<ChatModelStreamingEvent> innerPublisher;
-                try {
-                    onRequest(finalChatRequest, provider, attributes, invocationId, listeners);
-                    innerPublisher = doChat(finalChatRequest);
-                    if (innerPublisher == null) {
-                        throw new IllegalStateException(
-                                StreamingChatModel.this.getClass().getName() + ".doChat(ChatRequest) returned null");
-                    }
-                } catch (Throwable error) {
-                    restoreInterruptIfInterrupted(error);
-                    notifyListenersIgnoringFailures(
-                            () -> ChatModelListenerUtils.onError(error, finalChatRequest, provider, attributes, invocationId, listeners));
-                    downstream.onSubscribe(EMPTY_SUBSCRIPTION);
-                    downstream.onError(error);
-                    return;
+                    Publisher<ChatModelStreamingEvent> innerPublisher =
+                            failPublisherOnThrow(StreamingChatModel.this, "doChat(ChatRequest)", () -> {
+                                onRequest(finalChatRequest, provider, attributes, invocationId, listeners);
+                                return doChat(finalChatRequest);
+                            });
+
+                    innerPublisher.subscribe(new Subscriber<>() {
+
+                        private ChatResponse completeResponse;
+
+                        @Override
+                        public void onSubscribe(Subscription subscription) {
+                            downstream.onSubscribe(subscription);
+                        }
+
+                        @Override
+                        public void onNext(ChatModelStreamingEvent event) {
+                            if (event instanceof CompleteResponse completeResponseEvent) {
+                                completeResponse = completeResponseEvent.chatResponse();
+                            }
+                            downstream.onNext(event);
+                        }
+
+                        @Override
+                        public void onError(Throwable throwable) {
+                            notifyListenersIgnoringFailures(() -> ChatModelListenerUtils.onError(
+                                    throwable, finalChatRequest, provider, attributes, invocationId, listeners));
+                            downstream.onError(throwable);
+                        }
+
+                        @Override
+                        public void onComplete() {
+                            if (completeResponse != null) {
+                                onResponse(completeResponse, finalChatRequest, provider, attributes, invocationId, listeners);
+                            }
+                            downstream.onComplete();
+                        }
+                    });
                 }
-
-                innerPublisher.subscribe(new Subscriber<>() {
-
-                    private ChatResponse completeResponse;
-
-                    @Override
-                    public void onSubscribe(Subscription subscription) {
-                        downstream.onSubscribe(subscription);
-                    }
-
-                    @Override
-                    public void onNext(ChatModelStreamingEvent event) {
-                        if (event instanceof CompleteResponse completeResponseEvent) {
-                            completeResponse = completeResponseEvent.chatResponse();
-                        }
-                        downstream.onNext(event);
-                    }
-
-                    @Override
-                    public void onError(Throwable throwable) {
-                        notifyListenersIgnoringFailures(
-                                () -> ChatModelListenerUtils.onError(throwable, finalChatRequest, provider, attributes, invocationId, listeners));
-                        downstream.onError(throwable);
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        if (completeResponse != null) {
-                            onResponse(completeResponse, finalChatRequest, provider, attributes, invocationId, listeners);
-                        }
-                        downstream.onComplete();
-                    }
-                });
-            }
-        };
+            };
+        });
     }
 
     /**
@@ -419,43 +399,39 @@ public interface StreamingChatModel {
      */
     @Experimental
     default Publisher<String> chat(String userMessage) {
+        return failPublisherOnThrow(() -> {
+            ChatRequest chatRequest =
+                    ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
 
-        ChatRequest chatRequest;
-        try {
-            chatRequest = ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
-        } catch (Throwable error) {
-            restoreInterruptIfInterrupted(error);
-            return failedPublisher(error);
-        }
+            return downstream -> chat(chatRequest).subscribe(new Subscriber<>() {
 
-        return downstream -> chat(chatRequest).subscribe(new Subscriber<>() {
+                private Subscription subscription;
 
-            private Subscription subscription;
-
-            @Override
-            public void onSubscribe(Subscription subscription) {
-                this.subscription = subscription;
-                downstream.onSubscribe(subscription);
-            }
-
-            @Override
-            public void onNext(ChatModelStreamingEvent event) {
-                if (event instanceof PartialResponse partialResponse) {
-                    downstream.onNext(partialResponse.text());
-                } else {
-                    subscription.request(1);
+                @Override
+                public void onSubscribe(Subscription subscription) {
+                    this.subscription = subscription;
+                    downstream.onSubscribe(subscription);
                 }
-            }
 
-            @Override
-            public void onError(Throwable throwable) {
-                downstream.onError(throwable);
-            }
+                @Override
+                public void onNext(ChatModelStreamingEvent event) {
+                    if (event instanceof PartialResponse partialResponse) {
+                        downstream.onNext(partialResponse.text());
+                    } else {
+                        subscription.request(1);
+                    }
+                }
 
-            @Override
-            public void onComplete() {
-                downstream.onComplete();
-            }
+                @Override
+                public void onError(Throwable throwable) {
+                    downstream.onError(throwable);
+                }
+
+                @Override
+                public void onComplete() {
+                    downstream.onComplete();
+                }
+            });
         });
     }
 
@@ -469,12 +445,8 @@ public interface StreamingChatModel {
      */
     @Experimental
     default Publisher<ChatModelStreamingEvent> chat(ChatMessage... messages) {
-        try {
-            return chat(ChatRequest.builder().messages(messages).build());
-        } catch (Throwable error) {
-            restoreInterruptIfInterrupted(error);
-            return failedPublisher(error);
-        }
+        return failPublisherOnThrow(
+                this, "chat(ChatRequest)", () -> chat(ChatRequest.builder().messages(messages).build()));
     }
 
     /**
@@ -487,12 +459,8 @@ public interface StreamingChatModel {
      */
     @Experimental
     default Publisher<ChatModelStreamingEvent> chat(List<ChatMessage> messages) {
-        try {
-            return chat(ChatRequest.builder().messages(messages).build());
-        } catch (Throwable error) {
-            restoreInterruptIfInterrupted(error);
-            return failedPublisher(error);
-        }
+        return failPublisherOnThrow(
+                this, "chat(ChatRequest)", () -> chat(ChatRequest.builder().messages(messages).build()));
     }
 
     default Set<Capability> supportedCapabilities() {
