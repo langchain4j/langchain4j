@@ -88,6 +88,32 @@ class StreamingToSynchronousChatExecutorTest {
         assertThat(handledErrors).containsExactly(lateFailure);
     }
 
+    @Test
+    void execute_should_fail_when_the_model_reports_an_error_before_the_response() {
+        IllegalStateException failure = new IllegalStateException("stream failed");
+        ChatResponse response = ChatResponse.builder().aiMessage(AiMessage.from("Hi")).build();
+        List<Throwable> handledErrors = new CopyOnWriteArrayList<>();
+        MockStreamingChatModel model = spy(MockStreamingChatModel.thatResponds("Hi"));
+        doAnswer(invocation -> {
+                    // the first outcome counts: a complete response after an error does not change it
+                    StreamingChatResponseHandler handler = invocation.getArgument(1);
+                    handler.onError(failure);
+                    handler.onCompleteResponse(response);
+                    return null;
+                })
+                .when(model)
+                .doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        ChatExecutor executor = ChatExecutor.builder(model)
+                .errorHandler(handledErrors::add)
+                .chatRequest(CHAT_REQUEST)
+                .invocationContext(InvocationContext.builder().build())
+                .build();
+
+        assertTimeoutPreemptively(
+                Duration.ofSeconds(5), () -> assertThatThrownBy(executor::execute).isSameAs(failure));
+        assertThat(handledErrors).containsExactly(failure);
+    }
+
     private static MockStreamingChatModel completingThenFailing(ChatResponse response, RuntimeException lateFailure) {
         // like a provider whose cleanup after the end of the stream fails, for example closing the connection
         MockStreamingChatModel model = spy(MockStreamingChatModel.thatResponds("Hi"));

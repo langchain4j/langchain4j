@@ -16,6 +16,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -65,8 +66,8 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
         private static final Logger LOG = LoggerFactory.getLogger(StreamingToSyncResponseHandler.class);
         private final Consumer<Throwable> errorHandler;
         private final CountDownLatch latch = new CountDownLatch(1);
-        private final AtomicReference<ChatResponse> response = new AtomicReference<>();
-        private final AtomicReference<Throwable> error = new AtomicReference<>();
+        // the first complete response or error is the outcome of the request, as for the asynchronous execution
+        private final AtomicReference<Outcome> outcome = new AtomicReference<>();
 
         StreamingToSyncResponseHandler(Consumer<Throwable> errorHandler) {
             this.errorHandler = errorHandler;
@@ -74,7 +75,7 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
 
         @Override
         public void onCompleteResponse(ChatResponse completeResponse) {
-            response.set(completeResponse);
+            outcome.compareAndSet(null, new Outcome(completeResponse, null));
             this.latch.countDown();
         }
 
@@ -89,22 +90,19 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
 
         ChatResponse getResponse() {
             waitForCompletion();
-            ChatResponse completeResponse = this.response.get();
-            if (completeResponse != null) {
-                return completeResponse; // an error reported after the complete response does not fail the request
+            Outcome result = this.outcome.get();
+            Throwable failure = result.error();
+            if (failure == null) {
+                return result.response();
             }
-            Throwable failure = this.error.get();
-            if (failure != null) {
-                // like the asynchronous execution, whose future fails after the error handler was called
-                if (failure instanceof RuntimeException runtimeException) {
-                    throw runtimeException;
-                }
-                if (failure instanceof Error e) {
-                    throw e;
-                }
-                throw new RuntimeException(failure);
+            // like the asynchronous execution, whose future fails after the error handler was called
+            if (failure instanceof RuntimeException runtimeException) {
+                throw runtimeException;
             }
-            return this.response.get();
+            if (failure instanceof Error e) {
+                throw e;
+            }
+            throw new RuntimeException(failure);
         }
 
         @Override
@@ -119,12 +117,14 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
                     }
                 }
             } finally {
-                boolean first = response.get() == null && this.error.compareAndSet(null, error);
+                boolean first = outcome.compareAndSet(null, new Outcome(null, error));
                 if (!first && errorHandler == null) {
                     logIgnoredError(error); // nobody else sees this error: the request already has its outcome
                 }
                 this.latch.countDown();
             }
         }
+
+        private record Outcome(@Nullable ChatResponse response, @Nullable Throwable error) {}
     }
 }
