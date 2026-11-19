@@ -15,9 +15,11 @@ import dev.langchain4j.model.chat.request.CustomChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.test.mock.MockStreamingChatModel;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
@@ -760,6 +762,49 @@ class StreamingChatModelTest implements WithAssertions {
         assertThatCode(() -> model.chat("Hello", handler)).doesNotThrowAnyException();
 
         assertThat(handler.errors).containsExactly(failure);
+    }
+
+    @Test
+    void handler_chat_should_deliver_the_complete_response_even_when_a_listener_throws_an_error_from_on_response() {
+
+        ChatModelListener failingListener = mock(ChatModelListener.class);
+        doThrow(new AssertionError("listener failed")).when(failingListener).onResponse(any());
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds("Hi").withListeners(failingListener);
+        CompletableFuture<ChatResponse> response = new CompletableFuture<>();
+
+        model.chat("Hello", new StreamingChatResponseHandler() {
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                response.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                response.completeExceptionally(error);
+            }
+        });
+
+        assertThat(response)
+                .succeedsWithin(Duration.ofSeconds(5))
+                .extracting(chatResponse -> chatResponse.aiMessage().text())
+                .isEqualTo("Hi");
+    }
+
+    @Test
+    void publisher_should_complete_even_when_a_listener_throws_an_error_from_on_response() {
+
+        ChatModelListener failingListener = mock(ChatModelListener.class);
+        doThrow(new AssertionError("listener failed")).when(failingListener).onResponse(any());
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds("Hi").withListeners(failingListener);
+
+        CompletableFuture<ChatResponse> response = StreamingChatModelHelper.chatAsync(
+                model, ChatRequest.builder().messages(UserMessage.from("Hello")).build());
+
+        assertThat(response)
+                .succeedsWithin(Duration.ofSeconds(5))
+                .extracting(chatResponse -> chatResponse.aiMessage().text())
+                .isEqualTo("Hi");
     }
 
     @Test

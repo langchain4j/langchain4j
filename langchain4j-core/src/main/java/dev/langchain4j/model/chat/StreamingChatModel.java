@@ -151,7 +151,8 @@ public interface StreamingChatModel {
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                onResponse(completeResponse, finalChatRequest, modelProvider, attributes, invocationId, listeners);
+                notifyListenersIgnoringFailures(() -> onResponse(
+                        completeResponse, finalChatRequest, modelProvider, attributes, invocationId, listeners));
                 guard.onCompleteResponse(completeResponse);
             }
 
@@ -295,7 +296,8 @@ public interface StreamingChatModel {
                         @Override
                         public void onComplete() {
                             if (completeResponse != null) {
-                                onResponse(completeResponse, finalChatRequest, provider, attributes, invocationId, listeners);
+                                notifyListenersIgnoringFailures(() -> onResponse(
+                                        completeResponse, finalChatRequest, provider, attributes, invocationId, listeners));
                             }
                             downstream.onComplete();
                         }
