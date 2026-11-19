@@ -424,7 +424,7 @@ a failure through the returned future instead of throwing:
 public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
     try {
         return CompletableFuture.completedFuture(validate(request));
-    } catch (Exception e) {
+    } catch (Throwable e) {
         return CompletableFuture.failedFuture(e);
     }
 }

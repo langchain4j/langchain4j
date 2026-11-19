@@ -64,7 +64,7 @@ public interface ToolExecutor {
      * <pre>{@code
      * try {
      *     return CompletableFuture.completedFuture(executeWithContext(request, context));
-     * } catch (Exception e) {
+     * } catch (Throwable e) {
      *     return CompletableFuture.failedFuture(e);
      * }
      * }</pre>

@@ -42,7 +42,7 @@ public interface ChatModelRouter {
      * <pre>{@code
      * try {
      *     return CompletableFuture.completedFuture(route(request));
-     * } catch (Exception e) {
+     * } catch (Throwable e) {
      *     return CompletableFuture.failedFuture(e);
      * }
      * }</pre>

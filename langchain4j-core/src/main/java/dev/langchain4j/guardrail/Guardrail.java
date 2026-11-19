@@ -56,7 +56,7 @@ public interface Guardrail<P extends GuardrailRequest, R extends GuardrailResult
      * <pre>{@code
      * try {
      *     return CompletableFuture.completedFuture(validate(request));
-     * } catch (Exception e) {
+     * } catch (Throwable e) {
      *     return CompletableFuture.failedFuture(e);
      * }
      * }</pre>

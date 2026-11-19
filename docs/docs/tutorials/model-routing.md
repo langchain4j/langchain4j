@@ -123,7 +123,7 @@ ChatModelRouter router = new ChatModelRouter() {
     public CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
         try {
             return CompletableFuture.completedFuture(route(request)); // route(...) does not block
-        } catch (Exception e) {
+        } catch (Throwable e) {
             return CompletableFuture.failedFuture(e);
         }
     }
