@@ -1519,13 +1519,12 @@ public class ToolService {
             boolean alreadyCollected,
             @Nullable String preCollectedFailedToolName,
             @Nullable Throwable invocationError) {
-
-        if (!compensateOnToolErrors) {
-            return CompletableFuture.completedFuture(null);
-        }
-        List<CompensableToolExecution> toCompensate;
-        String failedToolName;
-        try {
+        return failOnThrow(() -> {
+            if (!compensateOnToolErrors) {
+                return CompletableFuture.completedFuture(null);
+            }
+            List<CompensableToolExecution> toCompensate;
+            String failedToolName;
             synchronized (compensableExecutions) {
                 failedToolName = alreadyCollected
                         ? preCollectedFailedToolName
@@ -1541,26 +1540,24 @@ public class ToolService {
                 toCompensate = List.copyOf(compensableExecutions);
                 compensableExecutions.clear();
             }
-        } catch (RuntimeException e) {
-            return CompletableFuture.failedFuture(e);
-        }
-        String rolledBackByToolName = failedToolName;
-        CompensationReason reason = CompensationReason.TOOL_EXECUTION_FAILED;
-        return compensateToolsActions(toCompensate, invocationContext).thenCompose(rolledBack -> {
-            if (invocationError != null) {
-                addCompensationErrorsAsSuppressed(rolledBack, invocationError);
-            }
-            List<RolledBackTool> ofEarlierRounds = rewriteCurrentResults(
-                    toolExecutionRequests, resultMessages, rolledBack, reason, rolledBackByToolName);
-            return rewriteChatMemoryForCompensatedToolsAsync(
-                            messages, chatMemory, ofEarlierRounds, reason, rolledBackByToolName)
-                    .whenComplete((ignored, rewriteFailure) -> fireCompensatedEventsAfterRewrite(
-                            rewriteFailure,
-                            rolledBack,
-                            reason,
-                            invocationContext,
-                            listenerRegistrar,
-                            streamEventEmitter));
+            String rolledBackByToolName = failedToolName;
+            CompensationReason reason = CompensationReason.TOOL_EXECUTION_FAILED;
+            return compensateToolsActions(toCompensate, invocationContext).thenCompose(rolledBack -> {
+                if (invocationError != null) {
+                    addCompensationErrorsAsSuppressed(rolledBack, invocationError);
+                }
+                List<RolledBackTool> ofEarlierRounds = rewriteCurrentResults(
+                        toolExecutionRequests, resultMessages, rolledBack, reason, rolledBackByToolName);
+                return rewriteChatMemoryForCompensatedToolsAsync(
+                                messages, chatMemory, ofEarlierRounds, reason, rolledBackByToolName)
+                        .whenComplete((ignored, rewriteFailure) -> fireCompensatedEventsAfterRewrite(
+                                rewriteFailure,
+                                rolledBack,
+                                reason,
+                                invocationContext,
+                                listenerRegistrar,
+                                streamEventEmitter));
+            });
         });
     }
 
@@ -1676,23 +1673,19 @@ public class ToolService {
             @Nullable List<ChatMessage> messages,
             InvocationContext invocationContext,
             AiServiceListenerRegistrar listenerRegistrar) {
-
-        List<CompensableToolExecution> toCompensate;
-        try {
-            toCompensate = takeCompensableOnCancellation(
+        return failOnThrow(() -> {
+            List<CompensableToolExecution> toCompensate = takeCompensableOnCancellation(
                     currentRoundRequests, currentRoundResults, compensableExecutions, invocationContext);
-        } catch (RuntimeException e) {
-            return CompletableFuture.failedFuture(e);
-        }
-        if (toCompensate.isEmpty()) {
-            return CompletableFuture.completedFuture(null);
-        }
-        CompensationReason reason = CompensationReason.INVOCATION_CANCELLED;
-        return compensateToolsActions(toCompensate, invocationContext)
-                .thenCompose(rolledBack -> rewriteChatMemoryForCompensatedToolsAsync(
-                                messages, chatMemory, withoutToolsOf(rolledBack, unsavedRequests), reason, null)
-                        .whenComplete((ignored, rewriteFailure) -> fireCompensatedEventsAfterRewrite(
-                                rewriteFailure, rolledBack, reason, invocationContext, listenerRegistrar, null)));
+            if (toCompensate.isEmpty()) {
+                return CompletableFuture.completedFuture(null);
+            }
+            CompensationReason reason = CompensationReason.INVOCATION_CANCELLED;
+            return compensateToolsActions(toCompensate, invocationContext)
+                    .thenCompose(rolledBack -> rewriteChatMemoryForCompensatedToolsAsync(
+                                    messages, chatMemory, withoutToolsOf(rolledBack, unsavedRequests), reason, null)
+                            .whenComplete((ignored, rewriteFailure) -> fireCompensatedEventsAfterRewrite(
+                                    rewriteFailure, rolledBack, reason, invocationContext, listenerRegistrar, null)));
+        });
     }
 
     /**
@@ -1910,10 +1903,10 @@ public class ToolService {
             List<RolledBackTool> rolledBack,
             CompensationReason reason,
             @Nullable String failedToolName) {
-        if (rolledBack.isEmpty() || (chatMemory == null && messages == null)) {
-            return CompletableFuture.completedFuture(null);
-        }
-        try {
+        return failOnThrow(() -> {
+            if (rolledBack.isEmpty() || (chatMemory == null && messages == null)) {
+                return CompletableFuture.completedFuture(null);
+            }
             if (chatMemory == null) {
                 replaceCompensatedMessages(messages, rolledBack, reason, failedToolName);
                 return CompletableFuture.completedFuture(null);
@@ -1923,9 +1916,7 @@ public class ToolService {
                 replaceCompensatedMessages(rewritten, rolledBack, reason, failedToolName);
                 return chatMemory.setAsync(rewritten);
             });
-        } catch (RuntimeException e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        });
     }
 
     /**
@@ -2036,12 +2027,8 @@ public class ToolService {
             BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>> compensatingAction =
                     compensatingExecutors.get(toolName);
             chain = chain.thenCompose(ignored -> {
-                CompletableFuture<Void> action;
-                try {
-                    action = compensatingAction.apply(toolExecution, invocationContext);
-                } catch (Exception e) {
-                    action = CompletableFuture.failedFuture(e);
-                }
+                CompletableFuture<Void> action =
+                        failOnThrow(() -> compensatingAction.apply(toolExecution, invocationContext));
                 return action.exceptionally(error -> {
                     Throwable cause = unwrapCompletionException(error);
                     log.warn("Compensating action failed for tool '{}': {}", toolName, cause.getMessage(), cause);

@@ -4,6 +4,7 @@ import static dev.langchain4j.service.tool.ToolService.executeWithErrorHandling;
 import static dev.langchain4j.service.tool.ToolService.refreshDynamicProviders;
 import static dev.langchain4j.service.tool.ToolService.shouldReturnImmediately;
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -16,6 +17,7 @@ import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.listener.ToolExecutedEventListener;
+import dev.langchain4j.service.tool.ToolService.CompensableToolExecution;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -58,6 +60,50 @@ class ToolServiceTest {
                 .withThrowableThat()
                 .havingCause()
                 .isInstanceOf(RejectedExecutionException.class);
+    }
+
+    @Test
+    void compensateIfNeededAsync_should_return_a_failed_future_when_collecting_the_tools_throws_an_error() {
+        ToolService toolService = new ToolService();
+        toolService.compensateOnToolErrors(true);
+        AssertionError error = new AssertionError("broken list of compensable tools");
+
+        CompletableFuture<Void> future = toolService.compensateIfNeededAsync(
+                List.of(),
+                Map.of(),
+                List.of(),
+                failingOnEveryCall(error),
+                true,
+                null,
+                null,
+                DUMMY_CONTEXT,
+                AiServiceListenerRegistrar.newInstance(),
+                null,
+                true,
+                "credit",
+                null);
+
+        assertThat(future).failsWithin(Duration.ofSeconds(1)).withThrowableThat().havingCause().isSameAs(error);
+    }
+
+    @Test
+    void compensateOnCancellationAsync_should_return_a_failed_future_when_collecting_the_tools_throws_an_error() {
+        ToolService toolService = new ToolService();
+        toolService.compensateOnToolErrors(true);
+        AssertionError error = new AssertionError("broken list of compensable tools");
+
+        CompletableFuture<Void> future = toolService.compensateOnCancellationAsync(
+                null, null, null, failingOnEveryCall(error), null, null, DUMMY_CONTEXT,
+                AiServiceListenerRegistrar.newInstance());
+
+        assertThat(future).failsWithin(Duration.ofSeconds(1)).withThrowableThat().havingCause().isSameAs(error);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<CompensableToolExecution> failingOnEveryCall(Error error) {
+        return mock(List.class, invocation -> {
+            throw error;
+        });
     }
 
     @Test
