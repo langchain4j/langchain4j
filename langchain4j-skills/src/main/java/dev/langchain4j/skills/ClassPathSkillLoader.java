@@ -187,6 +187,15 @@ public class ClassPathSkillLoader {
         }
         String pathInJar = schemeSpecific.substring(separator + 1);
 
+        // a Path-based filesystem is private (not registered JVM-wide), so concurrent loads never close each other's
+        String rawSchemeSpecific = jarUri.getRawSchemeSpecificPart();
+        URI jarFileUri = URI.create(rawSchemeSpecific.substring(0, rawSchemeSpecific.indexOf("!/")));
+        if ("file".equals(jarFileUri.getScheme())) {
+            FileSystem fs = FileSystems.newFileSystem(Path.of(jarFileUri));
+            return new ResolvedDirectory(fs.getPath(pathInJar), fs, true);
+        }
+
+        // JARs that are not plain files (e.g. nested JARs of a Spring Boot fat JAR) keep the previous behavior
         FileSystem fs;
         boolean created;
         try {
