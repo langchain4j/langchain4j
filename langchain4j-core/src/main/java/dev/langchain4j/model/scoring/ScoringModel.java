@@ -20,7 +20,6 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -167,41 +166,34 @@ public interface ScoringModel {
      */
     @Experimental
     default CompletableFuture<ScoringResponse> scoreAsync(ScoringRequest request) {
-        ScoringRequest finalRequest;
-        List<ScoringModelListener> listeners;
-        ModelProvider provider;
-        Map<Object, Object> attributes;
-        UUID invocationId = CurrentInvocation.invocationId();
-        try {
+        return failOnThrow(() -> {
+            UUID invocationId = CurrentInvocation.invocationId();
             ensureNotNull(request, "request");
-            finalRequest = withDefaultParameters(request);
-            listeners = ObservabilityListeners.scoring(listeners());
-            provider = provider();
-            attributes = new ConcurrentHashMap<>();
+            ScoringRequest finalRequest = withDefaultParameters(request);
+            List<ScoringModelListener> listeners = ObservabilityListeners.scoring(listeners());
+            ModelProvider provider = provider();
+            Map<Object, Object> attributes = new ConcurrentHashMap<>();
             onRequest(finalRequest, provider, attributes, invocationId, listeners);
-        } catch (Throwable error) {
-            restoreInterruptIfInterrupted(error);
-            return CompletableFuture.failedFuture(error);
-        }
 
-        CompletableFuture<ScoringResponse> source =
-                failOnThrow(this, "doScoreAsync(ScoringRequest)", () -> doScoreAsync(finalRequest));
-        if (isNullOrEmpty(listeners)) {
-            return source;
-        }
-
-        CompletableFuture<ScoringResponse> result = source.whenComplete((response, error) -> {
-            if (error != null) {
-                Throwable cause = unwrapCompletionException(error);
-                if (!(cause instanceof CancellationException)) {
-                    onError(cause, finalRequest, provider, attributes, invocationId, listeners);
-                }
-            } else {
-                onResponse(response, finalRequest, provider, attributes, invocationId, listeners);
+            CompletableFuture<ScoringResponse> source =
+                    failOnThrow(this, "doScoreAsync(ScoringRequest)", () -> doScoreAsync(finalRequest));
+            if (isNullOrEmpty(listeners)) {
+                return source;
             }
+
+            CompletableFuture<ScoringResponse> result = source.whenComplete((response, error) -> {
+                if (error != null) {
+                    Throwable cause = unwrapCompletionException(error);
+                    if (!(cause instanceof CancellationException)) {
+                        onError(cause, finalRequest, provider, attributes, invocationId, listeners);
+                    }
+                } else {
+                    onResponse(response, finalRequest, provider, attributes, invocationId, listeners);
+                }
+            });
+            propagateCancellation(result, source);
+            return result;
         });
-        propagateCancellation(result, source);
-        return result;
     }
 
     /**

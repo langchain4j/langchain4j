@@ -3,7 +3,6 @@ package dev.langchain4j.model.embedding;
 import dev.langchain4j.internal.ObservabilityListeners;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
-import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -37,6 +36,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -135,31 +135,20 @@ public interface EmbeddingModel {
      */
     @Experimental
     default CompletableFuture<EmbeddingResponse> embedAsync(EmbeddingRequest request) {
-
-        EmbeddingRequest finalRequest;
-        List<EmbeddingModelListener> listeners;
-        try {
+        return failOnThrow(() -> {
             ensureNotNull(request, "request");
-            finalRequest = validatedRequest(request);
-            listeners = ObservabilityListeners.embedding(listeners());
-        } catch (Throwable error) {
-            restoreInterruptIfInterrupted(error);
-            return CompletableFuture.failedFuture(error);
-        }
+            EmbeddingRequest finalRequest = validatedRequest(request);
+            List<EmbeddingModelListener> listeners = ObservabilityListeners.embedding(listeners());
 
-        if (isNullOrEmpty(listeners)) {
-            return failOnThrow(this, "doEmbedAsync(EmbeddingRequest)", () -> doEmbedAsync(finalRequest));
-        }
+            if (isNullOrEmpty(listeners)) {
+                return failOnThrow(this, "doEmbedAsync(EmbeddingRequest)", () -> doEmbedAsync(finalRequest));
+            }
 
-        List<TextSegment> textSegments;
-        Map<Object, Object> attributes;
-        UUID invocationId;
-        try {
-            textSegments = finalRequest.inputs().stream()
+            List<TextSegment> textSegments = finalRequest.inputs().stream()
                     .map(input -> TextSegment.from(input.text()))
                     .toList();
-            attributes = new java.util.concurrent.ConcurrentHashMap<>();
-            invocationId = CurrentInvocation.invocationId();
+            Map<Object, Object> attributes = new ConcurrentHashMap<>();
+            UUID invocationId = CurrentInvocation.invocationId();
             EmbeddingModelListenerUtils.onRequest(
                     EmbeddingModelRequestContext.builder()
                             .textSegments(textSegments)
@@ -169,49 +158,46 @@ public interface EmbeddingModel {
                             .invocationId(invocationId)
                             .build(),
                     listeners);
-        } catch (Throwable error) {
-            restoreInterruptIfInterrupted(error);
-            return CompletableFuture.failedFuture(error);
-        }
 
-        CompletableFuture<EmbeddingResponse> inFlight =
-                failOnThrow(this, "doEmbedAsync(EmbeddingRequest)", () -> doEmbedAsync(finalRequest));
-        CompletableFuture<EmbeddingResponse> result = inFlight.whenComplete((response, error) -> {
-            if (error != null) {
-                Throwable cause = unwrapCompletionException(error);
-                // Cancellation is a caller action, not a model failure: do not report it to listeners as an error
-                // (mirrors ChatModel.chatAsync).
-                if (!(cause instanceof CancellationException)) {
-                    EmbeddingModelListenerUtils.onError(
-                            EmbeddingModelErrorContext.builder()
-                                    .error(cause)
-                                    .textSegments(textSegments)
+            CompletableFuture<EmbeddingResponse> inFlight =
+                    failOnThrow(this, "doEmbedAsync(EmbeddingRequest)", () -> doEmbedAsync(finalRequest));
+            CompletableFuture<EmbeddingResponse> result = inFlight.whenComplete((response, error) -> {
+                if (error != null) {
+                    Throwable cause = unwrapCompletionException(error);
+                    // Cancellation is a caller action, not a model failure: do not report it to listeners as an error
+                    // (mirrors ChatModel.chatAsync).
+                    if (!(cause instanceof CancellationException)) {
+                        EmbeddingModelListenerUtils.onError(
+                                EmbeddingModelErrorContext.builder()
+                                        .error(cause)
+                                        .textSegments(textSegments)
+                                        .embeddingRequest(finalRequest)
+                                        .embeddingModel(this)
+                                        .attributes(attributes)
+                                        .invocationId(invocationId)
+                                        .build(),
+                                listeners);
+                    }
+                } else {
+                    Response<List<Embedding>> legacyResponse =
+                            Response.from(response.embeddings(), response.metadata().tokenUsage());
+                    EmbeddingModelListenerUtils.onResponse(
+                            EmbeddingModelResponseContext.builder()
                                     .embeddingRequest(finalRequest)
+                                    .embeddingResponse(response)
                                     .embeddingModel(this)
                                     .attributes(attributes)
                                     .invocationId(invocationId)
+                                    .response(legacyResponse)
+                                    .textSegments(textSegments)
                                     .build(),
                             listeners);
                 }
-            } else {
-                Response<List<Embedding>> legacyResponse =
-                        Response.from(response.embeddings(), response.metadata().tokenUsage());
-                EmbeddingModelListenerUtils.onResponse(
-                        EmbeddingModelResponseContext.builder()
-                                .embeddingRequest(finalRequest)
-                                .embeddingResponse(response)
-                                .embeddingModel(this)
-                                .attributes(attributes)
-                                .invocationId(invocationId)
-                                .response(legacyResponse)
-                                .textSegments(textSegments)
-                                .build(),
-                        listeners);
-            }
+            });
+            // cancelling the caller-facing future cancels the in-flight call (whenComplete does not propagate cancellation)
+            propagateCancellation(result, inFlight);
+            return result;
         });
-        // cancelling the caller-facing future cancels the in-flight call (whenComplete does not propagate cancellation)
-        propagateCancellation(result, inFlight);
-        return result;
     }
 
     private EmbeddingRequest validatedRequest(EmbeddingRequest request) {

@@ -5,7 +5,6 @@ import dev.langchain4j.internal.ObservabilityListeners;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
-import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -131,48 +130,39 @@ public interface ChatModel {
      */
     @Experimental
     default CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest, ChatRequestOptions options) {
-
-        ChatRequest finalChatRequest;
-        List<ChatModelListener> listeners;
-        ModelProvider provider;
-        Map<Object, Object> attributes;
-        UUID invocationId;
-        try {
+        return failOnThrow(() -> {
             ensureNotNull(chatRequest, "chatRequest");
             ChatRequestOptions effectiveOptions = getOrDefault(options, ChatRequestOptions.EMPTY);
 
-            finalChatRequest = ChatRequest.builder()
+            ChatRequest finalChatRequest = ChatRequest.builder()
                     .messages(chatRequest.messages())
                     .parameters(defaultRequestParameters().overrideWith(chatRequest.parameters()))
                     .build();
 
-            listeners = ObservabilityListeners.chat(listeners());
-            provider = provider();
-            attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
-            invocationId = CurrentInvocation.invocationId(effectiveOptions);
+            List<ChatModelListener> listeners = ObservabilityListeners.chat(listeners());
+            ModelProvider provider = provider();
+            Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
+            UUID invocationId = CurrentInvocation.invocationId(effectiveOptions);
 
             onRequest(finalChatRequest, provider, attributes, invocationId, listeners);
-        } catch (Throwable error) {
-            restoreInterruptIfInterrupted(error);
-            return CompletableFuture.failedFuture(error);
-        }
 
-        CompletableFuture<ChatResponse> source =
-                failOnThrow(this, "doChatAsync(ChatRequest)", () -> doChatAsync(finalChatRequest));
+            CompletableFuture<ChatResponse> source =
+                    failOnThrow(this, "doChatAsync(ChatRequest)", () -> doChatAsync(finalChatRequest));
 
-        CompletableFuture<ChatResponse> result = source.whenComplete((chatResponse, error) -> {
-            if (error != null) {
-                Throwable cause = unwrapCompletionException(error);
-                if (!(cause instanceof CancellationException)) {
-                    onError(cause, finalChatRequest, provider, attributes, invocationId, listeners);
+            CompletableFuture<ChatResponse> result = source.whenComplete((chatResponse, error) -> {
+                if (error != null) {
+                    Throwable cause = unwrapCompletionException(error);
+                    if (!(cause instanceof CancellationException)) {
+                        onError(cause, finalChatRequest, provider, attributes, invocationId, listeners);
+                    }
+                } else {
+                    onResponse(chatResponse, finalChatRequest, provider, attributes, invocationId, listeners);
                 }
-            } else {
-                onResponse(chatResponse, finalChatRequest, provider, attributes, invocationId, listeners);
-            }
-        });
+            });
 
-        propagateCancellation(result, source);
-        return result;
+            propagateCancellation(result, source);
+            return result;
+        });
     }
 
     /**

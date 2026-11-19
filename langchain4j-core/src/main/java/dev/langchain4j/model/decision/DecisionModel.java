@@ -1,7 +1,6 @@
 package dev.langchain4j.model.decision;
 
 import dev.langchain4j.internal.ObservabilityListeners;
-import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -98,42 +97,34 @@ public interface DecisionModel {
      * @return a {@link CompletableFuture} of the answers, keyed by question name.
      */
     default CompletableFuture<DecisionResponse> decideAsync(DecisionRequest request) {
-        DecisionRequest finalRequest;
-        List<DecisionModelListener> listeners;
-        ModelProvider provider;
-        Map<Object, Object> attributes;
-        UUID invocationId;
-        try {
+        return failOnThrow(() -> {
             ensureNotNull(request, "request");
-            finalRequest = withDefaultParameters(request);
-            listeners = ObservabilityListeners.decision(listeners());
-            provider = provider();
-            attributes = new ConcurrentHashMap<>();
-            invocationId = CurrentInvocation.invocationId();
+            DecisionRequest finalRequest = withDefaultParameters(request);
+            List<DecisionModelListener> listeners = ObservabilityListeners.decision(listeners());
+            ModelProvider provider = provider();
+            Map<Object, Object> attributes = new ConcurrentHashMap<>();
+            UUID invocationId = CurrentInvocation.invocationId();
             onRequest(finalRequest, provider, attributes, invocationId, listeners);
-        } catch (Throwable error) {
-            restoreInterruptIfInterrupted(error);
-            return CompletableFuture.failedFuture(error);
-        }
 
-        CompletableFuture<DecisionResponse> source =
-                failOnThrow(this, "doDecideAsync(DecisionRequest)", () -> doDecideAsync(finalRequest));
+            CompletableFuture<DecisionResponse> source =
+                    failOnThrow(this, "doDecideAsync(DecisionRequest)", () -> doDecideAsync(finalRequest));
 
-        CompletableFuture<DecisionResponse> validated =
-                source.thenApply(response -> DecisionResponseValidator.validate(finalRequest, response));
-        CompletableFuture<DecisionResponse> result = validated.whenComplete((response, error) -> {
-            if (error != null) {
-                Throwable cause = unwrapCompletionException(error);
-                if (!(cause instanceof CancellationException)) {
-                    onError(cause, finalRequest, provider, attributes, invocationId, listeners);
+            CompletableFuture<DecisionResponse> validated =
+                    source.thenApply(response -> DecisionResponseValidator.validate(finalRequest, response));
+            CompletableFuture<DecisionResponse> result = validated.whenComplete((response, error) -> {
+                if (error != null) {
+                    Throwable cause = unwrapCompletionException(error);
+                    if (!(cause instanceof CancellationException)) {
+                        onError(cause, finalRequest, provider, attributes, invocationId, listeners);
+                    }
+                } else {
+                    onResponse(response, finalRequest, provider, attributes, invocationId, listeners);
                 }
-            } else {
-                onResponse(response, finalRequest, provider, attributes, invocationId, listeners);
-            }
-        });
+            });
 
-        propagateCancellation(result, source);
-        return result;
+            propagateCancellation(result, source);
+            return result;
+        });
     }
 
     /**
