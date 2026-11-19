@@ -55,8 +55,8 @@ public interface ChatExecutor {
      * non-blocking AI Service paths. Consistent with {@code ChatModel#doChatAsync} and the other async defaults, a
      * blocking executor is not silently run on the calling thread.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
-     * completes the returned future exceptionally.
+     * An implementation must not throw and must not return {@code null}: every failure completes the returned future
+     * exceptionally.
      *
      * @return a {@link CompletableFuture} that completes with the response
      * @since 1.20.0
@@ -74,7 +74,7 @@ public interface ChatExecutor {
      * non-blocking AI Service paths. Consistent with {@code ChatModel#doChatAsync} and the other async defaults, a
      * blocking executor is not silently run on the calling thread.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
      * completes the returned future exceptionally.
      *
      * @param chatMessages The chat messages containing the context of the conversation.
@@ -107,11 +107,11 @@ public interface ChatExecutor {
     /**
      * Non-blocking counterpart of {@link #exchange(List)}.
      * <p>
-     * The default implementation calls {@link #executeAsync(List)} and returns {@code null} as the request, because
-     * the request that the executor sent is not known.
+     * The default implementation calls {@link #executeAsync(List)}. The {@link ChatExchange#request()} of its result is
+     * {@code null}, because the request that the executor sent is not known.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
-     * completes the returned future exceptionally.
+     * An implementation must not throw and must not return a {@code null} future: every failure, including an invalid
+     * argument, completes the returned future exceptionally.
      *
      * @param chatMessages The chat messages containing the context of the conversation.
      * @return a {@link CompletableFuture} that completes with the request and the response

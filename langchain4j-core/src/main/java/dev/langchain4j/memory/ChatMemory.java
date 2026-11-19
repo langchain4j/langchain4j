@@ -125,7 +125,7 @@ public interface ChatMemory {
      * separated by future composition and thread hops rather than a single uninterrupted call, so sharing one memory
      * across concurrent invocations is more likely to silently drop an update than it was with the synchronous API.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
      * completes the returned future exceptionally.
      *
      * @param messages The {@link ChatMessage}s to add.
@@ -147,7 +147,7 @@ public interface ChatMemory {
      * invoke it concurrently for the same memory. The default implementation returns a failed future carrying
      * {@link AsyncNotSupportedException}; see {@link #addAsync(List)} for the rationale.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
      * completes the returned future exceptionally.
      *
      * @param messages The {@link ChatMessage}s to set.
@@ -167,8 +167,8 @@ public interface ChatMemory {
      * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; see {@link #addAsync(List)}
      * for the rationale.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
-     * completes the returned future exceptionally.
+     * An implementation must not throw and must not return {@code null}: every failure completes the returned future
+     * exceptionally.
      *
      * @return A future that completes with the current state of the chat memory.
      * @since 1.20.0

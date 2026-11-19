@@ -318,8 +318,8 @@ public interface StreamingChatModel {
      * native reactive-streaming implementation; a provider that does not support reactive streaming leaves it
      * unimplemented (consistent with {@code ChatModel#doChatAsync} and the other async defaults).
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid request, is
-     * signaled to the subscriber's {@code onError} after {@code onSubscribe}.
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid request,
+     * is signaled to the subscriber's {@code onError} after {@code onSubscribe}.
      *
      * @since 1.20.0
      */

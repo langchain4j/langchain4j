@@ -316,7 +316,7 @@ public interface EmbeddingModel {
      * its blocking {@link #embed(EmbeddingRequest)} for it; otherwise the returned future fails rather than a
      * thread being silently blocked.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid request or
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid request or
      * an error while preparing it, completes the returned future exceptionally.
      *
      * @param request the request, with parameters already merged and validated.

@@ -60,7 +60,7 @@ public interface ChatMemoryStore {
      * non-blocking. Implement this method to return the messages without blocking the calling thread (e.g. using a
      * reactive client), or, if the underlying client is blocking, offload it to an executor explicitly.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
      * completes the returned future exceptionally.
      *
      * @param memoryId The ID of the chat memory.
@@ -80,7 +80,7 @@ public interface ChatMemoryStore {
      * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; see {@link #getMessagesAsync(Object)}
      * for the rationale.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
      * completes the returned future exceptionally.
      *
      * @param memoryId The ID of the chat memory.
@@ -102,7 +102,7 @@ public interface ChatMemoryStore {
      * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; see {@link #getMessagesAsync(Object)}
      * for the rationale.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
      * completes the returned future exceptionally.
      *
      * @param memoryId The ID of the chat memory.

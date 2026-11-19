@@ -140,7 +140,7 @@ public interface DecisionModel {
      * The provider hook behind {@link #decideAsync(DecisionRequest)}. The default returns a failed future: a model
      * that is not genuinely asynchronous does not pretend to be.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid request or
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid request or
      * an error while preparing it, completes the returned future exceptionally.
      *
      * @param request the request, with the default parameters already applied.

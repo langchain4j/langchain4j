@@ -69,9 +69,9 @@ public interface ToolExecutor {
      * }
      * }</pre>
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including invalid arguments,
-     * completes the returned future exceptionally. The AI Service applies the configured tool error handlers to a failed future. For
-     * compatibility, it also handles an exception thrown from this method the same way.
+     * An implementation must not throw and must not return {@code null}: every failure, including invalid arguments,
+     * completes the returned future exceptionally. The AI Service applies the configured tool error handlers to a
+     * failed future. For compatibility, it also handles an exception thrown from this method the same way.
      *
      * @param request The tool execution request. Contains tool name and arguments.
      * @param context The AI Service invocation context, contains {@link ChatMemory} ID

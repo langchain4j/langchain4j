@@ -47,7 +47,7 @@ public interface QueryTransformer {
      * thread. A transformer that cannot be made non-blocking is still usable from these modes via
      * {@code DefaultRetrievalAugmentor}, which offloads the blocking {@link #transform(Query)} to its executor.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
      * completes the returned future exceptionally.
      *
      * @param query The {@link Query} to be transformed.

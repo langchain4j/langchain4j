@@ -49,7 +49,7 @@ public interface ChatModelRouter {
      * A router that blocks, for example one that looks up the user in a database, can run
      * {@link #route(ChatModelRoutingRequest)} on an executor of its choice.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
      * completes the returned future exceptionally.
      *
      * @param request the chat request to route and the routes that can handle it. Never {@code null}.

@@ -51,7 +51,7 @@ public interface ContentAggregator {
      * stay off the calling thread. An aggregator that cannot be made non-blocking is still usable from these modes
      * via {@code DefaultRetrievalAugmentor}, which offloads the blocking {@link #aggregate(Map)} to its executor.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
      * completes the returned future exceptionally.
      *
      * @param queryToContents A map from a {@link Query} to all {@code List<Content>} retrieved with that {@link Query}.

@@ -183,7 +183,7 @@ public interface ChatModel {
      * this and either offload the blocking {@link #doChat(ChatRequest)} or fail loudly with an actionable message.
      * A model backed by remote HTTP I/O overrides this with a genuinely asynchronous call (no thread parked).
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid request or
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid request or
      * an error while preparing it, completes the returned future exceptionally.
      *
      * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM

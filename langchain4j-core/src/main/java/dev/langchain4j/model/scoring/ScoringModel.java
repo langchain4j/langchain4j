@@ -211,7 +211,7 @@ public interface ScoringModel {
      * and should abort its in-flight call when the returned future is cancelled (best-effort). A model that has not
      * opted in fails loudly on the async path rather than silently blocking a carrier thread.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid request or
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid request or
      * an error while preparing it, completes the returned future exceptionally.
      *
      * @param request the (already defaults-applied) request to score.

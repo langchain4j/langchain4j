@@ -52,7 +52,7 @@ public sealed interface GuardrailExecutor<
      * modes. Runs the guardrails — including, for output guardrails, any reprompt round-trips to the model — without
      * blocking the calling thread.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
      * completes the returned future exceptionally.
      *
      * @param request The {@link GuardrailRequest} to validate

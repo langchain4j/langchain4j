@@ -64,7 +64,7 @@ public interface Guardrail<P extends GuardrailRequest, R extends GuardrailResult
      * This mirrors {@code ChatMemoryStore} and {@code ToolExecutor}, whose asynchronous counterparts likewise
      * report "not implemented" through the returned future rather than throwing.
      * <p>
-     * An implementation never throws and never returns {@code null}: every failure, including an invalid argument,
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
      * completes the returned future exceptionally.
      *
      * @param request
