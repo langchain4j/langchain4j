@@ -483,8 +483,7 @@ class ToolGuardrailResolutionTest {
 
     @Test
     void global_guardrail_and_method_annotation_both_run_global_first() {
-        // @PSchmitz-Valckenberg's scenario (discussion #7030): a format check on the fetching tool, plus a global
-        // injection check on the builder
+        // a format check on the fetching tool, plus a global injection check on the builder
         var setup = setupWith(new MethodOnly());
         setup.guardrails().outputGuardrailClasses(OutGlobal.class);
 

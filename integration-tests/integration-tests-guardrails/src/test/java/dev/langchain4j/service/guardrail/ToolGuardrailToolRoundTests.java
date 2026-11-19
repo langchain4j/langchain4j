@@ -35,7 +35,7 @@ import org.junit.jupiter.params.provider.EnumSource;
 
 /**
  * Tool guardrails when the model calls several tools in one round, executed one after the other or concurrently, and
- * the calls that guardrails never see: a tool name that does not exist (D14) and the built-in tool search tool.
+ * the calls that guardrails never see: a tool name that does not exist and the built-in tool search tool.
  */
 class ToolGuardrailToolRoundTests extends BaseGuardrailTests {
 

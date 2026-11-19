@@ -37,12 +37,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 /**
- * What a tool guardrail knows about the invocation it runs in (D7), where the tool came from (D9), and where its events
+ * What a tool guardrail knows about the invocation it runs in, where the tool came from, and where its events
  * go.
  */
 class ToolGuardrailContextTests extends BaseGuardrailTests {
 
-    // ---------- request parameters (D7) ----------
+    // ---------- request parameters ----------
 
     @ParameterizedTest
     @EnumSource(Mode.class)
@@ -96,7 +96,7 @@ class ToolGuardrailContextTests extends BaseGuardrailTests {
         assertThat(params.variables()).containsEntry("topic", TOPIC);
     }
 
-    // ---------- events (D7) ----------
+    // ---------- events ----------
 
     @ParameterizedTest
     @EnumSource(Mode.class)
@@ -145,7 +145,7 @@ class ToolGuardrailContextTests extends BaseGuardrailTests {
         assertThat(events).isEmpty();
     }
 
-    // ---------- tool source (D9) ----------
+    // ---------- tool source ----------
 
     @ParameterizedTest
     @EnumSource(ToolKind.class)

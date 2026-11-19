@@ -64,10 +64,6 @@ import java.util.stream.Collectors;
  * Fixtures shared by the tool guardrail tests: a scripted model that calls tools, the four invocation modes of an AI
  * service behind one {@link #run(Mode, List, Consumer)} call, the four kinds of tools, and guardrails that work in
  * every mode.
- * <p>
- * The follow-up tests for indirect prompt injection (sync, async, streaming, MCP, error results, multi-content) can
- * reuse {@link #run(Mode, List, Consumer)}: they only need a tool that returns the injected text, and a guardrail.
- * </p>
  */
 final class ToolGuardrailTestSupport {
 
@@ -438,7 +434,7 @@ final class ToolGuardrailTestSupport {
     private static <T> AiServices<T> configure(AiServices<T> services, Run run) {
         return services.chatMemoryProvider(memoryId -> run.memory)
                 .afterToolExecution(run.afterToolExecutions::add)
-                // a custom handler, to prove that a fatal guardrail failure bypasses it (D4)
+                // a custom handler, to prove that a fatal guardrail failure bypasses it
                 .toolExecutionErrorHandler((error, context) -> {
                     run.errorHandlerCalls.incrementAndGet();
                     return ToolErrorHandlerResult.text(error.getMessage());

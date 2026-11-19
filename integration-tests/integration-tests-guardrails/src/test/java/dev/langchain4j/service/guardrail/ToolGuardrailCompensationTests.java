@@ -39,7 +39,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 /**
- * What a tool guardrail rejection means for compensation (D11). The result the LLM ends up with decides whether a step
+ * What a tool guardrail rejection means for compensation. The result the LLM ends up with decides whether a step
  * failed; the tool as it ran decides whether it is compensable, and its compensating action gets its original result.
  * <p>
  * A <em>fatal</em> rejection is covered in the {@code CompletableFuture} and reactive modes only: the sync and
@@ -291,7 +291,7 @@ class ToolGuardrailCompensationTests extends BaseGuardrailTests {
                 .isEqualTo("blocked");
     }
 
-    // ---------- fatal rejections (D11: roll back in all modes once the upstream fix is in) ----------
+    // ---------- fatal rejections ----------
 
     @ParameterizedTest
     @EnumSource(

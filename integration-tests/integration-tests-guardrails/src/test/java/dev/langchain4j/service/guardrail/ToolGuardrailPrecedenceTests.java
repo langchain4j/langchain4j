@@ -35,7 +35,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 /**
- * Which tool guardrails run, and in which order (D6): every guardrail that applies runs, as one chain per tool, in the
+ * Which tool guardrails run, and in which order: every guardrail that applies runs, as one chain per tool, in the
  * order builder (global), class annotation, method annotation / {@code AiServiceTool}. No level replaces another. The
  * order is observable through chained rewrites (each guardrail appends its letter) and through the events.
  */
@@ -218,7 +218,7 @@ class ToolGuardrailPrecedenceTests extends BaseGuardrailTests {
         assertThat(run.toolResultMessageOfSecondRequest("search").text()).isEqualTo("found {\"q\":\"aCM\"}|C|M");
     }
 
-    // ---------- the scenarios of the discussion (#7030) ----------
+    // ---------- a guardrail of the tool combined with a global or class guardrail ----------
 
     /** A tool that fetches a page, with its own output guardrail that trims the page. */
     public static class Fetcher {

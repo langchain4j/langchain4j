@@ -68,7 +68,7 @@ class ToolInputGuardrailTests extends BaseGuardrailTests {
                 .returns("found " + ORIGINAL_ARGUMENTS, ToolExecutionResultMessage::text);
     }
 
-    // ---------- non-fatal failure (D3) ----------
+    // ---------- non-fatal failure ----------
 
     @ParameterizedTest
     @EnumSource(Mode.class)
@@ -111,7 +111,7 @@ class ToolInputGuardrailTests extends BaseGuardrailTests {
                 .returns("denied", ToolExecutionResultMessage::text);
     }
 
-    // ---------- rewrite (D18) ----------
+    // ---------- rewrite ----------
 
     @ParameterizedTest
     @EnumSource(Mode.class)
@@ -178,7 +178,7 @@ class ToolInputGuardrailTests extends BaseGuardrailTests {
                 .isEqualTo(REWRITTEN_ARGUMENTS);
     }
 
-    // ---------- fatal failure (D4) ----------
+    // ---------- fatal failure ----------
 
     @ParameterizedTest
     @EnumSource(Mode.class)

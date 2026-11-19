@@ -55,7 +55,7 @@ class ToolOutputGuardrailTests extends BaseGuardrailTests {
                 .returns("cats are small", ToolExecutionResultMessage::text);
     }
 
-    // ---------- non-fatal failure on an indirect injection (D3) ----------
+    // ---------- non-fatal failure on an indirect injection ----------
 
     @ParameterizedTest
     @EnumSource(Mode.class)
@@ -146,7 +146,7 @@ class ToolOutputGuardrailTests extends BaseGuardrailTests {
                 .returns(List.<Content>of(TextContent.from("rewritten")), ToolExecutionResultMessage::contents);
     }
 
-    // ---------- multi-content results (D8) ----------
+    // ---------- multi-content results ----------
 
     @ParameterizedTest
     @EnumSource(Mode.class)
@@ -209,7 +209,7 @@ class ToolOutputGuardrailTests extends BaseGuardrailTests {
                 .containsExactly(TextContent.from("a cat"));
     }
 
-    // ---------- error results (D5) ----------
+    // ---------- error results ----------
 
     @ParameterizedTest
     @EnumSource(Mode.class)
@@ -252,7 +252,7 @@ class ToolOutputGuardrailTests extends BaseGuardrailTests {
                 .returns("recovered", ToolExecutionResultMessage::text);
     }
 
-    // ---------- fatal failure (D4) ----------
+    // ---------- fatal failure ----------
 
     @ParameterizedTest
     @EnumSource(Mode.class)
