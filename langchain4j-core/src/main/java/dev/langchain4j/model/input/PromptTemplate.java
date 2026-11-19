@@ -7,9 +7,7 @@ import static java.util.Collections.singletonMap;
 
 import dev.langchain4j.spi.prompt.PromptTemplateFactory;
 import java.time.Clock;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,7 +16,7 @@ import java.util.Map;
  * A template typically contains one or more variables (placeholders) defined as {{variable_name}} that are
  * replaced with actual values to produce a Prompt.
  * Special variables {{current_date}}, {{current_time}}, and {{current_date_time}} are automatically
- * filled with LocalDate.now(), LocalTime.now(), and LocalDateTime.now() respectively.
+ * filled from a single clock reading in the clock's time zone each time the template is applied.
  */
 public class PromptTemplate {
 
@@ -136,10 +134,11 @@ public class PromptTemplate {
      * @return a copy of the map with the variables injected.
      */
     private Map<String, Object> injectDateTimeVariables(Map<String, Object> variables) {
+        LocalDateTime now = LocalDateTime.now(clock);
         Map<String, Object> variablesCopy = new HashMap<>(variables);
-        variablesCopy.put(CURRENT_DATE, LocalDate.now(clock));
-        variablesCopy.put(CURRENT_TIME, LocalTime.now(clock));
-        variablesCopy.put(CURRENT_DATE_TIME, LocalDateTime.now(clock));
+        variablesCopy.put(CURRENT_DATE, now.toLocalDate());
+        variablesCopy.put(CURRENT_TIME, now.toLocalTime());
+        variablesCopy.put(CURRENT_DATE_TIME, now);
         return variablesCopy;
     }
 
