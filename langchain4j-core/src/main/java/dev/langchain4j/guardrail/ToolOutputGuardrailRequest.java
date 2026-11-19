@@ -1,7 +1,12 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSource;
@@ -9,12 +14,6 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.invocation.InvocationContext;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Represents the parameter passed to a tool output guardrail, after a tool has been executed.
@@ -34,14 +33,11 @@ public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOu
     private ToolOutputGuardrailRequest(Builder builder) {
         this.toolExecutionRequest = ensureNotNull(builder.toolExecutionRequest, "toolExecutionRequest");
         this.toolSpecification = builder.toolSpecification;
-        this.toolSource = builder.toolSource != null ? builder.toolSource : ToolSource.programmatic();
+        this.toolSource = getOrDefault(builder.toolSource, ToolSource.programmatic());
         this.requestParams = ensureNotNull(builder.requestParams, "requestParams");
-
-        this.resultContents = List.copyOf(Optional.ofNullable(builder.resultContents)
-                .map(List::stream)
-                .orElseGet(Stream::empty)
-                .map(contents -> ensureNotNull(contents, "resultContents element"))
-                .toList());
+        this.resultContents = getOrDefault(builder.resultContents, List.of()).stream()
+                .map(content -> ensureNotNull(content, "resultContents element"))
+                .toList();
 
         this.isError = builder.isError;
     }

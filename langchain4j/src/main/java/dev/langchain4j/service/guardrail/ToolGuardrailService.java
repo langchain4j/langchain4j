@@ -167,7 +167,6 @@ public non-sealed interface ToolGuardrailService
         ensureNotNull(requestParams, "requestParams");
         ensureNotNull(tool, "tool");
 
-        // without guardrails, nothing but the tool runs: not even a guardrail request is built
         return hasGuardrails(key)
                 ? guard(key, request, toolSpecification, toolSource, requestParams, tool)
                 : guardedExecution(request, tool.apply(request));
@@ -252,7 +251,6 @@ public non-sealed interface ToolGuardrailService
         ensureNotNull(requestParams, "requestParams");
         ensureNotNull(tool, "tool");
 
-        // without guardrails, nothing but the tool runs: not even a guardrail request is built
         return hasGuardrails(key)
                 ? guardAsync(key, request, toolSpecification, toolSource, requestParams, tool)
                 : executeWithoutGuardrailsAsync(request, tool);

@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -25,7 +26,7 @@ public final class ToolInputGuardrailRequest implements GuardrailRequest<ToolInp
     private ToolInputGuardrailRequest(Builder builder) {
         this.toolExecutionRequest = ensureNotNull(builder.toolExecutionRequest, "toolExecutionRequest");
         this.toolSpecification = builder.toolSpecification;
-        this.toolSource = builder.toolSource != null ? builder.toolSource : ToolSource.programmatic();
+        this.toolSource = getOrDefault(builder.toolSource, ToolSource.programmatic());
         this.requestParams = ensureNotNull(builder.requestParams, "requestParams");
     }
 
