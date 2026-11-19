@@ -7,9 +7,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
+import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
+import java.util.concurrent.RejectedExecutionException;
 import org.junit.jupiter.api.Test;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
@@ -88,6 +90,26 @@ class JdkHttpClientAsyncFailureTest {
                 .doesNotThrowAnyException();
 
         assertThat(error).succeedsWithin(Duration.ofSeconds(5)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void execute_should_report_a_rejected_submission_to_the_listener_instead_of_throwing() {
+
+        // the JDK client submits the request to its executor while sendAsync(...) is called
+        RejectedExecutionException rejected = new RejectedExecutionException("closed");
+        JdkHttpClient client = JdkHttpClient.builder()
+                .httpClientBuilder(HttpClient.newBuilder().executor(task -> {
+                    throw rejected;
+                }))
+                .build();
+        HttpRequest request = HttpRequest.builder().method(GET).url("http://localhost:1/test").build();
+        CompletableFuture<Throwable> error = new CompletableFuture<>();
+        ServerSentEventListener listener = error::complete;
+
+        assertThatCode(() -> client.execute(request, new DefaultServerSentEventParser(), listener))
+                .doesNotThrowAnyException();
+
+        assertThat(error).succeedsWithin(Duration.ofSeconds(5)).isSameAs(rejected);
     }
 
     @Test

@@ -159,16 +159,17 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
 
     @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
-        java.net.http.HttpRequest jdkRequest;
+        CompletableFuture<HttpResponse<InputStream>> responseFuture;
         try {
-            jdkRequest = toJdkRequest(request);
+            java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
+            responseFuture = delegate.sendAsync(jdkRequest, BodyHandlers.ofInputStream());
         } catch (Throwable error) {
             restoreInterruptIfInterrupted(error);
             listener.onError(error); // not ignoringExceptions: what onError throws on the calling thread propagates
             return;
         }
 
-        delegate.sendAsync(jdkRequest, BodyHandlers.ofInputStream())
+        responseFuture
                 .thenAccept(jdkResponse -> {
                     if (!isSuccessful(jdkResponse)) {
                         HttpException exception = new HttpException(jdkResponse.statusCode(), readBody(jdkResponse));
