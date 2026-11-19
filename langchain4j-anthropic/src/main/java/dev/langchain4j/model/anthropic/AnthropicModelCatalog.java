@@ -3,6 +3,8 @@ package dev.langchain4j.model.anthropic;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.model.ModelProvider.ANTHROPIC;
+import static java.lang.Boolean.TRUE;
+import static java.util.Arrays.asList;
 
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.ModelProvider;
@@ -15,6 +17,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import org.slf4j.Logger;
 
@@ -34,7 +38,10 @@ import org.slf4j.Logger;
  */
 public class AnthropicModelCatalog implements ModelCatalog {
 
+    private static final int MAX_PAGE_SIZE = 1000;
+
     private final AnthropicClient client;
+    private final List<AnthropicModelLifecycle> lifecycles;
 
     private AnthropicModelCatalog(Builder builder) {
         this.client = AnthropicClient.builder()
@@ -47,6 +54,7 @@ public class AnthropicModelCatalog implements ModelCatalog {
                 .logResponses(builder.logResponses)
                 .logger(builder.logger)
                 .build();
+        this.lifecycles = builder.lifecycles;
     }
 
     public static Builder builder() {
@@ -55,9 +63,19 @@ public class AnthropicModelCatalog implements ModelCatalog {
 
     @Override
     public List<ModelDescription> listModels() {
-        AnthropicModelsListResponse response = client.listModels();
-        List<ModelDescription> models =
-                response.data.stream().map(this::mapToModelDescription).toList();
+        List<ModelDescription> models = new ArrayList<>();
+        String afterId = null;
+        boolean hasMore;
+
+        do {
+            AnthropicModelsListResponse response = client.listModels(MAX_PAGE_SIZE, afterId, lifecycles);
+            if (response.data != null) {
+                response.data.stream().map(this::mapToModelDescription).forEach(models::add);
+            }
+            afterId = response.lastId;
+            hasMore = TRUE.equals(response.hasMore) && afterId != null;
+        } while (hasMore);
+
         return models;
     }
 
@@ -102,6 +120,7 @@ public class AnthropicModelCatalog implements ModelCatalog {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
+        private List<AnthropicModelLifecycle> lifecycles;
 
         /**
          * Sets a custom {@link HttpClientBuilder} for the underlying HTTP client.
@@ -197,6 +216,31 @@ public class AnthropicModelCatalog implements ModelCatalog {
          */
         public Builder logger(Logger logger) {
             this.logger = logger;
+            return this;
+        }
+
+        /**
+         * Filters the listed models by lifecycle stage.
+         * <p>
+         * When not set, the Anthropic API default applies: active and deprecated models.
+         *
+         * @param lifecycles the lifecycle stages to list, or {@code null} for the API default
+         * @return {@code this}
+         */
+        public Builder lifecycles(AnthropicModelLifecycle... lifecycles) {
+            return lifecycles(lifecycles == null ? null : asList(lifecycles));
+        }
+
+        /**
+         * Filters the listed models by lifecycle stage.
+         * <p>
+         * When not set, the Anthropic API default applies: active and deprecated models.
+         *
+         * @param lifecycles the lifecycle stages to list, or {@code null} for the API default
+         * @return {@code this}
+         */
+        public Builder lifecycles(Collection<AnthropicModelLifecycle> lifecycles) {
+            this.lifecycles = lifecycles == null ? null : List.copyOf(lifecycles);
             return this;
         }
 
