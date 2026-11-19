@@ -1,6 +1,5 @@
 package dev.langchain4j.rag.query.router;
 
-import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -120,35 +119,31 @@ public class LanguageModelQueryRouter implements QueryRouter {
 
     @Override
     public CompletableFuture<Collection<ContentRetriever>> routeAsync(Query query) {
-        Prompt prompt;
-        try {
-            prompt = createPrompt(query);
-        } catch (Throwable e) {
-            restoreInterruptIfInterrupted(e);
-            return CompletableFuture.failedFuture(e);
-        }
-        CompletableFuture<ChatResponse> chatFuture = failOnThrow(
-                chatModel,
-                "chatAsync(ChatRequest)",
-                () -> chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build()));
-        CompletableFuture<Collection<ContentRetriever>> result = chatFuture
-                .thenApply(response -> parse(response.aiMessage().text()))
-                // Mirror route()'s `catch (Exception)`: a failed LLM call or an unparseable response applies the
-                // fallback strategy (which may re-throw for FAIL). But a cancellation is not a routing failure -
-                // propagate it - and an Error (like sync's `catch (Exception)`) is not caught either.
-                .exceptionally(error -> {
-                    Throwable cause = unwrapCompletionException(error);
-                    // AsyncNotSupportedException is propagated, so that the caller can call route() instead
-                    if (cause instanceof Exception e
-                            && !(cause instanceof CancellationException)
-                            && !(cause instanceof AsyncNotSupportedException)) {
-                        return fallback(query, e);
-                    }
-                    throw cause instanceof RuntimeException re ? re : new CompletionException(cause);
-                });
-        // Link the caller-facing derived stage back to the raw chat call so cancellation reaches the in-flight I/O.
-        propagateCancellation(result, chatFuture);
-        return result;
+        return failOnThrow(() -> {
+            Prompt prompt = createPrompt(query);
+            CompletableFuture<ChatResponse> chatFuture = failOnThrow(
+                    chatModel,
+                    "chatAsync(ChatRequest)",
+                    () -> chatModel.chatAsync(ChatRequest.builder().messages(prompt.toUserMessage()).build()));
+            CompletableFuture<Collection<ContentRetriever>> result = chatFuture
+                    .thenApply(response -> parse(response.aiMessage().text()))
+                    // Mirror route()'s `catch (Exception)`: a failed LLM call or an unparseable response applies the
+                    // fallback strategy (which may re-throw for FAIL). But a cancellation is not a routing failure -
+                    // propagate it - and an Error (like sync's `catch (Exception)`) is not caught either.
+                    .exceptionally(error -> {
+                        Throwable cause = unwrapCompletionException(error);
+                        // AsyncNotSupportedException is propagated, so that the caller can call route() instead
+                        if (cause instanceof Exception e
+                                && !(cause instanceof CancellationException)
+                                && !(cause instanceof AsyncNotSupportedException)) {
+                            return fallback(query, e);
+                        }
+                        throw cause instanceof RuntimeException re ? re : new CompletionException(cause);
+                    });
+            // Link the caller-facing derived stage back to the raw chat call so cancellation reaches the in-flight I/O.
+            propagateCancellation(result, chatFuture);
+            return result;
+        });
     }
 
     protected Collection<ContentRetriever> fallback(Query query, Exception e) {

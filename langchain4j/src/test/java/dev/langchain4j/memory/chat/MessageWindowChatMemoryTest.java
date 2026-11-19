@@ -17,6 +17,8 @@ import dev.langchain4j.memory.chat.HitCountChatMemoryStore.HitCounts;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
@@ -716,5 +718,27 @@ class MessageWindowChatMemoryTest implements WithAssertions {
                 .havingCause()
                 .isInstanceOf(IllegalStateException.class)
                 .withMessageContaining("updateMessagesAsync(Object, List) returned null");
+    }
+
+    @Test
+    void setAsync_should_restore_the_interrupt_flag_when_it_fails_with_an_interrupted_exception() {
+
+        InterruptedException interrupted = new InterruptedException("interrupted");
+        AtomicInteger calls = new AtomicInteger();
+        // build() makes the first call
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .dynamicMaxMessages(id -> calls.incrementAndGet() == 1 ? 10 : sneakyThrow(interrupted))
+                .build();
+
+        CompletableFuture<Void> future = chatMemory.setAsync(List.of(userMessage("hi")));
+        boolean interruptFlagRestored = Thread.interrupted(); // also clears the flag for the next tests
+
+        assertThat(interruptFlagRestored).isTrue();
+        assertThat(future).failsWithin(Duration.ofSeconds(5)).withThrowableThat().withCause(interrupted);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T, E extends Throwable> T sneakyThrow(Throwable throwable) throws E {
+        throw (E) throwable;
     }
 }

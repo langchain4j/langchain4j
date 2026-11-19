@@ -141,17 +141,13 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public CompletableFuture<Void> setAsync(List<ChatMessage> messages) {
-        // Deliver validation/windowing failures through the returned stage rather than throwing synchronously,
-        // consistent with addAsync and the async error contract.
-        try {
+        return failOnThrow(() -> {
             Integer maxMessages = this.maxMessagesProvider.apply(this.id);
             ensureGreaterThanZero(maxMessages, "maxMessages");
             List<ChatMessage> windowed = new ArrayList<>(messages);
             ensureCapacity(windowed, maxMessages);
             return updateStoredMessagesAsync(windowed);
-        } catch (Throwable t) {
-            return CompletableFuture.failedFuture(t);
-        }
+        });
     }
 
     @Override

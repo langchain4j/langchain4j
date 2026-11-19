@@ -1,6 +1,5 @@
 package dev.langchain4j.model.chat.router;
 
-import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
@@ -155,35 +154,31 @@ public class DecisionModelChatModelRouter implements ChatModelRouter {
 
     @Override
     public CompletableFuture<ChatModelRoutingResult> routeAsync(ChatModelRoutingRequest request) {
-        DecisionRequest decisionRequest;
-        try {
+        return failOnThrow(() -> {
             if (request.routes().size() == 1) {
                 return CompletableFuture.completedFuture(ChatModelRoutingResult.route(request.routes().get(0).name()));
             }
-            decisionRequest = toDecisionRequest(request);
-        } catch (Throwable e) {
-            restoreInterruptIfInterrupted(e);
-            return CompletableFuture.failedFuture(e);
-        }
-        if (decisionRequest == null) {
-            return CompletableFuture.completedFuture(ChatModelRoutingResult.defaultRoute());
-        }
-        CompletableFuture<DecisionResponse> source = failOnThrow(
-                decisionModel, "decideAsync(DecisionRequest)", () -> decisionModel.decideAsync(decisionRequest));
-        CompletableFuture<ChatModelRoutingResult> result = source.handle((response, error) -> {
-            if (error == null) {
-                return selectOrFallBack(response, request);
+            DecisionRequest decisionRequest = toDecisionRequest(request);
+            if (decisionRequest == null) {
+                return CompletableFuture.completedFuture(ChatModelRoutingResult.defaultRoute());
             }
-            Throwable cause = unwrapCompletionException(error);
-            if (cause instanceof CancellationException
-                    || cause instanceof AsyncNotSupportedException
-                    || !(cause instanceof RuntimeException)) {
-                throw cause instanceof RuntimeException re ? re : new CompletionException(cause);
-            }
-            return fallback((RuntimeException) cause);
+            CompletableFuture<DecisionResponse> source = failOnThrow(
+                    decisionModel, "decideAsync(DecisionRequest)", () -> decisionModel.decideAsync(decisionRequest));
+            CompletableFuture<ChatModelRoutingResult> result = source.handle((response, error) -> {
+                if (error == null) {
+                    return selectOrFallBack(response, request);
+                }
+                Throwable cause = unwrapCompletionException(error);
+                if (cause instanceof CancellationException
+                        || cause instanceof AsyncNotSupportedException
+                        || !(cause instanceof RuntimeException)) {
+                    throw cause instanceof RuntimeException re ? re : new CompletionException(cause);
+                }
+                return fallback((RuntimeException) cause);
+            });
+            propagateCancellation(result, source);
+            return result;
         });
-        propagateCancellation(result, source);
-        return result;
     }
 
     private ChatModelRoutingResult fallback(RuntimeException error) {

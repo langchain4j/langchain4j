@@ -1,6 +1,5 @@
 package dev.langchain4j.guardrail;
 
-import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -179,28 +178,26 @@ public abstract sealed class AbstractGuardrailExecutor<
      * mirroring the synchronous error handling.
      */
     protected CompletableFuture<R> validateAsync(P request, G guardrail, CancellationChain chain) {
-        try {
+        return failOnThrow(() -> {
             ensureNotNull(request, "request");
             ensureNotNull(guardrail, "guardrail");
-        } catch (Throwable e) {
-            restoreInterruptIfInterrupted(e);
-            return CompletableFuture.failedFuture(e);
-        }
 
-        CompletableFuture<R> inFlight = failOnThrow(
-                guardrail,
-                "validateAsync(GuardrailRequest)",
-                () -> CurrentInvocation.callWith(invocationContextOf(request), () -> guardrail.validateAsync(request)));
-        chain.track(inFlight);
-        return inFlight.handle((result, error) -> {
-            if (error != null) {
-                Throwable cause = unwrapCompletionException(error);
-                if (cause instanceof CancellationException cancellation) {
-                    throw cancellation;
+            CompletableFuture<R> inFlight = failOnThrow(
+                    guardrail,
+                    "validateAsync(GuardrailRequest)",
+                    () -> CurrentInvocation.callWith(
+                            invocationContextOf(request), () -> guardrail.validateAsync(request)));
+            chain.track(inFlight);
+            return inFlight.handle((result, error) -> {
+                if (error != null) {
+                    Throwable cause = unwrapCompletionException(error);
+                    if (cause instanceof CancellationException cancellation) {
+                        throw cancellation;
+                    }
+                    throw createGuardrailException(cause.getMessage(), cause);
                 }
-                throw createGuardrailException(cause.getMessage(), cause);
-            }
-            return result.validatedBy(guardrail.getClass());
+                return result.validatedBy(guardrail.getClass());
+            });
         });
     }
 

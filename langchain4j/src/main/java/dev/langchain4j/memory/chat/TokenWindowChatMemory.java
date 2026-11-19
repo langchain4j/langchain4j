@@ -145,17 +145,13 @@ public class TokenWindowChatMemory implements ChatMemory {
 
     @Override
     public CompletableFuture<Void> setAsync(List<ChatMessage> messages) {
-        // Deliver validation/windowing failures through the returned stage rather than throwing synchronously,
-        // consistent with addAsync and the async error contract.
-        try {
+        return failOnThrow(() -> {
             Integer maxTokens = maxTokensProvider.apply(id);
             ensureGreaterThanZero(maxTokens, "maxTokens");
             List<ChatMessage> windowed = new ArrayList<>(messages);
             ensureCapacity(windowed, maxTokens, tokenCountEstimator);
             return updateStoredMessagesAsync(windowed);
-        } catch (Throwable t) {
-            return CompletableFuture.failedFuture(t);
-        }
+        });
     }
 
     @Override
