@@ -351,6 +351,141 @@ langchain4j.azure-open-ai.streaming-chat-model.reasoningEffort=...
 ```
 
 
+## Azure OpenAI Responses API
+
+:::note
+This feature is experimental and may change in future releases.
+:::
+
+Azure OpenAI also supports the [Responses API](https://learn.microsoft.com/azure/ai-foundry/openai/how-to/responses),
+an alternative to the Chat Completions API. LangChain4j provides `AzureOpenAiResponsesChatModel` and
+`AzureOpenAiResponsesStreamingChatModel` for it.
+
+These models are built on top of the OpenAI Responses API integration (see
+[OpenAI Responses API](/integrations/language-models/open-ai#openai-responses-api)),
+so most of the features described there (request parameters, server tools, reasoning, response metadata)
+work the same way. They use the Azure OpenAI v1 API
+(`https://{resource}.openai.azure.com/openai/v1/responses`), which does not require a service version.
+
+The mandatory parameters are `endpoint`, `deploymentName` and either `apiKey` or `tokenCredential`.
+
+### Creating `AzureOpenAiResponsesChatModel`
+
+```java
+ChatModel model = AzureOpenAiResponsesChatModel.builder()
+        .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        .deploymentName("gpt-6-luna")
+        .build();
+
+String answer = model.chat("What is the capital of Germany?");
+```
+
+### Creating `AzureOpenAiResponsesStreamingChatModel`
+
+```java
+StreamingChatModel model = AzureOpenAiResponsesStreamingChatModel.builder()
+        .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        .deploymentName("gpt-6-luna")
+        .build();
+
+model.chat("Tell me a joke", new StreamingChatResponseHandler() {
+
+    @Override
+    public void onPartialResponse(String partialResponse) {
+        System.out.print(partialResponse);
+    }
+
+    @Override
+    public void onCompleteResponse(ChatResponse completeResponse) {
+        System.out.println("
+Done");
+    }
+
+    @Override
+    public void onError(Throwable error) {
+        error.printStackTrace();
+    }
+});
+```
+
+### Authentication with Microsoft Entra ID
+
+Instead of an API key, you can use Azure credentials. This requires the `azure-identity` dependency
+(see [above](#creating-azureopenaichatmodel-with-azure-credentials)):
+
+```java
+ChatModel model = AzureOpenAiResponsesChatModel.builder()
+        .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+        .deploymentName("gpt-5-mini")
+        .tokenCredential(new DefaultAzureCredentialBuilder().build())
+        .build();
+```
+
+### Request parameters
+
+Responses API-specific parameters such as `previousResponseId`, `maxToolCalls`, `parallelToolCalls`,
+`topLogprobs`, `truncation`, `include`, `serviceTier`, `safetyIdentifier`, `promptCacheKey`,
+`promptCacheRetention`, `reasoningEffort`, `reasoningSummary`, `textVerbosity`, `store`, `strictTools`
+and `strictJsonSchema` can be set directly on the builder
+(`AzureOpenAiResponsesStreamingChatModel` also supports `streamIncludeObfuscation`).
+Built-in tools can be configured through `serverTools`, see
+[Configuring built-in / server tools](/integrations/language-models/open-ai#configuring-built-in--server-tools)
+(available built-in tools depend on what Azure OpenAI supports for your deployment).
+
+They can also be passed per request using `OpenAiResponsesChatRequestParameters`,
+which overrides the defaults of the model:
+
+```java
+ChatRequest chatRequest = ChatRequest.builder()
+        .messages(UserMessage.from("Hello"))
+        .parameters(OpenAiResponsesChatRequestParameters.builder()
+                .reasoningEffort("low")
+                .store(true)
+                .build())
+        .build();
+
+ChatResponse response = model.chat(chatRequest);
+```
+
+### Thinking / Reasoning
+
+For reasoning models, set `reasoningEffort` and `reasoningSummary` to control and expose the model's reasoning:
+
+```java
+ChatModel model = AzureOpenAiResponsesChatModel.builder()
+        .endpoint(System.getenv("AZURE_OPENAI_ENDPOINT"))
+        .apiKey(System.getenv("AZURE_OPENAI_KEY"))
+        .deploymentName("gpt-5-mini")
+        .reasoningEffort("low")
+        .reasoningSummary("auto")
+        .build();
+
+ChatResponse response = model.chat(UserMessage.from("What is the capital of Germany?"));
+response.aiMessage().thinking(); // reasoning summary text
+```
+
+To keep the reasoning context between turns (for example between tool calls) when `store` is `false`,
+add `"reasoning.encrypted_content"` to `include`. See
+[Encrypted Reasoning](/integrations/language-models/open-ai#encrypted-reasoning-keeping-reasoning-in-context).
+
+:::note
+Reasoning tokens count towards `maxOutputTokens`. With a small limit, a reasoning model can spend
+all the tokens on reasoning and return no text (with `FinishReason.LENGTH`).
+:::
+
+### Response metadata
+
+`chatResponse.metadata()` returns an `OpenAiResponsesChatResponseMetadata` (and `tokenUsage()` returns an
+`OpenAiTokenUsage`), see [OpenAiResponsesChatResponseMetadata](/integrations/language-models/open-ai#openairesponseschatresponsemetadata).
+
+### Other settings
+
+`timeout`, `maxRetries` (non-streaming model only), `logRequests`, `logResponses`, `logRequestsAndResponses`,
+`customHeaders`, `userAgentSuffix`, `httpClientBuilder`, `listeners` and `defaultRequestParameters`
+are available on the builders as well.
+
 ## Audio Transcription
 
 Azure OpenAI now supports audio transcription, enabling you to convert spoken language from audio files into text using state-of-the-art models hosted on Azure.
