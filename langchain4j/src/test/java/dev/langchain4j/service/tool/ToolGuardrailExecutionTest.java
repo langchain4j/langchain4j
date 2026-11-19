@@ -510,10 +510,12 @@ class ToolGuardrailExecutionTest {
                         .toolExecutor(tool)
                         .toolInputGuardrails(parsing)
                         .build()))
-                .toolArgumentsErrorHandler(ToolArgumentsErrorHandler.failInvocation())
+                .toolArgumentsErrorHandler((error, context) -> {
+                    throw new ArgumentsErrorHandled(error);
+                })
                 .build();
 
-        assertThatThrownBy(() -> assistant.chat("hello")).isNotInstanceOf(GuardrailException.class);
+        assertThatThrownBy(() -> assistant.chat("hello")).isExactlyInstanceOf(ArgumentsErrorHandled.class);
         assertThat(tool.receivedArguments).isEmpty();
         assertThat(model.requests()).hasSize(1);
     }
@@ -1018,5 +1020,13 @@ class ToolGuardrailExecutionTest {
 
         assertThat(run.tool.receivedArguments).containsExactly(ORIGINAL_ARGUMENTS);
         assertThat(calls).containsExactly("search");
+    }
+
+    /** Thrown by an arguments error handler, so a test can tell that the handler decided the failure. */
+    static final class ArgumentsErrorHandled extends RuntimeException {
+
+        ArgumentsErrorHandled(Throwable cause) {
+            super(cause);
+        }
     }
 }

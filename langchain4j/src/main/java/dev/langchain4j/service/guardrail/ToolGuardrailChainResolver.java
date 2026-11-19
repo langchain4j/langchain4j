@@ -22,6 +22,9 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import dev.langchain4j.service.tool.ToolProvider;
 
 /**
  * Resolves the tool guardrail chains of the tools of an AI service: what {@link GuardrailServiceBuilder} does at build
@@ -61,6 +64,9 @@ final class ToolGuardrailChainResolver {
      * @param outputConfig                 the configuration of the output executors. {@code null} means the default.
      * @param classMetadataProviderFactory finds the annotations of the tools
      */
+    private final Map<AnnotationSite, List<? extends GuardrailEntry<?>>> annotationGuardrails =
+            new ConcurrentHashMap<>();
+
     ToolGuardrailChainResolver(
             List<GuardrailEntry<ToolInputGuardrail>> globalInputGuardrails,
             List<GuardrailEntry<ToolOutputGuardrail>> globalOutputGuardrails,
@@ -97,13 +103,11 @@ final class ToolGuardrailChainResolver {
                 .orElse(null);
 
         var ownInputGuardrails = ownGuardrails(
-                annotations(annotatedClass, method, ToolInputGuardrails.class),
-                ToolInputGuardrails::value,
+                annotationGuardrails(annotatedClass, method, ToolInputGuardrails.class, ToolInputGuardrails::value),
                 tool.toolInputGuardrails());
 
         var ownOutputGuardrails = ownGuardrails(
-                annotations(annotatedClass, method, ToolOutputGuardrails.class),
-                ToolOutputGuardrails::value,
+                annotationGuardrails(annotatedClass, method, ToolOutputGuardrails.class, ToolOutputGuardrails::value),
                 tool.toolOutputGuardrails());
 
         return new DefaultToolKey(
@@ -173,19 +177,33 @@ final class ToolGuardrailChainResolver {
     }
 
     /**
+     * The guardrails created from the annotations of the tool (class, then method). They are created once per class and
+     * method, so a tool that is bound again (for example a tool of a {@link ToolProvider}, bound for every invocation)
+     * gets the same guardrails.
+     */
+    @SuppressWarnings("unchecked")
+    private <A extends Annotation, G> List<GuardrailEntry<G>> annotationGuardrails(
+            Class<?> toolClass,
+            Method method,
+            Class<A> annotationType,
+            Function<A, Class<? extends G>[]> guardrailClasses) {
+        return (List<GuardrailEntry<G>>) (List<?>) this.annotationGuardrails.computeIfAbsent(
+                new AnnotationSite(toolClass, method, annotationType),
+                site -> annotations(toolClass, method, annotationType).stream()
+                        .flatMap(annotation -> Stream.of(guardrailClasses.apply(annotation)))
+                        .map(guardrailClass -> GuardrailEntry.<G>fromClass(
+                                guardrailClass, GuardrailBuilderSettings.instantiate(guardrailClass)))
+                        .toList());
+    }
+
+    /**
      * The guardrails that belong to the tool itself: those of its annotations (class, then method), then the
      * {@link AiServiceTool} guardrails.
      */
-    private static <A extends Annotation, G> List<GuardrailEntry<G>> ownGuardrails(
-            List<A> annotations,
-            Function<A, Class<? extends G>[]> guardrailClasses,
-            List<? extends G> guardrailInstances) {
-        var fromAnnotations = annotations.stream()
-                .flatMap(annotation -> Stream.of(guardrailClasses.apply(annotation)))
-                .map(guardrailClass ->
-                        GuardrailEntry.<G>fromClass(GuardrailBuilderSettings.instantiate(guardrailClass)));
-
-        return Stream.concat(fromAnnotations, guardrailInstances.stream().map(GuardrailEntry::<G>fromInstance))
+    private static <G> List<GuardrailEntry<G>> ownGuardrails(
+            List<GuardrailEntry<G>> fromAnnotations, List<? extends G> guardrailInstances) {
+        return Stream.concat(
+                        fromAnnotations.stream(), guardrailInstances.stream().map(GuardrailEntry::<G>fromInstance))
                 .toList();
     }
 
@@ -195,7 +213,9 @@ final class ToolGuardrailChainResolver {
      */
     private <A extends Annotation> Optional<A> findClassAnnotation(Class<?> clazz, Class<A> annotationType) {
         return hierarchy(clazz)
-                .map(c -> this.classMetadataProviderFactory.getAnnotation(c, annotationType))
+                .map(c -> this.classMetadataProviderFactory
+                        .getAnnotation(c, annotationType)
+                        .or(() -> Optional.ofNullable(c.getAnnotation(annotationType))))
                 .flatMap(Optional::stream)
                 .findFirst();
     }
@@ -207,8 +227,8 @@ final class ToolGuardrailChainResolver {
      */
     private <A extends Annotation> Optional<A> findMethodAnnotation(Method method, Class<A> annotationType) {
         return Optional.ofNullable(this.classMetadataProviderFactory.resolveMethodKey(method))
-                .map(key -> this.classMetadataProviderFactory.getAnnotation(key, annotationType))
-                .orElseGet(() -> Optional.ofNullable(method.getAnnotation(annotationType)));
+                .flatMap(key -> this.classMetadataProviderFactory.getAnnotation(key, annotationType))
+                .or(() -> Optional.ofNullable(method.getAnnotation(annotationType)));
     }
 
     private static Stream<Class<?>> hierarchy(Class<?> clazz) {
@@ -253,8 +273,13 @@ final class ToolGuardrailChainResolver {
      * a user-supplied one.
      */
     private static Object identity(GuardrailEntry<?> entry) {
-        return entry.fromClass() ? entry.guardrail().getClass() : new SameInstance(entry.guardrail());
+        return entry.fromClass() ? entry.guardrailClass() : new SameInstance(entry.guardrail());
     }
+
+    /**
+     * Where the guardrails of a tool are declared: its class and method (each may be {@code null}), for one annotation.
+     */
+    private record AnnotationSite(Class<?> toolClass, Method method, Class<? extends Annotation> annotationType) {}
 
     /**
      * Identifies a guardrail instance by reference, not by {@code equals}.

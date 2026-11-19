@@ -2,6 +2,7 @@ package dev.langchain4j.guardrail;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.guardrail.ToolInputGuardrailResult.Failure;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A tool input guardrail is a rule applied before a tool is executed, to validate or rewrite the arguments the LLM chose.
@@ -12,6 +13,10 @@ import dev.langchain4j.guardrail.ToolInputGuardrailResult.Failure;
  * <p>
  *     A non-fatal failure does not stop the other guardrails of the chain from running; their failures are
  *     aggregated. A fatal failure stops the chain and aborts the AI service invocation.
+ * </p>
+ * <p>
+ *     One instance can be shared by every tool and every invocation of an AI service, and called concurrently, so
+ *     implementations must be thread-safe.
  * </p>
  *
  * @since 1.25.0
@@ -45,12 +50,13 @@ public interface ToolInputGuardrail extends Guardrail<ToolInputGuardrailRequest,
      * following guardrails and for the tool execution.
      *
      * @param rewrittenArguments
-     *            the new arguments of the tool, as a JSON object. Anything else (malformed JSON, an array, a number)
-     *            is a fatal failure of the guardrail: it aborts the invocation with a
+     *            the new arguments of the tool, as a JSON object. {@code null} means no rewrite (a plain
+     *            success). Anything else that is not a JSON object (malformed JSON, an array, a number) is a fatal
+     *            failure of the guardrail: it aborts the invocation with a
      *            {@link ToolInputGuardrailException}, before the tool runs and before the arguments are stored.
      * @return the result of a successful tool input guardrail validation carrying the rewritten arguments
      */
-    default ToolInputGuardrailResult successWith(String rewrittenArguments) {
+    default ToolInputGuardrailResult successWith(@Nullable String rewrittenArguments) {
         return ToolInputGuardrailResult.successWith(rewrittenArguments);
     }
 

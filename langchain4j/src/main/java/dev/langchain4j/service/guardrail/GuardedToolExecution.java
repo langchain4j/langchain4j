@@ -9,6 +9,7 @@ import dev.langchain4j.agent.tool.ToolSource;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import java.util.function.Function;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The outcome of a tool call executed through its tool guardrails by
@@ -119,7 +120,7 @@ public sealed interface GuardedToolExecution permits DefaultGuardedToolExecution
          * @return This builder.
          * @see GuardedToolExecution#failedStage()
          */
-        public Builder failedStage(ToolGuardrailStage failedStage) {
+        public Builder failedStage(@Nullable ToolGuardrailStage failedStage) {
             this.failedStage = failedStage;
             return this;
         }

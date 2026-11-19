@@ -174,7 +174,7 @@ class KeyedGuardrailExecutorsTest {
     }
 
     @Test
-    void the_key_resolver_is_called_once_per_key_whatever_the_number_of_lookups() {
+    void the_key_resolver_is_only_called_once_for_a_key_that_is_not_registered_as_is() {
         var resolverCalls = new AtomicInteger();
         var executors =
                 new KeyedGuardrailExecutors<InputGuardrailRequest, InputGuardrailResult, InputGuardrailExecutor>(
@@ -189,7 +189,7 @@ class KeyedGuardrailExecutorsTest {
         executors.hasGuardrails("unknown");
         executors.execute("unknown", REQUEST);
 
-        assertThat(resolverCalls).hasValue(2);
+        assertThat(resolverCalls).hasValue(1);
     }
 
     @Test

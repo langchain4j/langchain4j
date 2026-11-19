@@ -1,5 +1,8 @@
 package dev.langchain4j.service.guardrail;
 
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
+
+import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.guardrail.ToolInputGuardrailExecutor;
 import dev.langchain4j.guardrail.ToolOutputGuardrailExecutor;
 import java.util.Optional;
@@ -33,7 +36,16 @@ record DefaultToolKey(
         return of(key).flatMap(DefaultToolKey::outputExecutor);
     }
 
+    /**
+     * The key as a {@link DefaultToolKey}. A key that is not one was not returned by
+     * {@link ToolGuardrailService#bind(Class, AiServiceTool)} of the default service:
+     * running no guardrails for it would silently skip them, so it fails instead.
+     */
     private static Optional<DefaultToolKey> of(Object key) {
-        return Optional.ofNullable(key).filter(DefaultToolKey.class::isInstance).map(DefaultToolKey.class::cast);
+        if (key != null && !(key instanceof DefaultToolKey)) {
+            throw illegalArgument(
+                    "%s is not a key returned by bind(..) of this tool guardrail service", key.getClass().getName());
+        }
+        return Optional.ofNullable((DefaultToolKey) key);
     }
 }

@@ -516,6 +516,24 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
     }
 
     @Test
+    void a_key_that_the_service_did_not_return_fails_instead_of_running_no_guardrails() {
+        ToolInputGuardrail rejecting = request -> INPUT.failure("rejected");
+        var service = ToolGuardrailService.builder(Assistant.class)
+                .inputGuardrails(rejecting)
+                .build();
+        ToolGuardrailService.ToolKey foreignKey = () -> "search";
+        Function<ToolExecutionRequest, ToolExecutionResult> tool = request -> toolResult(false);
+        Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> asyncTool =
+                request -> CompletableFuture.completedFuture(toolResult(false));
+
+        assertThatThrownBy(() -> service.executeGuardrails(foreignKey, CALL, SPECIFICATION, SOURCE, PARAMS, tool))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.hasInputGuardrails("search")).isInstanceOf(IllegalArgumentException.class);
+        assertFailsWithIllegalArgument(
+                service.executeGuardrailsAsync(foreignKey, CALL, SPECIFICATION, SOURCE, PARAMS, asyncTool), "key");
+    }
+
+    @Test
     void async_the_key_the_request_the_parameters_and_the_tool_are_required() {
         var service = ToolGuardrailService.builder(Assistant.class).build();
         var key = service.bind(
@@ -527,14 +545,11 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
         Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool =
                 request -> CompletableFuture.completedFuture(toolResult(false));
 
-        assertThatThrownBy(() -> service.executeGuardrailsAsync(null, CALL, SPECIFICATION, SOURCE, PARAMS, tool))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.executeGuardrailsAsync(key, null, SPECIFICATION, SOURCE, PARAMS, tool))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.executeGuardrailsAsync(key, CALL, SPECIFICATION, SOURCE, null, tool))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.executeGuardrailsAsync(key, CALL, SPECIFICATION, SOURCE, PARAMS, null))
-                .isInstanceOf(IllegalArgumentException.class);
+        assertFailsWithIllegalArgument(service.executeGuardrailsAsync(null, CALL, SPECIFICATION, SOURCE, PARAMS, tool), "key");
+        assertFailsWithIllegalArgument(service.executeGuardrailsAsync(key, null, SPECIFICATION, SOURCE, PARAMS, tool), "request");
+        assertFailsWithIllegalArgument(
+                service.executeGuardrailsAsync(key, CALL, SPECIFICATION, SOURCE, null, tool), "requestParams");
+        assertFailsWithIllegalArgument(service.executeGuardrailsAsync(key, CALL, SPECIFICATION, SOURCE, PARAMS, null), "tool");
     }
 
     @Test
@@ -801,5 +816,14 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
         assertThat(service.rejectedStage(CALL, null)).isEmpty();
         assertThatThrownBy(() -> service.rejectedStage(null, new IllegalStateException("boom")))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    private static void assertFailsWithIllegalArgument(CompletableFuture<?> future, String parameter) {
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .withMessageContaining(parameter);
     }
 }

@@ -61,7 +61,9 @@ final class ToolGuardrailServiceBuilder
             GuardrailBuilderSettings<G, ?> settings) {
         return Stream.concat(
                         settings.guardrailInstances().stream().map(GuardrailEntry::fromInstance),
-                        settings.instantiateGuardrailClasses().stream().map(GuardrailEntry::fromClass))
+                        settings.guardrailClasses().stream()
+                                .map(guardrailClass -> GuardrailEntry.<G>fromClass(
+                                        guardrailClass, GuardrailBuilderSettings.instantiate(guardrailClass))))
                 .toList();
     }
 }

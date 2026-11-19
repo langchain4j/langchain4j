@@ -1,6 +1,7 @@
 package dev.langchain4j.service.guardrail;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -40,7 +41,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
+// the tests share static state (the recording builders, the guardrails that record what they saw)
+@Execution(ExecutionMode.SAME_THREAD)
 class ToolGuardrailResolutionTest {
 
     private static final InvocationContext CONTEXT = InvocationContext.builder().build();
@@ -676,22 +681,19 @@ class ToolGuardrailResolutionTest {
     }
 
     @Test
-    void a_key_the_service_did_not_create_has_no_guardrails() {
+    void a_key_the_service_did_not_create_fails_instead_of_skipping_the_guardrails() {
         var service = ToolGuardrailService.builder(Assistant.class)
                 .outputGuardrails(new OutGlobal())
                 .build();
 
         ToolGuardrailService.ToolKey foreignKey = () -> "plain";
 
-        assertThat(service.hasOutputGuardrails(foreignKey)).isFalse();
-        assertThat(service.hasOutputGuardrails("not a key")).isFalse();
+        assertThatThrownBy(() -> service.hasOutputGuardrails(foreignKey)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.hasOutputGuardrails("not a key"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.executeOutputGuardrails(foreignKey, outputRequest("plain", "result")))
+                .isInstanceOf(IllegalArgumentException.class);
         assertThat(service.hasOutputGuardrails(null)).isFalse();
-        assertThat(service.executeOutputGuardrails(foreignKey, outputRequest("plain", "result"))
-                        .isSuccess())
-                .isTrue();
-        assertThat(service.executeOutputGuardrails("not a key", outputRequest("plain", "result"))
-                        .isSuccess())
-                .isTrue();
     }
 
     // --- tool source ----------------------------------------------------------------------------

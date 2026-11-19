@@ -418,6 +418,24 @@ class McpToolProviderTest {
     }
 
     @Test
+    void should_preserve_fail_if_one_server_fails_when_the_key_of_a_client_throws_with_resources_as_tools() {
+        var failingKeyClient = mock(McpClient.class);
+        when(failingKeyClient.key()).thenThrow(new IllegalStateException("cannot connect"));
+
+        var resilientProvider = McpToolProvider.builder()
+                .mcpClients(failingKeyClient, mcpClient)
+                .resourcesAsToolsPresenter(
+                        DefaultMcpResourcesAsToolsPresenter.builder().build())
+                .failIfOneServerFails(false)
+                .build();
+
+        var result = resilientProvider.provideTools(toolProviderRequest());
+
+        assertThat(toolByName(result, "list_resources").toolSource()).isEqualTo(ToolSource.mcp("mcp-1"));
+        assertThat(toolByName(result, "tool_1").toolSource()).isEqualTo(ToolSource.mcp("mcp-1"));
+    }
+
+    @Test
     void should_preserve_fail_if_one_server_fails_when_list_tools_throws_illegal_argument_exception() {
         var failingListToolsClient = mock(McpClient.class);
         when(failingListToolsClient.key()).thenReturn("broken-server");

@@ -6,8 +6,8 @@ import dev.langchain4j.internal.AsyncNotSupported;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * A guardrail is a rule that is applied when interacting with an LLM either to the input (the user message) or to the
- * output of the model to ensure that they are safe and meet the expectations of the model.
+ * A guardrail is a rule that is applied when interacting with an LLM: to the input (the user message), to the output of
+ * the model, or to the calls of tools and their results, to ensure that they are safe and meet expectations.
  *
  * @param <P>
  *            The type of the {@link GuardrailRequest}

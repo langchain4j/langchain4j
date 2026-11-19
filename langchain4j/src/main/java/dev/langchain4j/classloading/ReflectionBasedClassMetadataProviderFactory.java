@@ -6,12 +6,13 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Optional;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Implementation of the {@link ClassMetadataProviderFactory} interface using Java Reflection.
  * This class provides methods to retrieve annotations and method metadata from classes
- * via reflection-based mechanisms. Its method keys are the {@link Method}s themselves, so it keeps the default
- * {@link #resolveMethodKey(Object)}, which returns the method it is given.
+ * via reflection-based mechanisms. Its method keys are the {@link Method}s themselves, so
+ * {@link #resolveMethodKey(Object)} returns the method it is given.
  */
 public final class ReflectionBasedClassMetadataProviderFactory implements ClassMetadataProviderFactory<Method> {
     @Override
@@ -22,6 +23,11 @@ public final class ReflectionBasedClassMetadataProviderFactory implements ClassM
     @Override
     public <T extends Annotation> Optional<T> getAnnotation(Class<?> clazz, Class<T> annotationClass) {
         return Optional.ofNullable(clazz.getAnnotation(annotationClass));
+    }
+
+    @Override
+    public @Nullable Method resolveMethodKey(Object method) {
+        return method instanceof Method m ? m : null;
     }
 
     @Override

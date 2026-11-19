@@ -13,10 +13,9 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.test.mock.MockChatModel;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -99,17 +98,7 @@ class StringKeyedGuardrailsTests {
         }
     }
 
-    private static final ChatModel CHAT_MODEL = new ChatModel() {
-        @Override
-        public ChatResponse doChat(ChatRequest chatRequest) {
-            return ChatResponse.builder().aiMessage(AiMessage.from("Hi!")).build();
-        }
-
-        @Override
-        public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
-            return CompletableFuture.completedFuture(doChat(chatRequest));
-        }
-    };
+    private static final ChatModel CHAT_MODEL = MockChatModel.thatResponds("Hi!").thenRepeats();
 
     private final MyAiService aiService =
             AiServices.builder(MyAiService.class).chatModel(CHAT_MODEL).build();

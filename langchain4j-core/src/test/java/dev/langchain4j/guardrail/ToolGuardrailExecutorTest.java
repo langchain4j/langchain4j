@@ -400,7 +400,7 @@ class ToolGuardrailExecutorTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"not json", "[1,2]", "42", "null", ""})
+    @ValueSource(strings = {"not json", "[1,2]", "42", "null", "", "{\"q\":\"a\"} {\"q\":\"b\"}", "{\"q\":\"}\"} x"})
     void input_rewrite_that_is_not_a_json_object_is_a_fatal_failure_and_stops_the_chain(String rewritten) {
         var calls = new AtomicInteger();
         ToolInputGuardrail rewrite = r -> ToolInputGuardrailResult.successWith(rewritten);
@@ -425,6 +425,14 @@ class ToolGuardrailExecutorTest {
         assertThat(rootOf(input(async(rewrite)).executeAsync(inputRequest())))
                 .isExactlyInstanceOf(ToolInputGuardrailException.class)
                 .hasMessageContaining("not a JSON object");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {" {\"q\":\"a}\\\"[\"} ", "{\"q\":{\"r\":[1,{}]}}\n"})
+    void input_rewrite_to_one_json_object_with_braces_in_strings_or_nested_values_is_valid(String rewritten) {
+        ToolInputGuardrail rewrite = r -> ToolInputGuardrailResult.successWith(rewritten);
+
+        assertThat(input(rewrite).execute(inputRequest()).isSuccess()).isTrue();
     }
 
     @Test

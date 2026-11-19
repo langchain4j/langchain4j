@@ -4,6 +4,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.guardrail.ToolOutputGuardrailResult.Failure;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A tool output guardrail is a rule applied after a tool was executed, to validate or rewrite the result before the LLM sees it.
@@ -14,6 +15,10 @@ import java.util.List;
  * <p>
  *     A non-fatal failure does not stop the other guardrails of the chain from running; their failures are
  *     aggregated. A fatal failure stops the chain and aborts the AI service invocation.
+ * </p>
+ * <p>
+ *     One instance can be shared by every tool and every invocation of an AI service, and called concurrently, so
+ *     implementations must be thread-safe.
  * </p>
  *
  * @since 1.25.0
@@ -47,10 +52,11 @@ public interface ToolOutputGuardrail extends Guardrail<ToolOutputGuardrailReques
      * other contents and the error flag are kept.
      *
      * @param rewrittenText
-     *            the new text of the tool result
+     *            the new text of the tool result. {@code null} means no rewrite (a plain success); use
+     *            {@code ""} for an empty text
      * @return the result of a successful tool output guardrail validation carrying the rewritten text
      */
-    default ToolOutputGuardrailResult successWith(String rewrittenText) {
+    default ToolOutputGuardrailResult successWith(@Nullable String rewrittenText) {
         return ToolOutputGuardrailResult.successWith(rewrittenText);
     }
 

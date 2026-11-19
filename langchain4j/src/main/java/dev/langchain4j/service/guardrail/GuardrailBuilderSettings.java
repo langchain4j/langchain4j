@@ -109,6 +109,13 @@ final class GuardrailBuilderSettings<G extends Guardrail<?, ?>, C extends Guardr
     }
 
     /**
+     * The guardrail classes that were set.
+     */
+    List<Class<? extends G>> guardrailClasses() {
+        return List.copyOf(this.guardrailClasses);
+    }
+
+    /**
      * The guardrail instances that were set.
      */
     List<G> guardrailInstances() {

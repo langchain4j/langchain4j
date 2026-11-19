@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.startSafely;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -225,7 +226,7 @@ public abstract sealed class AbstractGuardrailExecutor<
      */
     protected CompletableFuture<R> executeGuardrailsAsyncAndFinish(P request, UnaryOperator<R> finisher) {
         var result = new CompletableFuture<R>();
-        executeGuardrailsAsync(request, new CancellationChain(result))
+        startSafely(() -> executeGuardrailsAsync(request, new CancellationChain(result)))
                 .thenApply(finisher)
                 .whenComplete((guardrailResult, error) -> Optional.ofNullable(error)
                         .ifPresentOrElse(

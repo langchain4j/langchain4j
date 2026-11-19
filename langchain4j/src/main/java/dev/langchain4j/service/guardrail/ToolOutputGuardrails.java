@@ -28,10 +28,10 @@ import dev.langchain4j.service.tool.AiServiceTool;
  *     Every tool guardrail that applies to a tool runs, as one chain, in this order:
  * </p>
  * <ol>
- *     <li>the guardrails set on the {@link AiServices AiServices} builder (they apply to every tool)</li>
+ *     <li>the guardrails set on the {@link AiServices} builder (they apply to every tool)</li>
  *     <li>the guardrails of the class annotation</li>
  *     <li>the guardrails of the method annotation</li>
- *     <li>the guardrails of the {@link AiServiceTool AiServiceTool} of the tool</li>
+ *     <li>the guardrails of the {@link AiServiceTool} of the tool</li>
  * </ol>
  * <p>
  *     No level replaces another. This <strong>differs</strong>
@@ -49,7 +49,7 @@ import dev.langchain4j.service.tool.AiServiceTool;
  *     Duplicates are removed, keeping the first occurrence: the same guardrail <strong>class</strong> declared by
  *     annotations or by the {@code toolOutputGuardrailClasses(..)} methods of the builder, at any level, runs once for
  *     a tool. Guardrail <strong>instances</strong> set on the builder or on an
- *     {@link AiServiceTool AiServiceTool} are only duplicates of themselves (the same
+ *     {@link AiServiceTool} are only duplicates of themselves (the same
  *     object twice), since two instances of one class can differ in their state, and an instance and a class naming
  *     the same class both run.
  * </p>

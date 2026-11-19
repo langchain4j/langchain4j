@@ -1,21 +1,23 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.internal.Utils.copy;
-import static java.util.stream.Collectors.toSet;
-
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.guardrail.GuardrailRequestParams;
-import dev.langchain4j.model.chat.request.ChatRequest;
-import dev.langchain4j.service.guardrail.ToolGuardrailService;
-import dev.langchain4j.service.tool.search.ToolSearchStrategy;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.service.guardrail.ToolGuardrailService;
+import java.util.Optional;
+
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.service.tool.search.ToolSearchStrategy;
+
+import static dev.langchain4j.internal.Utils.copy;
+import static java.util.stream.Collectors.toSet;
 
 @Internal
 public class ToolServiceContext {

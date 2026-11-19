@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The result of the validation of a {@link ToolInputGuardrail}.
@@ -25,19 +26,19 @@ public final class ToolInputGuardrailResult implements GuardrailResult<ToolInput
     private static final ToolInputGuardrailResult SUCCESS = new ToolInputGuardrailResult();
 
     private final Result result;
-    private final String successfulText;
+    private final @Nullable String successfulText;
     private final List<Failure> failures;
-    private final String rewrittenArguments;
+    private final @Nullable String rewrittenArguments;
 
     private ToolInputGuardrailResult(
-            Result result, String successfulText, List<Failure> failures, String rewrittenArguments) {
+            Result result, @Nullable String successfulText, List<Failure> failures, @Nullable String rewrittenArguments) {
         this.result = ensureNotNull(result, "result");
         this.successfulText = successfulText;
         this.failures = Optional.ofNullable(failures).orElseGet(List::of);
         this.rewrittenArguments = rewrittenArguments;
     }
 
-    private ToolInputGuardrailResult(Result result, String successfulText, List<Failure> failures) {
+    private ToolInputGuardrailResult(Result result, @Nullable String successfulText, List<Failure> failures) {
         this(result, successfulText, failures, successfulText);
     }
 
@@ -75,7 +76,7 @@ public final class ToolInputGuardrailResult implements GuardrailResult<ToolInput
      *            {@linkplain #success() success}.
      * @return a successful result carrying the rewritten arguments
      */
-    public static ToolInputGuardrailResult successWith(String rewrittenArguments) {
+    public static ToolInputGuardrailResult successWith(@Nullable String rewrittenArguments) {
         return (rewrittenArguments == null) ? success() : new ToolInputGuardrailResult(rewrittenArguments);
     }
 
@@ -88,7 +89,7 @@ public final class ToolInputGuardrailResult implements GuardrailResult<ToolInput
      * @return the rewritten tool arguments (a JSON string), or {@code null} if the arguments were not rewritten
      */
     @Override
-    public String successfulText() {
+    public @Nullable String successfulText() {
         return successfulText;
     }
 
@@ -163,10 +164,10 @@ public final class ToolInputGuardrailResult implements GuardrailResult<ToolInput
     @Experimental
     public static final class Failure implements GuardrailResult.Failure {
         private final String message;
-        private final Throwable cause;
-        private final Class<? extends Guardrail> guardrailClass;
+        private final @Nullable Throwable cause;
+        private final @Nullable Class<? extends Guardrail> guardrailClass;
 
-        Failure(String message, Throwable cause, Class<? extends Guardrail> guardrailClass) {
+        Failure(String message, @Nullable Throwable cause, @Nullable Class<? extends Guardrail> guardrailClass) {
             this.message = ensureNotNull(message, "message");
             this.cause = cause;
             this.guardrailClass = guardrailClass;
@@ -176,7 +177,7 @@ public final class ToolInputGuardrailResult implements GuardrailResult<ToolInput
             this(message, null, null);
         }
 
-        Failure(String message, Throwable cause) {
+        Failure(String message, @Nullable Throwable cause) {
             this(message, cause, null);
         }
 
@@ -192,12 +193,12 @@ public final class ToolInputGuardrailResult implements GuardrailResult<ToolInput
         }
 
         @Override
-        public Throwable cause() {
+        public @Nullable Throwable cause() {
             return cause;
         }
 
         @Override
-        public Class<? extends Guardrail> guardrailClass() {
+        public @Nullable Class<? extends Guardrail> guardrailClass() {
             return guardrailClass;
         }
 

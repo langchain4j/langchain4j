@@ -13,7 +13,11 @@ import dev.langchain4j.service.guardrail.TestToolGuardrailServiceBuilderFactory.
 import dev.langchain4j.test.mock.MockChatModel;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 
+// the tests share static state (the recording builders, the guardrails that record what they saw)
+@Execution(ExecutionMode.SAME_THREAD)
 class ToolGuardrailServiceBuilderFactoryTest {
 
     interface SpiAssistant {

@@ -31,8 +31,10 @@ import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.test.mock.MockStreamingChatModel;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Flow;
@@ -92,6 +94,7 @@ class ToolGuardrailNonBlockingExecutionTest {
     static final class RecordingTool implements ToolExecutor {
 
         final List<String> receivedArguments = new CopyOnWriteArrayList<>();
+        final List<String> threads = new CopyOnWriteArrayList<>();
 
         @Override
         public String execute(ToolExecutionRequest request, Object memoryId) {
@@ -101,6 +104,7 @@ class ToolGuardrailNonBlockingExecutionTest {
         @Override
         public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
             receivedArguments.add(request.arguments());
+            threads.add(Thread.currentThread().getName());
             return ToolExecutionResult.builder()
                     .resultText("found " + request.arguments())
                     .build();
@@ -436,9 +440,13 @@ class ToolGuardrailNonBlockingExecutionTest {
                 mode,
                 AiServiceTool.builder().toolInputGuardrails(parsing),
                 responsesCallingSearchWith(MALFORMED_ARGUMENTS),
-                services -> services.toolArgumentsErrorHandler(ToolArgumentsErrorHandler.failInvocation()));
+                services -> services.toolArgumentsErrorHandler((error, context) -> {
+                    throw new ArgumentsErrorHandled(error);
+                }));
 
-        assertThat(run.failure()).isNotInstanceOf(GuardrailException.class);
+        assertThat(run.answer).failsWithin(TIMEOUT);
+        assertThat(causes(run.answer.handle((ignored, error) -> error).join()))
+                .hasAtLeastOneElementOfType(ArgumentsErrorHandled.class);
         assertThat(run.tool.receivedArguments).isEmpty();
         assertThat(run.errorHandlerCalls).hasValue(0);
         assertThat(run.requests.get()).hasSize(1);
@@ -502,6 +510,39 @@ class ToolGuardrailNonBlockingExecutionTest {
 
         assertThat(run.answer).isCompletedWithValue("done");
         assertThat(run.tool.receivedArguments).containsExactly(REWRITTEN_ARGUMENTS);
+    }
+
+    @ParameterizedTest
+    @EnumSource(
+            value = Mode.class,
+            names = {"COMPLETABLE_FUTURE", "REACTIVE"})
+    void the_tool_runs_on_the_tool_executor_when_an_input_guardrail_completes_on_another_thread(Mode mode) {
+        var toolExecutor = Executors.newSingleThreadExecutor(runnable -> new Thread(runnable, "tool-executor"));
+        var asyncSuccess = new ToolInputGuardrail() {
+            @Override
+            public ToolInputGuardrailResult validate(ToolInputGuardrailRequest request) {
+                return success();
+            }
+
+            @Override
+            public CompletableFuture<ToolInputGuardrailResult> validateAsync(ToolInputGuardrailRequest request) {
+                return CompletableFuture.supplyAsync(
+                        () -> validate(request), CompletableFuture.delayedExecutor(20, TimeUnit.MILLISECONDS));
+            }
+        };
+
+        try {
+            var run = run(
+                    mode,
+                    AiServiceTool.builder().toolInputGuardrails(asyncSuccess),
+                    responsesCallingSearch(),
+                    services -> services.executeToolsConcurrently(toolExecutor));
+
+            assertThat(run.answer).isCompletedWithValue("done");
+            assertThat(run.tool.threads).containsExactly("tool-executor");
+        } finally {
+            toolExecutor.shutdownNow();
+        }
     }
 
     @ParameterizedTest
@@ -668,5 +709,21 @@ class ToolGuardrailNonBlockingExecutionTest {
                         .isInstanceOf(CancellationException.class));
         assertThat(tool.receivedArguments).isEmpty();
         assertThat(model.requests()).hasSize(1);
+    }
+
+    private static List<Throwable> causes(Throwable error) {
+        var causes = new ArrayList<Throwable>();
+        for (Throwable cause = error; cause != null && !causes.contains(cause); cause = cause.getCause()) {
+            causes.add(cause);
+        }
+        return causes;
+    }
+
+    /** Thrown by an arguments error handler, so a test can tell that the handler decided the failure. */
+    static final class ArgumentsErrorHandled extends RuntimeException {
+
+        ArgumentsErrorHandled(Throwable cause) {
+            super(cause);
+        }
     }
 }

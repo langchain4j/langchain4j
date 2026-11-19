@@ -212,25 +212,22 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 subscription.request(Long.MAX_VALUE);
             }
 
-                    @Override
-                    public void onNext(AiServiceStreamingEvent event) {
-                        if (tube.cancelled()) {
-                            return;
-                        }
-                        if (hasOutputGuardrails) {
-                            if (event instanceof FinalResponseEvent finalResponseEvent) {
-                                String text = finalResponseEvent
-                                        .chatResponse()
-                                        .aiMessage()
-                                        .text();
-                                if (text != null) {
-                                    tube.send(text);
-                                }
-                            }
-                        } else if (event instanceof PartialResponseEvent partialResponseEvent) {
-                            tube.send(partialResponseEvent.partialResponse().text());
+            @Override
+            public void onNext(AiServiceStreamingEvent event) {
+                if (tube.cancelled()) {
+                    return;
+                }
+                if (hasOutputGuardrails) {
+                    if (event instanceof FinalResponseEvent finalResponseEvent) {
+                        String text = finalResponseEvent.chatResponse().aiMessage().text();
+                        if (text != null) {
+                            tube.send(text);
                         }
                     }
+                } else if (event instanceof PartialResponseEvent partialResponseEvent) {
+                    tube.send(partialResponseEvent.partialResponse().text());
+                }
+            }
 
             @Override
             public void onError(Throwable error) {

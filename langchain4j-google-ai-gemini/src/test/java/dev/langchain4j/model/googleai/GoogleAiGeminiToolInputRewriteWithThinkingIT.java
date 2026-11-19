@@ -30,7 +30,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 class GoogleAiGeminiToolInputRewriteWithThinkingIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
-    private static final String REWRITTEN_CITY = "Munich, Germany";
+    // a value the model does not produce for "Munich" on its own, so the rewrite is visible
+    private static final String REWRITTEN_CITY = "Munich (normalized)";
 
     interface Assistant {
 
@@ -54,8 +55,11 @@ class GoogleAiGeminiToolInputRewriteWithThinkingIT {
      */
     static class RewriteCity implements ToolInputGuardrail {
 
+        final List<String> originalArguments = new CopyOnWriteArrayList<>();
+
         @Override
         public ToolInputGuardrailResult validate(ToolInputGuardrailRequest request) {
+            originalArguments.add(request.toolExecutionRequest().arguments());
             return successWith("{\"city\":\"%s\"}".formatted(REWRITTEN_CITY));
         }
     }
@@ -80,13 +84,14 @@ class GoogleAiGeminiToolInputRewriteWithThinkingIT {
                 .build();
 
         WeatherTools tools = new WeatherTools();
+        RewriteCity rewriteCity = new RewriteCity();
         MessageWindowChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(model)
                 .chatMemory(chatMemory)
                 .tools(tools)
-                .toolInputGuardrails(new RewriteCity())
+                .toolInputGuardrails(rewriteCity)
                 .build();
 
         // when
@@ -94,6 +99,7 @@ class GoogleAiGeminiToolInputRewriteWithThinkingIT {
 
         // then
         assertThat(answer).isNotBlank();
+        assertThat(rewriteCity.originalArguments).isNotEmpty().noneMatch(arguments -> arguments.contains(REWRITTEN_CITY));
         assertThat(tools.cities).isNotEmpty().allMatch(REWRITTEN_CITY::equals);
 
         AiMessage toolCallMessage = chatMemory.messages().stream()

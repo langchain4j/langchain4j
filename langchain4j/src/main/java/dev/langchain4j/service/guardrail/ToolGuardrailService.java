@@ -40,6 +40,7 @@ import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.spi.classloading.ClassInstanceFactory;
 import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
 import java.util.concurrent.CompletionException;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Executes the tool guardrails of the tools of an AI service: the {@link ToolInputGuardrail}s, which validate or
@@ -120,7 +121,7 @@ public non-sealed interface ToolGuardrailService
      *         meaningful to the service that returned it, and never {@code null}. A tool without guardrails also
      *         gets a key, and running its guardrails returns a success.
      */
-    ToolKey bind(Class<?> toolClass, AiServiceTool tool);
+    ToolKey bind(@Nullable Class<?> toolClass, AiServiceTool tool);
 
     /**
      * Executes a tool call through the tool guardrails of the tool: the input guardrails, then {@code tool}, then the
@@ -165,8 +166,8 @@ public non-sealed interface ToolGuardrailService
     default GuardedToolExecution executeGuardrails(
             ToolKey key,
             ToolExecutionRequest request,
-            ToolSpecification toolSpecification,
-            ToolSource toolSource,
+            @Nullable ToolSpecification toolSpecification,
+            @Nullable ToolSource toolSource,
             GuardrailRequestParams requestParams,
             Function<ToolExecutionRequest, ToolExecutionResult> tool) {
 
@@ -221,7 +222,7 @@ public non-sealed interface ToolGuardrailService
     /**
      * Non-blocking counterpart of {@link #executeGuardrails(ToolKey, ToolExecutionRequest, ToolSpecification,
      * ToolSource, GuardrailRequestParams, Function)}, with the same rules, for the asynchronous
-     * ({@code CompletableFuture}) and streaming AI service modes. The guardrails run with
+     * ({@code CompletableFuture}) and reactive ({@code Flow.Publisher}) AI service modes. The guardrails run with
      * {@link #executeInputGuardrailsAsync(Object, GuardrailRequest)} and
      * {@link #executeOutputGuardrailsAsync(Object, GuardrailRequest)}, so a guardrail that
      * overrides {@link Guardrail#validateAsync(GuardrailRequest)}
@@ -249,19 +250,23 @@ public non-sealed interface ToolGuardrailService
     default CompletableFuture<GuardedToolExecution> executeGuardrailsAsync(
             ToolKey key,
             ToolExecutionRequest request,
-            ToolSpecification toolSpecification,
-            ToolSource toolSource,
+            @Nullable ToolSpecification toolSpecification,
+            @Nullable ToolSource toolSource,
             GuardrailRequestParams requestParams,
             Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool) {
 
-        ensureNotNull(key, "key");
-        ensureNotNull(request, "request");
-        ensureNotNull(requestParams, "requestParams");
-        ensureNotNull(tool, "tool");
+        return startSafely(
+                () -> {
+                    ensureNotNull(key, "key");
+                    ensureNotNull(request, "request");
+                    ensureNotNull(requestParams, "requestParams");
+                    ensureNotNull(tool, "tool");
 
-        return hasGuardrails(key)
-                ? guardAsync(key, request, toolSpecification, toolSource, requestParams, tool)
-                : executeWithoutGuardrailsAsync(request, tool);
+                    return hasGuardrails(key)
+                            ? guardAsync(key, request, toolSpecification, toolSource, requestParams, tool)
+                            : executeWithoutGuardrailsAsync(request, tool);
+                },
+                "future of the tool guardrails");
     }
 
     /**
@@ -283,7 +288,7 @@ public non-sealed interface ToolGuardrailService
      * @since 1.25.0
      */
     @Experimental
-    default Optional<ToolExecutionRequest> rejectedRequest(ToolExecutionRequest request, Throwable failure) {
+    default Optional<ToolExecutionRequest> rejectedRequest(ToolExecutionRequest request, @Nullable Throwable failure) {
         ensureNotNull(request, "request");
         return Optional.ofNullable(failure)
                 .map(Exceptions::unwrapCompletionException)
@@ -313,7 +318,7 @@ public non-sealed interface ToolGuardrailService
      * @since 1.25.0
      */
     @Experimental
-    default Optional<ToolGuardrailStage> rejectedStage(ToolExecutionRequest request, Throwable failure) {
+    default Optional<ToolGuardrailStage> rejectedStage(ToolExecutionRequest request, @Nullable Throwable failure) {
         ensureNotNull(request, "request");
         return Optional.ofNullable(failure)
                 .map(Exceptions::unwrapCompletionException)

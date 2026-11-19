@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 class ClassMetadataProviderFactoryTest {
 
-    /** A factory whose method keys are {@link Method}s, relying on the default {@code resolveMethodKey}. */
+    /** A factory that does not override {@code resolveMethodKey}, like one written before it existed. */
     private static final class MethodKeyedFactory implements ClassMetadataProviderFactory<Method> {
 
         @Override
@@ -30,14 +30,9 @@ class ClassMetadataProviderFactoryTest {
     }
 
     @Test
-    void the_default_method_key_of_a_method_is_the_method_itself() throws Exception {
+    void by_default_a_method_has_no_key_so_callers_fall_back_to_the_method_itself() throws Exception {
         var method = Object.class.getMethod("toString");
 
-        assertThat(new MethodKeyedFactory().resolveMethodKey(method)).isSameAs(method);
-    }
-
-    @Test
-    void the_default_method_key_of_null_is_null() {
-        assertThat(new MethodKeyedFactory().resolveMethodKey(null)).isNull();
+        assertThat(new MethodKeyedFactory().resolveMethodKey(method)).isNull();
     }
 }

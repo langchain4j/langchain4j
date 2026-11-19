@@ -42,7 +42,10 @@ public class StringKeyedClassMetadataProviderFactory implements ClassMetadataPro
 
     @Override
     public String resolveMethodKey(Object method) {
-        return (method instanceof Method m) ? keyOf(m) : null;
+        if (method instanceof Method m) {
+            return keyOf(m);
+        }
+        return (method instanceof String key) ? key : null;
     }
 
     private static String keyOf(Method method) {

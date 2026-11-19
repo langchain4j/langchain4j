@@ -60,7 +60,8 @@ public interface ChatMemory {
      * <p>
      * The default implementation delegates to {@link #set(Iterable) set(Iterable&lt;ChatMessage&gt;)}.
      * <p>
-     * NOTE: This method is never called automatically by LangChain4j.
+     * NOTE: AI Services call it to rewrite messages they already stored: the results of tools that were rolled back
+     * (compensation), and the tool calls whose arguments a tool input guardrail rewrote.
      *
      * @param messages The {@link ChatMessage}s to set. Must not be {@code null} or empty.
      * @since 1.11.0
@@ -82,7 +83,8 @@ public interface ChatMemory {
      * This method will typically be used when chat memory needs to be re-written to implement things like
      * memory compaction.
      * <p>
-     * NOTE: This method is never called automatically by LangChain4j.
+     * NOTE: AI Services call it to rewrite messages they already stored: the results of tools that were rolled back
+     * (compensation), and the tool calls whose arguments a tool input guardrail rewrote.
      *
      * @param messages The {@link ChatMessage}s to set. Must not be {@code null} or empty.
      * @since 1.11.0

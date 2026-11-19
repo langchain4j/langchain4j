@@ -21,6 +21,12 @@ public enum CompensationReason {
     TOOL_EXECUTION_FAILED,
 
     /**
+     * The AI Service invocation was cancelled, so this tool, which had executed successfully, was rolled back (or its
+     * rollback was attempted, when the compensating action failed).
+     */
+    INVOCATION_CANCELLED,
+
+    /**
      * A tool input guardrail rejected the call of a tool in this invocation, so this tool, which had executed
      * successfully in the same or an earlier tool-calling round, was rolled back (or its rollback was attempted, when
      * the compensating action failed). The rejected tool did not run, so it is not rolled back itself. This applies to
@@ -40,11 +46,5 @@ public enum CompensationReason {
      *
      * @since 1.25.0
      */
-    TOOL_OUTPUT_GUARDRAIL_FAILED,
-
-    /**
-     * The AI Service invocation was cancelled, so this tool, which had executed successfully, was rolled back (or its
-     * rollback was attempted, when the compensating action failed).
-     */
-    INVOCATION_CANCELLED
+    TOOL_OUTPUT_GUARDRAIL_FAILED
 }

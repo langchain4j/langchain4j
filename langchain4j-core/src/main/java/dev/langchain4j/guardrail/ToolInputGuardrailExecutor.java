@@ -128,10 +128,43 @@ public non-sealed class ToolInputGuardrailExecutor
 
     private static boolean isJsonObject(String arguments) {
         try {
-            return Json.fromJson(arguments, Map.class) != null;
+            return endsAfterFirstObject(arguments) && Json.fromJson(arguments, Map.class) != null;
         } catch (RuntimeException e) {
             return false;
         }
+    }
+
+    /**
+     * Whether the text is one JSON object and nothing else: the JSON parser stops after the first value, so a rewrite
+     * like {@code {"a":1} {"b":2}} would otherwise pass, and be stored and sent to the LLM as it is.
+     */
+    private static boolean endsAfterFirstObject(String text) {
+        var trimmed = text.strip();
+        if (!trimmed.startsWith("{")) {
+            return false;
+        }
+        int depth = 0;
+        boolean inString = false;
+        for (int i = 0; i < trimmed.length(); i++) {
+            char c = trimmed.charAt(i);
+            if (inString) {
+                if (c == '\\') {
+                    i++;
+                } else if (c == '"') {
+                    inString = false;
+                }
+            } else if (c == '"') {
+                inString = true;
+            } else if (c == '{' || c == '[') {
+                depth++;
+            } else if (c == '}' || c == ']') {
+                depth--;
+                if (depth == 0) {
+                    return i == trimmed.length() - 1;
+                }
+            }
+        }
+        return false;
     }
 
     /**

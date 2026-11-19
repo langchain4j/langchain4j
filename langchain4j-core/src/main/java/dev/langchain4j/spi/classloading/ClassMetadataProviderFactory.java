@@ -3,6 +3,7 @@ package dev.langchain4j.spi.classloading;
 import java.lang.annotation.Annotation;
 import java.util.Optional;
 import java.lang.reflect.Method;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A factory interface for providing access to class metadata. Intended to be implemented by downstream frameworks.
@@ -65,16 +66,18 @@ public interface ClassMetadataProviderFactory<MethodKey> {
      *     Callers may cache the result, so the same method must always resolve to the same key.
      * </p>
      * <p>
-     *     The default implementation returns the given method unchanged, which is right for factories whose keys are
-     *     {@link Method}s, like the reflection based one.
+     *     It may also be called with one of this factory's own keys: return it unchanged then.
+     * </p>
+     * <p>
+     *     The default implementation returns {@code null}, so a caller falls back to the {@link Method} itself. A
+     *     factory whose keys are {@link Method}s, like the reflection based one, overrides it to return the method.
      * </p>
      *
      * @param method What identifies the method, usually a {@link Method}. Never {@code null}.
      * @return The key this factory uses for the method, or {@code null} if the method has none.
      * @since 1.25.0
      */
-    @SuppressWarnings("unchecked")
-    default MethodKey resolveMethodKey(Object method) {
-        return (MethodKey) method;
+    default @Nullable MethodKey resolveMethodKey(Object method) {
+        return null;
     }
 }

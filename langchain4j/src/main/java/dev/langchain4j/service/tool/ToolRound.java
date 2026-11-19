@@ -25,6 +25,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -308,13 +309,18 @@ public final class ToolRound {
      * @param tool           starts the tool for a request (the call, or the call as the input guardrails rewrote
      *                       it), handling its errors
      * @param argumentsError handles the arguments error of an input guardrail, before the tool started
+     * @param executor       the executor of the tools: the tool is started on it when the input guardrails complete
+     *                       on another thread, so it never runs on a thread of a guardrail
      * @return the future of the result to send to the LLM
      */
     CompletableFuture<ToolExecutionResult> executeAsync(
             ToolExecutionRequest call,
             Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool,
-            Function<ToolArgumentsException, CompletableFuture<ToolExecutionResult>> argumentsError) {
+            Function<ToolArgumentsException, CompletableFuture<ToolExecutionResult>> argumentsError,
+            Executor executor) {
 
+        Thread startingThread = Thread.currentThread();
+        AtomicBoolean starting = new AtomicBoolean(true);
         Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> recordingTool = request -> {
             // recorded before checking the cancellation, so that a cancellation either sees the tool as started (and
             // lets it run to completion) or stops it here
@@ -323,7 +329,11 @@ public final class ToolRound {
             if (isCancelled()) {
                 recorded = CompletableFuture.failedFuture(new CancellationException());
             } else {
-                var toolResult = startSafely(() -> tool.apply(request), "future of the tool");
+                // an input guardrail that completed on another thread must not run the tool on that thread
+                boolean onStartingThread = starting.get() && Thread.currentThread() == startingThread;
+                var toolResult = (onStartingThread || executor == null)
+                        ? startSafely(() -> tool.apply(request), "future of the tool")
+                        : startOn(executor, () -> tool.apply(request));
                 recorded = toolResult.thenApply(result -> {
                     toolResults.put(call, result);
                     return result;
@@ -357,7 +367,18 @@ public final class ToolRound {
             propagateCancellation(execution, guarded);
             cancelBeforeToolStarts(call, execution);
         }
+        starting.set(false);
         return track(call, execution);
+    }
+
+    private static CompletableFuture<ToolExecutionResult> startOn(
+            Executor executor, Supplier<CompletableFuture<ToolExecutionResult>> tool) {
+        try {
+            return CompletableFuture.supplyAsync(() -> startSafely(tool, "future of the tool"), executor)
+                    .thenCompose(Function.identity());
+        } catch (RuntimeException rejected) {
+            return CompletableFuture.failedFuture(rejected);
+        }
     }
 
     /**
@@ -437,7 +458,7 @@ public final class ToolRound {
         var roundCalls = calls.stream()
                 .map(call -> roundCall(
                         call,
-                        ensureNotNull(executions.get(call), "execution of " + call)
+                        ensureNotNull(executions.get(call), "execution of %s cannot be null", call)
                                 .result()))
                 .toList();
         var requests = roundCalls.stream().map(ToolRoundCall::request).toList();
@@ -586,10 +607,18 @@ public final class ToolRound {
      * Throwable)}), otherwise the call of the LLM.
      */
     ToolExecutionRequest reportedRequest(ToolExecutionRequest call) {
+        return reportedRequest(call, null);
+    }
+
+    /**
+     * As {@link #reportedRequest(ToolExecutionRequest)}, for a call that {@code failure} ended before the round
+     * recorded it.
+     */
+    ToolExecutionRequest reportedRequest(ToolExecutionRequest call, Throwable failure) {
         return Optional.ofNullable(executions.get(call))
                 .map(GuardedToolExecution::request)
                 .or(() -> Optional.ofNullable(startedRequests.get(call)))
-                .or(() -> Optional.ofNullable(errors.get(call))
+                .or(() -> Optional.ofNullable(failure != null ? failure : errors.get(call))
                         .flatMap(error -> binding(call.name())
                                 .flatMap(binding -> binding.service().rejectedRequest(call, error))))
                 .orElse(call);

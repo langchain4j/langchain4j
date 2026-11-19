@@ -13,6 +13,7 @@ import dev.langchain4j.guardrail.ToolOutputGuardrail;
 import java.util.List;
 import java.util.Objects;
 import dev.langchain4j.service.AiServices;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents a tool managed by an AI Service, combining:
@@ -75,7 +76,7 @@ public class AiServiceTool {
 
     /**
      * Returns the {@link ToolInputGuardrail}s of this tool. They run after the guardrails set on the
-     * {@link AiServices AiServices} builder, after the guardrails of the class annotation and
+     * {@link AiServices} builder, after the guardrails of the class annotation and
      * after the ones of the method annotation, if any.
      *
      * @return the tool input guardrails of this tool, empty if it has none
@@ -88,7 +89,7 @@ public class AiServiceTool {
 
     /**
      * Returns the {@link ToolOutputGuardrail}s of this tool. They run after the guardrails set on the
-     * {@link AiServices AiServices} builder, after the guardrails of the class annotation and
+     * {@link AiServices} builder, after the guardrails of the class annotation and
      * after the ones of the method annotation, if any.
      *
      * @return the tool output guardrails of this tool, empty if it has none
@@ -181,19 +182,19 @@ public class AiServiceTool {
          * Sets where this tool comes from. It is exposed to tool guardrails as trusted information, so it must be set
          * by the application, never derived from remote data. Defaults to {@link ToolSource#programmatic()}.
          *
-         * @param toolSource where this tool comes from
+         * @param toolSource where this tool comes from; {@code null} means {@link ToolSource#programmatic()}
          * @return this builder
          * @since 1.25.0
          */
         @Experimental
-        public Builder toolSource(ToolSource toolSource) {
+        public Builder toolSource(@Nullable ToolSource toolSource) {
             this.toolSource = toolSource;
             return this;
         }
 
         /**
          * Sets the {@link ToolInputGuardrail}s of this tool, which run in the order given, after the guardrails set
-         * on the {@link AiServices AiServices} builder, after the ones of the class
+         * on the {@link AiServices} builder, after the ones of the class
          * annotation and after the ones of the method annotation, if any. {@code null} means none.
          *
          * @param toolInputGuardrails the tool input guardrails of this tool, or {@code null} for none
@@ -201,7 +202,7 @@ public class AiServiceTool {
          * @since 1.25.0
          */
         @Experimental
-        public Builder toolInputGuardrails(List<? extends ToolInputGuardrail> toolInputGuardrails) {
+        public Builder toolInputGuardrails(@Nullable List<? extends ToolInputGuardrail> toolInputGuardrails) {
             this.toolInputGuardrails = (toolInputGuardrails != null) ? List.copyOf(toolInputGuardrails) : null;
             return this;
         }
@@ -221,7 +222,7 @@ public class AiServiceTool {
 
         /**
          * Sets the {@link ToolOutputGuardrail}s of this tool, which run in the order given, after the guardrails set
-         * on the {@link AiServices AiServices} builder, after the ones of the class
+         * on the {@link AiServices} builder, after the ones of the class
          * annotation and after the ones of the method annotation, if any. {@code null} means none.
          *
          * @param toolOutputGuardrails the tool output guardrails of this tool, or {@code null} for none
@@ -229,7 +230,7 @@ public class AiServiceTool {
          * @since 1.25.0
          */
         @Experimental
-        public Builder toolOutputGuardrails(List<? extends ToolOutputGuardrail> toolOutputGuardrails) {
+        public Builder toolOutputGuardrails(@Nullable List<? extends ToolOutputGuardrail> toolOutputGuardrails) {
             this.toolOutputGuardrails = (toolOutputGuardrails != null) ? List.copyOf(toolOutputGuardrails) : null;
             return this;
         }

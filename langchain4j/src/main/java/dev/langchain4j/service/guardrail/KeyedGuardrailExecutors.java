@@ -1,5 +1,6 @@
 package dev.langchain4j.service.guardrail;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.startSafely;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.guardrail.GuardrailExecutor;
@@ -56,8 +57,9 @@ final class KeyedGuardrailExecutors<
      * @param noGuardrailsResult provides the result for a key that has no executor
      * @param keyResolver        translates the key a caller identifies the target with into the key the executors are
      *                           registered under (for example a {@link Method} into the key a
-     *                           framework uses for it). It is never called with {@code null}, may return
-     *                           {@code null} for a key that has no executor, and is called once per key.
+     *                           framework uses for it). It is only called for a key that is not registered as
+     *                           is, never with {@code null}, may return {@code null} for a key that has no
+     *                           executor, and is called once per key.
      */
     KeyedGuardrailExecutors(
             Map<Object, E> executors, Supplier<R> noGuardrailsResult, UnaryOperator<Object> keyResolver) {
@@ -101,9 +103,9 @@ final class KeyedGuardrailExecutors<
      * Non-blocking counterpart of {@link #execute(Object, GuardrailRequest)}.
      */
     <K> CompletableFuture<R> executeAsync(K key, P request) {
-        return executor(key)
+        return startSafely(() -> executor(key)
                 .map(executor -> executor.executeAsync(request))
-                .orElseGet(() -> CompletableFuture.completedFuture(this.noGuardrailsResult.get()));
+                .orElseGet(() -> CompletableFuture.completedFuture(this.noGuardrailsResult.get())));
     }
 
     /**
@@ -118,7 +120,8 @@ final class KeyedGuardrailExecutors<
         var registered = Optional.ofNullable(executors).map(Map::copyOf).orElseGet(Map::of);
         var executorsByCallerKey = new ConcurrentHashMap<Object, Optional<E>>();
 
-        return key -> executorsByCallerKey.computeIfAbsent(
-                key, k -> Optional.ofNullable(keyResolver.apply(k)).map(registered::get));
+        return key -> Optional.ofNullable(registered.get(key))
+                .or(() -> executorsByCallerKey.computeIfAbsent(
+                        key, k -> Optional.ofNullable(keyResolver.apply(k)).map(registered::get)));
     }
 }

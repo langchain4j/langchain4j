@@ -1,5 +1,6 @@
 package dev.langchain4j.service.tool;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.startSafely;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
@@ -2711,15 +2712,17 @@ public class ToolService {
             Consumer<BeforeToolExecution> externalBeforeToolExecution,
             Consumer<ToolExecution> externalAfterToolExecution,
             Executor executor) {
-        warnIfToolGuardrailsAreSkipped(toolRequest, toolExecutors, "startTool");
-        return startTool(
-                registeredToolsRound(toolExecutors, invocationContext),
-                toolRequest,
-                toolExecutors,
-                invocationContext,
-                externalBeforeToolExecution,
-                externalAfterToolExecution,
-                executor);
+        return startSafely(() -> {
+            warnIfToolGuardrailsAreSkipped(toolRequest, toolExecutors, "startTool");
+            return startTool(
+                    registeredToolsRound(toolExecutors, invocationContext),
+                    toolRequest,
+                    toolExecutors,
+                    invocationContext,
+                    externalBeforeToolExecution,
+                    externalAfterToolExecution,
+                    executor);
+        });
     }
 
     /**
@@ -2744,7 +2747,8 @@ public class ToolService {
                                     round,
                                     toolRequest,
                                     externalBeforeToolExecution,
-                                    externalAfterToolExecution),
+                                    externalAfterToolExecution,
+                                    executor),
                             executor)
                     .thenCompose(toolResultFuture -> toolResultFuture);
         } catch (RuntimeException rejected) {
@@ -2830,14 +2834,16 @@ public class ToolService {
             ToolRound round,
             ToolExecutionRequest toolRequest,
             Consumer<BeforeToolExecution> externalBeforeToolExecution,
-            Consumer<ToolExecution> externalAfterToolExecution) {
+            Consumer<ToolExecution> externalAfterToolExecution,
+            Executor executor) {
         return internalExecuteToolAsync(
                 invocationContext,
                 toolExecutors,
                 round,
                 toolRequest,
                 nullSafeCombineConsumers(this.beforeToolExecution, externalBeforeToolExecution),
-                nullSafeCombineConsumers(this.afterToolExecution, externalAfterToolExecution));
+                nullSafeCombineConsumers(this.afterToolExecution, externalAfterToolExecution),
+                executor);
     }
 
     /**
@@ -2851,7 +2857,8 @@ public class ToolService {
             ToolRound round,
             ToolExecutionRequest toolRequest,
             Consumer<BeforeToolExecution> beforeToolExecution,
-            Consumer<ToolExecution> afterToolExecution) {
+            Consumer<ToolExecution> afterToolExecution,
+            Executor executor) {
         if (beforeToolExecution != null) {
             beforeToolExecution.accept(BeforeToolExecution.builder()
                     .request(toolRequest)
@@ -2881,7 +2888,8 @@ public class ToolService {
                                 toolRequest,
                                 invocationContext,
                                 asyncArgumentsErrorHandler(),
-                                asyncExecutionErrorHandler()));
+                                asyncExecutionErrorHandler()),
+                        executor);
 
         if (afterToolExecution != null) {
             futureToolResult = futureToolResult.handle((toolResult, error) -> {
@@ -2896,7 +2904,7 @@ public class ToolService {
                                 .resultText(errorText(unwrapCompletionException(error)))
                                 .build();
                 afterToolExecution.accept(ToolExecution.builder()
-                        .request(round.reportedRequest(toolRequest))
+                        .request(round.reportedRequest(toolRequest, error))
                         .result(result)
                         .startTime(startTime)
                         .finishTime(LocalDateTime.now())

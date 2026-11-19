@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import dev.langchain4j.exception.ToolArgumentsException;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents the parameter passed to a tool output guardrail, after a tool has been executed.
@@ -25,7 +26,7 @@ import dev.langchain4j.exception.ToolArgumentsException;
 public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOutputGuardrailRequest> {
 
     private final ToolExecutionRequest toolExecutionRequest;
-    private final ToolSpecification toolSpecification;
+    private final @Nullable ToolSpecification toolSpecification;
     private final ToolSource toolSource;
     private final GuardrailRequestParams requestParams;
     private final List<Content> resultContents;
@@ -53,7 +54,7 @@ public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOu
     /**
      * @return the specification of the executed tool; may be null when it is not known
      */
-    public ToolSpecification toolSpecification() {
+    public @Nullable ToolSpecification toolSpecification() {
         return toolSpecification;
     }
 
@@ -102,14 +103,14 @@ public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOu
     /**
      * @return the invocation context, or null if the request params carry none
      */
-    public InvocationContext invocationContext() {
+    public @Nullable InvocationContext invocationContext() {
         return requestParams.invocationContext();
     }
 
     /**
      * @return the chat memory id, or null if there is no invocation context or no memory id
      */
-    public Object memoryId() {
+    public @Nullable Object memoryId() {
         InvocationContext context = invocationContext();
         return context == null ? null : context.chatMemoryId();
     }
@@ -205,8 +206,8 @@ public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOu
     @Experimental
     public static class Builder {
         private ToolExecutionRequest toolExecutionRequest;
-        private ToolSpecification toolSpecification;
-        private ToolSource toolSource;
+        private @Nullable ToolSpecification toolSpecification;
+        private @Nullable ToolSource toolSource;
         private GuardrailRequestParams requestParams;
         private List<Content> resultContents;
         private boolean isError;
@@ -239,7 +240,7 @@ public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOu
          * @param toolSpecification the tool specification
          * @return this builder
          */
-        public Builder toolSpecification(ToolSpecification toolSpecification) {
+        public Builder toolSpecification(@Nullable ToolSpecification toolSpecification) {
             this.toolSpecification = toolSpecification;
             return this;
         }
@@ -250,7 +251,7 @@ public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOu
          * @param toolSource the tool source
          * @return this builder
          */
-        public Builder toolSource(ToolSource toolSource) {
+        public Builder toolSource(@Nullable ToolSource toolSource) {
             this.toolSource = toolSource;
             return this;
         }

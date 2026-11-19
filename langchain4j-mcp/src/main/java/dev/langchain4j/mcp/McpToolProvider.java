@@ -18,6 +18,7 @@ import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -195,10 +196,13 @@ public class McpToolProvider implements ToolProvider {
         List<McpClient> clientsSnapshot =
                 consideredMcpClients.stream().filter(Objects::nonNull).toList();
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
+        List<String> resourcesServerKeys = new ArrayList<>();
 
         for (McpClient mcpClient : consideredMcpClients) {
             try {
-                ToolSource clientToolSource = ToolSource.mcp(serverKeys(mcpClient));
+                List<String> clientServerKeys = serverKeys(mcpClient);
+                resourcesServerKeys.addAll(clientServerKeys);
+                ToolSource clientToolSource = ToolSource.mcp(clientServerKeys);
                 for (ToolSpecification originalSpec : mcpClient.listTools()) {
                     if (mcpToolsFilter.test(mcpClient, originalSpec)) {
                         BiFunction<McpClient, ToolSpecification, String> nameMapper = toolNameMapper.get();
@@ -240,9 +244,7 @@ public class McpToolProvider implements ToolProvider {
             }
         }
         if ((resourcesAsToolsPresenter != null) && !clientsSnapshot.isEmpty()) {
-            ToolSource resourcesToolSource = ToolSource.mcp(clientsSnapshot.stream()
-                    .flatMap(client -> serverKeys(client).stream())
-                    .toList());
+            ToolSource resourcesToolSource = ToolSource.mcp(resourcesServerKeys);
             ToolSpecification listResourcesToolSpec = resourcesAsToolsPresenter.createListResourcesSpecification();
             if (alwaysVisibleToolNames.contains(listResourcesToolSpec.name())) {
                 listResourcesToolSpec = addSearchBehaviorMetadata(listResourcesToolSpec);

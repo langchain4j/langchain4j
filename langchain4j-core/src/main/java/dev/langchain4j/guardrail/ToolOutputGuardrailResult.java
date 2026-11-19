@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The result of the validation of a {@link ToolOutputGuardrail}.
@@ -33,15 +34,15 @@ public final class ToolOutputGuardrailResult implements GuardrailResult<ToolOutp
     private static final ToolOutputGuardrailResult SUCCESS = new ToolOutputGuardrailResult();
 
     private final Result result;
-    private final String successfulText;
-    private final List<Content> successfulContents;
+    private final @Nullable String successfulText;
+    private final @Nullable List<Content> successfulContents;
     private final boolean successfulIsError;
     private final List<Failure> failures;
 
     private ToolOutputGuardrailResult(
             Result result,
-            String successfulText,
-            List<Content> successfulContents,
+            @Nullable String successfulText,
+            @Nullable List<Content> successfulContents,
             boolean successfulIsError,
             List<Failure> failures) {
         this.result = ensureNotNull(result, "result");
@@ -81,7 +82,7 @@ public final class ToolOutputGuardrailResult implements GuardrailResult<ToolOutp
      *            {@linkplain #success() success}.
      * @return a successful result carrying the rewritten text
      */
-    public static ToolOutputGuardrailResult successWith(String rewrittenText) {
+    public static ToolOutputGuardrailResult successWith(@Nullable String rewrittenText) {
         return (rewrittenText == null)
                 ? success()
                 : new ToolOutputGuardrailResult(
@@ -123,7 +124,7 @@ public final class ToolOutputGuardrailResult implements GuardrailResult<ToolOutp
      *         the result was not rewritten
      */
     @Override
-    public String successfulText() {
+    public @Nullable String successfulText() {
         return successfulText;
     }
 
@@ -264,10 +265,10 @@ public final class ToolOutputGuardrailResult implements GuardrailResult<ToolOutp
     @Experimental
     public static final class Failure implements GuardrailResult.Failure {
         private final String message;
-        private final Throwable cause;
-        private final Class<? extends Guardrail> guardrailClass;
+        private final @Nullable Throwable cause;
+        private final @Nullable Class<? extends Guardrail> guardrailClass;
 
-        Failure(String message, Throwable cause, Class<? extends Guardrail> guardrailClass) {
+        Failure(String message, @Nullable Throwable cause, @Nullable Class<? extends Guardrail> guardrailClass) {
             this.message = ensureNotNull(message, "message");
             this.cause = cause;
             this.guardrailClass = guardrailClass;
@@ -277,7 +278,7 @@ public final class ToolOutputGuardrailResult implements GuardrailResult<ToolOutp
             this(message, null, null);
         }
 
-        Failure(String message, Throwable cause) {
+        Failure(String message, @Nullable Throwable cause) {
             this(message, cause, null);
         }
 
@@ -293,12 +294,12 @@ public final class ToolOutputGuardrailResult implements GuardrailResult<ToolOutp
         }
 
         @Override
-        public Throwable cause() {
+        public @Nullable Throwable cause() {
             return cause;
         }
 
         @Override
-        public Class<? extends Guardrail> guardrailClass() {
+        public @Nullable Class<? extends Guardrail> guardrailClass() {
             return guardrailClass;
         }
 

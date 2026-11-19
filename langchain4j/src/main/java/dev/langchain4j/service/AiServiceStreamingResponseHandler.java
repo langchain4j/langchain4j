@@ -668,22 +668,22 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
      * tools, or already rolled them back when one of its tools failed.
      */
     private boolean rolledBackOnCancellation() {
-        boolean isCancelled = cancelled;
-        if (isCancelled) {
-            compensateOnCancellation(null, null);
+        if (!cancelled) {
+            return false;
         }
-        return isCancelled;
+        compensateOnCancellation(null, null);
+        return true;
     }
 
     private void runRollback(Runnable rollback) {
         if (completeResponseProcessingExecutor == null) {
             rollback.run();
-        } else {
-            try {
-                completeResponseProcessingExecutor.execute(rollback);
-            } catch (RuntimeException rejected) {
-                rollback.run();
-            }
+            return;
+        }
+        try {
+            completeResponseProcessingExecutor.execute(rollback);
+        } catch (RuntimeException rejected) {
+            rollback.run();
         }
     }
 
