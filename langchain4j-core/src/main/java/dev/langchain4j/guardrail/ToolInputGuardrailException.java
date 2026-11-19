@@ -15,7 +15,7 @@ import java.util.Optional;
 @Experimental
 public final class ToolInputGuardrailException extends GuardrailException {
 
-    private String arguments;
+    private final String arguments;
 
     /**
      * Creates the exception with a message.
@@ -24,6 +24,7 @@ public final class ToolInputGuardrailException extends GuardrailException {
      */
     public ToolInputGuardrailException(String message) {
         super(message);
+        this.arguments = null;
     }
 
     /**
@@ -33,7 +34,12 @@ public final class ToolInputGuardrailException extends GuardrailException {
      * @param cause the cause
      */
     public ToolInputGuardrailException(String message, Throwable cause) {
+        this(message, cause, null);
+    }
+
+    private ToolInputGuardrailException(String message, Throwable cause, String arguments) {
         super(message, cause);
+        this.arguments = arguments;
     }
 
     /**
@@ -52,10 +58,16 @@ public final class ToolInputGuardrailException extends GuardrailException {
     }
 
     /**
-     * Records the validated arguments, before the exception leaves the executor.
+     * A copy of this exception that carries the validated arguments, with the same message, cause, stack trace and
+     * suppressed exceptions, for the executor to throw instead of this one.
      */
-    ToolInputGuardrailException arguments(String arguments) {
-        this.arguments = arguments;
-        return this;
+    ToolInputGuardrailException withArguments(String arguments) {
+        var copy = new ToolInputGuardrailException(getMessage(), getCause(), arguments);
+        copy.setStackTrace(getStackTrace());
+
+        for (Throwable suppressed : getSuppressed()) {
+            copy.addSuppressed(suppressed);
+        }
+        return copy;
     }
 }

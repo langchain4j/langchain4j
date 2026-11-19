@@ -16,12 +16,11 @@ import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -240,14 +239,38 @@ final class ToolGuardrailChainResolver {
      * identified by its class, a user-supplied instance by its identity.
      */
     static <G> List<G> chain(List<GuardrailEntry<G>> global, List<GuardrailEntry<G>> own) {
-        var seenClasses = new HashSet<Class<?>>();
-        var seenInstances = Collections.newSetFromMap(new IdentityHashMap<>());
-
         return Stream.concat(global.stream(), own.stream())
-                .filter(entry -> entry.fromClass()
-                        ? seenClasses.add(entry.guardrail().getClass())
-                        : seenInstances.add(entry.guardrail()))
-                .map(GuardrailEntry::guardrail)
+                .collect(Collectors.toMap(
+                        ToolGuardrailChainResolver::identity,
+                        GuardrailEntry::guardrail,
+                        (first, duplicate) -> first,
+                        LinkedHashMap::new))
+                .values()
+                .stream()
                 .toList();
+    }
+
+    /**
+     * What identifies a guardrail of a chain: its class for a guardrail created from a class, the instance itself for
+     * a user-supplied one.
+     */
+    private static Object identity(GuardrailEntry<?> entry) {
+        return entry.fromClass() ? entry.guardrail().getClass() : new SameInstance(entry.guardrail());
+    }
+
+    /**
+     * Identifies a guardrail instance by reference, not by {@code equals}.
+     */
+    private record SameInstance(Object guardrail) {
+
+        @Override
+        public boolean equals(Object o) {
+            return (o instanceof SameInstance other) && (guardrail == other.guardrail);
+        }
+
+        @Override
+        public int hashCode() {
+            return System.identityHashCode(guardrail);
+        }
     }
 }

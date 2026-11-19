@@ -6,13 +6,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSource;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.internal.ToolArgumentsParser;
 import dev.langchain4j.invocation.InvocationContext;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -91,44 +85,19 @@ public final class ToolInputGuardrailRequest implements GuardrailRequest<ToolInp
      * The result is a deep, unmodifiable snapshot: nested objects are maps, nested arrays are lists, and JSON
      * {@code null} values are preserved as null map values. Number types depend on the JSON codec.
      * The map is parsed on every call.
-     *
-     * If the arguments cannot be parsed, a {@link ToolArgumentsException} is thrown. A guardrail can let it propagate:
-     * the tool is then not executed, and the call is handled like an arguments error of the tool, by the
-     * {@code ToolArgumentsErrorHandler} of the AI service (for example, the error is sent to the LLM so that it can
-     * correct the arguments), instead of aborting the invocation.
+     * <p>
+     * If the arguments cannot be parsed, a {@link dev.langchain4j.exception.ToolArgumentsException} is thrown. A
+     * guardrail can let it propagate: the tool is then not executed, and the call is handled like an arguments error of
+     * the tool, by the {@code ToolArgumentsErrorHandler} of the AI service (for example, the error is sent to the LLM
+     * so that it can correct the arguments), instead of aborting the invocation.
      *
      * @return the parsed arguments, never null
-     * @throws ToolArgumentsException if the arguments are not a valid JSON object (malformed JSON, a non-object root,
-     *                                or the JSON literal {@code null})
+     * @throws dev.langchain4j.exception.ToolArgumentsException if the arguments are not a valid JSON object (malformed
+     *         JSON, a non-object root, or the JSON literal {@code null})
      * @since 1.25.0
      */
     public Map<String, Object> argumentsAsMap() {
-        try {
-            Map<String, Object> parsed = ToolArgumentsParser.argumentsAsMap(arguments());
-            // the JSON literal `null` parses to a null map
-            return freezeMap(ensureNotNull(parsed, "parsed arguments"));
-        } catch (RuntimeException e) {
-            throw new ToolArgumentsException(
-                    "Tool arguments are not a valid JSON object: %s".formatted(e.getMessage()), e);
-        }
-    }
-
-    private static Map<String, Object> freezeMap(Map<?, ?> map) {
-        Map<String, Object> copy = new LinkedHashMap<>();
-        map.forEach((key, value) -> copy.put(String.valueOf(key), freeze(value)));
-        return Collections.unmodifiableMap(copy);
-    }
-
-    private static Object freeze(Object value) {
-        if (value instanceof Map<?, ?> map) {
-            return freezeMap(map);
-        }
-        if (value instanceof List<?> list) {
-            List<Object> copy = new ArrayList<>(list.size());
-            list.forEach(element -> copy.add(freeze(element)));
-            return Collections.unmodifiableList(copy);
-        }
-        return value;
+        return ToolGuardrailArguments.asMap(arguments());
     }
 
     /**

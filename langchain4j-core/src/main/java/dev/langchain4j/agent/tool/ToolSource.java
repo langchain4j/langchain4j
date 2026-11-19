@@ -10,7 +10,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Describes where a tool comes from.
@@ -68,13 +70,12 @@ public sealed interface ToolSource permits ToolSource.Local, ToolSource.Mcp, Too
      */
     static ToolSource local(String declaringClassName, String methodName, List<String> parameterTypeNames) {
         ensureNotNull(parameterTypeNames, "parameterTypeNames");
-        for (String name : parameterTypeNames) {
-            ensureNotBlank(name, "parameterTypeName");
-        }
         return new LocalToolSource(
                 ensureNotBlank(declaringClassName, "declaringClassName"),
                 ensureNotBlank(methodName, "methodName"),
-                parameterTypeNames);
+                parameterTypeNames.stream()
+                        .map(name -> ensureNotBlank(name, "parameterTypeName"))
+                        .toList());
     }
 
     /**
@@ -100,10 +101,9 @@ public sealed interface ToolSource permits ToolSource.Local, ToolSource.Mcp, Too
      */
     static ToolSource mcp(Collection<String> serverKeys) {
         ensureNotNull(serverKeys, "serverKeys");
-        Set<String> keys = new LinkedHashSet<>();
-        for (String key : serverKeys) {
-            keys.add(ensureNotBlank(key, "serverKey"));
-        }
+        Set<String> keys = serverKeys.stream()
+                .map(key -> ensureNotBlank(key, "serverKey"))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
         return new McpToolSource(Collections.unmodifiableSet(keys));
     }
 
@@ -200,7 +200,7 @@ final class LocalToolSource implements ToolSource.Local {
 
     @Override
     public boolean equals(Object o) {
-        return o instanceof LocalToolSource other
+        return (o instanceof LocalToolSource other)
                 && declaringClassName.equals(other.declaringClassName)
                 && methodName.equals(other.methodName)
                 && parameterTypeNames.equals(other.parameterTypeNames);
@@ -208,13 +208,13 @@ final class LocalToolSource implements ToolSource.Local {
 
     @Override
     public int hashCode() {
-        return java.util.Objects.hash(declaringClassName, methodName, parameterTypeNames);
+        return Objects.hash(declaringClassName, methodName, parameterTypeNames);
     }
 
     @Override
     public String toString() {
-        return "ToolSource.Local{" + declaringClassName + "#" + methodName + "(" + String.join(",", parameterTypeNames)
-                + ")}";
+        return "ToolSource.Local{%s#%s(%s)}"
+                .formatted(declaringClassName, methodName, String.join(",", parameterTypeNames));
     }
 }
 
@@ -233,12 +233,12 @@ final class McpToolSource implements ToolSource.Mcp {
 
     @Override
     public boolean involves(String serverKey) {
-        return serverKey != null && serverKeys.contains(serverKey);
+        return (serverKey != null) && serverKeys.contains(serverKey);
     }
 
     @Override
     public boolean equals(Object o) {
-        return o instanceof McpToolSource other && serverKeys.equals(other.serverKeys);
+        return (o instanceof McpToolSource other) && serverKeys.equals(other.serverKeys);
     }
 
     @Override
@@ -248,7 +248,7 @@ final class McpToolSource implements ToolSource.Mcp {
 
     @Override
     public String toString() {
-        return "ToolSource.Mcp{serverKeys=" + serverKeys + "}";
+        return "ToolSource.Mcp{serverKeys=%s}".formatted(serverKeys);
     }
 }
 

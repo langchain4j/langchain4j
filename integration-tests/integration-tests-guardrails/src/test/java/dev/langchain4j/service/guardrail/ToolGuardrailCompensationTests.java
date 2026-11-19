@@ -43,9 +43,10 @@ import org.junit.jupiter.params.provider.EnumSource;
  * What a tool guardrail rejection means for compensation (D11). The result the LLM ends up with decides whether a step
  * failed; the tool as it ran decides whether it is compensable, and its compensating action gets its original result.
  * <p>
- * A <em>fatal</em> rejection is covered in the {@code CompletableFuture} mode only: the sync mode does not roll back
- * before rethrowing a tool error yet (a separate upstream change), so a fatal rejection does not either. See
- * {@link #a_fatal_rejection_rolls_back_in_the_completable_future_mode}.
+ * A <em>fatal</em> rejection is covered in the {@code CompletableFuture} and reactive modes only: the sync and
+ * {@code TokenStream} modes do not roll back before rethrowing a tool error yet (a separate upstream change), so a fatal
+ * rejection does not either. See
+ * {@link #a_fatal_rejection_rolls_back_in_the_non_blocking_modes}.
  */
 class ToolGuardrailCompensationTests extends BaseGuardrailTests {
 
@@ -293,10 +294,11 @@ class ToolGuardrailCompensationTests extends BaseGuardrailTests {
 
     // ---------- fatal rejections (D11: roll back in all modes once the upstream fix is in) ----------
 
-    @Test
-    void a_fatal_rejection_rolls_back_in_the_completable_future_mode() {
+    @ParameterizedTest
+    @EnumSource(value = Mode.class, names = {"COMPLETABLE_FUTURE", "REACTIVE"})
+    void a_fatal_rejection_rolls_back_in_the_non_blocking_modes(Mode mode) {
         var output = run(
-                Mode.COMPLETABLE_FUTURE,
+                mode,
                 modelCalling(List.of("credit"), List.of("debit")),
                 services -> services.toolOutputGuardrails(onOutputOf("debit", request -> outputFatal("poisoned"))));
 
@@ -307,7 +309,7 @@ class ToolGuardrailCompensationTests extends BaseGuardrailTests {
         assertThat(output.compensationReasons()).containsOnly(CompensationReason.TOOL_OUTPUT_GUARDRAIL_FAILED);
 
         var input = run(
-                Mode.COMPLETABLE_FUTURE,
+                mode,
                 modelCalling(List.of("credit"), List.of("debit")),
                 services -> services.toolInputGuardrails(onInputOf("debit", request -> inputFatal("attack"))));
 

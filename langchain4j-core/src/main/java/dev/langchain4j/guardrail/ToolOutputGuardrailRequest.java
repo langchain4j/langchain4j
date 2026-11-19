@@ -11,6 +11,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.invocation.InvocationContext;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -83,6 +84,22 @@ public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOu
      */
     public String arguments() {
         return toolExecutionRequest.arguments();
+    }
+
+    /**
+     * Parses the arguments the tool was executed with (after the rewrites of the input guardrails) into a read-only
+     * map, exactly like {@link ToolInputGuardrailRequest#argumentsAsMap()}: leniently, as the default executor of local
+     * {@code @Tool} methods does, into a deep, unmodifiable snapshot, parsed on every call.
+     * <p>
+     * These are the arguments of the tool call produced by the LLM, and are <b>untrusted</b>.
+     *
+     * @return the parsed arguments, never null
+     * @throws dev.langchain4j.exception.ToolArgumentsException if the arguments are not a valid JSON object. Thrown
+     *         from an output guardrail, it aborts the invocation like any other exception of a guardrail.
+     * @since 1.25.0
+     */
+    public Map<String, Object> argumentsAsMap() {
+        return ToolGuardrailArguments.asMap(arguments());
     }
 
     /**

@@ -80,7 +80,7 @@ public non-sealed class ToolInputGuardrailExecutor
         } catch (ToolInputGuardrailException e) {
             throw argumentsError(e)
                     .map(RuntimeException.class::cast)
-                    .orElseGet(() -> e.arguments(request.arguments()));
+                    .orElseGet(() -> e.withArguments(request.arguments()));
         }
     }
 
@@ -104,7 +104,7 @@ public non-sealed class ToolInputGuardrailExecutor
                 throw new CompletionException(argumentsError.get());
             }
             if (cause instanceof ToolInputGuardrailException e) {
-                e.arguments(request.arguments());
+                throw new CompletionException(e.withArguments(request.arguments()));
             }
             throw (error instanceof CompletionException completion) ? completion : new CompletionException(cause);
         });
@@ -120,7 +120,7 @@ public non-sealed class ToolInputGuardrailExecutor
             var message = "The tool input guardrail %s rewrote the arguments of tool '%s' to something that is not a "
                     + "JSON object";
             throw createGuardrailException(message.formatted(guardrail.getClass().getName(), request.toolName()), null)
-                    .arguments(request.arguments());
+                    .withArguments(request.arguments());
         }
         return result;
     }
@@ -152,7 +152,7 @@ public non-sealed class ToolInputGuardrailExecutor
     protected void throwIfFatal(ToolInputGuardrailRequest request, ToolInputGuardrailResult result) {
         if (result.isFatal()) {
             throw createGuardrailException(result.toString(), result.getFirstFailureException())
-                    .arguments(result.rewrittenArguments().orElseGet(request::arguments));
+                    .withArguments(result.rewrittenArguments().orElseGet(request::arguments));
         }
     }
 

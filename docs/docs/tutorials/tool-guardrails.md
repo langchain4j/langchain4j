@@ -179,15 +179,25 @@ only the text with `successWith(String)`, or build the new list of contents:
 ```java
 @Override
 public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
-    List<Content> withoutImages = request.resultContents().stream()
+    List<Content> textOnly = request.resultContents().stream()
             .filter(TextContent.class::isInstance)
             .toList();
 
-    return withoutImages.size() == request.resultContents().size()
-            ? success()
-            : successWith(withoutImages, request.isError()); // keep the isError flag unless you mean to change it
+    if (textOnly.size() == request.resultContents().size()) {
+        return success(); // nothing to remove
+    }
+
+    // a tool result always has contents, so say what happened when nothing is left
+    List<Content> rewritten = textOnly.isEmpty()
+            ? List.of(TextContent.from("The tool returned only images, which were removed."))
+            : textOnly;
+
+    return successWith(rewritten, request.isError()); // keep the isError flag unless you mean to change it
 }
 ```
+
+The list given to `successWith(List<Content>, boolean)` must not be empty: an empty list makes the guardrail throw,
+which aborts the invocation like a [fatal failure](#fatal-failures).
 
 ## Failures are error results for the LLM
 
@@ -408,9 +418,9 @@ result the LLM ends up with**, not on which guardrail method was called, so guar
 - If a round has several failures, the first failing tool in request order decides the reason.
 
 :::note
-A fatal guardrail failure is treated like a tool that throws. Today, only the `CompletableFuture` mode rolls back the
-compensable tools before failing. The blocking and `TokenStream` modes do not roll back when a tool throws, and a
-fatal tool guardrail failure behaves the same way there. The reactive mode is not covered by a test yet.
+A fatal guardrail failure is treated like a tool that throws. Today, the `CompletableFuture` and reactive modes roll
+back the compensable tools before failing. The blocking and `TokenStream` modes do not roll back when a tool throws,
+and a fatal tool guardrail failure behaves the same way there.
 :::
 
 ## Security notes

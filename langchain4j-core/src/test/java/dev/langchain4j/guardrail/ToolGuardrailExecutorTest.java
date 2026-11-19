@@ -323,6 +323,25 @@ class ToolGuardrailExecutorTest {
     }
 
     @Test
+    void input_exception_with_arguments_is_a_copy_with_the_same_message_cause_stack_trace_and_suppressed() {
+        var cause = new IllegalStateException("cause");
+        var suppressed = new IllegalArgumentException("suppressed");
+        var original = new ToolInputGuardrailException("stop", cause);
+        original.addSuppressed(suppressed);
+
+        var withArguments = original.withArguments("{\"q\":\"a\"}");
+
+        assertThat(withArguments)
+                .isNotSameAs(original)
+                .hasMessage("stop")
+                .hasCause(cause)
+                .returns(Optional.of("{\"q\":\"a\"}"), ToolInputGuardrailException::arguments)
+                .returns(original.getStackTrace(), Throwable::getStackTrace)
+                .satisfies(exception -> assertThat(exception.getSuppressed()).containsExactly(suppressed));
+        assertThat(original.arguments()).isEmpty();
+    }
+
+    @Test
     void input_throwing_guardrail_is_wrapped() {
         ToolInputGuardrail boom = r -> {
             throw new IllegalArgumentException("boom");

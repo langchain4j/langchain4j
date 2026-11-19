@@ -136,6 +136,27 @@ class ToolGuardrailRequestTest {
         assertThatThrownBy(() -> list.add(1)).isInstanceOf(UnsupportedOperationException.class);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"{\"a\":\"x\",\"n\":null,\"o\":{\"k\":[1,null]}}", "{\"foo\":\"bar\",}", "", "{}"})
+    void output_arguments_as_map_parses_like_the_input_request(String arguments) {
+        var output = output().toolExecutionRequest(
+                        EXEC.toBuilder().arguments(arguments).build())
+                .build();
+
+        assertThat(output.argumentsAsMap()).isEqualTo(inputWithArguments(arguments).argumentsAsMap());
+    }
+
+    @Test
+    void output_arguments_as_map_rejects_invalid_arguments_with_a_tool_arguments_exception() {
+        var output = output().toolExecutionRequest(
+                        EXEC.toBuilder().arguments("{not json").build())
+                .build();
+
+        assertThatThrownBy(output::argumentsAsMap)
+                .isExactlyInstanceOf(ToolArgumentsException.class)
+                .hasMessageStartingWith("Tool arguments are not a valid JSON object");
+    }
+
     @Test
     void input_arguments_as_map_blank_and_empty() {
         assertThat(inputWithArguments("").argumentsAsMap()).isEmpty();

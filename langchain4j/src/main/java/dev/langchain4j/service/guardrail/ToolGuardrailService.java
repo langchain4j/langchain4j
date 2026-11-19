@@ -5,6 +5,13 @@ import static dev.langchain4j.internal.CompletableFutureUtils.startSafely;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import java.util.Optional;
+import java.util.ServiceLoader;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSource;
@@ -25,13 +32,6 @@ import dev.langchain4j.internal.Exceptions;
 import dev.langchain4j.service.guardrail.spi.ToolGuardrailServiceBuilderFactory;
 import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.ToolExecutionResult;
-import java.util.Optional;
-import java.util.ServiceLoader;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 /**
  * Executes the tool guardrails of the tools of an AI service: the {@link ToolInputGuardrail}s, which validate or
@@ -311,10 +311,22 @@ public non-sealed interface ToolGuardrailService
         ensureNotNull(request, "request");
         return Optional.ofNullable(failure)
                 .map(Exceptions::unwrapCompletionException)
-                .flatMap(error -> Optional.ofNullable(
-                        (error instanceof ToolInputGuardrailException)
-                                ? ToolGuardrailStage.INPUT
-                                : (error instanceof ToolOutputGuardrailException) ? ToolGuardrailStage.OUTPUT : null));
+                .flatMap(ToolGuardrailService::stageOf);
+    }
+
+    /**
+     * The stage whose guardrails threw {@code error}, if a tool guardrail threw it.
+     */
+    private static Optional<ToolGuardrailStage> stageOf(Throwable error) {
+        ToolGuardrailStage stage = null;
+
+        if (error instanceof ToolInputGuardrailException) {
+            stage = ToolGuardrailStage.INPUT;
+        } else if (error instanceof ToolOutputGuardrailException) {
+            stage = ToolGuardrailStage.OUTPUT;
+        }
+
+        return Optional.ofNullable(stage);
     }
 
     private boolean hasGuardrails(ToolKey key) {
@@ -517,15 +529,17 @@ public non-sealed interface ToolGuardrailService
             ToolOutputGuardrailRequest guardrailRequest,
             ToolExecutionResult toolResult) {
 
-        return outputResult.isSuccess()
-                ? (outputResult.hasRewrittenResult()
-                        ? ToolExecutionResult.builder()
-                                .resultContents(outputResult.resultContents(guardrailRequest))
-                                .isError(outputResult.isError(guardrailRequest))
-                                .attributes(toolResult.attributes())
-                                .build()
-                        : toolResult)
-                : errorResult(outputResult.failureMessage());
+        if (!outputResult.isSuccess()) {
+            return errorResult(outputResult.failureMessage());
+        } else if (outputResult.hasRewrittenResult()) {
+            return ToolExecutionResult.builder()
+                    .resultContents(outputResult.resultContents(guardrailRequest))
+                    .isError(outputResult.isError(guardrailRequest))
+                    .attributes(toolResult.attributes())
+                    .build();
+        }
+
+        return toolResult;
     }
 
     private static GuardedToolExecution guardedExecution(ToolExecutionRequest request, ToolExecutionResult result) {
