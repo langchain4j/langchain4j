@@ -111,7 +111,10 @@ public interface ChatModel {
      */
     @Experimental
     default CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest) {
-        return chatAsync(chatRequest, ChatRequestOptions.EMPTY);
+        return failOnThrow(
+                this,
+                "chatAsync(ChatRequest, ChatRequestOptions)",
+                () -> chatAsync(chatRequest, ChatRequestOptions.EMPTY));
     }
 
     /**

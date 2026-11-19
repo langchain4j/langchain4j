@@ -218,4 +218,36 @@ class ChatModelAsyncDefaultTest {
         verify(listener, never()).onResponse(any());
         assertThat(errorContext.getValue().error()).isSameAs(error);
     }
+
+    @Test
+    void chatAsync_returns_a_failed_future_when_the_overload_with_options_throws() {
+        MockChatModel model = spy(MockChatModel.thatResponds("Berlin"));
+        IllegalStateException failure = new IllegalStateException("cannot prepare the request");
+        doThrow(failure).when(model).chatAsync(any(ChatRequest.class), any(ChatRequestOptions.class));
+
+        CompletableFuture<ChatResponse> future =
+                model.chatAsync(ChatRequest.builder().messages(UserMessage.from("hi")).build());
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isSameAs(failure);
+    }
+
+    @Test
+    void chatAsync_returns_a_failed_future_when_the_overload_with_options_returns_null() {
+        MockChatModel model = spy(MockChatModel.thatResponds("Berlin"));
+        doReturn(null).when(model).chatAsync(any(ChatRequest.class), any(ChatRequestOptions.class));
+
+        CompletableFuture<ChatResponse> future =
+                model.chatAsync(ChatRequest.builder().messages(UserMessage.from("hi")).build());
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isInstanceOf(IllegalStateException.class)
+                .withMessageEndingWith(".chatAsync(ChatRequest, ChatRequestOptions) returned null");
+    }
 }

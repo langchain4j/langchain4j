@@ -1,5 +1,6 @@
 package dev.langchain4j.service.guardrail;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 
 import dev.langchain4j.Experimental;
@@ -93,7 +94,10 @@ public interface GuardrailService {
     @Experimental
     default <MethodKey> CompletableFuture<UserMessage> executeGuardrailsAsync(
             MethodKey method, InputGuardrailRequest request) {
-        CompletableFuture<InputGuardrailResult> guardrailFuture = executeInputGuardrailsAsync(method, request);
+        CompletableFuture<InputGuardrailResult> guardrailFuture = failOnThrow(
+                this,
+                "executeInputGuardrailsAsync(Object, InputGuardrailRequest)",
+                () -> executeInputGuardrailsAsync(method, request));
         CompletableFuture<UserMessage> result = guardrailFuture.thenApply(r -> r.userMessage(request));
         propagateCancellation(result, guardrailFuture);
         return result;
@@ -176,7 +180,10 @@ public interface GuardrailService {
     @Experimental
     default <MethodKey, T> CompletableFuture<T> executeGuardrailsAsync(
             MethodKey method, OutputGuardrailRequest request) {
-        CompletableFuture<OutputGuardrailResult> guardrailFuture = executeOutputGuardrailsAsync(method, request);
+        CompletableFuture<OutputGuardrailResult> guardrailFuture = failOnThrow(
+                this,
+                "executeOutputGuardrailsAsync(Object, OutputGuardrailRequest)",
+                () -> executeOutputGuardrailsAsync(method, request));
         CompletableFuture<T> result = guardrailFuture.thenApply(r -> r.response(request));
         propagateCancellation(result, guardrailFuture);
         return result;
