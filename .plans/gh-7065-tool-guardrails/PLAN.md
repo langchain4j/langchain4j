@@ -595,8 +595,9 @@ For the PR body (task 14). Verified by the revapi runs above and by `grep` on 20
 - **No changes to** `@InputGuardrails`, `@OutputGuardrails`, `InputGuardrail` or `OutputGuardrail`.
 - **Behavior is unchanged when no tool guardrails are configured:** no guardrail request is built and nothing extra is allocated (pinned by
   `ToolGuardrailServiceExecuteGuardrailsTest` and the unchanged AI service tests). Two behaviors of **MCP** do change (task 10; flag for @jmartisk):
-  `list_resources` / `get_resource` are scoped to the clients of that `provideTools(..)` call, and a null or blank `McpClient#key()` now fails
-  `provideTools(..)`. See the task 10 outcome for all four.
+  `list_resources` / `get_resource` are scoped to the clients of that `provideTools(..)` call. A null or blank `McpClient#key()` no longer fails
+  `provideTools(..)` (review item 1, 2026-11-19): its tools get a `ToolSource.Mcp` with no server keys (`ToolSource.mcp(..)` now accepts an empty
+  collection) and a WARN is logged once per client. See the task 10 outcome for all four.
 - **Everything new is `@Experimental` (D19), except** `GenericGuardrailService` (+ its `Builder`), which the stable `GuardrailService` extends, and
   `ClassMetadataProviderFactory#resolveMethodKey` (user decision, 2026-11-17). Everything is `@since 1.25.0`.
 - **Guardrail service hierarchy (task 06a):** `GenericGuardrailService` and its `Builder` are new and sealed; `GuardrailService` and

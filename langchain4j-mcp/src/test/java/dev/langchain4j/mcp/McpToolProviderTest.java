@@ -31,7 +31,6 @@ import dev.langchain4j.mcp.client.McpTextResourceContents;
 import dev.langchain4j.mcp.resourcesastools.DefaultMcpResourcesAsToolsPresenter;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.service.AiServices;
-import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
@@ -353,17 +352,19 @@ class McpToolProviderTest {
     @ParameterizedTest
     @NullSource
     @ValueSource(strings = {"", "   "})
-    void should_reject_null_or_blank_client_key(String key) {
-        var invalidKeyClient = mock(McpClient.class);
-        when(invalidKeyClient.key()).thenReturn(key);
-        var toolProvider = McpToolProvider.builder()
-                .mcpClients(invalidKeyClient)
-                .failIfOneServerFails(false)
-                .build();
+    void should_stamp_an_mcp_source_without_server_keys_for_a_null_or_blank_client_key(String key) {
+        var keylessClient = mockResourceClient(key, "keyless_tool");
+        var keyedClient = mockResourceClient("keyed", "keyed_tool");
 
-        assertThatThrownBy(() -> toolProvider.provideTools(toolProviderRequest()))
-                .isInstanceOf(IllegalConfigurationException.class)
-                .hasMessageContaining("null or blank key()");
+        var result = resourcesToolProvider(keylessClient, keyedClient).provideTools(toolProviderRequest());
+
+        assertThat(result.aiServiceTools())
+                .extracting(AiServiceTool::name, AiServiceTool::toolSource)
+                .containsExactlyInAnyOrder(
+                        tuple("keyless_tool", ToolSource.mcp(List.of())),
+                        tuple("keyed_tool", ToolSource.mcp("keyed")),
+                        tuple("list_resources", ToolSource.mcp("keyed")),
+                        tuple("get_resource", ToolSource.mcp("keyed")));
     }
 
     @Test

@@ -416,8 +416,9 @@ Bot bot = AiServices.builder(Bot.class)
 :::warning
 `McpClient.key()` defaults to a **random UUID** when you do not set one with `DefaultMcpClient.builder().key(...)`, so
 a guardrail cannot recognize the server by it, and the key changes at every start. **Set a stable `key(...)` on every
-client that you route on.** A client whose key is `null` or blank makes `McpToolProvider.provideTools(...)` fail with
-an `IllegalConfigurationException`.
+client that you route on.** The tools of a client whose key is `null` or blank get a `ToolSource.Mcp` with no
+`serverKeys()`: a guardrail that checks every MCP tool still sees them, but `involves(...)` is `false` for them, and a
+warning is logged once for that client.
 :::
 
 The tools of the [resources as tools](#exposing-resources-automatically-via-synthetic-tools) (`list_resources` and

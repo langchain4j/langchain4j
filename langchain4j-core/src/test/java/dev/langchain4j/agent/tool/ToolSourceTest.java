@@ -153,11 +153,22 @@ class ToolSourceTest {
     }
 
     @Test
+    void mcp_without_keys_is_an_mcp_source_that_involves_no_server() {
+        ToolSource source = ToolSource.mcp(List.of());
+
+        assertThat(source)
+                .isEqualTo(ToolSource.mcp(Set.of()))
+                .isNotEqualTo(ToolSource.programmatic())
+                .isInstanceOfSatisfying(ToolSource.Mcp.class, mcp -> assertThat(mcp)
+                        .returns(Set.of(), ToolSource.Mcp::serverKeys)
+                        .returns(false, m -> m.involves("github")));
+    }
+
+    @Test
     void mcp_rejects_invalid_keys() {
         assertThatThrownBy(() -> ToolSource.mcp((String) null)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> ToolSource.mcp(" ")).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> ToolSource.mcp((List<String>) null)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> ToolSource.mcp(List.of())).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> ToolSource.mcp(Arrays.asList("a", null))).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> ToolSource.mcp(List.of("a", ""))).isInstanceOf(IllegalArgumentException.class);
     }

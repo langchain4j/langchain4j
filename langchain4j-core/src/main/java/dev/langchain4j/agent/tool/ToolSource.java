@@ -1,7 +1,6 @@
 package dev.langchain4j.agent.tool;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
@@ -92,12 +91,15 @@ public sealed interface ToolSource permits ToolSource.Local, ToolSource.Mcp, Too
      * Creates a source spanning several MCP servers, for example tools that list or read resources
      * across multiple MCP clients. Duplicate keys are collapsed; the iteration order of
      * {@link Mcp#serverKeys()} follows the first occurrence of each key in the given collection.
+     * <p>
+     * An empty collection gives a source for MCP servers whose keys are not known (their clients have no key): it is
+     * still an MCP source, but {@link Mcp#involves(String)} is {@code false} for every key.
      *
-     * @param serverKeys the keys identifying the MCP servers, must not be null, empty, or contain blank keys.
+     * @param serverKeys the keys identifying the MCP servers, must not be null or contain blank keys. May be empty.
      * @return the source.
      */
     static ToolSource mcp(Collection<String> serverKeys) {
-        ensureNotEmpty(serverKeys, "serverKeys");
+        ensureNotNull(serverKeys, "serverKeys");
         Set<String> keys = new LinkedHashSet<>();
         for (String key : serverKeys) {
             keys.add(ensureNotBlank(key, "serverKey"));
@@ -148,7 +150,8 @@ public sealed interface ToolSource permits ToolSource.Local, ToolSource.Mcp, Too
     sealed interface Mcp extends ToolSource permits McpToolSource {
 
         /**
-         * @return the immutable, non-empty set of MCP server keys involved, in insertion order.
+         * @return the immutable set of MCP server keys involved, in insertion order. Empty when the keys of the
+         *         servers are not known (their clients have no key).
          */
         Set<String> serverKeys();
 

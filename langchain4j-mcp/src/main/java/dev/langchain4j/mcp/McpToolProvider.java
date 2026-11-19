@@ -18,11 +18,13 @@ import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
@@ -35,7 +37,8 @@ import org.slf4j.LoggerFactory;
  * A tool provider backed by one or more MCP clients.
  * <p>
  * Every tool emitted by this provider carries a {@link ToolSource.Mcp} source with the
- * {@link McpClient#key() key} of the client it belongs to.
+ * {@link McpClient#key() key} of the client it belongs to. The source of a client whose key is {@code null} or blank
+ * has no server keys, and a warning is logged once for that client.
  * <p>
  * When a {@link McpResourcesAsToolsPresenter} is configured, the provider also emits the synthetic
  * {@code list_resources} and {@code get_resource} tools. Their source holds the keys of all the clients the
@@ -50,6 +53,9 @@ import org.slf4j.LoggerFactory;
 public class McpToolProvider implements ToolProvider {
 
     private static final Logger log = LoggerFactory.getLogger(McpToolProvider.class);
+
+    private final Set<McpClient> keylessClientsReported =
+            Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
     private static final Map<String, Object> SEARCH_BEHAVIOR_ALWAYS_VISIBLE =
             Map.of(ToolSpecification.METADATA_SEARCH_BEHAVIOR, ALWAYS_VISIBLE);
 
@@ -184,12 +190,12 @@ public class McpToolProvider implements ToolProvider {
 
         List<McpClient> clientsSnapshot = List.copyOf(consideredMcpClients);
         List<KeyedClient> keyedClients =
-                clientsSnapshot.stream().map(KeyedClient::of).toList();
+                clientsSnapshot.stream().map(this::keyedClient).toList();
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
 
         for (KeyedClient keyedClient : keyedClients) {
             McpClient mcpClient = keyedClient.client();
-            ToolSource clientToolSource = ToolSource.mcp(keyedClient.key());
+            ToolSource clientToolSource = ToolSource.mcp(keyedClient.serverKeys());
             try {
                 for (ToolSpecification originalSpec : mcpClient.listTools()) {
                     if (mcpToolsFilter.test(mcpClient, originalSpec)) {
@@ -233,7 +239,9 @@ public class McpToolProvider implements ToolProvider {
         }
         if ((resourcesAsToolsPresenter != null) && !clientsSnapshot.isEmpty()) {
             ToolSource resourcesToolSource =
-                    ToolSource.mcp(keyedClients.stream().map(KeyedClient::key).toList());
+                    ToolSource.mcp(keyedClients.stream()
+                            .flatMap(keyedClient -> keyedClient.serverKeys().stream())
+                            .toList());
             ToolSpecification listResourcesToolSpec = resourcesAsToolsPresenter.createListResourcesSpecification();
             if (alwaysVisibleToolNames.contains(listResourcesToolSpec.name())) {
                 listResourcesToolSpec = addSearchBehaviorMetadata(listResourcesToolSpec);
@@ -258,17 +266,28 @@ public class McpToolProvider implements ToolProvider {
         return builder.build();
     }
 
-    private record KeyedClient(McpClient client, String key) {
+    /**
+     * A client with the server keys of the {@link ToolSource} of its tools: its key, or none when it has no key.
+     */
+    private record KeyedClient(McpClient client, List<String> serverKeys) {}
 
-        static KeyedClient of(McpClient mcpClient) {
-            String key = mcpClient.key();
-            if (isNullOrBlank(key)) {
-                throw new IllegalConfigurationException(
-                        "MCP client (%s) returned a null or blank key(); set a non-blank key on the client"
-                                .formatted(mcpClient.getClass().getName()));
+    private KeyedClient keyedClient(McpClient mcpClient) {
+        String key = mcpClient.key();
+        List<String> serverKeys = List.of();
+
+        if (isNullOrBlank(key)) {
+            if (keylessClientsReported.add(mcpClient)) {
+                log.warn(
+                        "MCP client {} has a null or blank key(): tool guardrails see its tools as an MCP source "
+                                + "without server keys, so a guardrail cannot route on this server. Set a key on the "
+                                + "client to route on it",
+                        mcpClient.getClass().getName());
             }
-            return new KeyedClient(mcpClient, key);
+        } else {
+            serverKeys = List.of(key);
         }
+
+        return new KeyedClient(mcpClient, serverKeys);
     }
 
     private static ToolSpecification addSearchBehaviorMetadata(ToolSpecification toolSpecification) {
