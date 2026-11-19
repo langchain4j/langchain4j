@@ -71,6 +71,7 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
@@ -123,6 +124,7 @@ public class ToolService {
     private final Map<String, GuardedTool> guardedTools = new HashMap<>();
     private final Map<String, ToolGuardrailBinding> toolGuardrailBindings = new HashMap<>();
     private ToolGuardrailService toolGuardrailService;
+    private final AtomicBoolean skippedToolGuardrailsReported = new AtomicBoolean();
     private final Map<String, BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>>>
             compensatingExecutors = new HashMap<>();
     private IllegalConfigurationException compensatingToolMisconfiguration;
@@ -2247,16 +2249,21 @@ public class ToolService {
     }
 
     /**
-     * Initiates a single tool execution on the given {@code executor}, returning a future of its result. Used
-     * by the non-blocking streaming AI Service to start a tool as soon as its {@code CompleteToolCall} arrives
-     * (rather than waiting for the whole model response), so that concurrent tools overlap each other and the
-     * tail of the model stream.
+     * Initiates a single tool execution on the given {@code executor}, returning a future of its result, so that
+     * concurrent tools overlap each other and the tail of the model stream.
      *
      * <p>
-     * It applies <b>no</b> tool guardrails: it has only the executors, so there are no guardrail bindings.
+     * It applies the tool guardrails of the tools registered on this service only. A tool that is not registered, such
+     * as a tool of a {@link ToolProvider}, runs <b>without</b> tool guardrails, and a warning is logged the first time
+     * such a tool has tool guardrails. The tool guardrails get no listener registrar, so their events are not
+     * delivered.
      *
      * @since 1.20.0
+     * @deprecated It cannot apply the tool guardrails of every tool. Use {@link #startRound(ToolServiceContext,
+     *             InvocationContext, AiServiceListenerRegistrar)} and {@link ToolRound#startTool(ToolExecutionRequest,
+     *             Consumer, Consumer, Executor)} instead, which apply them.
      */
+    @Deprecated(since = "1.25.0")
     public CompletableFuture<ToolExecutionResult> startTool(
             ToolExecutionRequest toolRequest,
             Map<String, ToolExecutor> toolExecutors,
@@ -2264,8 +2271,9 @@ public class ToolService {
             Consumer<BeforeToolExecution> externalBeforeToolExecution,
             Consumer<ToolExecution> externalAfterToolExecution,
             Executor executor) {
+        warnIfToolGuardrailsAreSkipped(toolRequest, toolExecutors, "startTool");
         return startTool(
-                ToolRound.unguarded(this, invocationContext),
+                registeredToolsRound(toolExecutors, invocationContext),
                 toolRequest,
                 toolExecutors,
                 invocationContext,
@@ -2615,22 +2623,89 @@ public class ToolService {
     }
 
     /**
-     * Executes a tool <b>without</b> tool guardrails: it has only the executors, so there are no guardrail bindings.
+     * Executes a tool, blocking.
+     * <p>
+     * It applies the tool guardrails of the tools registered on this service only. A tool that is not registered, such
+     * as a tool of a {@link ToolProvider}, runs <b>without</b> tool guardrails, and a warning is logged the first time
+     * such a tool has tool guardrails. The tool guardrails get no listener registrar, so their events are not
+     * delivered.
+     *
+     * @deprecated It cannot apply the tool guardrails of every tool. Use {@link #startRound(ToolServiceContext,
+     *             InvocationContext, AiServiceListenerRegistrar)} and {@link ToolRound#executeTool(ToolExecutionRequest,
+     *             Consumer, Consumer)} instead, which apply them.
      */
+    @Deprecated(since = "1.25.0")
     public ToolExecutionResult executeTool(
             InvocationContext invocationContext,
             Map<String, ToolExecutor> toolExecutors,
             ToolExecutionRequest toolRequest,
             Consumer<BeforeToolExecution> externalBeforeToolExecution,
             Consumer<ToolExecution> externalAfterToolExecution) {
+        warnIfToolGuardrailsAreSkipped(toolRequest, toolExecutors, "executeTool");
         return executeTool(
-                        ToolRound.unguarded(this, invocationContext),
+                        registeredToolsRound(toolExecutors, invocationContext),
                         invocationContext,
                         toolExecutors,
                         toolRequest,
                         externalBeforeToolExecution,
                         externalAfterToolExecution)
                 .result();
+    }
+
+    /**
+     * A round for the deprecated methods that only have the executors: it applies the tool guardrails of the tools
+     * registered on this service, whose bindings are known.
+     */
+    private ToolRound registeredToolsRound(
+            Map<String, ToolExecutor> toolExecutors, InvocationContext invocationContext) {
+        var context = ToolServiceContext.builder()
+                .toolExecutors(toolExecutors)
+                .toolGuardrailBindings(this.toolGuardrailBindings)
+                .toolGuardrailService(this.toolGuardrailService)
+                .build();
+        return ToolRound.start(this, context, invocationContext, null, null);
+    }
+
+    /**
+     * Logs a warning, once per {@code ToolService}, when a deprecated method runs a tool that is not registered on
+     * this service (so its guardrails are not known) and that has tool guardrails.
+     */
+    private void warnIfToolGuardrailsAreSkipped(
+            ToolExecutionRequest toolRequest, Map<String, ToolExecutor> toolExecutors, String method) {
+        if (!skippedToolGuardrailsReported.get()
+                && skipsToolGuardrails(toolRequest.name(), toolExecutors)
+                && skippedToolGuardrailsReported.compareAndSet(false, true)) {
+            log.warn(
+                    "ToolService.{}(..) ran tool '{}' without its tool guardrails, because the tool is not registered "
+                            + "on the ToolService (for example, a tool of a ToolProvider). This method is deprecated: "
+                            + "use ToolService.startRound(..) and the methods of the ToolRound it returns, which apply "
+                            + "them",
+                    method,
+                    toolRequest.name());
+        }
+    }
+
+    /**
+     * Whether a tool that is not registered on this service (a tool of a {@link ToolProvider}, for example) would have
+     * tool guardrails: the global ones, since its own are not known here.
+     */
+    private boolean skipsToolGuardrails(String toolName, Map<String, ToolExecutor> toolExecutors) {
+        return !this.toolGuardrailBindings.containsKey(toolName)
+                && Optional.ofNullable(this.toolGuardrailService)
+                        .flatMap(service -> Optional.ofNullable(toolExecutors)
+                                .map(executors -> executors.get(toolName))
+                                .map(executor -> ToolGuardrailBinding.bind(
+                                        service,
+                                        null,
+                                        AiServiceTool.builder()
+                                                .toolSpecification(ToolSpecification.builder()
+                                                        .name(toolName)
+                                                        .build())
+                                                .toolExecutor(executor)
+                                                .build())))
+                        .map(binding -> binding.service().hasInputGuardrails(binding.key())
+                                || binding.service().hasOutputGuardrails(binding.key()))
+                        .orElse(false);
     }
 
     /**

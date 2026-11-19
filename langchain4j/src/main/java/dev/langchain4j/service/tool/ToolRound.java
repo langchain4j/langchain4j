@@ -110,13 +110,6 @@ public final class ToolRound {
     }
 
     /**
-     * Starts a round that no tool guardrail applies to, for the {@link ToolService} methods that only have executors.
-     */
-    static ToolRound unguarded(ToolService toolService, InvocationContext invocationContext) {
-        return start(toolService, null, invocationContext, null, null);
-    }
-
-    /**
      * Executes a call of the round, blocking: its tool, through the tool guardrails of the tool if it has any, with
      * the callbacks of the {@link ToolService} and the given ones. Every exception that ends the call is thrown (a
      * fatal guardrail failure, an error of the tool that its error handler rethrows, a failing callback), and the round
