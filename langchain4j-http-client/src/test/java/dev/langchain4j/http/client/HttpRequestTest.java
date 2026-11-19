@@ -556,4 +556,56 @@ class HttpRequestTest {
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Header name cannot be null");
     }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1})
+    void should_preserve_form_data_file_even_when_empty(int size) {
+        byte[] content = new byte[size];
+        HttpRequest request = HttpRequest.builder()
+                .method(POST)
+                .url("http://example.com/upload")
+                .addFormDataFile("file", "file.txt", "text/plain", content)
+                .build();
+
+        assertThat(request.formDataFiles()).containsOnlyKeys("file");
+        FormDataFile file = request.formDataFiles().get("file");
+        assertThat(file.fileName()).isEqualTo("file.txt");
+        assertThat(file.contentType()).isEqualTo("text/plain");
+        assertThat(file.content()).containsExactly(content);
+    }
+
+    @Test
+    void should_replace_existing_form_data_file_with_empty_file() {
+        HttpRequest request = HttpRequest.builder()
+                .method(POST)
+                .url("http://example.com/upload")
+                .addFormDataFile("file", "old.txt", "text/plain", new byte[] {1})
+                .addFormDataFile("file", "empty.txt", "text/plain", new byte[0])
+                .build();
+
+        assertThat(request.formDataFiles()).containsOnlyKeys("file");
+        FormDataFile file = request.formDataFiles().get("file");
+        assertThat(file.fileName()).isEqualTo("empty.txt");
+        assertThat(file.content()).isEmpty();
+    }
+
+    @Test
+    void should_reject_body_combined_with_empty_form_data_file() {
+        HttpRequest.Builder builder = HttpRequest.builder()
+                .method(POST)
+                .url("http://example.com/upload")
+                .body("body")
+                .addFormDataFile("file", "empty.txt", "text/plain", new byte[0]);
+
+        assertThatThrownBy(builder::build)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Cannot specify both body and formDataFiles");
+    }
+
+    @Test
+    void should_reject_null_form_data_file_content() {
+        assertThatThrownBy(() -> HttpRequest.builder()
+                        .addFormDataFile("file", "file.txt", "text/plain", null))
+                .isInstanceOf(NullPointerException.class);
+    }
 }
