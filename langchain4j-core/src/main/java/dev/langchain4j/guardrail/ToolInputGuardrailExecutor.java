@@ -3,6 +3,7 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.guardrail.ToolInputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
 import dev.langchain4j.internal.CancellationChain;
@@ -10,6 +11,7 @@ import dev.langchain4j.observability.api.event.ToolInputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.ToolInputGuardrailExecutedEvent.ToolInputGuardrailExecutedEventBuilder;
 import dev.langchain4j.spi.guardrail.ToolInputGuardrailExecutorBuilderFactory;
 import java.util.List;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -59,14 +61,17 @@ public non-sealed class ToolInputGuardrailExecutor
     }
 
     /**
-     * Records on the exception of a guardrail that threw the arguments it validated.
+     * Records on the exception of a guardrail that threw the arguments it validated. A
+     * {@link ToolArgumentsException} thrown by a guardrail, for example by
+     * {@link ToolInputGuardrailRequest#argumentsAsMap()} for arguments that cannot be parsed, is not a guardrail
+     * failure: it is thrown as is, so that the caller handles it like an arguments error of the tool.
      */
     @Override
     protected ToolInputGuardrailResult validate(ToolInputGuardrailRequest request, ToolInputGuardrail guardrail) {
         try {
             return super.validate(request, guardrail);
         } catch (ToolInputGuardrailException e) {
-            throw e.arguments(request.arguments());
+            throw argumentsError(e).map(RuntimeException.class::cast).orElseGet(() -> e.arguments(request.arguments()));
         }
     }
 
@@ -81,11 +86,26 @@ public non-sealed class ToolInputGuardrailExecutor
                 return result;
             }
             var cause = unwrapCompletionException(error);
+            var argumentsError = argumentsError(cause);
+            if (argumentsError.isPresent()) {
+                throw new CompletionException(argumentsError.get());
+            }
             if (cause instanceof ToolInputGuardrailException e) {
                 e.arguments(request.arguments());
             }
             throw (error instanceof CompletionException completion) ? completion : new CompletionException(cause);
         });
+    }
+
+    /**
+     * The {@link ToolArgumentsException} a guardrail threw, which the base executor wrapped in a guardrail exception.
+     */
+    private static Optional<ToolArgumentsException> argumentsError(Throwable error) {
+        return Optional.of(error)
+                .filter(ToolInputGuardrailException.class::isInstance)
+                .map(Throwable::getCause)
+                .filter(ToolArgumentsException.class::isInstance)
+                .map(ToolArgumentsException.class::cast);
     }
 
     /**

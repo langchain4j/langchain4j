@@ -9,6 +9,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.ToolGuardrailStage;
 import dev.langchain4j.invocation.InvocationContext;
@@ -198,12 +199,18 @@ public final class ToolRound {
     /**
      * Executes a call of a tool that exists, through its guardrails if it has any: the input guardrails, then
      * {@code tool}, then the output guardrails. A fatal guardrail failure is thrown from here, outside {@code tool}.
+     * Arguments that an input guardrail could not parse ({@link ToolArgumentsException}) are handled by
+     * {@code argumentsError}, as an arguments error of the tool would be: the tool is not executed.
      *
-     * @param call the call of the LLM
-     * @param tool executes the tool for a request (the call, or the call as the input guardrails rewrote it),
-     *             handling its errors
+     * @param call           the call of the LLM
+     * @param tool           executes the tool for a request (the call, or the call as the input guardrails rewrote
+     *                       it), handling its errors
+     * @param argumentsError handles the arguments error of an input guardrail, before the tool started
      */
-    GuardedToolExecution execute(ToolExecutionRequest call, Function<ToolExecutionRequest, ToolExecutionResult> tool) {
+    GuardedToolExecution execute(
+            ToolExecutionRequest call,
+            Function<ToolExecutionRequest, ToolExecutionResult> tool,
+            Function<ToolArgumentsException, ToolExecutionResult> argumentsError) {
         Function<ToolExecutionRequest, ToolExecutionResult> recordingTool = request -> {
             startedRequests.put(call, request);
             var toolResult = tool.apply(request);
@@ -211,33 +218,55 @@ public final class ToolRound {
             return toolResult;
         };
 
-        var execution = binding(call.name())
-                .map(binding -> binding.service()
-                        .executeGuardrails(
-                                binding.key(),
-                                call,
-                                binding.toolSpecification(),
-                                binding.toolSource(),
-                                guardrailRequestParams(),
-                                recordingTool))
-                .orElseGet(() -> unguarded(call, recordingTool.apply(call)));
+        GuardedToolExecution execution;
+        try {
+            execution = binding(call.name())
+                    .map(binding -> binding.service()
+                            .executeGuardrails(
+                                    binding.key(),
+                                    call,
+                                    binding.toolSpecification(),
+                                    binding.toolSource(),
+                                    guardrailRequestParams(),
+                                    recordingTool))
+                    .orElseGet(() -> unguarded(call, recordingTool.apply(call)));
+        } catch (ToolArgumentsException e) {
+            // once the tool has started, its own error handling already ran
+            if (startedRequests.containsKey(call)) {
+                throw e;
+            }
+            execution = unguarded(call, argumentsError.apply(e));
+        }
 
         executions.put(call, execution);
         return execution;
     }
 
     /**
-     * Non-blocking counterpart of {@link #execute(ToolExecutionRequest, Function)}. Nothing is thrown: a fatal
-     * guardrail failure, or a failure of {@code tool}, fails the returned future. Once the round is canceled, no tool
-     * is started any more, and a call whose input guardrails are in flight is canceled.
+     * The arguments error of an input guardrail, if {@code error} is one and the tool of the call has not started.
+     */
+    private Optional<ToolArgumentsException> argumentsErrorBeforeTool(ToolExecutionRequest call, Throwable error) {
+        return Optional.of(unwrapCompletionException(error))
+                .filter(ToolArgumentsException.class::isInstance)
+                .map(ToolArgumentsException.class::cast)
+                .filter(ignored -> !startedRequests.containsKey(call));
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #execute(ToolExecutionRequest, Function, Function)}. Nothing is thrown: a
+     * fatal guardrail failure, or a failure of {@code tool}, fails the returned future. Once the round is canceled, no
+     * tool is started any more, and a call whose input guardrails are in flight is canceled.
      *
-     * @param call the call of the LLM
-     * @param tool starts the tool for a request (the call, or the call as the input guardrails rewrote it), handling
-     *             its errors
+     * @param call           the call of the LLM
+     * @param tool           starts the tool for a request (the call, or the call as the input guardrails rewrote
+     *                       it), handling its errors
+     * @param argumentsError handles the arguments error of an input guardrail, before the tool started
      * @return the future of the result to send to the LLM
      */
     CompletableFuture<ToolExecutionResult> executeAsync(
-            ToolExecutionRequest call, Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool) {
+            ToolExecutionRequest call,
+            Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool,
+            Function<ToolArgumentsException, CompletableFuture<ToolExecutionResult>> argumentsError) {
 
         Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> recordingTool = request -> {
             // recorded before checking the cancellation, so that a cancellation either sees the tool as started (and
@@ -273,6 +302,13 @@ public final class ToolRound {
                                             recordingTool),
                             "future of the tool guardrails"))
                     .orElseGet(() -> recordingTool.apply(call).thenApply(result -> unguarded(call, result)));
+            var guarded = execution;
+            execution = guarded.exceptionallyCompose(error -> argumentsErrorBeforeTool(call, error)
+                    .map(argumentsException -> argumentsError
+                            .apply(argumentsException)
+                            .thenApply(result -> unguarded(call, result)))
+                    .orElseGet(() -> CompletableFuture.failedFuture(error)));
+            propagateCancellation(execution, guarded);
             cancelBeforeToolStarts(call, execution);
         }
         return track(call, execution);

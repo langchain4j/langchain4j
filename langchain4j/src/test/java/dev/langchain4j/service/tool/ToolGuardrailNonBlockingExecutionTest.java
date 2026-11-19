@@ -6,6 +6,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.guardrail.GuardrailException;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.ToolInputGuardrail;
 import dev.langchain4j.guardrail.ToolInputGuardrailException;
@@ -53,6 +54,7 @@ class ToolGuardrailNonBlockingExecutionTest {
 
     private static final String ORIGINAL_ARGUMENTS = "{\"q\":\"a\"}";
     private static final String REWRITTEN_ARGUMENTS = "{\"q\":\"b\"}";
+    private static final String MALFORMED_ARGUMENTS = "{\"q\":";
     private static final Duration TIMEOUT = Duration.ofSeconds(10);
     private static final ToolSpecification SEARCH =
             ToolSpecification.builder().name("search").description("Searches").build();
@@ -172,6 +174,11 @@ class ToolGuardrailNonBlockingExecutionTest {
 
     private static List<AiMessage> responsesCallingSearch() {
         return List.of(AiMessage.from(searchCall("1")), AiMessage.from("done"));
+    }
+
+    private static List<AiMessage> responsesCallingSearchWith(String arguments) {
+        return List.of(
+                AiMessage.from(searchCall("1").toBuilder().arguments(arguments).build()), AiMessage.from("done"));
     }
 
     private static Run run(Mode mode, AiServiceTool.Builder toolBuilder) {
@@ -383,6 +390,54 @@ class ToolGuardrailNonBlockingExecutionTest {
         assertThat(run.toolResultMessageOfSecondRequest())
                 .returns("not allowed", ToolExecutionResultMessage::text)
                 .returns(true, ToolExecutionResultMessage::isError);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void arguments_an_input_guardrail_cannot_parse_go_to_the_arguments_error_handler(Mode mode) {
+        ToolInputGuardrail parsing = input(request -> {
+            request.argumentsAsMap();
+            return ToolInputGuardrailResult.success();
+        });
+        var argumentsErrors = new CopyOnWriteArrayList<Throwable>();
+
+        var run = run(
+                mode,
+                AiServiceTool.builder().toolInputGuardrails(parsing),
+                responsesCallingSearchWith(MALFORMED_ARGUMENTS),
+                services -> services.toolArgumentsErrorHandler((error, context) -> {
+                    argumentsErrors.add(error);
+                    return ToolErrorHandlerResult.text("fix the arguments");
+                }));
+
+        assertThat(run.answer).isCompletedWithValue("done");
+        assertThat(run.tool.receivedArguments).isEmpty();
+        assertThat(argumentsErrors).hasSize(1);
+        assertThat(run.errorHandlerCalls).hasValue(0);
+        assertThat(run.toolResultMessageOfSecondRequest())
+                .returns("fix the arguments", ToolExecutionResultMessage::text)
+                .returns(true, ToolExecutionResultMessage::isError);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void arguments_an_input_guardrail_cannot_parse_fail_the_invocation_as_the_arguments_error_handler_decides(
+            Mode mode) {
+        ToolInputGuardrail parsing = input(request -> {
+            request.argumentsAsMap();
+            return ToolInputGuardrailResult.success();
+        });
+
+        var run = run(
+                mode,
+                AiServiceTool.builder().toolInputGuardrails(parsing),
+                responsesCallingSearchWith(MALFORMED_ARGUMENTS),
+                services -> services.toolArgumentsErrorHandler(ToolArgumentsErrorHandler.failInvocation()));
+
+        assertThat(run.failure()).isNotInstanceOf(GuardrailException.class);
+        assertThat(run.tool.receivedArguments).isEmpty();
+        assertThat(run.errorHandlerCalls).hasValue(0);
+        assertThat(run.requests.get()).hasSize(1);
     }
 
     @ParameterizedTest

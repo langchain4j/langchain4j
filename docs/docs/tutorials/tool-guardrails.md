@@ -91,6 +91,17 @@ There are helper methods on the `ToolInputGuardrail` interface for the outcomes:
 | **_failure_**                   | `failure(String)` or `failure(String, Throwable)` | - The call is rejected and **the tool is not executed**.<br/> - The remaining guardrails of the chain still run, to accumulate all the failures.<br/> - The message is sent to the LLM as an error tool result. See [Failures](#failures-are-error-results-for-the-llm).                       |
 | **_fatal_**                     | `fatal(String)` or `fatal(String, Throwable)`  | - The call is rejected, **the tool is not executed**, the remaining guardrails do not run, and the AI Service invocation is aborted with a `ToolInputGuardrailException`. See [Fatal failures](#fatal-failures).                                                                                |
 
+### Arguments that cannot be parsed
+
+The LLM sometimes produces arguments that are not valid JSON. `argumentsAsMap()` then throws a
+`ToolArgumentsException`. A guardrail does not need to catch it: the tool is not executed, and the call is handled
+like any other arguments error, by the
+[`ToolArgumentsErrorHandler`](/tutorials/tools#error-handling) of the AI Service. For example, with
+`ToolArgumentsErrorHandler.sendExceptionMessageToLlm()`, the LLM gets the error and can correct the arguments.
+The invocation is not aborted, unless the handler decides so.
+
+Any other exception thrown by a guardrail aborts the invocation, like a [fatal failure](#fatal-failures).
+
 ## Tool Output Guardrails
 
 A tool output guardrail implements

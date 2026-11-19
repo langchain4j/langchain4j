@@ -2420,6 +2420,12 @@ public class ToolService {
                                 toolExecutor,
                                 invocationContext,
                                 asyncArgumentsErrorHandler(),
+                                asyncExecutionErrorHandler()),
+                        argumentsError -> handleToolError(
+                                argumentsError,
+                                toolRequest,
+                                invocationContext,
+                                asyncArgumentsErrorHandler(),
                                 asyncExecutionErrorHandler()));
 
         if (afterToolExecution != null) {
@@ -2688,6 +2694,12 @@ public class ToolService {
                         request -> executeWithErrorHandling(
                                 request,
                                 executor,
+                                invocationContext,
+                                argumentsErrorHandler(),
+                                executionErrorHandler()),
+                        argumentsError -> toolErrorResult(
+                                argumentsError,
+                                toolRequest,
                                 invocationContext,
                                 argumentsErrorHandler(),
                                 executionErrorHandler()));

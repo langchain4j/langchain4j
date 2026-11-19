@@ -7,6 +7,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.ToolOutputGuardrailsConfig;
 import dev.langchain4j.invocation.InvocationContext;
@@ -48,6 +49,13 @@ class ToolGuardrailExecutorTest {
     private ToolInputGuardrailRequest inputRequest() {
         return ToolInputGuardrailRequest.builder()
                 .toolExecutionRequest(EXEC)
+                .requestParams(params())
+                .build();
+    }
+
+    private ToolInputGuardrailRequest malformedInputRequest() {
+        return ToolInputGuardrailRequest.builder()
+                .toolExecutionRequest(EXEC.toBuilder().arguments("{not json").build())
                 .requestParams(params())
                 .build();
     }
@@ -321,6 +329,52 @@ class ToolGuardrailExecutorTest {
         assertThatThrownBy(() -> input(boom).execute(inputRequest()))
                 .isExactlyInstanceOf(ToolInputGuardrailException.class)
                 .hasMessage("boom");
+    }
+
+    @Test
+    void input_arguments_error_of_a_guardrail_is_thrown_as_is_and_stops_the_chain() {
+        var calls = new AtomicInteger();
+        ToolInputGuardrail parsing = r -> {
+            r.argumentsAsMap();
+            return ToolInputGuardrailResult.success();
+        };
+        ToolInputGuardrail never = r -> {
+            calls.incrementAndGet();
+            return ToolInputGuardrailResult.success();
+        };
+
+        assertThatThrownBy(() -> input(parsing, never).execute(malformedInputRequest()))
+                .isExactlyInstanceOf(ToolArgumentsException.class)
+                .hasMessageStartingWith("Tool arguments are not a valid JSON object");
+        assertThat(calls).hasValue(0);
+    }
+
+    @Test
+    void input_async_arguments_error_of_a_guardrail_fails_the_future_as_is() {
+        var calls = new AtomicInteger();
+        ToolInputGuardrail parsing = r -> {
+            r.argumentsAsMap();
+            return ToolInputGuardrailResult.success();
+        };
+        ToolInputGuardrail never = r -> {
+            calls.incrementAndGet();
+            return ToolInputGuardrailResult.success();
+        };
+
+        assertThat(rootOf(input(async(parsing), async(never)).executeAsync(malformedInputRequest())))
+                .isExactlyInstanceOf(ToolArgumentsException.class);
+        assertThat(calls).hasValue(0);
+    }
+
+    @Test
+    void output_arguments_error_of_a_guardrail_is_a_fatal_failure() {
+        ToolOutputGuardrail throwing = r -> {
+            throw new ToolArgumentsException("bad arguments");
+        };
+
+        assertThatThrownBy(() -> output(throwing).execute(outputRequest(false, TextContent.from("x"))))
+                .isExactlyInstanceOf(ToolOutputGuardrailException.class)
+                .hasCauseExactlyInstanceOf(ToolArgumentsException.class);
     }
 
     @Test

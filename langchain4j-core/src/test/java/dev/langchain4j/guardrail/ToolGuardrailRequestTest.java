@@ -9,6 +9,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.ToolArgumentsParser;
 import dev.langchain4j.invocation.InvocationContext;
 import java.util.ArrayList;
@@ -143,11 +144,12 @@ class ToolGuardrailRequestTest {
     }
 
     @Test
-    void input_arguments_as_map_rejects_invalid_and_non_object() {
+    void input_arguments_as_map_rejects_invalid_and_non_object_with_a_tool_arguments_exception() {
         for (String bad : List.of("{not json", "[1,2]", "42", "null")) {
             assertThatThrownBy(() -> inputWithArguments(bad).argumentsAsMap())
                     .as(bad)
-                    .isInstanceOf(IllegalArgumentException.class);
+                    .isExactlyInstanceOf(ToolArgumentsException.class)
+                    .hasMessageStartingWith("Tool arguments are not a valid JSON object");
         }
     }
 

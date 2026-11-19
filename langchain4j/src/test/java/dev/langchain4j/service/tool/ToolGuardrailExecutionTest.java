@@ -10,6 +10,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.guardrail.GuardrailException;
 import dev.langchain4j.guardrail.ToolInputGuardrail;
 import dev.langchain4j.guardrail.ToolInputGuardrailException;
 import dev.langchain4j.guardrail.ToolInputGuardrailRequest;
@@ -48,6 +49,7 @@ class ToolGuardrailExecutionTest {
 
     private static final String ORIGINAL_ARGUMENTS = "{\"q\":\"a\"}";
     private static final String REWRITTEN_ARGUMENTS = "{\"q\":\"b\"}";
+    private static final String MALFORMED_ARGUMENTS = "{\"q\":";
     private static final Object RAW_RESULT = new Object();
     // the result factories are default methods of the interfaces, which lambdas cannot call
     private static final ToolInputGuardrail INPUT = request -> null;
@@ -321,6 +323,61 @@ class ToolGuardrailExecutionTest {
                 .returns("Not allowed: use another query", ToolExecution::result);
         assertThat(run.toolEvents).singleElement().returns(true, ToolExecutedEvent::isError);
         assertThat(run.result.content()).isEqualTo("done");
+    }
+
+    @Test
+    void arguments_an_input_guardrail_cannot_parse_go_to_the_arguments_error_handler() {
+        ToolInputGuardrail parsing = request -> {
+            request.argumentsAsMap();
+            return ToolInputGuardrailResult.success();
+        };
+        var argumentsErrors = new CopyOnWriteArrayList<Throwable>();
+        var model = MockChatModel.thatResponds(
+                AiMessage.from(searchCall("1").toBuilder().arguments(MALFORMED_ARGUMENTS).build()),
+                AiMessage.from("done"));
+
+        var run = run(
+                AiServiceTool.builder().toolInputGuardrails(parsing),
+                false,
+                model,
+                services -> services.toolArgumentsErrorHandler((error, context) -> {
+                    argumentsErrors.add(error);
+                    return ToolErrorHandlerResult.text("fix the arguments");
+                }));
+
+        assertThat(run.tool.receivedArguments).isEmpty();
+        assertThat(argumentsErrors).hasSize(1);
+        assertThat(run.toolResultMessageOfSecondRequest())
+                .returns(true, ToolExecutionResultMessage::isError)
+                .returns("fix the arguments", ToolExecutionResultMessage::text);
+        assertThat(run.toolEvents).singleElement().returns(true, ToolExecutedEvent::isError);
+        assertThat(run.result.content()).isEqualTo("done");
+    }
+
+    @Test
+    void arguments_an_input_guardrail_cannot_parse_fail_the_invocation_as_the_arguments_error_handler_decides() {
+        ToolInputGuardrail parsing = request -> {
+            request.argumentsAsMap();
+            return ToolInputGuardrailResult.success();
+        };
+        var tool = new RecordingTool(false);
+        var model = MockChatModel.thatResponds(
+                AiMessage.from(searchCall("1").toBuilder().arguments(MALFORMED_ARGUMENTS).build()),
+                AiMessage.from("done"));
+
+        var assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(List.<AiServiceTool>of(AiServiceTool.builder()
+                        .toolSpecification(SEARCH)
+                        .toolExecutor(tool)
+                        .toolInputGuardrails(parsing)
+                        .build()))
+                .toolArgumentsErrorHandler(ToolArgumentsErrorHandler.failInvocation())
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("hello")).isNotInstanceOf(GuardrailException.class);
+        assertThat(tool.receivedArguments).isEmpty();
+        assertThat(model.requests()).hasSize(1);
     }
 
     @Test

@@ -135,6 +135,10 @@ public non-sealed interface ToolGuardrailService
      *     error handling of the tool does not see it. An exception thrown by {@code tool} propagates as is. When a
      *     fatal input failure ends the call, {@link #rejectedRequest(ToolExecutionRequest, Throwable)} gives the
      *     request as the guardrails before it left it.</li>
+     *     <li>A {@link dev.langchain4j.exception.ToolArgumentsException} thrown by an input guardrail, for example by
+     *     {@link ToolInputGuardrailRequest#argumentsAsMap()} for arguments that cannot be parsed, is not a guardrail
+     *     failure: {@code tool} does not run, and the exception is thrown as is, so that the caller handles it like an
+     *     arguments error of the tool.</li>
      * </ul>
      *
      * @param key               The key {@link #bind(Class, AiServiceTool)} returned for the tool. Must not be null.
@@ -216,7 +220,8 @@ public non-sealed interface ToolGuardrailService
      * does not block the calling thread.
      * <p>
      *     Nothing is thrown from this method: a fatal guardrail failure, an exception thrown by a guardrail or by
-     *     {@code tool}, and a failed future of {@code tool} all fail the returned future. Canceling the returned future
+     *     {@code tool} (including the {@link dev.langchain4j.exception.ToolArgumentsException} of an input
+     *     guardrail), and a failed future of {@code tool} all fail the returned future. Canceling the returned future
      *     cancels the guardrails or the tool in flight.
      * </p>
      *

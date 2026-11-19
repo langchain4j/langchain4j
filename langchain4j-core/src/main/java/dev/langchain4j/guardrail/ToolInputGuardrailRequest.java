@@ -6,6 +6,7 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSource;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.ToolArgumentsParser;
 import dev.langchain4j.invocation.InvocationContext;
 import java.util.ArrayList;
@@ -91,9 +92,14 @@ public final class ToolInputGuardrailRequest implements GuardrailRequest<ToolInp
      * {@code null} values are preserved as null map values. Number types depend on the JSON codec.
      * The map is parsed on every call.
      *
+     * If the arguments cannot be parsed, a {@link ToolArgumentsException} is thrown. A guardrail can let it propagate:
+     * the tool is then not executed, and the call is handled like an arguments error of the tool, by the
+     * {@code ToolArgumentsErrorHandler} of the AI service (for example, the error is sent to the LLM so that it can
+     * correct the arguments), instead of aborting the invocation.
+     *
      * @return the parsed arguments, never null
-     * @throws IllegalArgumentException if the arguments are not a valid JSON object (malformed JSON, a non-object
-     *                                  root, or the JSON literal {@code null})
+     * @throws ToolArgumentsException if the arguments are not a valid JSON object (malformed JSON, a non-object root,
+     *                                or the JSON literal {@code null})
      * @since 1.25.0
      */
     public Map<String, Object> argumentsAsMap() {
@@ -102,7 +108,8 @@ public final class ToolInputGuardrailRequest implements GuardrailRequest<ToolInp
             // the JSON literal `null` parses to a null map
             return freezeMap(ensureNotNull(parsed, "parsed arguments"));
         } catch (RuntimeException e) {
-            throw new IllegalArgumentException("Tool arguments are not a valid JSON object: " + e.getMessage(), e);
+            throw new ToolArgumentsException(
+                    "Tool arguments are not a valid JSON object: %s".formatted(e.getMessage()), e);
         }
     }
 
