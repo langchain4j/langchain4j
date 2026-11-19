@@ -8,6 +8,15 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 import static dev.langchain4j.service.tool.ToolService.shouldReturnImmediately;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicReference;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -35,7 +44,6 @@ import dev.langchain4j.model.chat.response.RawStreamingEvent;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
-import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.AiServiceStreamingEvent.AfterToolExecutionEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.BeforeToolExecutionEvent;
@@ -53,17 +61,8 @@ import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolRound;
-import dev.langchain4j.service.tool.ToolRoundCompensation;
 import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Flow;
-import java.util.concurrent.atomic.AtomicReference;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.Tube;
 import mutiny.zero.TubeConfiguration;
@@ -307,9 +306,9 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     CompletableFuture<?> persistence = toolResultsPersistence.get();
                     if (persistence != null) {
                         persistence.whenComplete(
-                                (ignored, error) -> doCancellationCompensation(null, null, ToolRoundCompensation.NONE));
+                                (ignored, error) -> doCancellationCompensation(null));
                     } else {
-                        doCancellationCompensation(null, null, ToolRoundCompensation.NONE);
+                        doCancellationCompensation(null);
                     }
                 }
             });
@@ -505,20 +504,16 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     fail(error);
                     return;
                 }
-                ToolService.FailedStep[] failedStepHolder = new ToolService.FailedStep[1];
+                List<Optional<ToolService.FailedStep>> failedStepHolder = new ArrayList<>(List.of(Optional.empty()));
                 boolean won = underAccumulatorLock(() -> {
                     if (!inflightRound.compareAndSet(round, null)) {
                         return false;
                     }
                     if (compensableExecutions != null) {
-                        failedStepHolder[0] = context.toolService
-                                .collectCompensableRound(
-                                        outcome.requests(),
-                                        outcome.results(),
-                                        compensableExecutions,
-                                        invocationContext,
-                                        outcome.compensation())
-                                .orElse(null);
+                        failedStepHolder.set(
+                                0,
+                                context.toolService.collectCompensableRound(
+                                        outcome, compensableExecutions, invocationContext));
                     }
                     return true;
                 });
@@ -526,7 +521,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     return; // the cancel path claimed the round; it compensates
                 }
                 if (tube.cancelled()) {
-                    doCancellationCompensation(null, null, ToolRoundCompensation.NONE); // round collected above
+                    doCancellationCompensation(null); // round collected above
                     return;
                 }
                 try {
@@ -535,11 +530,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                             aiMessage,
                             currentToolContext,
                             parameters,
-                            outcome.requests(),
-                            outcome.results(),
-                            outcome.compensation(),
-                            outcome.firstError().orElse(null),
-                            failedStepHolder[0]);
+                            outcome,
+                            failedStepHolder.get(0));
                 } catch (Throwable t) {
                     fail(t);
                 }
@@ -569,14 +561,9 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
          * those are mutually exclusive via {@code inflightRound}, so no round is collected twice. Stream events are not
          * delivered after a cancel, so only the observability {@code ToolCompensatedEvent} fires here.
          */
-        private void doCancellationCompensation(
-                List<ToolExecutionRequest> currentRoundRequests,
-                Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults,
-                ToolRoundCompensation currentRoundCompensation) {
+        private void doCancellationCompensation(ToolRound.Outcome currentRound) {
             context.toolService.compensateOnCancellationAsync(
-                    currentRoundRequests,
-                    currentRoundResults,
-                    currentRoundCompensation,
+                    currentRound,
                     compensableExecutions,
                     getMemory(),
                     null,
@@ -586,10 +573,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         }
 
         private void compensateCanceledRound(ToolRound.Outcome outcome) {
-            doCancellationCompensation(
-                    (outcome != null) ? outcome.requests() : null,
-                    (outcome != null) ? outcome.results() : null,
-                    (outcome != null) ? outcome.compensation() : ToolRoundCompensation.NONE);
+            doCancellationCompensation(outcome);
         }
 
         private record InflightRound(CompletableFuture<ToolRound.Outcome> outcome) {}
@@ -648,41 +632,29 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 AiMessage aiMessage,
                 ToolServiceContext currentToolContext,
                 ChatRequestParameters parameters,
-                List<ToolExecutionRequest> toolRequests,
-                Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
-                ToolRoundCompensation compensation,
-                Throwable firstError,
-                ToolService.FailedStep preCollectedFailedStep) {
+                ToolRound.Outcome round,
+                Optional<ToolService.FailedStep> collectedFailedStep) {
 
+            Throwable firstError = round.firstError().orElse(null);
             ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
-                    context,
-                    toolRequests,
-                    toolResults,
-                    new ArrayList<>(),
-                    invocationContext,
-                    currentToolContext,
-                    compensation);
+                    context, round, new ArrayList<>(), invocationContext, currentToolContext);
 
-            CompletableFuture<Void> compensated = context.toolService.compensateIfNeededAsync(
-                    toolRequests,
-                    toolResults,
+            CompletableFuture<Void> compensated = context.toolService.compensateCollectedRoundAsync(
+                    round,
                     outcome.resultMessages(),
                     compensableExecutions,
                     outcome.anyToolErrored(),
                     getMemory(),
                     messages,
                     invocationContext,
-                    CompensationReason.TOOL_EXECUTION_FAILED,
                     context.eventListenerRegistrar,
                     (toolExecution, reason) ->
                             tube.send(new ToolCompensatedEvent(toolExecution, reason, invocationContext)),
-                    compensation,
-                    true,
-                    preCollectedFailedStep);
+                    collectedFailedStep);
 
             compensated.whenComplete((ignoredCompensation, compensationError) -> {
                 if (tube.cancelled()) {
-                    doCancellationCompensation(null, null, ToolRoundCompensation.NONE);
+                    doCancellationCompensation(null);
                     return;
                 }
                 // The default asynchronous ToolExecutionErrorHandler rethrows a tool execution error. The tools that
@@ -711,7 +683,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     return false;
                 });
                 if (alreadyCancelled) {
-                    doCancellationCompensation(null, null, ToolRoundCompensation.NONE);
+                    doCancellationCompensation(null);
                     return;
                 }
 
@@ -737,7 +709,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                                     nextMessages,
                                     invocationContext,
                                     currentToolContext,
-                                    toolResults,
+                                    round.results(),
                                     parameters);
 
                             startRound(next.chatRequest(), next.toolServiceContext(), next.parameters());

@@ -394,7 +394,7 @@ public final class ToolRound {
                 .map(call -> ensureNotNull(executions.get(call), "execution of " + call)
                         .request())
                 .toList();
-        return new Outcome(
+        return new DefaultToolRoundOutcome(
                 requests,
                 results(calls),
                 updateHistory(aiMessage, calls, requests, chatMemory, messages),
@@ -424,17 +424,18 @@ public final class ToolRound {
      * is canceled. The {@link Outcome#messages()} are empty.
      */
     public CompletableFuture<Outcome> settleAsync(List<ToolExecutionRequest> calls) {
-        return settleAsync(calls, List.of());
+        return settleAsync(calls, List.of()).thenApply(Function.<Outcome>identity());
     }
 
-    private CompletableFuture<Outcome> settleAsync(List<ToolExecutionRequest> calls, List<ChatMessage> messages) {
+    private CompletableFuture<DefaultToolRoundOutcome> settleAsync(
+            List<ToolExecutionRequest> calls, List<ChatMessage> messages) {
         var callFutures = calls.stream().map(this::future).toArray(CompletableFuture[]::new);
         return CompletableFuture.allOf(callFutures)
                 // wait for every call to end, normally or not
                 .handle((ignored, ignoredError) -> settled(calls, messages));
     }
 
-    private Outcome settled(List<ToolExecutionRequest> calls, List<ChatMessage> messages) {
+    private DefaultToolRoundOutcome settled(List<ToolExecutionRequest> calls, List<ChatMessage> messages) {
         Map<ToolExecutionRequest, ToolExecutionResult> results = new LinkedHashMap<>();
         Throwable firstError = null;
         for (ToolExecutionRequest call : calls) {
@@ -455,7 +456,7 @@ public final class ToolRound {
             }
         }
         var requests = calls.stream().map(this::reportedRequest).toList();
-        return new Outcome(requests, results, messages, firstError, compensation(calls));
+        return new DefaultToolRoundOutcome(requests, results, messages, firstError, compensation(calls));
     }
 
     private CompletableFuture<ToolExecutionResult> future(ToolExecutionRequest call) {
@@ -463,31 +464,41 @@ public final class ToolRound {
     }
 
     /**
-     * A completed round.
+     * A completed round: the calls as they were executed, in the order of the LLM, the result of each call, the
+     * messages for the rest of the round, and the first failure of a call, if any. Pass it to the {@link ToolService}
+     * methods that take one: what they need besides the results to compensate the round is kept internal.
      *
-     * @param requests the calls as they were executed, in the order of the LLM
-     * @param results the result of each call, by the call as it was executed
-     * @param messages the messages for the rest of the round
-     * @param error the first failure of a call, in the order of the LLM, or {@code null}
-     * @param compensation what the compensation of the round needs besides {@code results}
+     * @since 1.25.0
      */
-    public record Outcome(
-            List<ToolExecutionRequest> requests,
-            Map<ToolExecutionRequest, ToolExecutionResult> results,
-            List<ChatMessage> messages,
-            Throwable error,
-            ToolRoundCompensation compensation) {
+    public sealed interface Outcome permits DefaultToolRoundOutcome {
+
+        /**
+         * The calls as they were executed, in the order of the LLM.
+         */
+        List<ToolExecutionRequest> requests();
+
+        /**
+         * The result of each call, by the call as it was executed.
+         */
+        Map<ToolExecutionRequest, ToolExecutionResult> results();
+
+        /**
+         * The messages for the rest of the round.
+         */
+        List<ChatMessage> messages();
 
         /**
          * The first failure of a call of the round, in the order of the LLM, if a call failed.
          */
-        public Optional<Throwable> firstError() {
-            return Optional.ofNullable(error);
-        }
+        Optional<Throwable> firstError();
+    }
 
-        private Outcome withMessages(List<ChatMessage> messages) {
-            return new Outcome(requests, results, messages, error, compensation);
-        }
+    /**
+     * What the compensation of a completed round needs besides its results.
+     */
+    static ToolRoundCompensation compensationOf(Outcome outcome) {
+        // Outcome is sealed: DefaultToolRoundOutcome is its only implementation
+        return ((DefaultToolRoundOutcome) outcome).compensation();
     }
 
     /**

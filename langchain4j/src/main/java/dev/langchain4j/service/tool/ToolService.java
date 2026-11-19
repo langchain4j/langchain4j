@@ -794,7 +794,7 @@ public class ToolService {
                     toolExecutions,
                     invocationContext,
                     toolServiceContext,
-                    round.compensation());
+                    ToolRound.compensationOf(round));
 
             List<ToolExecutionResultMessage> resultMessages = outcome.resultMessages();
 
@@ -808,7 +808,7 @@ public class ToolService {
                     messages,
                     invocationContext,
                     context.eventListenerRegistrar,
-                    round.compensation());
+                    ToolRound.compensationOf(round));
 
             List<ChatMessage> nextMessages = persistToolResultsAndResolveMessagesSync(
                     context, chatMemory, messages, resultMessages, invocationContext);
@@ -1023,7 +1023,7 @@ public class ToolService {
                                         roundTripsLeft,
                                         outcome.requests(),
                                         outcome.results(),
-                                        outcome.compensation(),
+                                        ToolRound.compensationOf(outcome),
                                         outcome.firstError().orElse(null)));
                     })
                     .toCompletableFuture();
@@ -1243,12 +1243,30 @@ public class ToolService {
 
     /**
      * As {@link #processToolResults(AiServiceContext, List, Map, List, InvocationContext, ToolServiceContext)}, for a
-     * round whose results went through tool guardrails: a compensable tool is exposed for cross-agent compensation
-     * when it ran successfully, whatever its output guardrails made of the result, and with the result it ran with.
+     * completed {@link ToolRound}, whose calls may have gone through tool guardrails: a compensable tool is exposed for
+     * cross-agent compensation when it ran successfully, whatever its output guardrails made of the result, and with
+     * the result it ran with.
      *
+     * @param round the completed round: its calls as they were executed, and their results
      * @since 1.25.0
      */
     public ToolResultsOutcome processToolResults(
+            AiServiceContext context,
+            ToolRound.Outcome round,
+            List<ToolExecution> toolExecutions,
+            InvocationContext invocationContext,
+            ToolServiceContext toolServiceContext) {
+        return processToolResults(
+                context,
+                round.requests(),
+                round.results(),
+                toolExecutions,
+                invocationContext,
+                toolServiceContext,
+                ToolRound.compensationOf(round));
+    }
+
+    private ToolResultsOutcome processToolResults(
             AiServiceContext context,
             List<ToolExecutionRequest> toolExecutionRequests,
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
@@ -1517,10 +1535,8 @@ public class ToolService {
      * AiServiceListenerRegistrar)}, for a round whose results went through tool guardrails: whether a tool is
      * compensable, and the result its compensating action gets, are the ones of the tool as it ran, and the reason of
      * the {@link ToolCompensatedEvent}s tells whether a guardrail made the step fail.
-     *
-     * @since 1.25.0
      */
-    public void compensateIfNeeded(
+    private void compensateIfNeeded(
             List<ToolExecutionRequest> toolExecutionRequests,
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
             List<ToolExecutionResultMessage> resultMessages,
@@ -1630,23 +1646,61 @@ public class ToolService {
                 ToolRoundCompensation.NONE,
                 alreadyCollected,
                 Optional.ofNullable(preCollectedFailedToolName)
-                        .map(toolName -> new FailedStep(toolName, CompensationReason.TOOL_EXECUTION_FAILED))
+                        .map(toolName -> new DefaultFailedStep(toolName, CompensationReason.TOOL_EXECUTION_FAILED))
                         .orElse(null));
     }
 
     /**
      * As {@link #compensateIfNeededAsync(List, Map, List, List, boolean, ChatMemory, List, InvocationContext,
-     * CompensationReason, AiServiceListenerRegistrar, BiConsumer, boolean, String)}, for a round whose results went
-     * through tool guardrails: whether a tool is compensable, and the result its compensating action gets, are the ones
-     * of the tool as it ran. A {@code reason} of {@link CompensationReason#TOOL_EXECUTION_FAILED} is replaced by the
-     * reason of the failed step when a tool guardrail made it fail.
+     * CompensationReason, AiServiceListenerRegistrar, BiConsumer, boolean, String)}, for a completed {@link ToolRound}
+     * whose compensable tools were already collected with
+     * {@link #collectCompensableRound(ToolRound.Outcome, List, InvocationContext)}: whether a tool is compensable, and
+     * the result its compensating action gets, are the ones of the tool as it ran, and the reason of the
+     * {@link ToolCompensatedEvent}s tells whether a tool guardrail made the step fail.
      *
-     * @param preCollectedFailedStep the failed step that {@link #collectCompensableRound(List, Map, List,
-     *                               InvocationContext, ToolRoundCompensation)} returned, when
-     *                               {@code alreadyCollected}; otherwise ignored, may be {@code null}
+     * @param round               the completed round
+     * @param collectedFailedStep what {@link #collectCompensableRound(ToolRound.Outcome, List, InvocationContext)}
+     *                            returned for the round
      * @since 1.25.0
      */
-    public CompletableFuture<Void> compensateIfNeededAsync(
+    public CompletableFuture<Void> compensateCollectedRoundAsync(
+            ToolRound.Outcome round,
+            List<ToolExecutionResultMessage> resultMessages,
+            List<CompensableToolExecution> compensableExecutions,
+            boolean anyToolErrored,
+            ChatMemory chatMemory,
+            List<ChatMessage> messages,
+            InvocationContext invocationContext,
+            AiServiceListenerRegistrar listenerRegistrar,
+            BiConsumer<ToolExecution, CompensationReason> streamEmitter,
+            Optional<FailedStep> collectedFailedStep) {
+        return compensateIfNeededAsync(
+                round.requests(),
+                round.results(),
+                resultMessages,
+                compensableExecutions,
+                anyToolErrored,
+                chatMemory,
+                messages,
+                invocationContext,
+                CompensationReason.TOOL_EXECUTION_FAILED,
+                listenerRegistrar,
+                streamEmitter,
+                ToolRound.compensationOf(round),
+                true,
+                collectedFailedStep.orElse(null));
+    }
+
+    /**
+     * As {@link #compensateIfNeededAsync(List, Map, List, List, boolean, ChatMemory, List, InvocationContext,
+     * CompensationReason, AiServiceListenerRegistrar, BiConsumer, boolean, String)}, for a round whose results went
+     * through tool guardrails. A {@code reason} of {@link CompensationReason#TOOL_EXECUTION_FAILED} is replaced by the
+     * reason of the failed step when a tool guardrail made it fail.
+     *
+     * @param preCollectedFailedStep the failed step collected for the round, when {@code alreadyCollected}; otherwise
+     *                               ignored, may be {@code null}
+     */
+    private CompletableFuture<Void> compensateIfNeededAsync(
             List<ToolExecutionRequest> toolExecutionRequests,
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
             List<ToolExecutionResultMessage> resultMessages,
@@ -1765,12 +1819,33 @@ public class ToolService {
 
     /**
      * As {@link #compensateOnCancellationAsync(List, Map, List, ChatMemory, List, InvocationContext,
-     * AiServiceListenerRegistrar, BiConsumer)}, for a drained round whose results went through tool guardrails: a tool
-     * that ran successfully is rolled back whatever its output guardrails made of the result.
+     * AiServiceListenerRegistrar, BiConsumer)}, for a drained {@link ToolRound} whose calls may have gone through tool
+     * guardrails: a tool that ran successfully is rolled back whatever its output guardrails made of the result.
      *
+     * @param currentRound the drained round, or {@code null} if there is none
      * @since 1.25.0
      */
     public CompletableFuture<Void> compensateOnCancellationAsync(
+            ToolRound.Outcome currentRound,
+            List<CompensableToolExecution> compensableExecutions,
+            ChatMemory chatMemory,
+            List<ChatMessage> messages,
+            InvocationContext invocationContext,
+            AiServiceListenerRegistrar listenerRegistrar,
+            BiConsumer<ToolExecution, CompensationReason> streamEmitter) {
+        return compensateOnCancellationAsync(
+                (currentRound != null) ? currentRound.requests() : null,
+                (currentRound != null) ? currentRound.results() : null,
+                (currentRound != null) ? ToolRound.compensationOf(currentRound) : ToolRoundCompensation.NONE,
+                compensableExecutions,
+                chatMemory,
+                messages,
+                invocationContext,
+                listenerRegistrar,
+                streamEmitter);
+    }
+
+    private CompletableFuture<Void> compensateOnCancellationAsync(
             List<ToolExecutionRequest> currentRoundRequests,
             Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults,
             ToolRoundCompensation currentRoundCompensation,
@@ -1849,13 +1924,28 @@ public class ToolService {
     }
 
     /**
-     * As {@link #collectCompensableRound(List, Map, List, InvocationContext)}, for a round whose results went through
-     * tool guardrails, returning the first failed step (the first call that ended as an error result the LLM sees) with
-     * the reason it rolls the other tools back.
+     * As {@link #collectCompensableRound(List, Map, List, InvocationContext)}, for a completed {@link ToolRound} whose
+     * calls may have gone through tool guardrails, returning the first failed step (the first call that ended as an
+     * error result the LLM sees), to pass to
+     * {@link #compensateCollectedRoundAsync(ToolRound.Outcome, List, List, boolean, ChatMemory, List,
+     * InvocationContext, AiServiceListenerRegistrar, BiConsumer, Optional)}.
      *
+     * @param round the completed round
      * @since 1.25.0
      */
     public Optional<FailedStep> collectCompensableRound(
+            ToolRound.Outcome round,
+            List<CompensableToolExecution> compensableExecutions,
+            InvocationContext invocationContext) {
+        return collectCompensableRound(
+                round.requests(),
+                round.results(),
+                compensableExecutions,
+                invocationContext,
+                ToolRound.compensationOf(round));
+    }
+
+    private Optional<FailedStep> collectCompensableRound(
             List<ToolExecutionRequest> toolExecutionRequests,
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
             List<CompensableToolExecution> compensableExecutions,
@@ -1874,16 +1964,28 @@ public class ToolService {
     }
 
     /**
-     * The first call of a round that ended as an error result the LLM sees, and why it rolls the other tools back.
+     * The first call of a round that ended as an error result the LLM sees, and why it rolls the other tools back. It
+     * is returned by {@link #collectCompensableRound(ToolRound.Outcome, List, InvocationContext)} to be passed back to
+     * {@link #compensateCollectedRoundAsync(ToolRound.Outcome, List, List, boolean, ChatMemory, List,
+     * InvocationContext, AiServiceListenerRegistrar, BiConsumer, Optional)}.
      *
-     * @param toolName the name of the tool of the call
-     * @param reason a {@link CompensationReason#TOOL_INPUT_GUARDRAIL_FAILED} or
-     *               {@link CompensationReason#TOOL_OUTPUT_GUARDRAIL_FAILED} when a tool guardrail made the call
-     *               fail, otherwise {@link CompensationReason#TOOL_EXECUTION_FAILED}
      * @since 1.25.0
      */
     @Internal
-    public record FailedStep(String toolName, CompensationReason reason) {}
+    public sealed interface FailedStep permits DefaultFailedStep {
+
+        /**
+         * The name of the tool of the call.
+         */
+        String toolName();
+
+        /**
+         * Why the call rolls the other tools back: {@link CompensationReason#TOOL_INPUT_GUARDRAIL_FAILED} or
+         * {@link CompensationReason#TOOL_OUTPUT_GUARDRAIL_FAILED} when a tool guardrail made the call fail, otherwise
+         * {@link CompensationReason#TOOL_EXECUTION_FAILED}.
+         */
+        CompensationReason reason();
+    }
 
     private Optional<FailedStep> collectCompensable(
             List<ToolExecutionRequest> toolExecutionRequests,
@@ -1909,7 +2011,7 @@ public class ToolService {
             }
             // the step fails if the LLM sees an error result
             if (result.isError() && (failedStep == null)) {
-                failedStep = new FailedStep(request.name(), compensation.reasonOf(request));
+                failedStep = new DefaultFailedStep(request.name(), compensation.reasonOf(request));
             }
         }
         return Optional.ofNullable(failedStep);

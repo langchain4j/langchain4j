@@ -1,6 +1,5 @@
 package dev.langchain4j.service.tool;
 
-import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.observability.api.event.CompensationReason;
 import java.util.Map;
@@ -19,22 +18,20 @@ import java.util.Optional;
  *                        executed. Without an entry the tool did not run
  * @param guardrailFailures the reason to compensate for each call that a tool guardrail turned into an error result,
  *                          by the call as it was executed
- * @since 1.25.0
  */
-@Internal
-public record ToolRoundCompensation(
+record ToolRoundCompensation(
         Map<ToolExecutionRequest, ToolExecutionResult> originalResults,
         Map<ToolExecutionRequest, CompensationReason> guardrailFailures) {
 
     /**
      * A round whose results are the results of its tools, because no tool guardrail applied to it.
      */
-    public static final ToolRoundCompensation NONE = new ToolRoundCompensation(Map.of(), Map.of());
+    static final ToolRoundCompensation NONE = new ToolRoundCompensation(Map.of(), Map.of());
 
     /**
      * Copies the maps, so the record is immutable.
      */
-    public ToolRoundCompensation {
+    ToolRoundCompensation {
         originalResults = Map.copyOf(originalResults);
         guardrailFailures = Map.copyOf(guardrailFailures);
     }
