@@ -41,6 +41,11 @@ import java.util.stream.Stream;
  *     to a level (for example attributes on the annotations), it has to become part of the identity of a guardrail
  *     created from a class, in {@link #chain(List, List)}.
  * </p>
+ * <p>
+ *     The executors of the global guardrails alone are created once, and shared by every tool that has no guardrails
+ *     of its own (no annotations and no {@link AiServiceTool} guardrails), such as the tools of an MCP server, which
+ *     are bound anew for every invocation. Executors are immutable, so sharing them is safe.
+ * </p>
  */
 final class ToolGuardrailChainResolver {
 
@@ -49,6 +54,8 @@ final class ToolGuardrailChainResolver {
     private final ToolInputGuardrailsConfig inputConfig;
     private final ToolOutputGuardrailsConfig outputConfig;
     private final ClassMetadataProviderFactory<Object> classMetadataProviderFactory;
+    private final Optional<ToolInputGuardrailExecutor> globalInputExecutor;
+    private final Optional<ToolOutputGuardrailExecutor> globalOutputExecutor;
 
     /**
      * @param globalInputGuardrails        the input guardrails that apply to every tool, in the order they run
@@ -68,6 +75,11 @@ final class ToolGuardrailChainResolver {
         this.inputConfig = inputConfig;
         this.outputConfig = outputConfig;
         this.classMetadataProviderFactory = ensureNotNull(classMetadataProviderFactory, "classMetadataProviderFactory");
+        this.globalInputExecutor = executor(
+                chain(this.globalInputGuardrails, List.of()), guardrails -> newInputExecutor(inputConfig, guardrails));
+        this.globalOutputExecutor = executor(
+                chain(this.globalOutputGuardrails, List.of()),
+                guardrails -> newOutputExecutor(outputConfig, guardrails));
     }
 
     /**
@@ -87,28 +99,47 @@ final class ToolGuardrailChainResolver {
                 .or(() -> Optional.ofNullable(method).map(Method::getDeclaringClass))
                 .orElse(null);
 
-        var inputGuardrails = chain(
-                this.globalInputGuardrails,
-                ownGuardrails(
-                        annotations(annotatedClass, method, ToolInputGuardrails.class),
-                        ToolInputGuardrails::value,
-                        tool.toolInputGuardrails()));
+        var ownInputGuardrails = ownGuardrails(
+                annotations(annotatedClass, method, ToolInputGuardrails.class),
+                ToolInputGuardrails::value,
+                tool.toolInputGuardrails());
 
-        var outputGuardrails = chain(
-                this.globalOutputGuardrails,
-                ownGuardrails(
-                        annotations(annotatedClass, method, ToolOutputGuardrails.class),
-                        ToolOutputGuardrails::value,
-                        tool.toolOutputGuardrails()));
+        var ownOutputGuardrails = ownGuardrails(
+                annotations(annotatedClass, method, ToolOutputGuardrails.class),
+                ToolOutputGuardrails::value,
+                tool.toolOutputGuardrails());
 
         return new DefaultToolKey(
                 tool.name(),
-                Optional.of(inputGuardrails)
-                        .filter(not(List::isEmpty))
-                        .map(guardrails -> newInputExecutor(this.inputConfig, guardrails)),
-                Optional.of(outputGuardrails)
-                        .filter(not(List::isEmpty))
-                        .map(guardrails -> newOutputExecutor(this.outputConfig, guardrails)));
+                chainExecutor(
+                        this.globalInputGuardrails,
+                        ownInputGuardrails,
+                        this.globalInputExecutor,
+                        guardrails -> newInputExecutor(this.inputConfig, guardrails)),
+                chainExecutor(
+                        this.globalOutputGuardrails,
+                        ownOutputGuardrails,
+                        this.globalOutputExecutor,
+                        guardrails -> newOutputExecutor(this.outputConfig, guardrails)));
+    }
+
+    /**
+     * The executor of the chain of a tool: the shared executor of the global guardrails when the tool has no
+     * guardrails of its own, otherwise a new executor of the whole chain.
+     */
+    private static <G, E> Optional<E> chainExecutor(
+            List<GuardrailEntry<G>> global,
+            List<GuardrailEntry<G>> own,
+            Optional<E> globalExecutor,
+            Function<List<G>, E> newExecutor) {
+        return own.isEmpty() ? globalExecutor : executor(chain(global, own), newExecutor);
+    }
+
+    /**
+     * An executor of the guardrails, or none when there are no guardrails.
+     */
+    private static <G, E> Optional<E> executor(List<G> guardrails, Function<List<G>, E> newExecutor) {
+        return Optional.of(guardrails).filter(not(List::isEmpty)).map(newExecutor);
     }
 
     static ToolInputGuardrailExecutor newInputExecutor(

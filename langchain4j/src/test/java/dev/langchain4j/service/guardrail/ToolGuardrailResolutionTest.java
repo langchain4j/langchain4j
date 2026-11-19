@@ -759,6 +759,57 @@ class ToolGuardrailResolutionTest {
     }
 
     @Test
+    void tools_without_their_own_guardrails_share_the_executors_of_the_global_guardrails_across_invocations() {
+        var setup = setupWith(new Plain());
+        setup.toolService()
+                .toolProvider(request -> ToolProviderResult.builder()
+                        .add(providedTool("first"))
+                        .add(providedTool("second"))
+                        .build());
+        setup.guardrails().inputGuardrails(new InGlobal()).outputGuardrails(new OutGlobal());
+
+        // every call of binding(..) creates the context of a new invocation, which provides the tools anew
+        var sharedInput = setup.inputExecutor("first").orElseThrow();
+        var sharedOutput = setup.outputExecutor("first").orElseThrow();
+
+        assertThat(List.of(setup.inputExecutor("first"), setup.inputExecutor("second"), setup.inputExecutor("plain")))
+                .allSatisfy(executor -> assertThat(executor).containsSame(sharedInput));
+        assertThat(List.of(setup.outputExecutor("first"), setup.outputExecutor("second"), setup.outputExecutor("plain")))
+                .allSatisfy(executor -> assertThat(executor).containsSame(sharedOutput));
+        assertThat(setup.inputChain("first")).containsExactly(InGlobal.class);
+        assertThat(setup.outputChain("first")).containsExactly(OutGlobal.class);
+    }
+
+    @Test
+    void a_tool_with_its_own_guardrails_does_not_share_the_executor_of_the_global_guardrails() {
+        var setup = setupWith(new Plain(), new MethodOnly());
+        setup.guardrails().inputGuardrails(new InGlobal());
+
+        assertThat(setup.inputExecutor("methodOnly"))
+                .isPresent()
+                .get()
+                .isNotSameAs(setup.inputExecutor("plain").orElseThrow());
+        assertThat(setup.inputChain("methodOnly")).containsExactly(InGlobal.class, InMethod.class);
+        assertThat(setup.inputChain("plain")).containsExactly(InGlobal.class);
+    }
+
+    @Test
+    void the_shared_executor_of_the_global_guardrails_has_no_duplicate_classes() {
+        var setup = setupWith(new Plain());
+        setup.guardrails().inputGuardrailClasses(InClass.class, InClass.class);
+
+        assertThat(setup.inputChain("plain")).containsExactly(InClass.class);
+    }
+
+    private static AiServiceTool providedTool(String name) {
+        return AiServiceTool.builder()
+                .toolSpecification(ToolSpecification.builder().name(name).build())
+                .toolExecutor((toolRequest, memoryId) -> "ok")
+                .toolSource(ToolSource.mcp("server"))
+                .build();
+    }
+
+    @Test
     void dynamic_tool_provider_tools_are_bound_when_refreshed() {
         var setup = new Setup();
         setup.toolService().toolProvider(new ToolProvider() {
