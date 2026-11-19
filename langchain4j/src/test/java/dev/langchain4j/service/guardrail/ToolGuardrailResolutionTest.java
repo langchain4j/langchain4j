@@ -774,7 +774,8 @@ class ToolGuardrailResolutionTest {
 
         assertThat(List.of(setup.inputExecutor("first"), setup.inputExecutor("second"), setup.inputExecutor("plain")))
                 .allSatisfy(executor -> assertThat(executor).containsSame(sharedInput));
-        assertThat(List.of(setup.outputExecutor("first"), setup.outputExecutor("second"), setup.outputExecutor("plain")))
+        assertThat(List.of(
+                        setup.outputExecutor("first"), setup.outputExecutor("second"), setup.outputExecutor("plain")))
                 .allSatisfy(executor -> assertThat(executor).containsSame(sharedOutput));
         assertThat(setup.inputChain("first")).containsExactly(InGlobal.class);
         assertThat(setup.outputChain("first")).containsExactly(OutGlobal.class);

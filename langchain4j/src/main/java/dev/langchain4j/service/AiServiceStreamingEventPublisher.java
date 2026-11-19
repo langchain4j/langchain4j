@@ -8,15 +8,6 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.AiServiceParamsUtil.chatRequestParameters;
 import static dev.langchain4j.service.tool.ToolService.shouldReturnImmediately;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Flow;
-import java.util.concurrent.atomic.AtomicReference;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -63,6 +54,15 @@ import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolRound;
 import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicReference;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.Tube;
 import mutiny.zero.TubeConfiguration;
@@ -305,8 +305,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 } else {
                     CompletableFuture<?> persistence = toolResultsPersistence.get();
                     if (persistence != null) {
-                        persistence.whenComplete(
-                                (ignored, error) -> doCancellationCompensation(null));
+                        persistence.whenComplete((ignored, error) -> doCancellationCompensation(null));
                     } else {
                         doCancellationCompensation(null);
                     }
@@ -526,12 +525,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 }
                 try {
                     afterToolsExecuted(
-                            chatResponse,
-                            aiMessage,
-                            currentToolContext,
-                            parameters,
-                            outcome,
-                            failedStepHolder.get(0));
+                            chatResponse, aiMessage, currentToolContext, parameters, outcome, failedStepHolder.get(0));
                 } catch (Throwable t) {
                     fail(t);
                 }

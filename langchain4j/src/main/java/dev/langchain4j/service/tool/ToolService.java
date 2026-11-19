@@ -783,32 +783,23 @@ public class ToolService {
                     messages,
                     invocationContext,
                     context.eventListenerRegistrar);
-            List<ToolExecutionRequest> toolExecutionRequests = round.requests();
-            Map<ToolExecutionRequest, ToolExecutionResult> toolResults = round.results();
             messages = round.messages();
 
-            ToolResultsOutcome outcome = processToolResults(
-                    context,
-                    toolExecutionRequests,
-                    toolResults,
-                    toolExecutions,
-                    invocationContext,
-                    toolServiceContext,
-                    ToolRound.compensationOf(round));
+            List<ToolRoundCall> calls = ToolRound.callsOf(round);
+            ToolResultsOutcome outcome =
+                    processToolResults(context, calls, toolExecutions, invocationContext, toolServiceContext);
 
             List<ToolExecutionResultMessage> resultMessages = outcome.resultMessages();
 
             compensateIfNeeded(
-                    toolExecutionRequests,
-                    toolResults,
+                    calls,
                     resultMessages,
                     compensableExecutions,
                     outcome.anyToolErrored(),
                     chatMemory,
                     messages,
                     invocationContext,
-                    context.eventListenerRegistrar,
-                    ToolRound.compensationOf(round));
+                    context.eventListenerRegistrar);
 
             List<ChatMessage> nextMessages = persistToolResultsAndResolveMessagesSync(
                     context, chatMemory, messages, resultMessages, invocationContext);
@@ -819,7 +810,13 @@ public class ToolService {
             }
 
             NextChatRequest next = prepareNextChatRequest(
-                    context, memoryId, nextMessages, invocationContext, toolServiceContext, toolResults, parameters);
+                    context,
+                    memoryId,
+                    nextMessages,
+                    invocationContext,
+                    toolServiceContext,
+                    round.results(),
+                    parameters);
             messages = next.messages();
             toolServiceContext = next.toolServiceContext();
             parameters = next.parameters();
@@ -1016,15 +1013,7 @@ public class ToolService {
                         ToolRound round = startTools(calls, toolServiceContext);
                         return round.completeAsync(aiMessage, calls, chatMemory, accumulator)
                                 .thenCompose(outcome -> afterToolsExecuted(
-                                        parameters,
-                                        outcome.messages(),
-                                        toolServiceContext,
-                                        aggregateTokenUsage,
-                                        roundTripsLeft,
-                                        outcome.requests(),
-                                        outcome.results(),
-                                        ToolRound.compensationOf(outcome),
-                                        outcome.firstError().orElse(null)));
+                                        parameters, toolServiceContext, aggregateTokenUsage, roundTripsLeft, outcome));
                     })
                     .toCompletableFuture();
         }
@@ -1050,44 +1039,28 @@ public class ToolService {
          */
         private CompletableFuture<ToolServiceResult> afterToolsExecuted(
                 ChatRequestParameters parameters,
-                List<ChatMessage> accumulator,
                 ToolServiceContext toolServiceContext,
                 TokenUsage aggregateTokenUsage,
                 int roundTripsLeft,
-                List<ToolExecutionRequest> toolExecutionRequests,
-                Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
-                ToolRoundCompensation compensation,
-                Throwable firstError) {
+                ToolRound.Outcome round) {
+
+            List<ChatMessage> accumulator = round.messages();
+            List<ToolRoundCall> calls = ToolRound.callsOf(round);
+            Throwable firstError = round.firstError().orElse(null);
 
             if (isCancelled(cancellation)) {
-                List<ToolExecutionResultMessage> resultMessages = toolExecutionRequests.stream()
-                        .map(request -> toResultMessage(request, toolResults.get(request)))
-                        .toList();
                 synchronized (compensableExecutions) {
-                    collectCompensable(
-                            toolExecutionRequests,
-                            toolResults,
-                            resultMessages,
-                            compensableExecutions,
-                            invocationContext,
-                            compensation);
+                    collectCompensable(calls, resultMessages(calls), compensableExecutions, invocationContext);
                 }
                 return CompletableFuture.failedFuture(
                         firstError instanceof CancellationException ? firstError : new CancellationException());
             }
 
-            ToolResultsOutcome outcome = processToolResults(
-                    context,
-                    toolExecutionRequests,
-                    toolResults,
-                    toolExecutions,
-                    invocationContext,
-                    toolServiceContext,
-                    compensation);
+            ToolResultsOutcome outcome =
+                    processToolResults(context, calls, toolExecutions, invocationContext, toolServiceContext);
 
             return compensateIfNeededAsync(
-                            toolExecutionRequests,
-                            toolResults,
+                            calls,
                             outcome.resultMessages(),
                             compensableExecutions,
                             outcome.anyToolErrored(),
@@ -1097,7 +1070,6 @@ public class ToolService {
                             CompensationReason.TOOL_EXECUTION_FAILED,
                             context.eventListenerRegistrar,
                             null,
-                            compensation,
                             false,
                             null)
                     .handle((ignored, compensationError) -> compensationError)
@@ -1136,7 +1108,7 @@ public class ToolService {
                                             toolServiceContext,
                                             aggregateTokenUsage,
                                             roundTripsLeft,
-                                            toolResults,
+                                            round.results(),
                                             nextMessages);
                                 })
                                 .toCompletableFuture();
@@ -1233,12 +1205,10 @@ public class ToolService {
             ToolServiceContext toolServiceContext) {
         return processToolResults(
                 context,
-                toolExecutionRequests,
-                toolResults,
+                ToolRoundCall.unguarded(toolExecutionRequests, toolResults),
                 toolExecutions,
                 invocationContext,
-                toolServiceContext,
-                ToolRoundCompensation.NONE);
+                toolServiceContext);
     }
 
     /**
@@ -1257,30 +1227,23 @@ public class ToolService {
             InvocationContext invocationContext,
             ToolServiceContext toolServiceContext) {
         return processToolResults(
-                context,
-                round.requests(),
-                round.results(),
-                toolExecutions,
-                invocationContext,
-                toolServiceContext,
-                ToolRound.compensationOf(round));
+                context, ToolRound.callsOf(round), toolExecutions, invocationContext, toolServiceContext);
     }
 
     private ToolResultsOutcome processToolResults(
             AiServiceContext context,
-            List<ToolExecutionRequest> toolExecutionRequests,
-            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            List<ToolRoundCall> calls,
             List<ToolExecution> toolExecutions,
             InvocationContext invocationContext,
-            ToolServiceContext toolServiceContext,
-            ToolRoundCompensation compensation) {
+            ToolServiceContext toolServiceContext) {
 
         boolean anyToolErrored = false;
-        List<ReturnBehavior> returnBehaviors = new ArrayList<>(toolExecutionRequests.size());
-        List<ToolExecutionResultMessage> resultMessages = new ArrayList<>(toolExecutionRequests.size());
+        List<ReturnBehavior> returnBehaviors = new ArrayList<>(calls.size());
+        List<ToolExecutionResultMessage> resultMessages = new ArrayList<>(calls.size());
 
-        for (ToolExecutionRequest request : toolExecutionRequests) {
-            ToolExecutionResult result = toolResults.get(request);
+        for (ToolRoundCall call : calls) {
+            ToolExecutionRequest request = call.request();
+            ToolExecutionResult result = call.result();
             resultMessages.add(toResultMessage(request, result));
 
             ToolExecution toolExecution = ToolExecution.builder()
@@ -1297,14 +1260,14 @@ public class ToolService {
             // async BiFunction; adapt it to the Consumer<ToolExecution> the observer expects by awaiting it when
             // invoked - cross-agent compensation runs off the reactive path, so blocking there is fine.
             if ((onCompensableToolExecution != null)
-                    && compensation.hasRunSuccessfully(request, result)
+                    && call.hasRunSuccessfully()
                     && compensatingExecutors.containsKey(request.name())) {
                 BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>> compensatingAction =
                         compensatingExecutors.get(request.name());
                 // the compensating action gets the result the tool ran with, not the one its guardrails left
                 ToolExecution compensableExecution = ToolExecution.builder()
                         .request(request)
-                        .result(compensation.ranResult(request, result))
+                        .result(call.ranResult())
                         .invocationContext(invocationContext)
                         .build();
                 onCompensableToolExecution.accept(
@@ -1518,16 +1481,14 @@ public class ToolService {
             InvocationContext invocationContext,
             AiServiceListenerRegistrar listenerRegistrar) {
         compensateIfNeeded(
-                toolExecutionRequests,
-                toolResults,
+                ToolRoundCall.unguarded(toolExecutionRequests, toolResults),
                 resultMessages,
                 compensableExecutions,
                 anyToolErrored,
                 chatMemory,
                 messages,
                 invocationContext,
-                listenerRegistrar,
-                ToolRoundCompensation.NONE);
+                listenerRegistrar);
     }
 
     /**
@@ -1537,25 +1498,18 @@ public class ToolService {
      * the {@link ToolCompensatedEvent}s tells whether a guardrail made the step fail.
      */
     private void compensateIfNeeded(
-            List<ToolExecutionRequest> toolExecutionRequests,
-            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            List<ToolRoundCall> calls,
             List<ToolExecutionResultMessage> resultMessages,
             List<CompensableToolExecution> compensableExecutions,
             boolean anyToolErrored,
             ChatMemory chatMemory,
             List<ChatMessage> messages,
             InvocationContext invocationContext,
-            AiServiceListenerRegistrar listenerRegistrar,
-            ToolRoundCompensation compensation) {
+            AiServiceListenerRegistrar listenerRegistrar) {
 
         if (compensateOnToolErrors) {
-            Optional<FailedStep> failedStep = collectCompensable(
-                    toolExecutionRequests,
-                    toolResults,
-                    resultMessages,
-                    compensableExecutions,
-                    invocationContext,
-                    compensation);
+            Optional<FailedStep> failedStep =
+                    collectCompensable(calls, resultMessages, compensableExecutions, invocationContext);
             if (anyToolErrored && !compensableExecutions.isEmpty()) {
                 String failedToolName = failedStep.map(FailedStep::toolName).orElse(null);
                 CompensationReason reason =
@@ -1565,8 +1519,7 @@ public class ToolService {
                 rewriteChatMemoryForCompensatedTools(
                         messages, chatMemory, compensableExecutions, reason, failedToolName);
                 compensableExecutions.clear();
-                rewriteCurrentResults(
-                        toolExecutionRequests, toolResults, resultMessages, reason, failedToolName, compensation);
+                rewriteCurrentResults(calls, resultMessages, reason, failedToolName);
                 fireCompensatedEvents(compensated, reason, invocationContext, listenerRegistrar, null);
             }
         }
@@ -1632,8 +1585,7 @@ public class ToolService {
             boolean alreadyCollected,
             String preCollectedFailedToolName) {
         return compensateIfNeededAsync(
-                toolExecutionRequests,
-                toolResults,
+                ToolRoundCall.unguarded(toolExecutionRequests, toolResults),
                 resultMessages,
                 compensableExecutions,
                 anyToolErrored,
@@ -1643,7 +1595,6 @@ public class ToolService {
                 reason,
                 listenerRegistrar,
                 streamEmitter,
-                ToolRoundCompensation.NONE,
                 alreadyCollected,
                 Optional.ofNullable(preCollectedFailedToolName)
                         .map(toolName -> new DefaultFailedStep(toolName, CompensationReason.TOOL_EXECUTION_FAILED))
@@ -1675,8 +1626,7 @@ public class ToolService {
             BiConsumer<ToolExecution, CompensationReason> streamEmitter,
             Optional<FailedStep> collectedFailedStep) {
         return compensateIfNeededAsync(
-                round.requests(),
-                round.results(),
+                ToolRound.callsOf(round),
                 resultMessages,
                 compensableExecutions,
                 anyToolErrored,
@@ -1686,7 +1636,6 @@ public class ToolService {
                 CompensationReason.TOOL_EXECUTION_FAILED,
                 listenerRegistrar,
                 streamEmitter,
-                ToolRound.compensationOf(round),
                 true,
                 collectedFailedStep.orElse(null));
     }
@@ -1701,8 +1650,7 @@ public class ToolService {
      *                               ignored, may be {@code null}
      */
     private CompletableFuture<Void> compensateIfNeededAsync(
-            List<ToolExecutionRequest> toolExecutionRequests,
-            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            List<ToolRoundCall> calls,
             List<ToolExecutionResultMessage> resultMessages,
             List<CompensableToolExecution> compensableExecutions,
             boolean anyToolErrored,
@@ -1712,7 +1660,6 @@ public class ToolService {
             CompensationReason reason,
             AiServiceListenerRegistrar listenerRegistrar,
             BiConsumer<ToolExecution, CompensationReason> streamEmitter,
-            ToolRoundCompensation compensation,
             boolean alreadyCollected,
             FailedStep preCollectedFailedStep) {
 
@@ -1723,13 +1670,7 @@ public class ToolService {
             synchronized (compensableExecutions) {
                 failedStep = alreadyCollected
                         ? Optional.ofNullable(preCollectedFailedStep)
-                        : collectCompensable(
-                                toolExecutionRequests,
-                                toolResults,
-                                resultMessages,
-                                compensableExecutions,
-                                invocationContext,
-                                compensation);
+                        : collectCompensable(calls, resultMessages, compensableExecutions, invocationContext);
                 boolean triggered = (reason == CompensationReason.INVOCATION_CANCELLED) || anyToolErrored;
                 if (triggered && !compensableExecutions.isEmpty()) {
                     toCompensate = List.copyOf(compensableExecutions);
@@ -1742,13 +1683,7 @@ public class ToolService {
                 CompensationReason effectiveReason = (reason == CompensationReason.TOOL_EXECUTION_FAILED)
                         ? failedStep.map(FailedStep::reason).orElse(reason)
                         : reason;
-                rewriteCurrentResults(
-                        toolExecutionRequests,
-                        toolResults,
-                        resultMessages,
-                        effectiveReason,
-                        failedToolName,
-                        compensation);
+                rewriteCurrentResults(calls, resultMessages, effectiveReason, failedToolName);
                 compensated = compensateToolsActions(rolledBack, invocationContext)
                         .thenCompose(ignored -> rewriteChatMemoryForCompensatedToolsAsync(
                                 messages, chatMemory, rolledBack, effectiveReason, failedToolName))
@@ -1806,9 +1741,9 @@ public class ToolService {
             AiServiceListenerRegistrar listenerRegistrar,
             BiConsumer<ToolExecution, CompensationReason> streamEmitter) {
         return compensateOnCancellationAsync(
-                currentRoundRequests,
-                currentRoundResults,
-                ToolRoundCompensation.NONE,
+                ((currentRoundRequests != null) && (currentRoundResults != null))
+                        ? ToolRoundCall.unguarded(currentRoundRequests, currentRoundResults)
+                        : null,
                 compensableExecutions,
                 chatMemory,
                 messages,
@@ -1834,9 +1769,7 @@ public class ToolService {
             AiServiceListenerRegistrar listenerRegistrar,
             BiConsumer<ToolExecution, CompensationReason> streamEmitter) {
         return compensateOnCancellationAsync(
-                (currentRound != null) ? currentRound.requests() : null,
-                (currentRound != null) ? currentRound.results() : null,
-                (currentRound != null) ? ToolRound.compensationOf(currentRound) : ToolRoundCompensation.NONE,
+                (currentRound != null) ? ToolRound.callsOf(currentRound) : null,
                 compensableExecutions,
                 chatMemory,
                 messages,
@@ -1845,10 +1778,11 @@ public class ToolService {
                 streamEmitter);
     }
 
+    /**
+     * @param currentRound the calls of the drained round, or {@code null} if there is none
+     */
     private CompletableFuture<Void> compensateOnCancellationAsync(
-            List<ToolExecutionRequest> currentRoundRequests,
-            Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults,
-            ToolRoundCompensation currentRoundCompensation,
+            List<ToolRoundCall> currentRound,
             List<CompensableToolExecution> compensableExecutions,
             ChatMemory chatMemory,
             List<ChatMessage> messages,
@@ -1863,17 +1797,9 @@ public class ToolService {
         // Same accumulator serialization as compensateIfNeededAsync (see its note): collect the drained round and
         // snapshot+clear atomically so the async rollback runs on an immutable copy and each tool rolls back once.
         synchronized (compensableExecutions) {
-            if (currentRoundRequests != null && currentRoundResults != null) {
-                List<ToolExecutionResultMessage> resultMessages = currentRoundRequests.stream()
-                        .map(request -> toResultMessage(request, currentRoundResults.get(request)))
-                        .toList();
+            if (currentRound != null) {
                 collectCompensable(
-                        currentRoundRequests,
-                        currentRoundResults,
-                        resultMessages,
-                        compensableExecutions,
-                        invocationContext,
-                        currentRoundCompensation);
+                        currentRound, resultMessages(currentRound), compensableExecutions, invocationContext);
             }
             if (compensableExecutions.isEmpty()) {
                 return CompletableFuture.completedFuture(null);
@@ -1914,11 +1840,9 @@ public class ToolService {
             List<CompensableToolExecution> compensableExecutions,
             InvocationContext invocationContext) {
         return collectCompensableRound(
-                        toolExecutionRequests,
-                        toolResults,
+                        ToolRoundCall.unguarded(toolExecutionRequests, toolResults),
                         compensableExecutions,
-                        invocationContext,
-                        ToolRoundCompensation.NONE)
+                        invocationContext)
                 .map(FailedStep::toolName)
                 .orElse(null);
     }
@@ -1937,30 +1861,23 @@ public class ToolService {
             ToolRound.Outcome round,
             List<CompensableToolExecution> compensableExecutions,
             InvocationContext invocationContext) {
-        return collectCompensableRound(
-                round.requests(),
-                round.results(),
-                compensableExecutions,
-                invocationContext,
-                ToolRound.compensationOf(round));
+        return collectCompensableRound(ToolRound.callsOf(round), compensableExecutions, invocationContext);
     }
 
     private Optional<FailedStep> collectCompensableRound(
-            List<ToolExecutionRequest> toolExecutionRequests,
-            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            List<ToolRoundCall> calls,
             List<CompensableToolExecution> compensableExecutions,
-            InvocationContext invocationContext,
-            ToolRoundCompensation compensation) {
-        List<ToolExecutionResultMessage> resultMessages = toolExecutionRequests.stream()
-                .map(request -> toResultMessage(request, toolResults.get(request)))
+            InvocationContext invocationContext) {
+        return collectCompensable(calls, resultMessages(calls), compensableExecutions, invocationContext);
+    }
+
+    /**
+     * The tool result message of each call, in the order of the calls.
+     */
+    private static List<ToolExecutionResultMessage> resultMessages(List<ToolRoundCall> calls) {
+        return calls.stream()
+                .map(call -> toResultMessage(call.request(), call.result()))
                 .toList();
-        return collectCompensable(
-                toolExecutionRequests,
-                toolResults,
-                resultMessages,
-                compensableExecutions,
-                invocationContext,
-                compensation);
     }
 
     /**
@@ -1988,30 +1905,29 @@ public class ToolService {
     }
 
     private Optional<FailedStep> collectCompensable(
-            List<ToolExecutionRequest> toolExecutionRequests,
-            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            List<ToolRoundCall> calls,
             List<ToolExecutionResultMessage> resultMessages,
             List<CompensableToolExecution> compensableExecutions,
-            InvocationContext invocationContext,
-            ToolRoundCompensation compensation) {
+            InvocationContext invocationContext) {
 
         FailedStep failedStep = null;
-        for (int i = 0; i < toolExecutionRequests.size(); i++) {
-            ToolExecutionRequest request = toolExecutionRequests.get(i);
-            ToolExecutionResult result = toolResults.get(request);
+        for (int i = 0; i < calls.size(); i++) {
+            ToolRoundCall call = calls.get(i);
+            ToolExecutionRequest request = call.request();
+            ToolExecutionResult result = call.result();
             // a tool is compensable if it ran successfully, whatever its output guardrails made of the result, and its
             // compensating action gets the result it ran with
-            if (compensation.hasRunSuccessfully(request, result) && compensatingExecutors.containsKey(request.name())) {
+            if (call.hasRunSuccessfully() && compensatingExecutors.containsKey(request.name())) {
                 ToolExecution toolExecution = ToolExecution.builder()
                         .request(request)
-                        .result(compensation.ranResult(request, result))
+                        .result(call.ranResult())
                         .invocationContext(invocationContext)
                         .build();
                 compensableExecutions.add(new CompensableToolExecution(toolExecution, resultMessages.get(i)));
             }
             // the step fails if the LLM sees an error result
             if (result.isError() && (failedStep == null)) {
-                failedStep = new DefaultFailedStep(request.name(), compensation.reasonOf(request));
+                failedStep = new DefaultFailedStep(request.name(), call.compensationReason());
             }
         }
         return Optional.ofNullable(failedStep);
@@ -2035,20 +1951,17 @@ public class ToolService {
     }
 
     private void rewriteCurrentResults(
-            List<ToolExecutionRequest> toolExecutionRequests,
-            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            List<ToolRoundCall> calls,
             List<ToolExecutionResultMessage> resultMessages,
             CompensationReason reason,
-            String failedToolName,
-            ToolRoundCompensation compensation) {
-        for (int i = 0; i < toolExecutionRequests.size(); i++) {
-            ToolExecutionRequest request = toolExecutionRequests.get(i);
-            ToolExecutionResult result = toolResults.get(request);
+            String failedToolName) {
+        for (int i = 0; i < calls.size(); i++) {
+            ToolRoundCall call = calls.get(i);
             // a result that is already an error, e.g. the message of the guardrail that rejected the tool, is kept as
             // is
-            if (!result.isError()
-                    && compensation.hasRunSuccessfully(request, result)
-                    && compensatingExecutors.containsKey(request.name())) {
+            if (!call.result().isError()
+                    && call.hasRunSuccessfully()
+                    && compensatingExecutors.containsKey(call.request().name())) {
                 resultMessages.set(i, rolledBackResultMessage(resultMessages.get(i), reason, failedToolName));
             }
         }
@@ -2663,26 +2576,30 @@ public class ToolService {
     }
 
     /**
-     * Fires the events of a round that fails with an exception, reporting each call as the round knows it (see
-     * {@link ToolRound#reportedRequest(ToolExecutionRequest)}).
+     * Fires the events of a round that fails with an exception, reporting each call, by position, as the round knows
+     * it (see {@link ToolRound#reportedRequest(ToolExecutionRequest)}).
      *
      * @param toolRequests the calls of the round, as they were executed, in the order of the LLM
-     * @param errors the exception of each call that threw
      */
     static void fireEventsOfFailedRound(
             InvocationContext invocationContext,
             List<ToolExecutionRequest> toolRequests,
             ToolRound round,
-            Map<ToolExecutionRequest, Throwable> errors,
             AiServiceListenerRegistrar listenerRegistrar) {
-        var reportedRequests = toolRequests.stream().map(round::reportedRequest).toList();
-        Map<ToolExecutionRequest, Throwable> reportedErrors = new LinkedHashMap<>();
-        for (Map.Entry<ToolExecutionRequest, Throwable> entry : errors.entrySet()) {
-            reportedErrors.putIfAbsent(round.reportedRequest(entry.getKey()), entry.getValue());
-        }
-        fireToolExecutedEventsOfFailedRound(
-                invocationContext, reportedRequests, round.results(toolRequests), reportedErrors, listenerRegistrar);
+        var calls = toolRequests.stream()
+                .map(call -> new FailedRoundCall(
+                        round.reportedRequest(call),
+                        round.result(call).orElse(null),
+                        round.error(call).orElse(null)))
+                .toList();
+        fireToolExecutedEventsOfFailedRound(invocationContext, calls, listenerRegistrar);
     }
+
+    /**
+     * A call of a round that fails with an exception: the request it was executed with, and its result if it returned,
+     * or its exception if it threw.
+     */
+    private record FailedRoundCall(ToolExecutionRequest request, ToolExecutionResult result, Throwable error) {}
 
     /**
      * Fires a {@link ToolExecutedEvent} for each tool of a round that has terminated, in the order the tools were
@@ -2698,28 +2615,50 @@ public class ToolService {
             Map<ToolExecutionRequest, ToolExecutionResult> results,
             Map<ToolExecutionRequest, Throwable> errors,
             AiServiceListenerRegistrar listenerRegistrar) {
-        if (listenerRegistrar == null) {
-            return;
-        }
-        try {
-            for (ToolExecutionRequest toolRequest : toolRequests) {
-                ToolExecutionResult result = results.get(toolRequest);
-                if (result != null) {
-                    listenerRegistrar.fireEvent(ToolExecutedEvent.builder()
-                            .invocationContext(invocationContext)
-                            .request(toolRequest)
-                            .resultContents(result.resultContents())
-                            .isError(result.isError())
-                            .build());
-                } else if (errors.containsKey(toolRequest)) {
-                    fireFailedToolExecutedEvent(
-                            invocationContext, toolRequest, errors.get(toolRequest), listenerRegistrar);
+        var calls = toolRequests.stream()
+                .map(toolRequest -> new FailedRoundCall(toolRequest, results.get(toolRequest), errors.get(toolRequest)))
+                .toList();
+        fireToolExecutedEventsOfFailedRound(
+                invocationContext, calls, errors.values().stream().findFirst(), listenerRegistrar);
+    }
+
+    private static void fireToolExecutedEventsOfFailedRound(
+            InvocationContext invocationContext,
+            List<FailedRoundCall> calls,
+            AiServiceListenerRegistrar listenerRegistrar) {
+        var firstError = calls.stream()
+                .map(call -> Optional.ofNullable(call.error()))
+                .flatMap(Optional::stream)
+                .findFirst();
+        fireToolExecutedEventsOfFailedRound(invocationContext, calls, firstError, listenerRegistrar);
+    }
+
+    /**
+     * @param firstError the tool error the caller rethrows, to which a failure of a listener is added as suppressed
+     */
+    private static void fireToolExecutedEventsOfFailedRound(
+            InvocationContext invocationContext,
+            List<FailedRoundCall> calls,
+            Optional<Throwable> firstError,
+            AiServiceListenerRegistrar listenerRegistrar) {
+        if (listenerRegistrar != null) {
+            try {
+                for (FailedRoundCall call : calls) {
+                    if (call.result() != null) {
+                        listenerRegistrar.fireEvent(ToolExecutedEvent.builder()
+                                .invocationContext(invocationContext)
+                                .request(call.request())
+                                .resultContents(call.result().resultContents())
+                                .isError(call.result().isError())
+                                .build());
+                    } else if (call.error() != null) {
+                        fireFailedToolExecutedEvent(invocationContext, call.request(), call.error(), listenerRegistrar);
+                    }
                 }
-            }
-        } catch (RuntimeException listenerError) {
-            Throwable toolError = errors.values().iterator().next();
-            if (toolError != listenerError) {
-                toolError.addSuppressed(listenerError);
+            } catch (RuntimeException listenerError) {
+                firstError
+                        .filter(toolError -> toolError != listenerError)
+                        .ifPresent(toolError -> toolError.addSuppressed(listenerError));
             }
         }
     }
@@ -2869,11 +2808,7 @@ public class ToolService {
                 : round.execute(
                         toolRequest,
                         request -> executeWithErrorHandling(
-                                request,
-                                executor,
-                                invocationContext,
-                                argumentsErrorHandler(),
-                                executionErrorHandler()),
+                                request, executor, invocationContext, argumentsErrorHandler(), executionErrorHandler()),
                         argumentsError -> toolErrorResult(
                                 argumentsError,
                                 toolRequest,

@@ -2,6 +2,7 @@ package dev.langchain4j.service.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -37,12 +38,16 @@ import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.guardrail.ToolGuardrailService;
 import dev.langchain4j.service.tool.search.simple.SimpleToolSearchStrategy;
 import dev.langchain4j.test.mock.MockChatModel;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 
 class ToolGuardrailExecutionTest {
@@ -176,6 +181,134 @@ class ToolGuardrailExecutionTest {
 
     private static ToolInputGuardrailResult failInput(String message) {
         return INPUT.failure(message);
+    }
+
+    // ---------- calls rewritten to equal requests ----------
+
+    /**
+     * A tool loop whose first model response is given, so its tool calls can have no id (as some providers send them;
+     * a {@link MockChatModel} gives every call an id). The model then answers {@code done}.
+     */
+    private static final class EqualRequestsLoop {
+
+        final AtomicInteger runs = new AtomicInteger();
+        final MockChatModel model = MockChatModel.thatResponds("done");
+        final AiServiceContext context = AiServiceContext.create(Assistant.class);
+        final InvocationContext invocationContext = InvocationContext.builder().build();
+        final List<ToolExecutedEvent> toolEvents = new CopyOnWriteArrayList<>();
+        final List<ChatMessage> messages =
+                new ArrayList<>(List.of(dev.langchain4j.data.message.UserMessage.from("hello")));
+        final ChatResponse firstResponse = ChatResponse.builder()
+                .aiMessage(AiMessage.from(callWithoutId("{\"q\":\"A\"}"), callWithoutId("{\"q\":\"a\"}")))
+                .build();
+
+        EqualRequestsLoop() {
+            ToolInputGuardrail lowercasing = new ToolInputGuardrail() {
+                @Override
+                public ToolInputGuardrailResult validate(ToolInputGuardrailRequest request) {
+                    return successWith(request.arguments().toLowerCase(Locale.ROOT));
+                }
+
+                @Override
+                public CompletableFuture<ToolInputGuardrailResult> validateAsync(ToolInputGuardrailRequest request) {
+                    return CompletableFuture.completedFuture(validate(request));
+                }
+            };
+            ToolExecutor counting = new ToolExecutor() {
+                @Override
+                public String execute(ToolExecutionRequest request, Object memoryId) {
+                    return "result " + runs.incrementAndGet();
+                }
+
+                @Override
+                public CompletableFuture<ToolExecutionResult> executeAsync(
+                        ToolExecutionRequest request, InvocationContext context) {
+                    return CompletableFuture.completedFuture(ToolExecutionResult.builder()
+                            .resultText(execute(request, null))
+                            .build());
+                }
+            };
+            context.chatModel = model;
+            context.eventListenerRegistrar.register((ToolExecutedEventListener) toolEvents::add);
+            context.toolService.tools(List.<AiServiceTool>of(AiServiceTool.builder()
+                    .toolSpecification(SEARCH)
+                    .toolExecutor(counting)
+                    .build()));
+            context.toolService.toolGuardrailService(ToolGuardrailService.builder(Assistant.class)
+                    .inputGuardrails(lowercasing)
+                    .build());
+        }
+
+        ToolServiceContext toolServiceContext() {
+            return context.toolService.createContext(invocationContext, null, messages);
+        }
+
+        private static ToolExecutionRequest callWithoutId(String arguments) {
+            return ToolExecutionRequest.builder()
+                    .name("search")
+                    .arguments(arguments)
+                    .build();
+        }
+
+        /**
+         * What the loop made of the two calls: both ran with the same arguments, and each kept its own result. The
+         * order of the results is the order in which the tools ran, which a loop that does not block does not fix.
+         */
+        void assertEachCallKeptItsOwnResult(ToolServiceResult result) {
+            assertThat(model.requests())
+                    .singleElement()
+                    .extracting(request -> request.messages().stream()
+                            .filter(ToolExecutionResultMessage.class::isInstance)
+                            .map(message -> ((ToolExecutionResultMessage) message).text())
+                            .toList())
+                    .asInstanceOf(InstanceOfAssertFactories.list(String.class))
+                    .containsExactlyInAnyOrder("result 1", "result 2");
+            assertThat(result.toolExecutions())
+                    .extracting(ToolExecution::request, ToolExecution::result)
+                    .containsExactlyInAnyOrder(
+                            tuple(callWithoutId(ORIGINAL_ARGUMENTS), "result 1"),
+                            tuple(callWithoutId(ORIGINAL_ARGUMENTS), "result 2"));
+            assertThat(toolEvents)
+                    .extracting(ToolExecutedEvent::resultText)
+                    .containsExactlyInAnyOrder("result 1", "result 2");
+        }
+    }
+
+    @Test
+    void calls_without_an_id_rewritten_to_the_same_arguments_keep_their_own_results() {
+        var loop = new EqualRequestsLoop();
+
+        var result = loop.context.toolService.executeInferenceAndToolsLoop(
+                loop.context,
+                null,
+                loop.firstResponse,
+                ChatRequestParameters.builder().build(),
+                loop.messages,
+                null,
+                loop.invocationContext,
+                loop.toolServiceContext(),
+                false);
+
+        loop.assertEachCallKeptItsOwnResult(result);
+    }
+
+    @Test
+    void calls_without_an_id_rewritten_to_the_same_arguments_keep_their_own_results_without_blocking() {
+        var loop = new EqualRequestsLoop();
+
+        var result = loop.context.toolService.executeInferenceAndToolsLoopAsync(
+                loop.context,
+                null,
+                loop.firstResponse,
+                ChatRequestParameters.builder().build(),
+                loop.messages,
+                null,
+                loop.invocationContext,
+                loop.toolServiceContext(),
+                null);
+
+        assertThat(result).succeedsWithin(Duration.ofSeconds(10));
+        loop.assertEachCallKeptItsOwnResult(result.join());
     }
 
     // ---------- no guardrails ----------
@@ -333,7 +466,9 @@ class ToolGuardrailExecutionTest {
         };
         var argumentsErrors = new CopyOnWriteArrayList<Throwable>();
         var model = MockChatModel.thatResponds(
-                AiMessage.from(searchCall("1").toBuilder().arguments(MALFORMED_ARGUMENTS).build()),
+                AiMessage.from(searchCall("1").toBuilder()
+                        .arguments(MALFORMED_ARGUMENTS)
+                        .build()),
                 AiMessage.from("done"));
 
         var run = run(
@@ -362,7 +497,9 @@ class ToolGuardrailExecutionTest {
         };
         var tool = new RecordingTool(false);
         var model = MockChatModel.thatResponds(
-                AiMessage.from(searchCall("1").toBuilder().arguments(MALFORMED_ARGUMENTS).build()),
+                AiMessage.from(searchCall("1").toBuilder()
+                        .arguments(MALFORMED_ARGUMENTS)
+                        .build()),
                 AiMessage.from("done"));
 
         var assistant = AiServices.builder(Assistant.class)

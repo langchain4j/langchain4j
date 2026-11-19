@@ -5,13 +5,6 @@ import static dev.langchain4j.internal.CompletableFutureUtils.startSafely;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.Optional;
-import java.util.ServiceLoader;
-import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
-import java.util.function.Supplier;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSource;
@@ -32,6 +25,13 @@ import dev.langchain4j.internal.Exceptions;
 import dev.langchain4j.service.guardrail.spi.ToolGuardrailServiceBuilderFactory;
 import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.ToolExecutionResult;
+import java.util.Optional;
+import java.util.ServiceLoader;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * Executes the tool guardrails of the tools of an AI service: the {@link ToolInputGuardrail}s, which validate or

@@ -100,10 +100,10 @@ class ToolServiceDeprecatedExecutionTest {
         var toolService = toolService(null, registeredTool("guarded", REJECTING));
         var executors = Map.of("guarded", tool());
 
-        var log = captureStdErr(() -> assertThat(
-                        toolService.executeTool(CONTEXT, executors, call("guarded"), null, null))
-                .returns(true, ToolExecutionResult::isError)
-                .returns("rejected", ToolExecutionResult::resultText));
+        var log =
+                captureStdErr(() -> assertThat(toolService.executeTool(CONTEXT, executors, call("guarded"), null, null))
+                        .returns(true, ToolExecutionResult::isError)
+                        .returns("rejected", ToolExecutionResult::resultText));
 
         assertThat(log).doesNotContain(WARNING);
     }

@@ -18,7 +18,6 @@ import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.service.guardrail.GuardedToolExecution;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -171,18 +170,21 @@ public final class ToolRound {
      * @param calls the calls of the round, as they were started, in the order of the LLM
      */
     public void fireEventsOfFailedRound(List<ToolExecutionRequest> calls) {
-        ToolService.fireEventsOfFailedRound(invocationContext, calls, this, errors(calls), listenerRegistrar);
+        ToolService.fireEventsOfFailedRound(invocationContext, calls, this, listenerRegistrar);
     }
 
     /**
-     * The failure of each call that ended with an exception, in the order of {@code calls}.
+     * The guarded result of a call that was executed, empty if it was not (yet).
      */
-    private Map<ToolExecutionRequest, Throwable> errors(List<ToolExecutionRequest> calls) {
-        Map<ToolExecutionRequest, Throwable> failures = new LinkedHashMap<>();
-        for (ToolExecutionRequest call : calls) {
-            Optional.ofNullable(errors.get(call)).ifPresent(error -> failures.putIfAbsent(call, error));
-        }
-        return failures;
+    Optional<ToolExecutionResult> result(ToolExecutionRequest call) {
+        return Optional.ofNullable(executions.get(call)).map(GuardedToolExecution::result);
+    }
+
+    /**
+     * The failure of a call that ended with an exception, empty if it did not.
+     */
+    Optional<Throwable> error(ToolExecutionRequest call) {
+        return Optional.ofNullable(errors.get(call));
     }
 
     private Map<String, ToolExecutor> toolExecutors() {
@@ -297,9 +299,8 @@ public final class ToolRound {
                     .orElseGet(() -> recordingTool.apply(call).thenApply(result -> unguarded(call, result)));
             var guarded = execution;
             execution = guarded.exceptionallyCompose(error -> argumentsErrorBeforeTool(call, error)
-                    .map(argumentsException -> argumentsError
-                            .apply(argumentsException)
-                            .thenApply(result -> unguarded(call, result)))
+                    .map(argumentsException ->
+                            argumentsError.apply(argumentsException).thenApply(result -> unguarded(call, result)))
                     .orElseGet(() -> CompletableFuture.failedFuture(error)));
             propagateCancellation(execution, guarded);
             cancelBeforeToolStarts(call, execution);
@@ -358,15 +359,6 @@ public final class ToolRound {
         }
     }
 
-    /**
-     * The result of the tool of a call before its output guardrails, empty if the tool did not run (an input
-     * guardrail rejected the call, or the tool does not exist). The compensation rules compare it with the
-     * guarded result.
-     */
-    Optional<ToolExecutionResult> toolResult(ToolExecutionRequest call) {
-        return Optional.ofNullable(toolResults.get(call));
-    }
-
     private static GuardedToolExecution unguarded(ToolExecutionRequest call, ToolExecutionResult result) {
         return GuardedToolExecution.builder().request(call).result(result).build();
     }
@@ -390,16 +382,15 @@ public final class ToolRound {
      */
     public Outcome complete(
             AiMessage aiMessage, List<ToolExecutionRequest> calls, ChatMemory chatMemory, List<ChatMessage> messages) {
-        var requests = calls.stream()
-                .map(call -> ensureNotNull(executions.get(call), "execution of " + call)
-                        .request())
+        var roundCalls = calls.stream()
+                .map(call -> roundCall(
+                        call,
+                        ensureNotNull(executions.get(call), "execution of " + call)
+                                .result()))
                 .toList();
+        var requests = roundCalls.stream().map(ToolRoundCall::request).toList();
         return new DefaultToolRoundOutcome(
-                requests,
-                results(calls),
-                updateHistory(aiMessage, calls, requests, chatMemory, messages),
-                null,
-                compensation(calls));
+                roundCalls, updateHistory(aiMessage, calls, requests, chatMemory, messages), null);
     }
 
     /**
@@ -436,27 +427,25 @@ public final class ToolRound {
     }
 
     private DefaultToolRoundOutcome settled(List<ToolExecutionRequest> calls, List<ChatMessage> messages) {
-        Map<ToolExecutionRequest, ToolExecutionResult> results = new LinkedHashMap<>();
-        Throwable firstError = null;
-        for (ToolExecutionRequest call : calls) {
-            var execution = executions.get(call);
-            var error = errors.get(call);
-            // A failure recorded for a call that was also executed comes from after the execution (an
-            // afterToolExecution callback that threw): the call failed, whatever its result.
-            if (error != null) {
-                results.putIfAbsent(
-                        reportedRequest(call),
-                        ToolExecutionResult.builder()
-                                .isError(true)
-                                .resultText(ToolService.errorText(error))
-                                .build());
-                firstError = (firstError != null) ? firstError : error;
-            } else if (execution != null) {
-                results.putIfAbsent(execution.request(), execution.result());
-            }
-        }
-        var requests = calls.stream().map(this::reportedRequest).toList();
-        return new DefaultToolRoundOutcome(requests, results, messages, firstError, compensation(calls));
+        // A failure recorded for a call that was also executed comes from after the execution (an
+        // afterToolExecution callback that threw): the call failed, whatever its result.
+        var roundCalls = calls.stream()
+                .map(call -> roundCall(
+                        call,
+                        error(call)
+                                .map(error -> ToolExecutionResult.builder()
+                                        .isError(true)
+                                        .resultText(ToolService.errorText(error))
+                                        .build())
+                                .or(() -> result(call))
+                                .orElse(null)))
+                .toList();
+        var firstError = calls.stream()
+                .map(this::error)
+                .flatMap(Optional::stream)
+                .findFirst()
+                .orElse(null);
+        return new DefaultToolRoundOutcome(roundCalls, messages, firstError);
     }
 
     private CompletableFuture<ToolExecutionResult> future(ToolExecutionRequest call) {
@@ -466,7 +455,8 @@ public final class ToolRound {
     /**
      * A completed round: the calls as they were executed, in the order of the LLM, the result of each call, the
      * messages for the rest of the round, and the first failure of a call, if any. Pass it to the {@link ToolService}
-     * methods that take one: what they need besides the results to compensate the round is kept internal.
+     * methods that take one: they handle the calls by position, so two calls executed with equal requests keep their
+     * own results, and what they need besides the results to compensate the round is kept internal.
      *
      * @since 1.25.0
      */
@@ -478,7 +468,8 @@ public final class ToolRound {
         List<ToolExecutionRequest> requests();
 
         /**
-         * The result of each call, by the call as it was executed.
+         * The result of each call, by the call as it was executed. Of calls executed with equal requests, only the
+         * first one is in the map: use the {@link ToolService} methods that take the outcome to handle every call.
          */
         Map<ToolExecutionRequest, ToolExecutionResult> results();
 
@@ -494,44 +485,22 @@ public final class ToolRound {
     }
 
     /**
-     * What the compensation of a completed round needs besides its results.
+     * The calls of a completed round, in the order of the LLM, with their results and what their compensation needs.
      */
-    static ToolRoundCompensation compensationOf(Outcome outcome) {
-        // Outcome is sealed: DefaultToolRoundOutcome is its only implementation
-        return ((DefaultToolRoundOutcome) outcome).compensation();
+    static List<ToolRoundCall> callsOf(Outcome outcome) {
+        return ((DefaultToolRoundOutcome) outcome).calls();
     }
 
     /**
-     * The guarded result of each executed call, by the call as the input guardrails left it, in the order of
-     * {@code calls}.
+     * A call of the round with the result the LLM sees, and what its compensation needs besides it: the result of its
+     * tool before the output guardrails, and why it rolls the other tools back if a tool guardrail made it fail.
      */
-    Map<ToolExecutionRequest, ToolExecutionResult> results(List<ToolExecutionRequest> calls) {
-        Map<ToolExecutionRequest, ToolExecutionResult> results = new LinkedHashMap<>();
-        for (ToolExecutionRequest call : calls) {
-            Optional.ofNullable(executions.get(call))
-                    .ifPresent(execution -> results.putIfAbsent(execution.request(), execution.result()));
-        }
-        return results;
-    }
-
-    /**
-     * What the compensation of the round needs besides the results the LLM sees, for {@code calls}: the result of each
-     * tool before its output guardrails, and the calls that a tool guardrail turned into an error result.
-     */
-    private ToolRoundCompensation compensation(List<ToolExecutionRequest> calls) {
-        var originalResults = new LinkedHashMap<ToolExecutionRequest, ToolExecutionResult>();
-        var guardrailFailures = new LinkedHashMap<ToolExecutionRequest, CompensationReason>();
-
-        calls.forEach(call -> {
-            var executed = reportedRequest(call);
-            var original = toolResults.get(call);
-
-            Optional.ofNullable(original).ifPresent(result -> originalResults.putIfAbsent(executed, result));
-
-            guardrailFailure(call).ifPresent(reason -> guardrailFailures.putIfAbsent(executed, reason));
-        });
-
-        return new ToolRoundCompensation(originalResults, guardrailFailures);
+    private ToolRoundCall roundCall(ToolExecutionRequest call, ToolExecutionResult result) {
+        return new ToolRoundCall(
+                reportedRequest(call),
+                result,
+                toolResults.get(call),
+                guardrailFailure(call).orElse(null));
     }
 
     /**
