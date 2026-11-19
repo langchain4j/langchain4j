@@ -98,7 +98,8 @@ The LLM sometimes produces arguments that are not valid JSON. `argumentsAsMap()`
 like any other arguments error, by the
 [`ToolArgumentsErrorHandler`](/tutorials/tools#error-handling) of the AI Service. For example, with
 `ToolArgumentsErrorHandler.sendExceptionMessageToLlm()`, the LLM gets the error and can correct the arguments.
-The invocation is not aborted, unless the handler decides so.
+The invocation is not aborted, unless the handler decides so. The handler, the chat memory and the
+[events](#observability) see the tool call as the LLM sent it, even when an earlier guardrail rewrote its arguments.
 
 Any other exception thrown by a guardrail aborts the invocation, like a [fatal failure](#fatal-failures).
 
