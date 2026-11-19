@@ -13,6 +13,7 @@ import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.exception.RateLimitException;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
@@ -182,6 +183,34 @@ class OpenAiStreamingChatModelErrorsTest {
         // when-then: the handler has no error handler of its own, so its onError throws, and chat(...) throws that
         assertThatThrownBy(() -> model.chat("hi", onPartialResponse(token -> {})))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void publisher_hook_should_signal_an_unsupported_parameter_instead_of_throwing() {
+
+        // given
+        MockHttpClient httpClient = new MockHttpClient();
+        OpenAiStreamingChatModel model = OpenAiStreamingChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .apiKey("test-key")
+                .modelName(GPT_4_O_MINI)
+                .build();
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("Hi"))
+                .parameters(OpenAiChatRequestParameters.builder()
+                        .modelName(GPT_4_O_MINI.toString())
+                        .topK(3)
+                        .build())
+                .build();
+
+        // when
+        List<Object> signals = signals(model.doChat(request));
+
+        // then
+        assertThat(signals).hasSize(2);
+        assertThat(signals.get(0)).isEqualTo("onSubscribe");
+        assertThat(signals.get(1)).isInstanceOf(UnsupportedFeatureException.class);
+        assertThat(httpClient.requests()).isEmpty();
     }
 
     @Test

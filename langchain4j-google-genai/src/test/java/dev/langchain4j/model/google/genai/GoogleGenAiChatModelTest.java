@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.google.genai.AsyncModels;
@@ -539,9 +540,21 @@ class GoogleGenAiChatModelTest {
     }
 
     @Test
-    void doChatAsync_reports_an_unsupported_message_through_the_future_without_calling_the_api() {
+    void doChatAsync_reports_an_unsupported_message_through_the_future_without_calling_the_api() throws Exception {
+        Client client = mock(Client.class);
+        Client.Async async = mock(Client.Async.class);
+        AsyncModels asyncModels = mock(AsyncModels.class);
+
+        Field asyncField = Client.class.getDeclaredField("async");
+        asyncField.setAccessible(true);
+        asyncField.set(client, async);
+
+        Field asyncModelsField = Client.Async.class.getDeclaredField("models");
+        asyncModelsField.setAccessible(true);
+        asyncModelsField.set(async, asyncModels);
+
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
-                .apiKey("test-key")
+                .client(client)
                 .modelName("gemini-3.1-flash-lite")
                 .build();
         ChatRequest request = ChatRequest.builder()
@@ -557,5 +570,6 @@ class GoogleGenAiChatModelTest {
                 .havingCause()
                 .isInstanceOf(IllegalArgumentException.class)
                 .withMessageContaining("Unknown message type");
+        verifyNoInteractions(asyncModels);
     }
 }

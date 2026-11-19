@@ -250,4 +250,22 @@ class ChatModelAsyncDefaultTest {
                 .isInstanceOf(IllegalStateException.class)
                 .withMessageEndingWith(".chatAsync(ChatRequest, ChatRequestOptions) returned null");
     }
+
+    @Test
+    void chatAsync_returns_a_failed_future_without_calling_the_model_when_a_listener_on_request_throws_an_error() {
+        ChatModelListener listener = mock(ChatModelListener.class);
+        NoClassDefFoundError error = new NoClassDefFoundError("MissingOptionalDependency");
+        doThrow(error).when(listener).onRequest(any());
+        MockChatModel model = spy(MockChatModel.thatResponds("Berlin").withListeners(listener));
+
+        CompletableFuture<ChatResponse> future =
+                model.chatAsync(ChatRequest.builder().messages(UserMessage.from("hi")).build());
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isSameAs(error);
+        verify(model, never()).doChatAsync(any());
+    }
 }

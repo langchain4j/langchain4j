@@ -468,9 +468,32 @@ class DecisionModelTest {
     }
 
     @Test
+    void decideAsync_should_return_failed_future_without_calling_the_model_when_a_listener_on_request_throws_an_error() {
+
+        // given
+        DecisionModelListener listener = mock(DecisionModelListener.class);
+        NoClassDefFoundError error = new NoClassDefFoundError("MissingOptionalDependency");
+        doThrow(error).when(listener).onRequest(any());
+        MockDecisionModel model = spy(MockDecisionModel.thatAnswers(Map.of("urgent", YesNoAnswer.from(0.9)))
+                .withListeners(listener));
+
+        // when
+        CompletableFuture<DecisionResponse> future = model.decideAsync(request(DecisionRequestParameters.EMPTY));
+
+        // then
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isSameAs(error);
+        verify(model, never()).doDecideAsync(any());
+    }
+
+    @Test
     void decideAsync_should_return_a_failed_future_for_a_null_request_without_notifying_listeners() {
         DecisionModelListener listener = mock(DecisionModelListener.class);
-        MockDecisionModel model = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.5).withListeners(listener);
+        MockDecisionModel model =
+                MockDecisionModel.thatAnswers(Map.of("urgent", YesNoAnswer.from(0.9))).withListeners(listener);
 
         CompletableFuture<DecisionResponse> future = model.decideAsync(null);
 

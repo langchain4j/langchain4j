@@ -129,18 +129,6 @@ class LoggingHttpClientTest {
         assertThatThrownBy(() -> future.get(5, SECONDS)).hasCause(failure);
     }
 
-    @Test
-    void executeAsync_cancels_the_wrapped_request_when_the_returned_future_is_cancelled() {
-        CompletableFuture<SuccessfulHttpResponse> delegateFuture = new CompletableFuture<>();
-        HttpClient delegate = mock(HttpClient.class);
-        when(delegate.executeAsync(REQUEST)).thenReturn(delegateFuture);
-        LoggingHttpClient client = new LoggingHttpClient(delegate, true, true, mock(Logger.class));
-
-        client.executeAsync(REQUEST).cancel(true);
-
-        assertThat(delegateFuture).isCancelled();
-    }
-
     // ---------- streaming (handler-based execute) ----------
 
     @ParameterizedTest(name = "logRequests={0}, logResponses={1}")

@@ -12,6 +12,7 @@ import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.test.mock.MockChatModel;
@@ -245,6 +246,31 @@ class LanguageModelQueryRouterTest {
 
         assertThat(result.contents()).extracting(content -> content.textSegment().text())
                 .containsExactly("Labradors shed");
+    }
+
+    @Test
+    void retrieval_augmentor_should_fail_clearly_when_chat_model_has_no_async_support_and_blocking_is_not_offloaded() {
+        Map<ContentRetriever, String> retrieverToDescription = new LinkedHashMap<>();
+        retrieverToDescription.put(catArticlesRetriever, "articles about cats");
+        retrieverToDescription.put(dogArticlesRetriever, "articles about dogs");
+        MockChatModel model = spy(MockChatModel.thatResponds("2"));
+        doReturn(AsyncNotSupported.failedFuture(MockChatModel.class, "doChatAsync"))
+                .when(model)
+                .doChatAsync(any());
+        RetrievalAugmentor augmentor = DefaultRetrievalAugmentor.builder()
+                .queryRouter(new LanguageModelQueryRouter(model, retrieverToDescription))
+                .build();
+        UserMessage userMessage = UserMessage.from("Do Labradors shed?");
+
+        CompletableFuture<AugmentationResult> result =
+                augmentor.augmentAsync(new AugmentationRequest(userMessage, Metadata.from(userMessage, null, null)));
+
+        assertThat(result)
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .withMessageContaining("offloadBlocking(true)");
     }
 
     @Test

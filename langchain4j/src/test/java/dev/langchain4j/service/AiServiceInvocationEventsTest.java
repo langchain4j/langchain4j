@@ -451,9 +451,19 @@ class AiServiceInvocationEventsTest {
                 .registerListeners(listeners())
                 .build();
         List<Throwable> errors = new CopyOnWriteArrayList<>();
+        CompletableFuture<Throwable> firstError = new CompletableFuture<>();
 
-        assistant.chat("Hello").onCompleteResponse(response -> {}).onError(errors::add).start();
+        assistant
+                .chat("Hello")
+                .onCompleteResponse(response -> {})
+                .onError(error -> {
+                    errors.add(error);
+                    firstError.complete(error);
+                })
+                .start();
 
+        // the model streams on its own thread, and the error event is fired before onError is called
+        assertThat(firstError).succeedsWithin(5, SECONDS);
         assertSingleTerminalEvent(AiServiceErrorEvent.class);
         assertThat(errors).hasSize(1);
         assertThat(Stream.iterate(errors.get(0), Objects::nonNull, Throwable::getCause)).contains(failure);
