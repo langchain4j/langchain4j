@@ -15,6 +15,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
 import org.infinispan.commons.util.Version;
@@ -247,5 +248,45 @@ class InfinispanChatMemoryStoreIT {
                 .build();
 
         assertThat(remoteCacheManager.getCache("cache-created")).isNotNull();
+    }
+
+    @Test
+    void should_get_messages_async() throws Exception {
+        List<ChatMessage> messages = List.of(UserMessage.from("Hello async"), AiMessage.from("Hi from async!"));
+
+        chatMemoryStore.updateMessages("async-get", messages);
+
+        CompletableFuture<List<ChatMessage>> future = chatMemoryStore.getMessagesAsync("async-get");
+        List<ChatMessage> retrieved = future.get();
+        assertThat(retrieved).hasSize(2);
+        assertThat(((UserMessage) retrieved.get(0)).singleText()).isEqualTo("Hello async");
+        assertThat(((AiMessage) retrieved.get(1)).text()).isEqualTo("Hi from async!");
+    }
+
+    @Test
+    void should_get_empty_messages_async_for_unknown_id() throws Exception {
+        List<ChatMessage> retrieved =
+                chatMemoryStore.getMessagesAsync("unknown-async").get();
+        assertThat(retrieved).isEmpty();
+    }
+
+    @Test
+    void should_update_messages_async() throws Exception {
+        List<ChatMessage> messages = List.of(UserMessage.from("Stored async"));
+
+        chatMemoryStore.updateMessagesAsync("async-update", messages).get();
+
+        List<ChatMessage> retrieved = chatMemoryStore.getMessages("async-update");
+        assertThat(retrieved).hasSize(1);
+        assertThat(((UserMessage) retrieved.get(0)).singleText()).isEqualTo("Stored async");
+    }
+
+    @Test
+    void should_delete_messages_async() throws Exception {
+        chatMemoryStore.updateMessages("async-delete", List.of(UserMessage.from("To be deleted")));
+
+        chatMemoryStore.deleteMessagesAsync("async-delete").get();
+
+        assertThat(chatMemoryStore.getMessages("async-delete")).isEmpty();
     }
 }
