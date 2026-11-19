@@ -36,10 +36,10 @@ the PR. We are not asking them to do anything urgently.
    - The aside: `MicronautGuardrailService` does not override the async variants (`executeInputGuardrailsAsync` and the
      output counterpart), so guardrails look to be skipped in the non-blocking modes (reproduced with a reduced shape,
      not with real Micronaut, so word it as "looks like"). `resolveMethodKey` fixes this as a side effect.
-   - Tone: FYI, no deadline, offer help with a PR.
+   - Tone: FYI, no deadline, no offer to write a PR (user decision, 2026-11-19: no Micronaut expertise); ask them to open a LangChain4j issue if anything does not work.
 3. After filing, record the link in PLAN.md.
 
 ## Done When
 
-- [ ] The user approved the text.
-- [ ] The issue is filed on `micronaut-projects/micronaut-langchain4j` and linked in PLAN.md.
+- [x] The user approved the text.
+- [x] The issue is filed on `micronaut-projects/micronaut-langchain4j` and linked in PLAN.md: [micronaut-projects/micronaut-langchain4j#455](https://github.com/micronaut-projects/micronaut-langchain4j/issues/455).
