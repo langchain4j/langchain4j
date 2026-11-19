@@ -168,6 +168,20 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         return true;
     }
 
+    /**
+     * Whether the model reports a request it cannot handle (e.g. an unsupported parameter) to the handler's
+     * {@code onError()} instead of throwing it from {@code chat(request, handler)}.
+     *
+     * @deprecated No longer used, so overriding this method has no effect: every streaming model now reports an
+     * unsupported parameter to {@code onError()} (see
+     * {@link StreamingChatModel#chat(ChatRequest, StreamingChatResponseHandler)}), and the tests of this class always
+     * expect that. Remove your override. This method will be removed in a future release.
+     */
+    @Deprecated(since = "1.25.0", forRemoval = true)
+    protected boolean reportsUnsupportedParametersThroughOnError() {
+        return true;
+    }
+
     @Override
     protected boolean assertThreads() {
         return streamingModes().equals(List.of(StreamingMode.HANDLER));
