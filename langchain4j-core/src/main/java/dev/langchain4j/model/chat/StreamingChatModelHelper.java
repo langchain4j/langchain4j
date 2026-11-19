@@ -65,7 +65,8 @@ public final class StreamingChatModelHelper {
                 if (errorHandler != null) {
                     try {
                         errorHandler.accept(error);
-                    } catch (Exception e) {
+                    } catch (Throwable e) {
+                        restoreInterruptIfInterrupted(e);
                         log.error("While handling the following error...", error);
                         log.error("...the following error happened", e);
                     }

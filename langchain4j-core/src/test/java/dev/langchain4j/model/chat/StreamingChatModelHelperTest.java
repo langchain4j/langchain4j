@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import org.junit.jupiter.api.Test;
@@ -79,6 +80,26 @@ class StreamingChatModelHelperTest {
                 .havingCause()
                 .isSameAs(failure);
         assertThat(handledErrors).isEmpty();
+    }
+
+    @Test
+    void should_fail_with_the_stream_failure_when_the_error_handler_throws_an_error() {
+        IllegalStateException failure = new IllegalStateException("stream failed");
+        List<Thread> errorHandlerThreads = new CopyOnWriteArrayList<>();
+
+        // the mock reports the failure on its own thread
+        CompletableFuture<ChatResponse> future = StreamingChatModelHelper.chatAsync(
+                MockStreamingChatModel.thatFails(failure), request(), error -> {
+                    errorHandlerThreads.add(Thread.currentThread());
+                    throw new AssertionError("error handler failed");
+                });
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isSameAs(failure);
+        assertThat(errorHandlerThreads).singleElement().isNotSameAs(Thread.currentThread());
     }
 
     private static ChatRequest request() {
