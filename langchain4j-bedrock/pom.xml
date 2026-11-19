@@ -135,6 +135,28 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>embedding-encoding-windows-1252</id>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                        <phase>test</phase>
+                        <configuration>
+                            <test>BedrockEmbeddingModelEncodingTest</test>
+                            <forkCount>1</forkCount>
+                            <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -Dfile.encoding=windows-1252</argLine>
+                            <reportNameSuffix>windows-1252</reportNameSuffix>
+                            <systemPropertyVariables>
+                                <bedrock.embedding.expectedCharset>windows-1252</bedrock.embedding.expectedCharset>
+                            </systemPropertyVariables>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration combine.children="append">
                     <!-- BedrockNonBlockingIT runs BlockHound, which needs this flag to instrument JDK
