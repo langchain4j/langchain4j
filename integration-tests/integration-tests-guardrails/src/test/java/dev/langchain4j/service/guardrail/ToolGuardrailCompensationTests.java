@@ -24,10 +24,6 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.Mode;
 import dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.Run;
 import dev.langchain4j.service.tool.ToolExecution;
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -39,30 +35,15 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 /**
- * What a tool guardrail rejection means for compensation. The result the LLM ends up with decides whether a step
- * failed; the tool as it ran decides whether it is compensable, and its compensating action gets its original result.
- * <p>
- * A <em>fatal</em> rejection is covered in the {@code CompletableFuture} and reactive modes only: the sync and
- * {@code TokenStream} modes do not roll back before rethrowing a tool error yet (a separate upstream change), so a fatal
- * rejection does not either. See
- * {@link #a_fatal_rejection_rolls_back_in_the_non_blocking_modes}.
+ * What a tool guardrail rejection means for compensation, in every AI service mode. The result the LLM ends up with
+ * decides whether a step failed; the tool as it ran decides whether it is compensable, and its compensating action gets
+ * its original result. A <em>fatal</em> rejection fails the invocation like a tool error that is rethrown, so the
+ * compensable tools are rolled back before it.
  */
 class ToolGuardrailCompensationTests extends BaseGuardrailTests {
 
-    /**
-     * The modes that compensate. {@code TokenStream} is left out: its handler has no compensation at all, with or
-     * without guardrails (measured with a tool that throws and no guardrail: {@code credit} is not rolled back there,
-     * while sync, {@code CompletableFuture} and reactive roll it back). That is existing behavior, not something tool
-     * guardrails change.
-     */
-    @Target(ElementType.METHOD)
-    @Retention(RetentionPolicy.RUNTIME)
-    @ParameterizedTest
-    @EnumSource(value = Mode.class, mode = EnumSource.Mode.EXCLUDE, names = "TOKEN_STREAM")
-    @interface CompensatingModes {}
-
     private static final String ROLLED_BACK =
-            "Tool '%s' was executed successfully but was rolled back due to failure of tool '%s'";
+            "Tool '%s' was executed successfully but was rolled back because tool '%s' failed";
 
     /** Tools that all have a compensating action, and one that always fails. */
     public static class Bank {
@@ -145,7 +126,8 @@ class ToolGuardrailCompensationTests extends BaseGuardrailTests {
 
     // ---------- output guardrail: success becomes an error ----------
 
-    @CompensatingModes
+    @ParameterizedTest
+    @EnumSource(Mode.class)
     void an_output_failure_is_a_failed_step_that_rolls_back_the_tool_too_with_its_original_result(Mode mode) {
         var scenario = run(
                 mode,
@@ -172,7 +154,8 @@ class ToolGuardrailCompensationTests extends BaseGuardrailTests {
                 .isEqualTo(ROLLED_BACK.formatted("credit", "debit"));
     }
 
-    @CompensatingModes
+    @ParameterizedTest
+    @EnumSource(Mode.class)
     void a_rewrite_to_an_error_is_a_failed_step_like_a_failure(Mode mode) {
         var scenario = run(
                 mode,
@@ -189,7 +172,8 @@ class ToolGuardrailCompensationTests extends BaseGuardrailTests {
                 .isEqualTo(ROLLED_BACK.formatted("credit", "debit"));
     }
 
-    @CompensatingModes
+    @ParameterizedTest
+    @EnumSource(Mode.class)
     void a_rewrite_that_stays_a_success_sanitizes_without_a_rollback(Mode mode) {
         var scenario = run(
                 mode,
@@ -207,7 +191,8 @@ class ToolGuardrailCompensationTests extends BaseGuardrailTests {
 
     // ---------- output guardrail: an error result ----------
 
-    @CompensatingModes
+    @ParameterizedTest
+    @EnumSource(Mode.class)
     void an_error_result_sanitized_with_a_text_rewrite_stays_an_error_and_still_rolls_the_others_back(Mode mode) {
         var scenario = run(
                 mode,
@@ -226,7 +211,8 @@ class ToolGuardrailCompensationTests extends BaseGuardrailTests {
 
     // ---------- input guardrail ----------
 
-    @CompensatingModes
+    @ParameterizedTest
+    @EnumSource(Mode.class)
     void an_input_rejection_is_a_failed_step_and_the_rejected_tool_is_not_compensable(Mode mode) {
         var scenario = run(
                 mode,
@@ -243,7 +229,8 @@ class ToolGuardrailCompensationTests extends BaseGuardrailTests {
                 .isEqualTo(ROLLED_BACK.formatted("credit", "debit"));
     }
 
-    @CompensatingModes
+    @ParameterizedTest
+    @EnumSource(Mode.class)
     void an_input_rejection_in_a_later_round_rolls_back_the_tools_of_the_earlier_rounds(Mode mode) {
         var scenario = run(
                 mode,
@@ -259,7 +246,8 @@ class ToolGuardrailCompensationTests extends BaseGuardrailTests {
                 .isEqualTo("denied");
     }
 
-    @CompensatingModes
+    @ParameterizedTest
+    @EnumSource(Mode.class)
     void an_output_rejection_in_a_later_round_rolls_back_the_tools_of_the_earlier_rounds(Mode mode) {
         var scenario = run(
                 mode,
@@ -275,7 +263,8 @@ class ToolGuardrailCompensationTests extends BaseGuardrailTests {
                 .isEqualTo("blocked");
     }
 
-    @CompensatingModes
+    @ParameterizedTest
+    @EnumSource(Mode.class)
     void nothing_is_rolled_back_when_compensation_is_off(Mode mode) {
         var scenario = run(
                 mode,
@@ -294,29 +283,53 @@ class ToolGuardrailCompensationTests extends BaseGuardrailTests {
     // ---------- fatal rejections ----------
 
     @ParameterizedTest
-    @EnumSource(
-            value = Mode.class,
-            names = {"COMPLETABLE_FUTURE", "REACTIVE"})
-    void a_fatal_rejection_rolls_back_in_the_non_blocking_modes(Mode mode) {
-        var output = run(
+    @EnumSource(Mode.class)
+    void a_fatal_output_rejection_rolls_back_the_earlier_rounds_and_the_tool_that_ran(Mode mode) {
+        var scenario = run(
                 mode,
                 modelCalling(List.of("credit"), List.of("debit")),
                 services -> services.toolOutputGuardrails(onOutputOf("debit", request -> outputFatal("poisoned"))));
 
-        assertThat(output.run().failure()).isInstanceOf(ToolOutputGuardrailException.class);
-        assertThat(output.bank().log).containsExactlyInAnyOrder("credit", "debit", "uncredit", "undebit");
+        assertThat(scenario.run().failure()).isInstanceOf(ToolOutputGuardrailException.class);
+        assertThat(scenario.bank().log).containsExactlyInAnyOrder("credit", "debit", "uncredit", "undebit");
         // the tool whose output was rejected ran, so it is rolled back with the result it ran with
-        assertThat(output.bank().compensatedResults).containsEntry("debit", "debited");
-        assertThat(output.compensationReasons()).containsOnly(CompensationReason.TOOL_OUTPUT_GUARDRAIL_FAILED);
+        assertThat(scenario.bank().compensatedResults)
+                .containsEntry("debit", "debited")
+                .containsEntry("credit", "credited");
+        assertThat(scenario.compensatedTools()).containsExactlyInAnyOrder("credit", "debit");
+        assertThat(scenario.compensationReasons()).containsOnly(CompensationReason.TOOL_OUTPUT_GUARDRAIL_FAILED);
+        assertThat(scenario.run().toolResultMessagesInMemory().get("credit").text())
+                .isEqualTo(ROLLED_BACK.formatted("credit", "debit"));
+    }
 
-        var input = run(
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void a_fatal_input_rejection_rolls_back_the_earlier_rounds_but_not_the_rejected_tool(Mode mode) {
+        var scenario = run(
                 mode,
                 modelCalling(List.of("credit"), List.of("debit")),
                 services -> services.toolInputGuardrails(onInputOf("debit", request -> inputFatal("attack"))));
 
-        assertThat(input.run().failure()).isInstanceOf(ToolInputGuardrailException.class);
+        assertThat(scenario.run().failure()).isInstanceOf(ToolInputGuardrailException.class);
         // the rejected tool never ran, so only the earlier one is rolled back
-        assertThat(input.bank().log).containsExactly("credit", "uncredit");
-        assertThat(input.compensationReasons()).containsOnly(CompensationReason.TOOL_INPUT_GUARDRAIL_FAILED);
+        assertThat(scenario.bank().log).containsExactly("credit", "uncredit");
+        assertThat(scenario.compensatedTools()).containsExactly("credit");
+        assertThat(scenario.compensationReasons()).containsOnly(CompensationReason.TOOL_INPUT_GUARDRAIL_FAILED);
+        assertThat(scenario.run().toolResultMessagesInMemory().get("credit").text())
+                .isEqualTo(ROLLED_BACK.formatted("credit", "debit"));
+    }
+
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void a_fatal_rejection_rolls_back_the_tools_of_the_same_round(Mode mode) {
+        var scenario = run(
+                mode,
+                modelCalling("credit", "debit"),
+                services -> services.toolInputGuardrails(onInputOf("debit", request -> inputFatal("attack"))));
+
+        assertThat(scenario.run().failure()).isInstanceOf(ToolInputGuardrailException.class);
+        assertThat(scenario.bank().log).containsExactly("credit", "uncredit");
+        assertThat(scenario.compensatedTools()).containsExactly("credit");
+        assertThat(scenario.compensationReasons()).containsOnly(CompensationReason.TOOL_INPUT_GUARDRAIL_FAILED);
     }
 }

@@ -22,17 +22,25 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 
 /**
  * A callback of the tool execution ({@code beforeToolExecution} / {@code afterToolExecution}) that throws fails the
- * invocation and rolls back the compensable tools, like a tool that throws, with or without tool guardrails. This is
- * what {@code upstream/main} does in the {@code CompletableFuture} mode; the sync and {@code TokenStream} modes do not
- * roll back before rethrowing yet (a separate upstream change), so only the {@code CompletableFuture} mode is covered.
+ * invocation and rolls back the compensable tools, like a tool that throws, with or without tool guardrails.
  */
 class ToolCallbackFailureTest {
 
-    interface Assistant {
+    enum Mode {
+        SYNC,
+        COMPLETABLE_FUTURE
+    }
+
+    interface SyncAssistant {
+
+        String chat(@UserMessage String message);
+    }
+
+    interface FutureAssistant {
 
         CompletableFuture<String> chat(@UserMessage String message);
     }
@@ -88,13 +96,15 @@ class ToolCallbackFailureTest {
 
     private record Run(Bank bank, List<ToolCompensatedEvent> events, Throwable failure, String answer) {}
 
-    private static Run run(boolean withGuardrails, boolean failBefore) {
+    private static Run run(Mode mode, boolean withGuardrails, boolean failBefore) {
         var bank = new Bank();
         var events = new CopyOnWriteArrayList<ToolCompensatedEvent>();
         var model = MockChatModel.thatResponds(
                 AiMessage.from(List.of(call("call-0", "credit"), call("call-1", "debit"))), AiMessage.from("done"));
-        var builder = AiServices.builder(Assistant.class)
-                .chatModel(model)
+        AiServices<?> builder = (mode == Mode.SYNC)
+                ? AiServices.builder(SyncAssistant.class)
+                : AiServices.builder(FutureAssistant.class);
+        builder.chatModel(model)
                 .tools(bank)
                 .compensateOnToolErrors(true)
                 .registerListener((ToolCompensatedEventListener) events::add);
@@ -107,10 +117,16 @@ class ToolCallbackFailureTest {
             builder.afterToolExecution(after -> failFor(after.request()));
         }
 
+        Object assistant = builder.build();
         try {
-            return new Run(bank, events, null, builder.build().chat("hello").get(10, TimeUnit.SECONDS));
+            String answer = (mode == Mode.SYNC)
+                    ? ((SyncAssistant) assistant).chat("hello")
+                    : ((FutureAssistant) assistant).chat("hello").get(10, TimeUnit.SECONDS);
+            return new Run(bank, events, null, answer);
         } catch (ExecutionException e) {
             return new Run(bank, events, e.getCause(), null);
+        } catch (IllegalStateException e) {
+            return new Run(bank, events, e, null);
         } catch (TimeoutException | InterruptedException e) {
             throw new AssertionError(e);
         }
@@ -123,9 +139,10 @@ class ToolCallbackFailureTest {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void an_after_callback_that_throws_fails_the_invocation_and_rolls_back_the_tools(boolean withGuardrails) {
-        var run = run(withGuardrails, false);
+    @CsvSource({"SYNC, false", "SYNC, true", "COMPLETABLE_FUTURE, false", "COMPLETABLE_FUTURE, true"})
+    void an_after_callback_that_throws_fails_the_invocation_and_rolls_back_the_tools(
+            Mode mode, boolean withGuardrails) {
+        var run = run(mode, withGuardrails, false);
 
         assertThat(run.failure()).isInstanceOf(IllegalStateException.class).hasMessage("callback failed");
         assertThat(run.answer()).isNull();
@@ -137,9 +154,10 @@ class ToolCallbackFailureTest {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void a_before_callback_that_throws_fails_the_invocation_and_rolls_back_the_earlier_tool(boolean withGuardrails) {
-        var run = run(withGuardrails, true);
+    @CsvSource({"SYNC, false", "SYNC, true", "COMPLETABLE_FUTURE, false", "COMPLETABLE_FUTURE, true"})
+    void a_before_callback_that_throws_fails_the_invocation_and_rolls_back_the_earlier_tool(
+            Mode mode, boolean withGuardrails) {
+        var run = run(mode, withGuardrails, true);
 
         assertThat(run.failure()).isInstanceOf(IllegalStateException.class).hasMessage("callback failed");
         // the tool of the callback never ran, so only the earlier one is rolled back

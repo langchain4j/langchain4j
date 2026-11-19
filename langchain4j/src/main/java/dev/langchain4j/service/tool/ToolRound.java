@@ -37,13 +37,14 @@ import org.slf4j.LoggerFactory;
  * {@link ToolService#startRound(ToolServiceContext, InvocationContext, AiServiceListenerRegistrar)} and is the single
  * way in and out of executing its calls:
  * <ul>
- *     <li><b>in:</b> {@link #executeTool(ToolExecutionRequest, Consumer, Consumer)} (blocking) or
- *     {@link #startTool(ToolExecutionRequest, Consumer, Consumer, Executor)} (non-blocking) executes a call, through
- *     the tool guardrails of its tool if it has any;</li>
+ *     <li><b>in:</b> {@link #executeTool(ToolExecutionRequest, Consumer, Consumer)} (blocking, on the calling thread or
+ *     on an executor) or {@link #startTool(ToolExecutionRequest, Consumer, Consumer, Executor)} (non-blocking)
+ *     executes a call, through the tool guardrails of its tool if it has any;</li>
  *     <li><b>out:</b> once every call has run, {@link #complete(AiMessage, List, ChatMemory, List)} or
  *     {@link #completeAsync(AiMessage, List, ChatMemory, List)} reports the round: the calls as they were executed,
  *     their results, and the messages for the rest of the round ({@link #settleAsync(List)} for a canceled round,
- *     and {@link #fireEventsOfFailedRound(List)} for a round that fails with an exception).</li>
+ *     and {@link #failBeforeRethrow(List, Throwable, List, ChatMemory, List)} for a blocking round that fails with an
+ *     exception).</li>
  * </ul>
  * <p>
  *     The loop does not need to know that the calls it gets back can differ from the ones of the LLM: an input
@@ -112,8 +113,8 @@ public final class ToolRound {
      * Executes a call of the round, blocking: its tool, through the tool guardrails of the tool if it has any, with
      * the callbacks of the {@link ToolService} and the given ones. Every exception that ends the call is thrown (a
      * fatal guardrail failure, an error of the tool that its error handler rethrows, a failing callback), and the round
-     * records it, for {@link #fireEventsOfFailedRound(List)}; a {@link VirtualMachineError} is rethrown without being
-     * recorded.
+     * records it, for {@link #failBeforeRethrow(List, Throwable, List, ChatMemory, List)}; a {@link VirtualMachineError}
+     * is rethrown without being recorded.
      *
      * @param call                the call of the LLM
      * @param beforeToolExecution called before the call is executed, with the call of the LLM; may be {@code null}
@@ -135,6 +136,30 @@ public final class ToolRound {
             errors.put(call, e);
             throw e;
         }
+    }
+
+    /**
+     * Executes a call of the round on a thread of {@code executor}, blocking that thread, as
+     * {@link #executeTool(ToolExecutionRequest, Consumer, Consumer)} does. Nothing is thrown: every exception that ends
+     * the call fails the returned future, and the round records it. When {@code executor} rejects the call, the call
+     * fails with the rejection, so the round reports it like a call that threw.
+     *
+     * @return the future of the request the call was executed with, and its result
+     */
+    public CompletableFuture<GuardedToolExecution> executeTool(
+            ToolExecutionRequest call,
+            Consumer<BeforeToolExecution> beforeToolExecution,
+            Consumer<ToolExecution> afterToolExecution,
+            Executor executor) {
+        CompletableFuture<GuardedToolExecution> execution;
+        try {
+            execution = CompletableFuture.supplyAsync(
+                    () -> executeTool(call, beforeToolExecution, afterToolExecution), executor);
+        } catch (RuntimeException rejected) {
+            errors.put(call, rejected);
+            execution = CompletableFuture.failedFuture(rejected);
+        }
+        return execution;
     }
 
     /**
@@ -163,14 +188,39 @@ public final class ToolRound {
     }
 
     /**
-     * Fires the {@link dev.langchain4j.observability.api.event.ToolExecutedEvent}s of the round when it fails with an
-     * exception that ends the invocation, reporting each call with the request it was executed with: the calls that
-     * returned with their result, and the calls that threw with their exception.
+     * Fails a blocking round whose calls have all ended, when a call failed with an exception that ends the invocation,
+     * right before the caller rethrows {@code errorToRethrow}, the way the non-blocking modes fail a round: it fires a
+     * {@link dev.langchain4j.observability.api.event.ToolExecutedEvent} for each call that ended, with the request it
+     * was executed with, tells cross-agent compensation about the calls that ran successfully and that a call failed,
+     * and rolls back the compensable tools that ran successfully in this round and in the earlier rounds, when
+     * compensation on tool errors is enabled. A failure of a listener, of cross-agent compensation or of the rollback
+     * is added as suppressed to {@code errorToRethrow}, and so is the failure of a compensating action, which does not
+     * stop the others.
      *
-     * @param calls the calls of the round, as they were started, in the order of the LLM
+     * @param calls                 the calls of the round, as they were started, in the order of the LLM
+     * @param errorToRethrow        the exception the caller rethrows once this method returns
+     * @param compensableExecutions the compensable tools collected across rounds, or {@code null} when compensation is
+     *                              disabled
+     * @param chatMemory            the chat memory, or {@code null} when the AI service has none
+     * @param messages              the messages of the invocation, rewritten when {@code chatMemory} is {@code null}
      */
-    public void fireEventsOfFailedRound(List<ToolExecutionRequest> calls) {
+    public void failBeforeRethrow(
+            List<ToolExecutionRequest> calls,
+            Throwable errorToRethrow,
+            List<ToolService.CompensableToolExecution> compensableExecutions,
+            ChatMemory chatMemory,
+            List<ChatMessage> messages) {
         ToolService.fireEventsOfFailedRound(invocationContext, calls, this, listenerRegistrar);
+        toolService.failRoundBeforeRethrow(
+                this, settled(calls, List.of()), errorToRethrow, compensableExecutions, chatMemory, messages);
+    }
+
+    AiServiceListenerRegistrar listenerRegistrar() {
+        return listenerRegistrar;
+    }
+
+    InvocationContext invocationContext() {
+        return invocationContext;
     }
 
     /**

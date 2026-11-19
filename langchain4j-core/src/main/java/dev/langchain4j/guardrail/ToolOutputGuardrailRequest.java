@@ -3,10 +3,6 @@ package dev.langchain4j.guardrail;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSource;
@@ -14,6 +10,10 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.invocation.InvocationContext;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Represents the parameter passed to a tool output guardrail, after a tool has been executed.

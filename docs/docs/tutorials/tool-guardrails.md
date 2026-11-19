@@ -415,7 +415,7 @@ result the LLM ends up with**, not on which guardrail method was called, so guar
 | An output guardrail **rewrites** the result and keeps `isError == false` (`successWith(String)`)                          | No           | Nothing. This is the way to sanitize a result without rolling anything back.                                                                                  | -                              |
 | The tool **returned an error result** and an output guardrail keeps it an error (`successWith(String)` keeps the flag)    | Yes          | Like any tool failure: the other compensable tools; the tool itself did not succeed so it is not compensable.                                                 | `TOOL_EXECUTION_FAILED`        |
 | An output guardrail turns an error result into a success (`successWith(contents, false)`)                                 | No           | Nothing, and the tool is not compensable because it did not succeed.                                                                                          | -                              |
-| A guardrail returns **fatal**                                                                                             | Like a thrown tool error | Like a tool that throws, with the rules of the input and output rows above. See the note below. | `TOOL_INPUT_GUARDRAIL_FAILED` or `TOOL_OUTPUT_GUARDRAIL_FAILED` |
+| A guardrail returns **fatal**                                                                                             | Like a thrown tool error | Like a tool error that ends the call, with the rules of the input and output rows above: the compensable tools are rolled back, then the invocation fails. See the note below. | `TOOL_INPUT_GUARDRAIL_FAILED` or `TOOL_OUTPUT_GUARDRAIL_FAILED` |
 
 - The LLM sees the message of the rejecting guardrail for the rejected tool **verbatim**, not the "rolled back"
   text. The other tools that were rolled back get the usual rolled-back text.
@@ -429,9 +429,11 @@ result the LLM ends up with**, not on which guardrail method was called, so guar
 - If a round has several failures, the first failing tool in request order decides the reason.
 
 :::note
-A fatal guardrail failure is treated like a tool that throws. The `CompletableFuture` and reactive modes roll back
-the compensable tools before failing. The blocking and `TokenStream` modes do not roll back when a tool throws,
-and a fatal tool guardrail failure behaves the same way there.
+A fatal guardrail failure is treated like a tool error that ends the call, in every AI Service mode (a plain return
+value, `TokenStream`, `CompletableFuture` and `Flow.Publisher`): the compensable tools are rolled back first, and then
+the invocation fails with the guardrail's exception. If a compensating action fails, its exception is added as a
+suppressed exception to the guardrail's exception (see
+[Compensating Tool Actions](/tutorials/tools#compensating-tool-actions)).
 :::
 
 ## Security notes

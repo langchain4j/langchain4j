@@ -31,6 +31,7 @@ import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
+import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
@@ -55,6 +56,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class AiServiceStreamingPublisherTest {
@@ -147,6 +150,26 @@ class AiServiceStreamingPublisherTest {
         @Tool
         String withdraw(String city) {
             calls.add("withdraw");
+            throw new RuntimeException("insufficient funds");
+        }
+    }
+
+    static class ToolsWithFailingCompensation {
+
+        final IllegalStateException uncreditFailure = new IllegalStateException("uncredit failed");
+
+        @Tool
+        String credit(String city) {
+            return "credited";
+        }
+
+        @CompensateFor("credit")
+        void uncredit(String city) {
+            throw uncreditFailure;
+        }
+
+        @Tool
+        String withdraw(String city) {
             throw new RuntimeException("insufficient funds");
         }
     }
@@ -878,6 +901,35 @@ class AiServiceStreamingPublisherTest {
         assertThat(compensated).singleElement().satisfies(e -> {
             assertThat(e.toolExecution().request().name()).isEqualTo("credit");
             assertThat(e.reason()).isEqualTo(CompensationReason.TOOL_EXECUTION_FAILED);
+            assertThat(e.compensationError()).isNull();
+        });
+    }
+
+    @Test
+    void tool_compensated_event_in_the_stream_carries_the_error_of_a_failed_compensating_action() throws Exception {
+        ToolsWithFailingCompensation tools = new ToolsWithFailingCompensation();
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+                AiMessage.builder()
+                        .toolExecutionRequests(List.of(toolRequest("1", "credit"), toolRequest("2", "withdraw")))
+                        .build(),
+                AiMessage.from("unreachable"));
+
+        EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                .streamingChatModel(model)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                .build();
+
+        Collected<AiServiceStreamingEvent> collected = collect(assistant.chat("transfer"));
+
+        assertThat(collected.error).isNotNull().hasMessageContaining("insufficient funds");
+        List<AiServiceStreamingEvent.ToolCompensatedEvent> compensated = collected.items.stream()
+                .filter(e -> e instanceof AiServiceStreamingEvent.ToolCompensatedEvent)
+                .map(e -> (AiServiceStreamingEvent.ToolCompensatedEvent) e)
+                .toList();
+        assertThat(compensated).singleElement().satisfies(e -> {
+            assertThat(e.toolExecution().request().name()).isEqualTo("credit");
+            assertThat(e.compensationError()).isSameAs(tools.uncreditFailure);
         });
     }
 
@@ -1193,10 +1245,17 @@ class AiServiceStreamingPublisherTest {
         // Regression guard for the accumulator data race: a subscriber cancel and a round's completion touch the
         // shared compensable-tools accumulator on different threads. Aligning the tool's return with the cancel via
         // a barrier maximises the overlap; the compensating action must never run twice for one tool (no double
-        // refund) and the accumulator access must not throw.
+        // refund) and the accumulator access must not throw. Credit always succeeds and withdraw always fails, so
+        // each iteration that ran credit rolls it back exactly once: by the round completion or by the cancellation,
+        // whichever claims the round first. No tool starts once the invocation is cancelled, so when the cancel
+        // comes before credit has begun on its executor thread, credit never runs and there is nothing to roll back.
+        List<AtomicInteger> creditCounts = new ArrayList<>();
+        List<AtomicInteger> uncreditCounts = new ArrayList<>();
         for (int i = 0; i < 60; i++) {
             AtomicInteger creditCount = new AtomicInteger();
             AtomicInteger uncreditCount = new AtomicInteger();
+            creditCounts.add(creditCount);
+            uncreditCounts.add(uncreditCount);
             CyclicBarrier barrier = new CyclicBarrier(2);
 
             class RacyTools {
@@ -1266,12 +1325,86 @@ class AiServiceStreamingPublisherTest {
             canceller.start();
             canceller.join(2000);
 
-            // let any rollback settle
-            Thread.sleep(25);
-            assertThat(uncreditCount.get())
-                    .as("iteration %d: a compensable tool must be rolled back at most once (no double refund)", i)
-                    .isLessThanOrEqualTo(1);
+            awaitUntil(() -> uncreditCount.get() == creditCount.get());
+            assertThat(creditCount).as("iteration %d: credit runs at most once", i).hasValueLessThanOrEqualTo(1);
         }
+        // checked once all iterations ran, so that a rollback, or a second one, that comes late is seen too
+        awaitUntil(() -> IntStream.range(0, creditCounts.size())
+                .allMatch(i -> uncreditCounts.get(i).get() == creditCounts.get(i).get()));
+        for (int i = 0; i < uncreditCounts.size(); i++) {
+            assertThat(uncreditCounts.get(i))
+                    .as("iteration %d: a compensable tool that ran must be rolled back exactly once", i)
+                    .hasValue(creditCounts.get(i).get());
+        }
+        assertThat(creditCounts)
+                .as("the race is exercised: credit runs, and so is rolled back, in some iterations")
+                .anySatisfy(creditCount -> assertThat(creditCount).hasValue(1));
+    }
+
+    /**
+     * Waits up to 5 seconds for {@code condition} to hold, so that the assertions that follow see work that completes
+     * on other threads.
+     */
+    private static void awaitUntil(BooleanSupplier condition) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (!condition.getAsBoolean() && (System.nanoTime() < deadline)) {
+            Thread.sleep(5);
+        }
+    }
+
+    @Test
+    void cancelling_while_a_tool_runs_inline_rolls_that_tool_back() throws Exception {
+        AtomicReference<Flow.Subscription> subscription = new AtomicReference<>();
+        List<String> calls = new CopyOnWriteArrayList<>();
+        CountDownLatch rolledBack = new CountDownLatch(1);
+
+        class CancellingTools {
+
+            @Tool
+            String credit(String city) {
+                calls.add("credit");
+                subscription.get().cancel(); // the call is cancelled while this tool runs
+                return "credited";
+            }
+
+            @CompensateFor("credit")
+            void uncredit(String city) {
+                calls.add("uncredit");
+                rolledBack.countDown();
+            }
+        }
+
+        StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
+                AiMessage.builder()
+                        .toolExecutionRequests(List.of(toolRequest("1", "credit")))
+                        .build(),
+                AiMessage.from("done"));
+        EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                .streamingChatModel(model)
+                .tools(new CancellingTools())
+                .executeToolsConcurrently(Runnable::run) // the tool runs on the thread that starts it
+                .compensateOnToolErrors(true)
+                .build();
+
+        assistant.chat("go").subscribe(new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription s) {
+                subscription.set(s);
+                s.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(AiServiceStreamingEvent event) {}
+
+            @Override
+            public void onError(Throwable throwable) {}
+
+            @Override
+            public void onComplete() {}
+        });
+
+        assertThat(rolledBack.await(10, TimeUnit.SECONDS)).isTrue();
+        assertThat(calls).containsExactly("credit", "uncredit");
     }
 
     @Test
@@ -1528,4 +1661,28 @@ class AiServiceStreamingPublisherTest {
     }
 
     private record Collected<T>(List<T> items, Throwable error) {}
+
+    @Test
+    @SuppressWarnings("removal")
+    void tool_compensated_event_from_the_deprecated_constructor_does_not_report_the_compensation_error() {
+        InvocationContext invocationContext = InvocationContext.builder()
+                .interfaceName("Assistant")
+                .methodName("chat")
+                .build();
+        ToolExecution toolExecution = ToolExecution.builder()
+                .request(ToolExecutionRequest.builder()
+                        .name("credit")
+                        .arguments("{}")
+                        .build())
+                .result(ToolExecutionResult.builder().resultText("credited").build())
+                .invocationContext(invocationContext)
+                .build();
+
+        AiServiceStreamingEvent.ToolCompensatedEvent event = new AiServiceStreamingEvent.ToolCompensatedEvent(
+                toolExecution, CompensationReason.TOOL_EXECUTION_FAILED, invocationContext);
+
+        assertThatThrownBy(event::compensationError)
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("does not report whether the compensating action failed");
+    }
 }

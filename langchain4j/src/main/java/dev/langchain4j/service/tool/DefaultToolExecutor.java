@@ -43,6 +43,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
+import org.jspecify.annotations.Nullable;
 
 public class DefaultToolExecutor implements ToolExecutor {
 
@@ -136,7 +137,7 @@ public class DefaultToolExecutor implements ToolExecutor {
 
         try {
             Object result = invokeMethod(arguments);
-            CompletableFuture<?> futureResult = toCompletableFuture(result);
+            CompletableFuture<?> futureResult = toCompletableFuture(result, methodToInvoke.getGenericReturnType());
             if (futureResult != null) {
                 // an asynchronous tool invoked via the synchronous path: wait for its result (blocking by design)
                 return toToolExecutionResult(joinToolFuture(futureResult), futureValueType());
@@ -180,7 +181,7 @@ public class DefaultToolExecutor implements ToolExecutor {
             return toFailedOrErrorResult(e.getCause());
         }
 
-        CompletableFuture<?> futureResult = toCompletableFuture(result);
+        CompletableFuture<?> futureResult = toCompletableFuture(result, methodToInvoke.getGenericReturnType());
         if (futureResult != null) {
             return futureResult
                     .handle((value, error) -> {
@@ -197,11 +198,14 @@ public class DefaultToolExecutor implements ToolExecutor {
     }
 
     /**
-     * If the tool returned a single-value asynchronous type, returns it as a {@link CompletableFuture};
+     * If a method returned a single-value asynchronous type, returns it as a {@link CompletableFuture};
      * otherwise returns {@code null} (a synchronous result). {@link CompletableFuture} and
      * {@link CompletionStage} are handled natively; other types via a {@link CompletableFutureAdapter}.
+     *
+     * @param result       the value the method returned
+     * @param declaredType the declared (generic) return type of the method, which selects the adapter
      */
-    private CompletableFuture<?> toCompletableFuture(Object result) {
+    static @Nullable CompletableFuture<?> toCompletableFuture(@Nullable Object result, Type declaredType) {
         if (result instanceof CompletableFuture<?> future) {
             return future;
         }
@@ -210,7 +214,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
         if (result != null) {
             for (CompletableFutureAdapter adapter : COMPLETABLE_FUTURE_ADAPTERS) {
-                if (adapter.canAdapt(methodToInvoke.getGenericReturnType())) {
+                if (adapter.canAdapt(declaredType)) {
                     return adapter.toCompletableFuture(result);
                 }
             }

@@ -33,22 +33,19 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 /**
  * What a tool guardrail rejection means for compensation. The result the LLM ends up with decides whether a step
  * failed; the tool as it ran decides whether it is compensable, and its compensating action gets its original result.
- * <p>
- * A fatal rejection is covered in the {@code CompletableFuture} mode only: the sync and {@code TokenStream} modes do not
- * roll back before rethrowing a tool error yet (a separate upstream change), so a fatal rejection does not either.
- * </p>
+ * A fatal rejection fails the invocation like a tool error that is rethrown, so the compensable tools are rolled back
+ * before it. The {@code TokenStream} and reactive modes are covered end to end in {@code integration-tests-guardrails}.
  */
 class ToolGuardrailCompensationTest {
 
     private static final String ROLLED_BACK =
-            "Tool '%s' was executed successfully but was rolled back due to failure of tool '%s'";
+            "Tool '%s' was executed successfully but was rolled back because tool '%s' failed";
     // the result factories are default methods of the interfaces, which lambdas cannot call
     private static final ToolInputGuardrail INPUT = request -> null;
     private static final ToolOutputGuardrail OUTPUT = request -> null;
@@ -74,6 +71,8 @@ class ToolGuardrailCompensationTest {
         final List<String> log = new CopyOnWriteArrayList<>();
         // the result each compensating action received, by the name of the tool
         final Map<String, String> compensatedResults = new java.util.concurrent.ConcurrentHashMap<>();
+        // whether the compensating action of credit fails
+        volatile boolean failingRollback;
 
         @Tool
         String credit(String name) {
@@ -85,6 +84,9 @@ class ToolGuardrailCompensationTest {
         void uncredit(ToolExecution execution) {
             log.add("uncredit");
             compensatedResults.put("credit", execution.result());
+            if (failingRollback) {
+                throw new IllegalStateException("rollback failed");
+            }
         }
 
         @Tool
@@ -109,14 +111,15 @@ class ToolGuardrailCompensationTest {
     /** Everything a run of the AI service reports. */
     private static final class Run {
 
-        final Bank bank = new Bank();
+        final Bank bank;
         final MockChatModel model;
         final ChatMemory memory = MessageWindowChatMemory.withMaxMessages(20);
         final List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
         String answer;
         Throwable failure;
 
-        Run(MockChatModel model) {
+        Run(Bank bank, MockChatModel model) {
+            this.bank = bank;
             this.model = model;
         }
 
@@ -209,7 +212,11 @@ class ToolGuardrailCompensationTest {
     }
 
     private static Run run(Mode mode, MockChatModel model, Consumer<AiServices<?>> configuration) {
-        var run = new Run(model);
+        return run(mode, new Bank(), model, configuration);
+    }
+
+    private static Run run(Mode mode, Bank bank, MockChatModel model, Consumer<AiServices<?>> configuration) {
+        var run = new Run(bank, model);
         AiServices<?> services = (mode == Mode.SYNC)
                 ? AiServices.builder(SyncAssistant.class)
                 : AiServices.builder(FutureAssistant.class);
@@ -368,10 +375,11 @@ class ToolGuardrailCompensationTest {
 
     // ---------- failures that are not the guardrails' ----------
 
-    @Test
-    void a_callback_that_throws_before_the_guardrails_run_is_not_a_guardrail_failure() {
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void a_callback_that_throws_before_the_guardrails_run_is_not_a_guardrail_failure(Mode mode) {
         var run = run(
-                Mode.COMPLETABLE_FUTURE,
+                mode,
                 modelCalling("credit", "debit"),
                 services -> services.toolInputGuardrails(onInputOf("debit", request -> INPUT.success()))
                         .beforeToolExecution(before -> {
@@ -450,28 +458,35 @@ class ToolGuardrailCompensationTest {
         assertThat(run.toolMessagesOfRequest(1).get("debit").text()).isEqualTo("blocked");
     }
 
-    // ---------- fatal rejections (CompletableFuture mode only, see the class Javadoc) ----------
+    // ---------- fatal rejections ----------
 
     @SuppressWarnings("unchecked")
-    @Test
-    void a_fatal_output_failure_rolls_back_the_tools_of_earlier_rounds_and_the_tool_that_ran() {
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void a_fatal_output_failure_rolls_back_the_tools_of_earlier_rounds_and_the_tool_that_ran(Mode mode) {
         var run = run(
-                Mode.COMPLETABLE_FUTURE,
+                mode,
                 modelCallingInRounds(List.of("credit"), List.of("debit")),
                 services -> services.toolOutputGuardrails(onOutputOf("debit", request -> OUTPUT.fatal("poisoned"))));
 
         assertThat(run.failure).isInstanceOf(ToolOutputGuardrailException.class);
         assertThat(run.bank.log).containsExactlyInAnyOrder("credit", "debit", "uncredit", "undebit");
         // the tool whose output was rejected ran, so it is rolled back with the result it ran with
-        assertThat(run.bank.compensatedResults).containsEntry("debit", "debited");
+        assertThat(run.bank.compensatedResults)
+                .containsEntry("debit", "debited")
+                .containsEntry("credit", "credited");
+        assertThat(run.compensatedTools()).containsExactlyInAnyOrder("credit", "debit");
         assertThat(run.compensationReasons()).containsOnly(CompensationReason.TOOL_OUTPUT_GUARDRAIL_FAILED);
+        // the result of the earlier round is in the chat memory, so it is rewritten there
+        assertThat(run.toolMessagesInMemory().get("credit").text()).isEqualTo(ROLLED_BACK.formatted("credit", "debit"));
     }
 
     @SuppressWarnings("unchecked")
-    @Test
-    void a_fatal_input_failure_rolls_back_the_tools_of_earlier_rounds_but_not_the_rejected_tool() {
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void a_fatal_input_failure_rolls_back_the_tools_of_earlier_rounds_but_not_the_rejected_tool(Mode mode) {
         var run = run(
-                Mode.COMPLETABLE_FUTURE,
+                mode,
                 modelCallingInRounds(List.of("credit"), List.of("debit")),
                 services -> services.toolInputGuardrails(onInputOf("debit", request -> INPUT.fatal("attack"))));
 
@@ -479,5 +494,42 @@ class ToolGuardrailCompensationTest {
         assertThat(run.bank.log).containsExactly("credit", "uncredit");
         assertThat(run.compensatedTools()).containsExactly("credit");
         assertThat(run.compensationReasons()).containsOnly(CompensationReason.TOOL_INPUT_GUARDRAIL_FAILED);
+        assertThat(run.toolMessagesInMemory().get("credit").text()).isEqualTo(ROLLED_BACK.formatted("credit", "debit"));
+    }
+
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void a_fatal_failure_rolls_back_the_tools_of_the_same_round(Mode mode) {
+        var run = run(
+                mode,
+                modelCalling("credit", "debit"),
+                services -> services.toolInputGuardrails(onInputOf("debit", request -> INPUT.fatal("attack"))));
+
+        assertThat(run.failure).isInstanceOf(ToolInputGuardrailException.class);
+        assertThat(run.bank.log).containsExactly("credit", "uncredit");
+        assertThat(run.compensatedTools()).containsExactly("credit");
+        assertThat(run.compensationReasons()).containsOnly(CompensationReason.TOOL_INPUT_GUARDRAIL_FAILED);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void a_compensating_action_that_fails_is_attached_to_the_fatal_failure(Mode mode) {
+        var bank = new Bank();
+        bank.failingRollback = true;
+
+        var run = run(
+                mode,
+                bank,
+                modelCalling("credit", "debit"),
+                services -> services.toolInputGuardrails(onInputOf("debit", request -> INPUT.fatal("attack"))));
+
+        assertThat(run.failure)
+                .isInstanceOf(ToolInputGuardrailException.class)
+                .satisfies(failure -> assertThat(failure.getSuppressed())
+                        .singleElement()
+                        .satisfies(suppressed -> assertThat(suppressed).hasMessage("rollback failed")));
+        assertThat(run.compensatedEvents)
+                .singleElement()
+                .satisfies(event -> assertThat(event.compensationError()).hasMessage("rollback failed"));
     }
 }
