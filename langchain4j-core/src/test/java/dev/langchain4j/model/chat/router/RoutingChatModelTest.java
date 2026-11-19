@@ -7,7 +7,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static java.util.concurrent.TimeUnit.SECONDS;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -919,6 +921,50 @@ class RoutingChatModelTest {
                         .chat("Hi!", handler))
                 .isSameAs(onErrorFailure);
         assertThat(errors).singleElement().isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void should_throw_what_the_streaming_handler_on_error_throws_even_when_the_selected_model_catches_it() {
+
+        IllegalArgumentException failure = new IllegalArgumentException("unsupported parameter");
+        ChatModelListener listener = mock(ChatModelListener.class);
+        MockStreamingChatModel selected = spy(MockStreamingChatModel.thatResponds("Hi").withListeners(listener));
+        AtomicReference<Throwable> reachedTheModel = new AtomicReference<>();
+        doAnswer(invocation -> {
+                    // like a provider: it reports the failure on the calling thread and catches what onError throws
+                    StreamingChatResponseHandler handler = invocation.getArgument(1);
+                    try {
+                        handler.onError(failure);
+                    } catch (Exception e) {
+                        reachedTheModel.set(e);
+                    }
+                    return null;
+                })
+                .when(selected)
+                .doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        RuntimeException onErrorFailure = new IllegalStateException("onError failed");
+        List<Throwable> errors = new ArrayList<>();
+        StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {}
+
+            @Override
+            public void onError(Throwable error) {
+                errors.add(error);
+                throw onErrorFailure;
+            }
+        };
+        RoutingStreamingChatModel model = RoutingStreamingChatModel.builder()
+                .route("only", selected)
+                .router(request -> ChatModelRoutingResult.route("only"))
+                .defaultRoute("only")
+                .build();
+
+        assertThatThrownBy(() -> model.chat("Hi!", handler)).isSameAs(onErrorFailure);
+
+        assertThat(reachedTheModel.get()).isNull();
+        assertThat(errors).containsExactly(failure);
+        verify(listener).onError(any());
     }
 
     @Test

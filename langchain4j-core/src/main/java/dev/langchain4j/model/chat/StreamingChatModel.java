@@ -7,6 +7,7 @@ import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.CurrentInvocation;
+import dev.langchain4j.internal.StreamingChatHandlerGuard;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -22,14 +23,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.InternalFlowUtils.EMPTY_SUBSCRIPTION;
 import static dev.langchain4j.internal.InternalFlowUtils.failedPublisher;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.logIgnoredError;
-import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.logOnErrorFailure;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.notifyListenersIgnoringFailures;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -110,12 +107,7 @@ public interface StreamingChatModel {
             return;
         }
 
-        // set once the handler received the complete response or an error: core then does not report a failure again
-        AtomicBoolean handlerDone = new AtomicBoolean();
-        AtomicReference<Throwable> onErrorFailure = new AtomicReference<>();
-        // what onError throws is thrown from chat(...) only on the calling thread, before chat(...) returns
-        Thread callingThread = Thread.currentThread();
-        AtomicBoolean chatReturned = new AtomicBoolean();
+        StreamingChatHandlerGuard guard = new StreamingChatHandlerGuard(handler);
         StreamingChatResponseHandler observingHandler = new StreamingChatResponseHandler() {
 
             @Override
@@ -161,45 +153,23 @@ public interface StreamingChatModel {
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
                 onResponse(completeResponse, finalChatRequest, modelProvider, attributes, invocationId, listeners);
-                handler.onCompleteResponse(completeResponse);
-                handlerDone.set(true);
+                guard.onCompleteResponse(completeResponse);
             }
 
             @Override
             public void onError(Throwable error) {
-                handlerDone.set(true);
                 notifyListenersIgnoringFailures(() -> ChatModelListenerUtils.onError(
                         error, finalChatRequest, modelProvider, attributes, invocationId, listeners));
-                try {
-                    handler.onError(error);
-                } catch (Throwable onErrorThrew) {
-                    if (Thread.currentThread() != callingThread || chatReturned.get()) {
-                        restoreInterruptIfInterrupted(onErrorThrew);
-                        logOnErrorFailure(onErrorThrew);
-                        return;
-                    }
-                    onErrorFailure.set(onErrorThrew);
-                    throw onErrorThrew;
-                }
+                guard.onError(error);
             }
         };
 
-        try {
-            onRequest(finalChatRequest, modelProvider, attributes, invocationId, listeners);
-            doChat(finalChatRequest, observingHandler);
-        } catch (Throwable error) {
-            restoreInterruptIfInterrupted(error);
-            if (error == onErrorFailure.get()) {
-                throw error; // the handler's onError threw while the failure was reported on the calling thread
-            }
-            if (handlerDone.get()) {
-                logIgnoredError(error);
-                return;
-            }
-            observingHandler.onError(error);
-        } finally {
-            chatReturned.set(true);
-        }
+        guard.run(
+                () -> {
+                    onRequest(finalChatRequest, modelProvider, attributes, invocationId, listeners);
+                    doChat(finalChatRequest, observingHandler);
+                },
+                observingHandler);
     }
 
     /**
@@ -209,9 +179,9 @@ public interface StreamingChatModel {
      * An implementation may throw a failure that it finds before the request is sent, for example an invalid request:
      * {@link #chat(ChatRequest, StreamingChatResponseHandler)} then reports it to
      * {@link StreamingChatResponseHandler#onError(Throwable)}. Every later failure goes to {@code handler.onError(...)}.
-     * Whatever {@code handler.onError(...)} throws should not be caught or logged by the implementation: core decides
-     * what to do with it. It throws it from {@code chat(...)} when it happens on the calling thread before
-     * {@code chat(...)} returns, and logs it otherwise, so it never reaches the implementation on another thread.
+     * An implementation does not need to care about what the user's {@code onError} throws: it never reaches the
+     * implementation. Core throws it from {@code chat(...)} when it happens on the calling thread before
+     * {@code chat(...)} returns, and logs it otherwise.
      *
      * @param chatRequest the request, with the default request parameters of this model applied
      * @param handler     the handler to send the streamed response and failures to

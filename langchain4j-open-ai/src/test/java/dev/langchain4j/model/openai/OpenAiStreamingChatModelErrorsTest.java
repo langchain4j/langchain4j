@@ -1,8 +1,10 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponse;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.HttpException;
@@ -12,6 +14,7 @@ import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.exception.RateLimitException;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.http.client.jdk.JdkHttpClientBuilder;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -23,6 +26,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 import java.util.stream.Stream;
 import me.kpavlov.aimocks.openai.MockOpenai;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -158,6 +162,22 @@ class OpenAiStreamingChatModelErrorsTest {
                         ((HttpException) ex.getCause()).statusCode())
                 .as("statusCode")
                 .isEqualTo(httpStatusCode));
+    }
+
+    @Test
+    void should_throw_an_invalid_request_from_chat_with_the_shortest_lambda_handler() {
+
+        // given: the JDK HTTP client rejects the header value with a line break while it builds the request
+        StreamingChatModel model = OpenAiStreamingChatModel.builder()
+                .httpClientBuilder(new JdkHttpClientBuilder())
+                .baseUrl("http://localhost:1/v1")
+                .apiKey("sk-test\n")
+                .modelName("gpt-5.4-mini")
+                .build();
+
+        // when-then: the handler has no error handler of its own, so its onError throws, and chat(...) throws that
+        assertThatThrownBy(() -> model.chat("hi", onPartialResponse(token -> {})))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 
     private record ErrorHandler(CompletableFuture<Throwable> futureError) implements StreamingChatResponseHandler {

@@ -263,7 +263,7 @@ class StreamingChatModelTest implements WithAssertions {
         MockStreamingChatModel model = spy(
                 MockStreamingChatModel.thatResponds("Hi").withListeners(recordingListener(listenerCalls)));
         doAnswer(invocation -> {
-                    // the handler's onError throws, so the exception escapes doChat
+                    // a model that reports the failure on the calling thread, before chat(...) returns
                     invocation.getArgument(1, StreamingChatResponseHandler.class).onError(failure);
                     return null;
                 })
@@ -322,6 +322,56 @@ class StreamingChatModelTest implements WithAssertions {
 
         assertThat(handler.errors).containsExactly(failure);
         assertThat(listenerCalls).containsExactly("onRequest", "onError");
+    }
+
+    @Test
+    void handler_chat_should_throw_what_on_error_throws_even_when_the_model_catches_it() {
+
+        List<String> listenerCalls = new ArrayList<>();
+        RuntimeException failure = new IllegalStateException("invalid header value");
+        MockStreamingChatModel model = spy(
+                MockStreamingChatModel.thatResponds("Hi").withListeners(recordingListener(listenerCalls)));
+        AtomicReference<Throwable> reachedTheModel = new AtomicReference<>();
+        doAnswer(invocation -> {
+                    // like a provider: it reports the failure on the calling thread and catches what onError throws
+                    StreamingChatResponseHandler handler = invocation.getArgument(1);
+                    try {
+                        handler.onError(failure);
+                    } catch (Exception e) {
+                        reachedTheModel.set(e);
+                    }
+                    return null;
+                })
+                .when(model)
+                .doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        RuntimeException onErrorFailure = new IllegalStateException("onError failed");
+        ThrowingOnErrorHandler handler = new ThrowingOnErrorHandler(onErrorFailure);
+
+        assertThatThrownBy(() -> model.chat("Hello", handler)).isSameAs(onErrorFailure);
+
+        assertThat(reachedTheModel.get()).isNull();
+        assertThat(handler.errors).containsExactly(failure);
+        assertThat(listenerCalls).containsExactly("onRequest", "onError");
+    }
+
+    @Test
+    void handler_chat_should_throw_what_on_error_throws_first_and_log_a_later_failure_of_the_model() {
+
+        RuntimeException failure = new IllegalStateException("bad request");
+        MockStreamingChatModel model = spy(MockStreamingChatModel.thatResponds("Hi"));
+        doAnswer(invocation -> {
+                    InternalStreamingChatResponseHandlerUtils.withLoggingExceptions(
+                            () -> invocation.getArgument(1, StreamingChatResponseHandler.class).onError(failure));
+                    throw new IllegalStateException("cleanup failed");
+                })
+                .when(model)
+                .doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        RuntimeException onErrorFailure = new IllegalStateException("onError failed");
+        ThrowingOnErrorHandler handler = new ThrowingOnErrorHandler(onErrorFailure);
+
+        assertThatThrownBy(() -> model.chat("Hello", handler)).isSameAs(onErrorFailure);
+
+        assertThat(handler.errors).containsExactly(failure);
     }
 
     @Test
