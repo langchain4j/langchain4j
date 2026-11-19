@@ -15,7 +15,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 public class AgentInvocation {
 
@@ -32,6 +34,10 @@ public class AgentInvocation {
 
     private Duration suspendedTime = Duration.ZERO;
     private volatile Instant suspendedAt;
+
+    private boolean plannerModelCalled;
+    private @Nullable TokenUsage plannerTokenUsage;
+    private @Nullable String plannerModelName;
 
     AgentInvocation(AgentRequest agentRequest) {
         this.agentRequest = agentRequest;
@@ -86,6 +92,22 @@ public class AgentInvocation {
      */
     synchronized void cancelSuspension() {
         suspendedAt = null;
+    }
+
+    /**
+     * Records one model call made by the planner of the agent during this invocation: a planner can make several,
+     * and the invocation reports the token usage of all of them, and the model name only when all the calls agree on
+     * it. An invocation suspended and then continued keeps the calls made before the suspension.
+     */
+    synchronized void addPlannerModelResponse(PlannerModelResponse plannerModelResponse) {
+        if (plannerModelCalled) {
+            plannerTokenUsage = TokenUsage.sum(plannerTokenUsage, plannerModelResponse.tokenUsage());
+            plannerModelName = Objects.equals(plannerModelName, plannerModelResponse.modelName()) ? plannerModelName : null;
+        } else {
+            plannerModelCalled = true;
+            plannerTokenUsage = plannerModelResponse.tokenUsage();
+            plannerModelName = plannerModelResponse.modelName();
+        }
     }
 
     void addNestedInvocation(AgentInvocation agentInvocation) {
@@ -173,18 +195,34 @@ public class AgentInvocation {
         return agentResponse.output();
     }
 
+    /**
+     * Returns the total number of tokens of {@link #tokenUsage()}, or zero if it is empty. For an agent whose planner
+     * calls a model itself, like a supervisor, it counts only those calls, and not the tokens of its subagents.
+     */
     public int totalTokenCount() {
         return tokenUsage().map(TokenUsage::totalTokenCount).orElse(0);
     }
 
     /**
-     * Returns the token usage of the last LLM call of an AI agent, or of the decision call of a decision agent. It is
-     * empty if the agent called no model, like a workflow or a non-AI agent, if it was skipped, or if the provider
-     * didn't report the token usage.
+     * Returns the token usage of an AI agent, which is the total of all its LLM calls when it calls tools, or of the
+     * decision call of a decision agent. For an agent whose planner calls a model itself, like a supervisor or a
+     * decision router, it is the total of those calls, without the token usage of its subagents, which is reported
+     * by their own invocations. It is empty if the agent called no model, like a workflow or a non-AI agent, if it
+     * was skipped, or if the provider didn't report the token usage.
+     * <p>
+     * This method can be called at any time. For an agent whose planner calls a model itself it returns what those
+     * calls consumed so far, also while the invocation is in progress or suspended, and after it failed. The token
+     * usage of an AI agent or of a decision agent is only known when its invocation completes, so it is empty until
+     * then, and it stays empty when the invocation fails.
      */
     public Optional<TokenUsage> tokenUsage() {
+        synchronized (this) {
+            if (plannerModelCalled) {
+                return Optional.ofNullable(plannerTokenUsage);
+            }
+        }
         if (!done()) {
-            throw new IllegalStateException("Agent call is not finished yet");
+            return Optional.empty();
         }
         Optional<TokenUsage> chatTokenUsage = Optional.ofNullable(agentResponse.chatResponse())
                 .map(ChatResponse::metadata)
@@ -197,11 +235,22 @@ public class AgentInvocation {
      * decision agent, as reported by the provider in the response metadata. It is empty if the agent called no
      * model, like a workflow or a non-AI agent, if it was skipped, if the provider didn't report the model name, or
      * if the LLM calls of an AI agent (for example, the calls of a tool loop) were answered by different models,
-     * since {@link #tokenUsage()} is the total of all those calls.
+     * since {@link #tokenUsage()} is the total of all those calls. In the same way, for an agent whose planner calls
+     * a model itself, like a supervisor or a decision router, it is the name of the model that answered all those
+     * calls, and it is empty if they were answered by different models.
+     * <p>
+     * Like {@link #tokenUsage()}, this method can be called at any time: it tells the model of the calls made so far
+     * by the planner of the agent, and it is empty for an AI agent or a decision agent whose invocation didn't
+     * complete.
      */
     public Optional<String> modelName() {
+        synchronized (this) {
+            if (plannerModelCalled) {
+                return Optional.ofNullable(plannerModelName);
+            }
+        }
         if (!done()) {
-            throw new IllegalStateException("Agent call is not finished yet");
+            return Optional.empty();
         }
         Optional<String> chatModelName = Optional.ofNullable(agentResponse.chatResponse())
                 .map(ChatResponse::metadata)
@@ -253,7 +302,7 @@ public class AgentInvocation {
                 ", finishTime=" + finishTime() +
                 ", duration=" + (done() ? duration().toMillis() + " ms" : "in progress") +
                 (suspendedDuration().isZero() ? "" : ", suspended=" + suspendedDuration().toMillis() + " ms") +
-                ", tokens=" + (done() ? totalTokenCount() : "in progress") +
+                ", tokens=" + (done() || totalTokenCount() > 0 ? totalTokenCount() : "in progress") +
                 ", inputs=" + shortToString(inputs()) +
                 ", output=" + (done() ? shortToString(output()) : "in progress") +
                 '}');

@@ -407,6 +407,7 @@ public class DecisionSchedulerPlanner implements Planner {
         }
         candidates.forEach(candidate -> request.question(candidate.key(), usefulnessQuestion(candidate.agent())));
         DecisionResponse response = decisionModel.decide(request.build());
+        planningContext.reportDecisionModelResponse(response);
 
         Double goalProbability =
                 askGoal ? response.yesNo(GOAL_QUESTION_NAME).probability() : null;

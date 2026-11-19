@@ -62,6 +62,7 @@ import java.util.Set;
 import java.util.StringTokenizer;
 import java.util.UUID;
 import java.util.function.BiFunction;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import org.hibernate.SessionFactory;
@@ -108,6 +109,7 @@ import org.hibernate.relational.SchemaManager;
 import org.hibernate.tool.schema.Action;
 import org.hibernate.tool.schema.SourceType;
 import org.hibernate.type.descriptor.java.JavaType;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Hibernate ORM EmbeddingStore Implementation
@@ -1891,6 +1893,12 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
     }
 
     public static class DynamicBuilder extends BaseBuilder<EmbeddingEntity> {
+        private static final Pattern JDBC_URL_ORACLE_PASSWORD =
+                Pattern.compile("(?i)(^jdbc:oracle:[^:]+:[^/@:]*/)[^/]*@");
+        private static final Pattern JDBC_URL_USER_INFO_PASSWORD = Pattern.compile("(//[^/?#;@:]*:)[^/?#;]*@");
+        private static final Pattern JDBC_URL_SECRET_PROPERTY =
+                Pattern.compile("(?i)([\\w.-]*(?:pass|pwd|secret|token|credential)[\\w.-]*\\s*=)(\\{[^}]*}|[^&;),]*)");
+
         private String host;
         private int port;
         private String database;
@@ -2002,7 +2010,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                 databaseKind =
                         this.databaseKind != null ? this.databaseKind : DatabaseKind.determineDatabaseKind(jdbcUrl);
                 if (databaseKind == null) {
-                    throw new IllegalArgumentException("Can't determine DatabaseKind for JDBC URL: " + jdbcUrl);
+                    throw new IllegalArgumentException("Can't determine DatabaseKind for JDBC URL: " + maskJdbcUrl(jdbcUrl));
                 }
             }
             final Configuration cfg = createConfiguration(databaseKind);
@@ -2027,7 +2035,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
         }
 
         public String toString() {
-            return "HibernateEmbeddingStore.DynamicBuilder(jdbcUrl=" + this.jdbcUrl
+            return "HibernateEmbeddingStore.DynamicBuilder(jdbcUrl=" + maskJdbcUrl(this.jdbcUrl)
                     + ", databaseKind=" + this.databaseKind
                     + ", user=" + this.user
                     + ", password=" + (this.password == null ? null : "********")
@@ -2041,6 +2049,15 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
                     + ", distanceFunction=" + this.distanceFunction
                     + ", queryHints=" + this.queryHints
                     + ")";
+        }
+
+        private static @Nullable String maskJdbcUrl(@Nullable String jdbcUrl) {
+            if (jdbcUrl == null) {
+                return null;
+            }
+            String masked = JDBC_URL_ORACLE_PASSWORD.matcher(jdbcUrl).replaceFirst("$1***@");
+            masked = JDBC_URL_USER_INFO_PASSWORD.matcher(masked).replaceAll("$1***@");
+            return JDBC_URL_SECRET_PROPERTY.matcher(masked).replaceAll("$1***");
         }
     }
 

@@ -33,7 +33,7 @@ import dev.langchain4j.agentic.supervisor.SupervisorAgent;
 import dev.langchain4j.agentic.supervisor.SupervisorResponseStrategy;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.service.V;
 import java.io.IOException;
 import java.io.InputStream;
@@ -207,17 +207,17 @@ class A2ALazyAgentCardTest {
     }
 
     /** A planner model that immediately reports the task as done. */
-    private static ChatModelMock donePlannerModel() {
-        return ChatModelMock.thatAlwaysResponds("""
+    private static MockChatModel donePlannerModel() {
+        return MockChatModel.thatResponds("""
                 {"agentName": "done", "arguments": {"response": "nothing to fix"}}
-                """);
+                """).thenRepeats();
     }
 
-    private static String systemMessage(ChatModelMock plannerModel) {
+    private static String systemMessage(MockChatModel plannerModel) {
         return systemMessage(plannerModel, 0);
     }
 
-    private static String systemMessage(ChatModelMock plannerModel, int request) {
+    private static String systemMessage(MockChatModel plannerModel, int request) {
         return plannerModel.requests().get(request).messages().stream()
                 .filter(SystemMessage.class::isInstance)
                 .map(message -> ((SystemMessage) message).text())
@@ -427,6 +427,21 @@ class A2ALazyAgentCardTest {
                 .isInstanceOf(AgenticSystemConfigurationException.class)
                 .hasMessageContaining("localhost:8080")
                 .hasMessageContaining("http or https");
+    }
+
+    @Test
+    void an_invalid_a2a_server_url_is_reported_without_its_credentials() {
+        assertThatThrownBy(() -> AgenticServices.a2aBuilder(
+                        "ftp://user:secret-password@remote-host:21/agents?token=secret-token", Fixer.class))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("'ftp://remote-host:21/agents'")
+                .hasMessageContaining("http or https")
+                .hasMessageNotContaining("secret");
+        assertThatThrownBy(() -> AgenticServices.a2aBuilder(
+                        "http://user:secret-password@remote-host:8080/my agents?token=secret-token", Fixer.class))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("'http://remote-host:8080/my agents'")
+                .hasMessageNotContaining("secret");
     }
 
     @Test
@@ -972,7 +987,7 @@ class A2ALazyAgentCardTest {
         Fixer fixer = AgenticServices.a2aBuilder("http://remote-host:8080", Fixer.class)
                 .outputKey("fix")
                 .build();
-        ChatModelMock plannerModel = donePlannerModel();
+        MockChatModel plannerModel = donePlannerModel();
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel)
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
@@ -993,7 +1008,7 @@ class A2ALazyAgentCardTest {
                 .description("Applies a fix to the analyzed problem")
                 .outputKey("fix")
                 .build();
-        ChatModelMock plannerModel = donePlannerModel();
+        MockChatModel plannerModel = donePlannerModel();
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel)
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)
@@ -1018,7 +1033,7 @@ class A2ALazyAgentCardTest {
                 .description("Analyzes the problem")
                 .outputKey("analysis")
                 .build();
-        ChatModelMock plannerModel = donePlannerModel();
+        MockChatModel plannerModel = donePlannerModel();
         SupervisorAgent supervisor = AgenticServices.supervisorBuilder()
                 .chatModel(plannerModel)
                 .responseStrategy(SupervisorResponseStrategy.SUMMARY)

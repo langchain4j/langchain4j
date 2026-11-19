@@ -445,7 +445,7 @@ LangChain4j then runs offloaded work on the application's task executor, whose p
 `spring.task.execution.*`. It is off by default because the setting is process-wide, not scoped to one application
 context.
 
-Starting with version 1.23.0-beta33 of the Spring Boot starters, the caller's context is captured as well (see
+Starting with version 1.24.0-beta34 of the Spring Boot starters, the caller's context is captured as well (see
 [above](#controlling-the-executor-and-propagating-context)), so that tracing spans, MDC and security context follow
 the work LangChain4j offloads:
 

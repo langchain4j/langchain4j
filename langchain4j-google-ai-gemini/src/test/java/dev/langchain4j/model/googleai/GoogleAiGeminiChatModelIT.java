@@ -50,6 +50,9 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.output.JsonSchemas;
 import java.awt.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -72,8 +75,10 @@ class GoogleAiGeminiChatModelIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
 
-    private static final String CAT_IMAGE_URL =
-            "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
+    private static final String CAT_IMAGE_RESOURCE = "/images/cat.jpg";
+
+    private static final String CAT_IMAGE_URL = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/"
+            + "langchain4j-core/src/test/resources/images/cat.jpg";
 
     @Test
     void should_answer_in_json() {
@@ -775,11 +780,8 @@ class GoogleAiGeminiChatModelIT {
                 .logResponses(true)
                 .build();
 
-        byte[] imageBytes = readBytes(CAT_IMAGE_URL);
-        String base64Data = Base64.getEncoder().encodeToString(imageBytes);
-
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(base64Data, "image/png"),
+                catImageContent(),
                 TextContent.from("What animal is shown in this image? Reply with just the animal name."));
 
         // when
@@ -803,11 +805,8 @@ class GoogleAiGeminiChatModelIT {
                 .logResponses(true)
                 .build();
 
-        byte[] imageBytes = readBytes(CAT_IMAGE_URL);
-        String base64Data = Base64.getEncoder().encodeToString(imageBytes);
-
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(base64Data, "image/png"),
+                catImageContent(),
                 TextContent.from("What animal is shown in this image? Reply with just the animal name."));
 
         // when
@@ -831,11 +830,8 @@ class GoogleAiGeminiChatModelIT {
                 .logResponses(true)
                 .build();
 
-        byte[] imageBytes = readBytes(CAT_IMAGE_URL);
-        String base64Data = Base64.getEncoder().encodeToString(imageBytes);
-
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(base64Data, "image/png"),
+                catImageContent(),
                 TextContent.from("What animal is shown in this image? Reply with just the animal name."));
 
         // when
@@ -859,11 +855,8 @@ class GoogleAiGeminiChatModelIT {
                 .logResponses(true)
                 .build();
 
-        byte[] imageBytes = readBytes(CAT_IMAGE_URL);
-        String base64Data = Base64.getEncoder().encodeToString(imageBytes);
-
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(base64Data, "image/png"),
+                catImageContent(),
                 TextContent.from("What animal is shown in this image? Reply with just the animal name."));
 
         // when
@@ -902,5 +895,14 @@ class GoogleAiGeminiChatModelIT {
         assertThat(response.aiMessage()).isNotNull();
         assertThat(response.aiMessage().text()).isNotNull();
         assertThat(response.aiMessage().text()).containsIgnoringCase("example");
+    }
+
+    private static ImageContent catImageContent() {
+        try (InputStream inputStream = GoogleAiGeminiChatModelIT.class.getResourceAsStream(CAT_IMAGE_RESOURCE)) {
+            String base64Data = Base64.getEncoder().encodeToString(inputStream.readAllBytes());
+            return ImageContent.from(base64Data, "image/jpeg");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }

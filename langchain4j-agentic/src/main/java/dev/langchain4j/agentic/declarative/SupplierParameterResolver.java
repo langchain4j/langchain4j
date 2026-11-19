@@ -19,7 +19,7 @@ import java.lang.reflect.Parameter;
  * {@link ToolsSupplier}, {@link ToolSearchStrategySupplier}, {@link AgentListenerSupplier},
  * {@link SystemMessageProviderSupplier},
  * {@link UserMessageProviderSupplier}, {@link McpClientSupplier}, {@link PlannerSupplier},
- * {@link A2AServerUrlSupplier} and {@link ParallelExecutor}; to the methods annotated with
+ * {@link A2AServerUrlSupplier}, {@link A2AAgentCardHeaders} and {@link ParallelExecutor}; to the methods annotated with
  * {@link ExitCondition}, {@link ActivationCondition}, {@link Output}, {@link BeforeCall},
  * {@link ErrorHandler}, {@link SupervisorRequest} and {@link A2AClientCustomizer}; to the
  * {@link Agent} methods of non-AI agents, static or on an instance, and to the
@@ -65,6 +65,8 @@ public interface SupplierParameterResolver {
      * is created, for the suppliers of fixed components like tools or chat memory, and at each invocation for the
      * methods depending on the agent invocation, like conditions or non-AI agents. In the latter case it can be
      * called on the thread executing the agent.
+     * Parameters of {@link A2AAgentCardHeaders} and {@link A2AClientCustomizer} methods are resolved once when the
+     * agent is built, even though those methods are invoked later.
      */
     Object resolve(Context context);
 }

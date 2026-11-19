@@ -7,6 +7,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
@@ -14,10 +15,13 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 
 /**
@@ -208,8 +212,28 @@ public class DecisionModelInputUtils {
      * @throws IllegalArgumentException    if nothing is left to send.
      */
     public static Transcript transcript(List<ChatMessage> messages, String provider) {
+        return transcript(messages, provider, Set.of(ContentType.IMAGE));
+    }
+
+    /**
+     * A conversation as a transcript: one map per message, with the images, audio, video and PDF files of the
+     * conversation referred to by their kind and their position among the contents of that kind, for example
+     * {@code [image 1]}, {@code [audio 1]}, {@code [video 1]} or {@code [pdf 2]}. Decision models without native
+     * support for conversations send it as JSON, followed by the contents it refers to. The thinking of assistant
+     * messages is left out, and assistant messages with neither text nor tool calls are skipped.
+     *
+     * @param provider          the name of the decision model, used in error messages.
+     * @param supportedContents the kinds of contents other than text that the decision model can take, for example
+     *                          {@link ContentType#IMAGE}.
+     * @throws UnsupportedFeatureException if a message is not supported, or a content is neither text nor of a
+     *                                     supported kind.
+     * @throws IllegalArgumentException    if nothing is left to send.
+     */
+    public static Transcript transcript(
+            List<ChatMessage> messages, String provider, Set<ContentType> supportedContents) {
         List<Map<String, Object>> entries = new ArrayList<>();
-        List<ImageContent> images = new ArrayList<>();
+        Map<String, Content> media = new LinkedHashMap<>();
+        Map<ContentType, Integer> mediaCounts = new EnumMap<>(ContentType.class);
         for (ChatMessage message : messages) {
             Map<String, Object> entry = new LinkedHashMap<>();
             if (message instanceof SystemMessage systemMessage) {
@@ -220,7 +244,9 @@ public class DecisionModelInputUtils {
                 if (userMessage.name() != null) {
                     entry.put("name", userMessage.name());
                 }
-                entry.put("text", transcriptText(userMessage.contents(), images, provider));
+                entry.put(
+                        "text",
+                        transcriptText(userMessage.contents(), media, mediaCounts, provider, supportedContents));
             } else if (message instanceof AiMessage aiMessage) {
                 if ((aiMessage.text() == null || aiMessage.text().isEmpty()) && !aiMessage.hasToolExecutionRequests()) {
                     continue;
@@ -244,7 +270,7 @@ public class DecisionModelInputUtils {
                 entry.put("role", "tool");
                 putIfNotNull(entry, "tool_call_id", result.id());
                 entry.put("name", result.toolName());
-                entry.put("text", transcriptText(result.contents(), images, provider));
+                entry.put("text", transcriptText(result.contents(), media, mediaCounts, provider, supportedContents));
                 if (Boolean.TRUE.equals(result.isError())) {
                     entry.put("is_error", true);
                 }
@@ -259,7 +285,7 @@ public class DecisionModelInputUtils {
             throw new IllegalArgumentException("The conversation has nothing to send: AiMessages without text and tool "
                     + "execution requests are skipped");
         }
-        return new Transcript(entries, images);
+        return new Transcript(entries, media);
     }
 
     /**
@@ -275,39 +301,84 @@ public class DecisionModelInputUtils {
         }
     }
 
-    private static String transcriptText(List<Content> contents, List<ImageContent> images, String provider) {
+    private static String transcriptText(
+            List<Content> contents,
+            Map<String, Content> media,
+            Map<ContentType, Integer> mediaCounts,
+            String provider,
+            Set<ContentType> supportedContents) {
         List<String> parts = new ArrayList<>();
         for (Content content : contents) {
             if (content instanceof TextContent textContent) {
                 parts.add(textContent.text());
-            } else if (content instanceof ImageContent image) {
-                images.add(image);
-                parts.add("[image " + images.size() + "]");
-            } else {
-                throw new UnsupportedFeatureException(provider
-                        + " supports only text and images in a conversation, but it contains " + content.type());
+                continue;
             }
+            ContentType kind = content.type();
+            if (kind == null || !supportedContents.contains(kind) || !kind.getContentClass().isInstance(content)) {
+                throw new UnsupportedFeatureException(provider + " supports only " + describe(supportedContents)
+                        + " in a conversation, but it contains " + content.type());
+            }
+            int position = mediaCounts.merge(kind, 1, Integer::sum);
+            String marker = "[" + kind.name().toLowerCase(Locale.ROOT) + " " + position + "]";
+            media.put(marker, content);
+            parts.add(marker);
         }
         return String.join("\n", parts);
     }
 
+    private static String describe(Set<ContentType> supportedContents) {
+        List<String> kinds = new ArrayList<>();
+        kinds.add("text");
+        for (ContentType kind : ContentType.values()) {
+            if (kind != ContentType.TEXT && supportedContents.contains(kind)) {
+                kinds.add(
+                        switch (kind) {
+                            case IMAGE -> "images";
+                            case PDF -> "PDF files";
+                            default -> kind.name().toLowerCase(Locale.ROOT);
+                        });
+            }
+        }
+        if (kinds.size() == 1) {
+            return "text";
+        }
+        return String.join(", ", kinds.subList(0, kinds.size() - 1)) + " and " + kinds.get(kinds.size() - 1);
+    }
+
     /**
-     * A conversation as one map per message, and the images it refers to, in order.
+     * A conversation as one map per message, and the contents other than text it refers to, in order.
      */
     public static final class Transcript {
 
         private final List<Map<String, Object>> messages;
+        private final Map<String, Content> media;
         private final List<ImageContent> images;
 
-        Transcript(List<Map<String, Object>> messages, List<ImageContent> images) {
+        Transcript(List<Map<String, Object>> messages, Map<String, Content> media) {
             this.messages = List.copyOf(messages);
-            this.images = List.copyOf(images);
+            this.media = Collections.unmodifiableMap(new LinkedHashMap<>(media));
+            this.images = media.values().stream()
+                    .filter(ImageContent.class::isInstance)
+                    .map(ImageContent.class::cast)
+                    .toList();
         }
 
         public List<Map<String, Object>> messages() {
             return messages;
         }
 
+        /**
+         * The images, audio, video and PDF files the transcript refers to, keyed by the marker that refers to them,
+         * such as {@code [image 1]} or {@code [pdf 1]}, in the order they appear in the conversation.
+         */
+        public Map<String, Content> media() {
+            return media;
+        }
+
+        /**
+         * The images the transcript refers to, in order: the image referred to as {@code [image n]} is at index
+         * {@code n - 1}.
+         */
         public List<ImageContent> images() {
             return images;
         }

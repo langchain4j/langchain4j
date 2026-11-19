@@ -1,9 +1,9 @@
 package dev.langchain4j.agentic.a2a;
 
+import static dev.langchain4j.internal.SecretMasking.withoutCredentials;
+
 import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.internal.LazyResolution;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 
@@ -50,21 +50,6 @@ public class A2AAgentCardException extends AgentUnavailableException {
                         + LazyResolution.describe(timeout),
                 cause);
         this.a2aServerUrl = a2aServerUrl;
-    }
-
-    private static String withoutCredentials(String url) {
-        if (url == null) {
-            return null;
-        }
-        try {
-            URI uri = new URI(url);
-            if (uri.getHost() == null) {
-                return "a malformed URL";
-            }
-            return new URI(uri.getScheme(), null, uri.getHost(), uri.getPort(), uri.getPath(), null, null).toString();
-        } catch (URISyntaxException e) {
-            return "a malformed URL";
-        }
     }
 
     /**

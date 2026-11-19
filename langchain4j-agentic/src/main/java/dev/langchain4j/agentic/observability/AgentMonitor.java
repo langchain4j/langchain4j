@@ -239,6 +239,15 @@ public class AgentMonitor implements AgentListener {
     }
 
     @Override
+    public void onPlannerModelResponse(PlannerModelResponse plannerModelResponse) {
+        Object memoryId = plannerModelResponse.agenticScope().memoryId();
+        MonitoredExecution execution = ongoingExecutions.get(memoryId);
+        if (execution != null) {
+            execution.onPlannerModelResponse(plannerModelResponse);
+        }
+    }
+
+    @Override
     public boolean inheritedBySubagents() {
         return true;
     }

@@ -24,6 +24,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.agent.DecisionAgentBuilder;
 import dev.langchain4j.agentic.agent.UntypedAgentBuilder;
+import dev.langchain4j.agentic.declarative.A2AAgentCardHeaders;
 import dev.langchain4j.agentic.declarative.A2AClientAgent;
 import dev.langchain4j.agentic.declarative.A2AClientCustomizer;
 import dev.langchain4j.agentic.declarative.A2AServerUrlSupplier;
@@ -88,6 +89,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.function.Consumer;
@@ -351,20 +353,40 @@ public class AgenticServices {
         Class<T> agentServiceClass();
 
         /**
-         * The builder of the AI agent being created, or {@code null} when it is a decision agent.
+         * The builder of the AI agent being created, or {@code null} when it is another kind of agent.
          */
         AgentBuilder<T, ?> agentBuilder();
 
         /**
-         * The builder of the decision agent being created, or {@code null} when it is an AI agent.
+         * The builder of the decision agent being created, or {@code null} when it is another kind of agent.
          */
         default DecisionAgentBuilder<T> decisionAgentBuilder() {
+            return null;
+        }
+
+        /**
+         * The builder of the agent being created when it orchestrates subagents through a planner, like a sequence
+         * or any other workflow, a supervisor or a planner agent, or {@code null} when it is another kind of agent.
+         */
+        default AgenticService<?, T> agenticService() {
             return null;
         }
     }
 
     public record DefaultDeclarativeAgentCreationContext<T>(Class<T> agentServiceClass, AgentBuilder<T, ?> agentBuilder)
             implements DeclarativeAgentCreationContext<T> {}
+
+    /**
+     * The creation context of an agent orchestrating subagents through a planner.
+     */
+    private record AgenticServiceCreationContext<T>(Class<T> agentServiceClass, AgenticService<?, T> agenticService)
+            implements DeclarativeAgentCreationContext<T> {
+
+        @Override
+        public AgentBuilder<T, ?> agentBuilder() {
+            return null;
+        }
+    }
 
     @Internal
     public static final class DefaultDeclarativeDecisionAgentCreationContext<T>
@@ -398,21 +420,30 @@ public class AgenticServices {
     /**
      * The hooks through which an integration takes part in the creation of a declarative agentic system.
      * <p>
-     * The {@code configurator} is called for every agent of the system, AI agents and decision agents alike, with
-     * a {@link DeclarativeAgentCreationContext}. For an AI agent its {@code agentBuilder()} is set and its
-     * {@code decisionAgentBuilder()} is {@code null}, for a decision agent it is the other way round, so a
-     * configurator must check which builder it received before using it. The {@code agentInstanceFactory} is
-     * applied to both kinds of agents.
+     * The {@code configurator} is called for every AI agent and decision agent of the system, and for every agent
+     * orchestrating subagents through a planner: a sequence, a loop, a conditional, a parallel or a parallel mapper
+     * agent, a supervisor and a planner agent. It is called with a {@link DeclarativeAgentCreationContext}, after the
+     * declarative configuration of the agent has been applied and before the agent is built. The context provides
+     * the builder of the agent through one of three methods, and the other two return {@code null}:
+     * {@code agentBuilder()} for an AI agent, {@code decisionAgentBuilder()} for a decision agent and
+     * {@code agenticService()} for an agent orchestrating subagents. So a configurator must check which builder it
+     * received before using it, and do nothing with a context providing none of the builders it knows, since other
+     * kinds of agents can be added to these. The {@code agentInstanceFactory} is applied to the same agents.
      * <p>
-     * The {@code helperObjectsResolver} is called with the type of every agent of the system, the root agent and
-     * each nested agent, and returns its <em>helper objects</em>: the objects whose instance methods, annotated with
-     * the declarative annotations like {@code @ExitCondition} or {@code @ChatModelSupplier}, configure the agent
+     * It is how an integration registers something on every such agent, like an {@code AgentListener}: a listener
+     * is notified of the events of the agent it is registered on, and of the agents below it when it is inherited,
+     * but never of the events of the agents containing it, like the model calls that a supervisor makes to choose
+     * its subagents.
+     * <p>
+     * The {@code helperObjectsResolver} is called with the type of every agent that the system builds, the root agent
+     * and each nested agent, and returns its <em>helper objects</em>: the objects whose instance methods, annotated
+     * with the declarative annotations like {@code @ExitCondition} or {@code @ChatModelSupplier}, configure the agent
      * instead of, or next to, the static methods of the agent type. It can return {@code null} or an empty list for
      * an agent without helper objects. It is how a dependency injection container provides the helpers of an agent
      * as methods of a managed bean, typically an instance of the agent type itself.
      * <p>
-     * The resolver is called once for each agent, when the agentic system is built. The returned objects are then
-     * shared by all the invocations of the agent, also by the ones running at the same time, so they must be
+     * The {@code helperObjectsResolver} is called once for each agent, when the agentic system is built.
+     * The returned objects are then shared by all the invocations of the agent, also by the ones running at the same time, so they must be
      * thread-safe, or be proxies finding the current instance at each call, like the client proxies of the
      * normal-scoped beans of a CDI container. Their annotated methods are found and invoked through reflection, on the
      * class of each object, its superclasses and its interfaces. They can have any visibility but private, and cannot
@@ -421,6 +452,17 @@ public class AgenticServices {
      * final class. A helper method declared by the agent type itself that is
      * not static needs one of the helper objects to be invoked on, an instance of its declaring class, typically the
      * agent bean: the agentic system fails to build otherwise, instead of skipping the helper silently.
+     * <p>
+     * The {@code subAgentResolver} is called with each type listed among the subagents of a declarative agent, and
+     * returns the subagent to use for it, or {@code null} to let the system build it from that type. When it returns
+     * an instance of a class with an {@code @Agent} or {@code @HumanInTheLoop} method, a non-AI agent or a
+     * human-in-the-loop object, the helper objects of the subagent are that instance followed by the ones that the
+     * {@code helperObjectsResolver} returns for the listed type, not for the class of the instance, which can be the
+     * proxy of a container bean. Helper objects are compared by identity: an object returned by both resolvers, like
+     * the bean of a container, counts once, while another instance of the same class is a second helper object, whose
+     * helpers conflict with the ones of the first. When the {@code subAgentResolver} returns an agent that is built
+     * already, like one created by an agent builder or by {@code AgenticServices.humanInTheLoopBuilder()}, the
+     * {@code helperObjectsResolver} is not called for it: its helpers belong to whoever built it.
      * <p>
      * Create a configurator with {@link #builder()}, setting only the hooks needed: the constructors are kept, but
      * each hook added to the record adds a positional component to them.
@@ -473,7 +515,14 @@ public class AgenticServices {
                 return List.of();
             }
             List<?> helperObjects = helperObjectsResolver.apply(agentType);
-            return helperObjects == null ? List.of() : new ArrayList<>(helperObjects);
+            if (helperObjects == null) {
+                return List.of();
+            }
+            if (helperObjects.stream().anyMatch(Objects::isNull)) {
+                throw new IllegalArgumentException(
+                        "The helperObjectsResolver returned a null helper object for the agent " + agentType.getName());
+            }
+            return new ArrayList<>(helperObjects);
         }
 
         public static final class Builder {
@@ -688,6 +737,15 @@ public class AgenticServices {
         }
     }
 
+    /**
+     * Hands the builder of an agent orchestrating subagents to the configurator, once its declarative configuration
+     * has been applied.
+     */
+    private static <T> void applyConfigurator(
+            Class<T> agentServiceClass, AgenticService<?, T> builder, AgentConfigurator agentConfigurator) {
+        agentConfigurator.configurator().accept(new AgenticServiceCreationContext<>(agentServiceClass, builder));
+    }
+
     private static void buildAgentSpecs(
             Method agentMethod,
             String name,
@@ -728,6 +786,7 @@ public class AgenticServices {
                 annotation.compensateOnError(),
                 builder);
 
+        applyConfigurator(agentServiceClass, builder, agentConfigurator);
         return builder.build();
     }
 
@@ -749,6 +808,7 @@ public class AgenticServices {
                 annotation.compensateOnError(),
                 builder);
 
+        applyConfigurator(agentServiceClass, builder, agentConfigurator);
         return builder.build();
     }
 
@@ -784,6 +844,7 @@ public class AgenticServices {
                             createSubagent(subagent, chatModel, agentConfigurator)));
         }
 
+        applyConfigurator(agentServiceClass, builder, agentConfigurator);
         return builder.build();
     }
 
@@ -804,6 +865,7 @@ public class AgenticServices {
                 annotation.compensateOnError(),
                 builder);
 
+        applyConfigurator(agentServiceClass, builder, agentConfigurator);
         return builder.build();
     }
 
@@ -825,6 +887,7 @@ public class AgenticServices {
                 annotation.compensateOnError(),
                 builder);
 
+        applyConfigurator(agentServiceClass, builder, agentConfigurator);
         return builder.build();
     }
 
@@ -845,6 +908,7 @@ public class AgenticServices {
                 annotation.compensateOnError(),
                 builder);
 
+        applyConfigurator(agentServiceClass, builder, agentConfigurator);
         return builder.build();
     }
 
@@ -874,6 +938,7 @@ public class AgenticServices {
             builder.compensateOnError(true);
         }
 
+        applyConfigurator(agentServiceClass, builder, agentConfigurator);
         return builder.build();
     }
 
@@ -889,7 +954,7 @@ public class AgenticServices {
         if (agentConfigurator.subAgentResolver() != null) {
             Object subagent = agentConfigurator.subAgentResolver().apply(subgentClass);
             if (subagent != null) {
-                return agentToExecutor(subagent);
+                return agentToExecutor(subagent, () -> agentConfigurator.helperObjects(subgentClass));
             }
         }
 
@@ -1055,6 +1120,13 @@ public class AgenticServices {
                 .map(helper -> ResolvedParameters.of(agentServiceClass, helper)
                         .checkFrameworkParameters(Object.class)
                         .resolvedNow());
+        Optional<ResolvedParameters> cardHeaders = helpers.select(A2AAgentCardHeaders.class)
+                .map(helper -> {
+                    checkReturnType(helper.method(), Map.class);
+                    return ResolvedParameters.of(agentServiceClass, helper)
+                            .checkAllResolved()
+                            .resolvedNow();
+                });
         var a2aClientBuilder = a2aBuilder(a2aServerUrl, a2aClient.tenant(), agentServiceClass);
 
         a2aClientBuilder
@@ -1072,6 +1144,7 @@ public class AgenticServices {
                     a2aActivationCondition.description(), a2aActivationCondition.predicate());
         }
         customizer.ifPresent(parameters -> a2aClientBuilder.clientCustomizer(cb -> parameters.invoke(cb)));
+        cardHeaders.ifPresent(parameters -> a2aClientBuilder.agentCardHeaders(parameters::invoke));
 
         buildListener(helpers, a2aClientBuilder::listener);
 

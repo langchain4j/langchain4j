@@ -11,6 +11,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.test.LangChain4jAssertions;
 import dev.langchain4j.test.internal.ChatMessageTexts;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.test.service.AiServiceCapture;
 import java.util.List;
 import org.assertj.core.api.AbstractObjectAssert;
@@ -30,7 +31,8 @@ import org.assertj.core.api.AbstractObjectAssert;
  *         .hasUserMessageContaining("MS-777")
  *         .hasToolSpecification("cancelBooking");
  * }</pre>
- * Any other {@link ChatRequest} can be checked too, for example one collected by a {@code ChatModelListener}. When an
+ * Any other {@link ChatRequest} can be checked too, for example the request a mock received
+ * ({@link MockChatModel#request()}) or one collected by a {@code ChatModelListener}. When an
  * assertion fails, the message lists all messages or tools of the request; each message text is cut to 1000
  * characters.
  */

@@ -272,7 +272,7 @@ public class DecisionRouterPlanner implements Planner {
             // only the agents that would run now are offered to the decision model
             List<AgentInstance> candidates =
                     routes.values().stream().filter(planningContext::isActive).toList();
-            activated = candidates.isEmpty() ? List.of() : decide(planningContext.agenticScope(), candidates);
+            activated = candidates.isEmpty() ? List.of() : decide(planningContext, candidates);
         } else {
             activated.stream()
                     .filter(key -> !routes.containsKey(key))
@@ -291,11 +291,12 @@ public class DecisionRouterPlanner implements Planner {
         return pending.isEmpty() ? done(result(planningContext.agenticScope())) : call(pending);
     }
 
-    private List<String> decide(AgenticScope agenticScope, List<AgentInstance> candidates) {
+    private List<String> decide(PlanningContext planningContext, List<AgentInstance> candidates) {
         if (activationThreshold == null && candidates.size() == 1) {
             return List.of(key(candidates.get(0)));
         }
 
+        AgenticScope agenticScope = planningContext.agenticScope();
         Map<String, Object> input = new LinkedHashMap<>();
         inputKeys.forEach(key -> input.put(key, agenticScope.readState(key)));
 
@@ -303,6 +304,7 @@ public class DecisionRouterPlanner implements Planner {
                 .inputFields(input)
                 .questions(questions(candidates))
                 .build());
+        planningContext.reportDecisionModelResponse(response);
         List<String> chosen = activationThreshold == null
                 ? List.of(response.choice(QUESTION_NAME).value())
                 : candidates.stream()

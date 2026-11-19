@@ -1,0 +1,248 @@
+---
+sidebar_position: 4
+---
+
+# Google AI Gemini
+
+- [Gemini Decisions API documentation](https://aistudio.google.com/docs/decisions-api)
+
+The Gemini Decisions API (`POST /v1beta/decisions` of the Gemini Developer API) answers yes/no, choice and scale
+questions about a text, structured, media or conversation input, with probabilities. Media can be images, audio,
+video and PDF files. `GoogleAiGeminiDecisionModel` in `langchain4j-google-ai-gemini` implements the
+[`DecisionModel`](/tutorials/decision-models) API on top of it.
+
+The same API is also available as `GoogleGenAiDecisionModel` in `langchain4j-google-genai` (see
+[Google Gen AI](/integrations/decision-models/google-genai)). `GoogleAiGeminiDecisionModel` uses LangChain4j's own HTTP
+client, which can be customized, and needs no other dependency. `GoogleGenAiDecisionModel` uses Google's official Gen
+AI SDK, for example with your own SDK `Client`. Use the module you already use for Gemini.
+
+:::note
+This integration is experimental and may change in future releases.
+:::
+
+## Maven Dependency
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-google-ai-gemini</artifactId>
+    <version>1.24.0</version>
+</dependency>
+```
+
+## API Key
+
+Get an API key for free here: https://ai.google.dev/gemini-api/docs/api-key .
+
+## Usage
+
+```java
+DecisionModel decisionModel = GoogleAiGeminiDecisionModel.builder()
+        .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+        .modelName("gemini-decision-1")
+        .build();
+
+DecisionRequest request = DecisionRequest.builder()
+        .input("Help! My payouts have been failing for 3 days and nobody answers my emails.")
+        .question("team", ChoiceQuestion.builder()
+                .text("Which team should handle this ticket?")
+                .option("billing", "Payments, payouts, invoices, refunds")
+                .option("support", "Problems using the product")
+                .option("sales", "Pricing, upgrades, new accounts")
+                .build())
+        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+        .build();
+
+DecisionResponse response = decisionModel.decide(request);
+
+response.choice("team").value();          // "billing"
+response.yesNo("urgent").probability();   // 0.95
+```
+
+The model name must be set, either on the builder or on each request (with `GoogleAiGeminiDecisionRequestParameters` or
+`DecisionRequestParameters`). An unknown model is rejected by Gemini, and the request fails with a
+`ModelNotFoundException`.
+
+The other settings are `baseUrl` (by default `https://generativelanguage.googleapis.com/v1beta`), `timeout`,
+`maxRetries`, `logRequests`, `logResponses`, `logRequestsAndResponses`, `logger`, `httpClientBuilder`,
+`customHeaders`, `customParameters` (see [Custom parameters](#custom-parameters)) and `listeners`.
+
+By default, the connect timeout is 15 seconds and the read timeout is 60 seconds. If decisions on large audio or video
+files time out, set a longer `timeout(...)`.
+
+Both `decide()` and `decideAsync()` are supported.
+
+## Input
+
+The input can be:
+- text (`input(...)`);
+- named fields (`inputFields(...)`): each field is sent as a text block labeled with its name, with the value as JSON
+  (`comment: "..."`), and each content, such as an image, right after a text block holding its name (`photo:`);
+- a list of `TextContent`s, `ImageContent`s, `AudioContent`s, `VideoContent`s and `PdfFileContent`s
+  (`inputContents(...)`);
+- a conversation (`inputMessages(...)`, see [Conversations](#conversations)).
+
+For example, a voice message together with the receipt it talks about:
+
+```java
+DecisionRequest request = DecisionRequest.builder()
+        .inputContents(List.of(
+                TextContent.from("The customer left this voice message and attached the receipt."),
+                AudioContent.from(base64Audio, "audio/mp3"),
+                PdfFileContent.from(base64Pdf, "application/pdf")))
+        .question("refund", YesNoQuestion.builder()
+                .text("Does the customer ask for a refund?")
+                .yesWhen("They ask for their money back.")
+                .build())
+        .build();
+```
+
+Images, audio, video and PDF files can be given as:
+- base64 data (or binary data on `Audio`), as above;
+- a base64 `data:` URL, such as `data:image/png;base64,...`;
+- a URL that Gemini reads itself: a publicly accessible `https` URL, or the URI of a file uploaded with the
+  [Gemini Files API](/integrations/language-models/google-ai-gemini#gemini-files-api). LangChain4j does not download
+  URLs or read local files: URLs are sent to Gemini as they are.
+
+YouTube URLs, `gs://` URIs and local `file:` URIs are not accepted. Upload such a file with the Files API, or give it
+as a public or signed `https` URL, or as base64 data. To send a local file as base64 data, create the content from its
+path, for example with `AudioContent.from(Path.of("call.mp3"), "audio/mp3")` or
+`PdfFileContent.from(Path.of("receipt.pdf"))`: the file is read when the content is created.
+
+The Files API is useful for large files:
+
+```java
+GeminiFiles files = GeminiFiles.builder()
+        .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+        .build();
+
+GeminiFile recording = files.uploadFile(Path.of("call.mp3"), "Customer call");
+
+DecisionRequest request = DecisionRequest.builder()
+        .inputContents(List.of(AudioContent.from(Audio.builder()
+                .url(recording.uri())
+                .mimeType(recording.mimeType())
+                .build())))
+        .question("angry", YesNoQuestion.from("Is the caller angry?"))
+        .build();
+```
+
+A large file, such as a video, can take a while to be processed after the upload: wait until it is active (see
+[File States](/integrations/language-models/google-ai-gemini#file-states)) before using it.
+
+The MIME type of each content is the one set on it. When it is not set, it is taken from a `data:` URL, or guessed
+from the file extension of any other URL, and a PDF file without a MIME type is sent as `application/pdf`. Set the
+MIME type when the URL has no file extension, as for Files API URIs.
+
+The detail level of an `ImageContent` is sent as its resolution: `LOW`, `MEDIUM`, `HIGH` and `ULTRA_HIGH` become
+`low`, `medium`, `high` and `ultra_high`. An image created without a detail level, or with `AUTO`, gets Gemini's
+default resolution. An image read back from JSON, for example from a persistent chat memory, keeps the detail level
+stored with it, which is `LOW` when none was chosen. To use Gemini's default resolution for such an image, create it
+with `DetailLevel.AUTO`.
+
+Gemini checks the limits of the API, such as the number of questions, options and levels, and the size of the input,
+and rejects a request that exceeds them with an `InvalidRequestException` that holds Gemini's message. See the
+[Gemini Decisions API documentation](https://aistudio.google.com/docs/decisions-api) for the limits.
+
+### Conversations
+
+A conversation (a list of `ChatMessage`s set with `inputMessages(...)`) is sent as a
+[transcript in JSON](/tutorials/decision-models#conversations), followed by the images, audio, video and PDF files of
+the conversation. The transcript refers to each of them by its kind and its position among the contents of that kind,
+for example `[image 1]`, `[audio 1]` or `[pdf 2]`, and each one is sent right after a text block with that marker
+(`[audio 1]:`). The Gemini Decisions API takes no conversation turns, so this is how it sees who said what.
+
+An `AiMessage` with neither text nor tool execution requests is skipped, and a conversation with nothing left to send
+is rejected with an `IllegalArgumentException` before calling the API. A `CustomMessage` is rejected with an
+`UnsupportedFeatureException`.
+
+## Questions and answers
+
+| `DecisionModel` | Gemini | Notes |
+|---|---|---|
+| `YesNoQuestion` | `noul` | `yesWhen` and `noWhen` are sent as Gemini's criteria |
+| `ChoiceQuestion` | `choice` | options are sent with their descriptions |
+| `ScaleQuestion` | `score` | levels are sent as text, as `label: description` when they have a description |
+
+The `yesWhen` and `noWhen` of a yes/no question are sent as Gemini's criteria, `true_description` and
+`false_description`. A criterion that is not set is not sent.
+
+Yes/no answers include the probability of "yes". Gemini always reports it between 0.01 and 0.99, so
+`isYes(threshold)` with a threshold above 0.99 never returns `true`. Choice and scale answers include the probability
+of each option or level, and a confidence.
+
+Gemini sorts the options of a choice question by their names (in UTF-8 byte order) before it evaluates them, so the
+order of the `option(...)` calls does not matter.
+
+Question names can be any text: each question is sent under a key made of its position, such as `q0`, and its answer
+is returned under its name.
+
+## Blocked input
+
+Gemini can block the whole input, for example because it goes against its safety policies. Then no question is
+answered: the answer to every question is a refusal, `response.isRefused(name)` returns `true`, and reading the
+answer, for example with `response.yesNo(name)`, throws a `ContentFilteredException`
+(see [Refusals](/tutorials/decision-models#refusals)). Such a response has token usage only when Gemini reports it.
+
+The metadata of every response is a `GoogleAiGeminiDecisionResponseMetadata`. When the input was blocked, it says why:
+
+```java
+DecisionResponse response = decisionModel.decide(request);
+
+if (response.isRefused("urgent")) {
+    GoogleAiGeminiDecisionResponseMetadata metadata = (GoogleAiGeminiDecisionResponseMetadata) response.metadata();
+    String reason = metadata.blockReason();   // for example "safety"
+    String message = metadata.blockMessage(); // Gemini's explanation, or null if it gave none
+}
+```
+
+When the input was not blocked, `blockReason()` and `blockMessage()` return `null`.
+
+## Custom parameters
+
+To send a parameter that `GoogleAiGeminiDecisionModel` does not support yet, set it with `customParameters(...)`. It
+is added to the JSON body of every request:
+
+```java
+DecisionModel decisionModel = GoogleAiGeminiDecisionModel.builder()
+        .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+        .modelName("gemini-decision-1")
+        .customParameters(Map.of("parameter_name", "value"))
+        .build();
+```
+
+To set custom parameters for a single request, use `GoogleAiGeminiDecisionRequestParameters`. If not empty, they
+replace (are not merged with) the custom parameters set on the builder:
+
+```java
+DecisionRequest request = DecisionRequest.builder()
+        .input("Help! My payouts have been failing for 3 days.")
+        .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+        .parameters(GoogleAiGeminiDecisionRequestParameters.builder()
+                .customParameters(Map.of("parameter_name", "another value"))
+                .build())
+        .build();
+```
+
+Values are written to JSON as they are, so a `Map` value becomes a JSON object and a `String` stays a string.
+A custom parameter named `model` or `input`, which LangChain4j also sends, replaces it. To choose the model, use
+`modelName(...)`: a `model` custom parameter is not reflected in `response.modelName()` or in what listeners receive.
+A custom parameter named `questions` is rejected with an `IllegalArgumentException` before calling the API, because
+the answers are mapped back to the questions of the `DecisionRequest` by their position.
+
+Passing the parameters class of another decision model to `GoogleAiGeminiDecisionModel` fails with an
+`IllegalArgumentException`. `DecisionRequestParameters.builder()`, which has only the parameters common to all
+decision models, works with every model.
+
+## Token usage
+
+`response.tokenUsage()` is a `GoogleAiGeminiTokenUsage` with the input, output and total token counts reported by
+Gemini. Gemini counts input tokens only, so the output token count is 0.
+
+## Response metadata
+
+The metadata of every response is a `GoogleAiGeminiDecisionResponseMetadata`. Besides the reason for blocked input
+(see [Blocked input](#blocked-input)), it gives the raw HTTP response with `rawHttpResponse()`, for example to read a
+field that LangChain4j does not expose yet. It is `null` when Gemini rejected blocked input with an HTTP 400 error.
+
+Gemini does not report the model in its response, so `response.modelName()` is the model name of the request.

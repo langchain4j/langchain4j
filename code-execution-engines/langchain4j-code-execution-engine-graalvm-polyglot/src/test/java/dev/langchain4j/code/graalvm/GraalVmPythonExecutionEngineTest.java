@@ -99,6 +99,21 @@ class GraalVmPythonExecutionEngineTest {
     }
 
     @Test
+    void should_not_inherit_host_environment() {
+
+        assertThat(System.getenv("PATH")).isNotNull();
+
+        String code = """
+                import os
+                os.getenv('PATH') is None and 'PATH' not in os.environ
+                """;
+
+        String result = engine.execute(code);
+
+        assertThat(result).isEqualTo("true");
+    }
+
+    @Test
     void should_throw_when_code_fails() {
 
         assertThatThrownBy(() -> engine.execute("1/0"))

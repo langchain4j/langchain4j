@@ -3,9 +3,9 @@ package dev.langchain4j.model.google.genai;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.google.genai.types.AudioTranscriptionConfig;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.message.AudioContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import java.util.Arrays;
 import java.util.Base64;
@@ -70,15 +70,19 @@ class GoogleGenAiTextToSpeechModelIT {
     }
 
     private static String transcribe(Audio audio) {
+        // A general model, not gemini-3.5-transcribe: the CI key has only 100 requests per day for that model,
+        // shared by every CI run, and GoogleGenAiAudioTranscriptionIT already covers it.
         GoogleGenAiChatModel transcriber = GoogleGenAiChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
-                .modelName("gemini-3.5-transcribe")
-                .audioTranscriptionConfig(AudioTranscriptionConfig.builder().build())
+                .modelName("gemini-3.8-flash")
+                .temperature(0.0)
                 .build();
 
-        AudioContent audioContent =
-                AudioContent.from(Base64.getEncoder().encodeToString(audio.binaryData()), audio.mimeType());
+        UserMessage message = UserMessage.from(
+                TextContent.from("Transcribe this audio word for word, in the language that is spoken. "
+                        + "Reply with the transcript only."),
+                AudioContent.from(Base64.getEncoder().encodeToString(audio.binaryData()), audio.mimeType()));
 
-        return transcriber.chat(UserMessage.from(audioContent)).aiMessage().text();
+        return transcriber.chat(message).aiMessage().text();
     }
 }

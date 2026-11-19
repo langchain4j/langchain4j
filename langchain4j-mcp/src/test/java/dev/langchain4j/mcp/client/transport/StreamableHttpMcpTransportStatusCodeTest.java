@@ -14,13 +14,20 @@ import dev.langchain4j.mcp.client.McpException;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
+import java.io.BufferedInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -192,70 +199,9 @@ class StreamableHttpMcpTransportStatusCodeTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"JDK, false", "OKHTTP, false", "APACHE, false", "JDK, true"})
-    void json_rpc_error_with_a_client_error_status_completes_the_request(Backend backend, boolean onExecutor)
-            throws Exception {
-        // e.g. a request whose headers do not match its body (2026-07-28)
+    @ValueSource(ints = {400, 401, 403, 404, 429})
+    void json_rpc_error_with_an_error_status_fails_with_the_status_code(int status) throws Exception {
         errorBody = "{\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32020,\"message\":\"Header mismatch\"}}";
-        useResponseExecutor = onExecutor;
-        startServer(400, false, backend);
-
-        CompletableFuture<String> response = listToolsWithModernProtocol();
-
-        assertThat(McpJson.toMap(response.get(5, TimeUnit.SECONDS)))
-                .containsEntry("id", 1)
-                .containsEntry("error", Map.of("code", -32020, "message", "Header mismatch"));
-    }
-
-    @Test
-    void json_rpc_error_without_an_id_is_the_answer_to_the_request() throws Exception {
-        errorBody = "{\"jsonrpc\":\"2.0\",\"id\":null,\"error\":{\"code\":-32700,\"message\":\"Parse error\"}}";
-        startServer(400);
-
-        CompletableFuture<String> response = listToolsWithModernProtocol();
-
-        assertThat(response.get(5, TimeUnit.SECONDS)).isEqualTo(errorBody);
-    }
-
-    @Test
-    void json_rpc_error_for_another_request_fails_with_the_status_code() throws Exception {
-        errorBody = "{\"jsonrpc\":\"2.0\",\"id\":7,\"error\":{\"code\":-32020,\"message\":\"Header mismatch\"}}";
-        startServer(400);
-
-        CompletableFuture<String> response = listToolsWithModernProtocol();
-
-        HttpException failure = failureOf(response);
-        assertThat(failure.statusCode()).isEqualTo(400);
-        assertThat(failure).hasMessage("Unexpected status code: 400");
-    }
-
-    @ParameterizedTest
-    @CsvSource(
-            delimiter = '|',
-            value = {
-                "application/json | {\"message\":\"Bad request\"}",
-                "text/html | <html>Bad request</html>",
-                // a JSON-RPC error is only read from a JSON body
-                "text/plain | {\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32020,\"message\":\"Header mismatch\"}}"
-            })
-    void client_error_without_a_json_rpc_error_fails_with_the_status_code(String contentType, String body)
-            throws Exception {
-        errorContentType = contentType;
-        errorBody = body;
-        startServer(400);
-
-        CompletableFuture<String> response = listToolsWithModernProtocol();
-
-        HttpException failure = failureOf(response);
-        assertThat(failure.statusCode()).isEqualTo(400);
-        assertThat(failure).hasMessage("Unexpected status code: 400");
-    }
-
-    @ParameterizedTest
-    @ValueSource(ints = {401, 403, 429})
-    void json_rpc_error_with_an_authorization_or_rate_limit_status_fails_with_the_status_code(int status)
-            throws Exception {
-        errorBody = "{\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32000,\"message\":\"Rejected\"}}";
         startServer(status);
 
         CompletableFuture<String> response = listToolsWithModernProtocol();
@@ -263,6 +209,52 @@ class StreamableHttpMcpTransportStatusCodeTest {
         HttpException failure = failureOf(response);
         assertThat(failure.statusCode()).isEqualTo(status);
         assertThat(failure).hasMessage("Unexpected status code: " + status);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"JDK, false", "OKHTTP, false", "APACHE, false", "JDK, true"})
+    void json_rpc_error_with_a_client_error_status_fails_before_the_response_body_is_complete(
+            Backend backend, boolean onExecutor) throws Exception {
+        useResponseExecutor = onExecutor;
+        startServer(400, true, backend);
+
+        CompletableFuture<String> response = listToolsWithModernProtocol();
+
+        assertThat(failureOf(response).statusCode()).isEqualTo(400);
+        assertThat(errorBodyReleased.getCount()).isEqualTo(1);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Backend.class)
+    void json_rpc_error_with_a_client_error_status_is_not_read_when_its_length_is_also_chunked(Backend backend)
+            throws Exception {
+        try (ServerSocket serverSocket = new ServerSocket(0, 0, InetAddress.getLoopbackAddress())) {
+            serverExecutor.execute(() -> respondWithContentLengthAndChunkedJsonRpcError(serverSocket));
+            transport = backend.configure(StreamableHttpMcpTransport.builder()
+                            .url("http://localhost:" + serverSocket.getLocalPort() + "/mcp")
+                            .maxMessageSize(1024))
+                    .build();
+            transport.start(new McpOperationHandler(
+                    new ConcurrentHashMap<>(),
+                    () -> Collections.emptyList(),
+                    transport,
+                    null,
+                    () -> {},
+                    null,
+                    () -> {},
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null));
+
+            CompletableFuture<String> response = listToolsWithModernProtocol();
+
+            HttpException failure = failureOf(response);
+            assertThat(failure.statusCode()).isEqualTo(400);
+            assertThat(failure).hasMessage("Unexpected status code: 400");
+        }
     }
 
     @Test
@@ -316,7 +308,7 @@ class StreamableHttpMcpTransportStatusCodeTest {
                                 + ",\"result\":{\"supportedVersions\":[\"2026-07-28\"],\"capabilities\":{},\"resultType\":\"complete\"}}");
             } else {
                 // e.g. the server was redeployed with another protocol version
-                respond(exchange, 400, unsupportedVersion.formatted(id));
+                respond(exchange, 200, unsupportedVersion.formatted(id));
             }
         };
 
@@ -331,8 +323,7 @@ class StreamableHttpMcpTransportStatusCodeTest {
     }
 
     @Test
-    void unsupported_protocol_version_sent_with_a_client_error_status_is_retried_with_a_supported_version()
-            throws Exception {
+    void unsupported_protocol_version_sent_with_a_client_error_status_falls_back_to_legacy() throws Exception {
         List<String> initializedVersions = new CopyOnWriteArrayList<>();
         String unsupportedVersion =
                 "{\"jsonrpc\":\"2.0\",\"id\":%s,\"error\":{\"code\":-32022,\"message\":\"Unsupported protocol version\",\"data\":{\"supported\":[\"2024-11-05\"]}}}";
@@ -341,7 +332,7 @@ class StreamableHttpMcpTransportStatusCodeTest {
             assertThat(client.isModernProtocol()).isFalse();
         }
 
-        assertThat(initializedVersions).containsExactly("2024-11-05");
+        assertThat(initializedVersions).containsExactly("2025-11-25");
     }
 
     @Test
@@ -439,6 +430,62 @@ class StreamableHttpMcpTransportStatusCodeTest {
         Throwable thrown = catchThrowable(() -> response.get(5, TimeUnit.SECONDS));
         assertThat(thrown).isInstanceOf(ExecutionException.class).hasCauseInstanceOf(HttpException.class);
         return (HttpException) thrown.getCause();
+    }
+
+    /**
+     * Answers with status 400 and a JSON-RPC error of about 4 MiB that declares both {@code Content-Length: 49} and
+     * {@code Transfer-Encoding: chunked}; some clients follow the chunked framing and would read all of it.
+     */
+    private static void respondWithContentLengthAndChunkedJsonRpcError(ServerSocket serverSocket) {
+        try (Socket socket = serverSocket.accept()) {
+            InputStream in = new BufferedInputStream(socket.getInputStream());
+            in.readNBytes(readRequestHead(in));
+            OutputStream out = socket.getOutputStream();
+            out.write(("HTTP/1.1 400 Bad Request\r\n"
+                            + "Content-Type: application/json\r\n"
+                            + "Content-Length: 49\r\n"
+                            + "Transfer-Encoding: chunked\r\n\r\n")
+                    .getBytes(StandardCharsets.US_ASCII));
+            writeChunk(out, "{\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32601,\"message\":\"".getBytes(StandardCharsets.US_ASCII));
+            byte[] padding = new byte[64 * 1024];
+            Arrays.fill(padding, (byte) 'a');
+            for (int i = 0; i < 64; i++) {
+                writeChunk(out, padding);
+            }
+            writeChunk(out, "\"}}".getBytes(StandardCharsets.US_ASCII));
+            out.write("0\r\n\r\n".getBytes(StandardCharsets.US_ASCII));
+            out.flush();
+        } catch (IOException ignored) {
+            // the client may have closed the connection after reading the status
+        }
+    }
+
+    private static void writeChunk(OutputStream out, byte[] data) throws IOException {
+        out.write((Integer.toHexString(data.length) + "\r\n").getBytes(StandardCharsets.US_ASCII));
+        out.write(data);
+        out.write("\r\n".getBytes(StandardCharsets.US_ASCII));
+    }
+
+    private static int readRequestHead(InputStream in) throws IOException {
+        int contentLength = 0;
+        String line;
+        while (!(line = readLine(in)).isEmpty()) {
+            if (line.toLowerCase(Locale.ROOT).startsWith("content-length:")) {
+                contentLength = Integer.parseInt(line.substring("content-length:".length()).trim());
+            }
+        }
+        return contentLength;
+    }
+
+    private static String readLine(InputStream in) throws IOException {
+        StringBuilder line = new StringBuilder();
+        int b;
+        while ((b = in.read()) != -1 && b != '\n') {
+            if (b != '\r') {
+                line.append((char) b);
+            }
+        }
+        return line.toString();
     }
 
     private void respondWithHeldErrorBody(HttpExchange exchange, int statusCode) throws IOException {

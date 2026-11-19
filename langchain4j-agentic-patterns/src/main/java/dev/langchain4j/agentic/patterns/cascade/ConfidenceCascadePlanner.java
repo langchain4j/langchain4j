@@ -22,6 +22,7 @@ import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -279,7 +280,7 @@ public class ConfidenceCascadePlanner implements Planner {
             return done(answer);
         }
 
-        double probability = acceptance(planningContext.agenticScope(), answer);
+        double probability = acceptance(planningContext, answer);
         if (probability >= acceptanceThreshold) {
             LOG.info("Accepting the answer of the tier '{}', graded {}", current.name(), probability);
             return done(answer);
@@ -293,17 +294,17 @@ public class ConfidenceCascadePlanner implements Planner {
         return call(next);
     }
 
-    private double acceptance(AgenticScope agenticScope, Object answer) {
+    private double acceptance(PlanningContext planningContext, Object answer) {
+        AgenticScope agenticScope = planningContext.agenticScope();
         Map<String, Object> input = new LinkedHashMap<>();
         inputKeys.forEach(key -> input.put(key, agenticScope.readState(key)));
         input.put(ANSWER_KEY, answerValue(answer));
-        return decisionModel
-                .decide(DecisionRequest.builder()
-                        .inputFields(input)
-                        .question(QUESTION_NAME, question)
-                        .build())
-                .yesNo(QUESTION_NAME)
-                .probability();
+        DecisionResponse response = decisionModel.decide(DecisionRequest.builder()
+                .inputFields(input)
+                .question(QUESTION_NAME, question)
+                .build());
+        planningContext.reportDecisionModelResponse(response);
+        return response.yesNo(QUESTION_NAME).probability();
     }
 
     /**

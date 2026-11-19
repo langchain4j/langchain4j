@@ -1,10 +1,36 @@
 package dev.langchain4j.agentic.planner;
 
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.onPlannerModelResponse;
+
 import dev.langchain4j.agentic.internal.ActivationConditions;
+import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.PlannerModelResponse;
 import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.decision.response.DecisionResponse;
+import dev.langchain4j.model.output.TokenUsage;
+import org.jspecify.annotations.Nullable;
 
-public record PlanningContext(AgenticScope agenticScope, AgentInvocation previousAgentInvocation) {
+/**
+ * The context in which a {@link Planner} decides its next action.
+ *
+ * @param agenticScope the scope of the agentic system running the planner
+ * @param previousAgentInvocation the invocation of the subagent that just completed, or {@code null} for the first
+ *                                action
+ * @param plannerAgent the agent running the planner, or {@code null} when the context is not created by an agentic
+ *                     system, for instance in a unit test of the planner. The model responses reported to a context
+ *                     are notified only when this is an agent created by the agentic system.
+ */
+public record PlanningContext(
+        AgenticScope agenticScope,
+        @Nullable AgentInvocation previousAgentInvocation,
+        @Nullable AgentInstance plannerAgent) {
+
+    public PlanningContext(AgenticScope agenticScope, @Nullable AgentInvocation previousAgentInvocation) {
+        this(agenticScope, previousAgentInvocation, null);
+    }
 
     /**
      * Tells whether the given subagent would run if it were invoked now, according to its
@@ -22,5 +48,46 @@ public record PlanningContext(AgenticScope agenticScope, AgentInvocation previou
      */
     public boolean isActive(AgentInstance agent) {
         return ActivationConditions.isActive(agent, agenticScope);
+    }
+
+    /**
+     * Reports the response of a chat model that the planner called itself to decide what to do. Its token usage and
+     * its model name are notified to the {@link AgentListener#onPlannerModelResponse(PlannerModelResponse) listeners}
+     * of the agent running the planner, so that the token usage is counted on the invocation of that agent, for
+     * instance by the {@code AgentMonitor}: a model call that is not reported is invisible to them. Call it as soon
+     * as the model returns, once for each call.
+     * <p>
+     * A planner calling its model through an AI service calls this method from an
+     * {@code AiServiceResponseReceivedListener} registered on that service, which receives each response of the
+     * model before the AI service parses it: so a response that cannot be parsed is reported too.
+     * <p>
+     * It does nothing when this context has no {@link #plannerAgent() planner agent} created by the agentic system,
+     * or when the response is {@code null}.
+     *
+     * @param chatResponse the response returned by the chat model, or {@code null}, which is ignored
+     */
+    public void reportChatModelResponse(@Nullable ChatResponse chatResponse) {
+        if (chatResponse != null) {
+            reportModelResponse(chatResponse.tokenUsage(), chatResponse.modelName());
+        }
+    }
+
+    /**
+     * Reports the response of a decision model that the planner called itself to decide what to do, like
+     * {@link #reportChatModelResponse(ChatResponse)} does for a chat model.
+     *
+     * @param decisionResponse the response returned by the decision model, or {@code null}, which is ignored
+     */
+    public void reportDecisionModelResponse(@Nullable DecisionResponse decisionResponse) {
+        if (decisionResponse != null) {
+            reportModelResponse(decisionResponse.tokenUsage(), decisionResponse.modelName());
+        }
+    }
+
+    private void reportModelResponse(@Nullable TokenUsage tokenUsage, @Nullable String modelName) {
+        if (plannerAgent instanceof InternalAgent agent) {
+            onPlannerModelResponse(
+                    agent.listener(), new PlannerModelResponse(agenticScope, plannerAgent, tokenUsage, modelName));
+        }
     }
 }

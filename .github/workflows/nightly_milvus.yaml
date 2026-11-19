@@ -5,7 +5,7 @@ name: Nightly Build Milvus
 
 on:
   schedule:
-    - cron: '30 6 * * *'  # daily at 06:30 UTC
+    - cron: '30 1 * * *'  # daily at 01:30 UTC
   workflow_dispatch:
 
 permissions:
@@ -43,8 +43,9 @@ jobs:
       - name: Build with JDK 17
         run: |
           ## compile and install the Milvus modules and their dependencies, so that the step below only tests the Milvus modules
-          ## retried once, as a transient Maven Central failure would otherwise skip all tests of this job
-          mvn -B -U -T8C -pl langchain4j-milvus,langchain4j-milvus-v2,langchain4j-hibernate-milvus -am -DskipTests -DskipITs -DembeddingsSkipCache install || mvn -B -U -T8C -pl langchain4j-milvus,langchain4j-milvus-v2,langchain4j-hibernate-milvus -am -DskipTests -DskipITs -DembeddingsSkipCache install
+          ## retried once after 2 minutes, as a transient Maven Central failure would otherwise skip all tests of this job;
+          ## the retry clears MAVEN_ARGS (where setup-java puts -ntp), so that its log shows every download from Maven Central
+          mvn -B -U -T8C -pl langchain4j-milvus,langchain4j-milvus-v2,langchain4j-hibernate-milvus -am -DskipTests -DskipITs -DembeddingsSkipCache install || { sleep 120; MAVEN_ARGS= mvn -B -U -T8C -pl langchain4j-milvus,langchain4j-milvus-v2,langchain4j-hibernate-milvus -am -DskipTests -DskipITs -DembeddingsSkipCache install; }
 
       - name: Test Milvus modules with JDK 17
         run: |
@@ -116,24 +117,3 @@ jobs:
                   if len(failed_tests) > 50:
                       f.write(f'\n*... and {len(failed_tests) - 50} more*\n')
           PYEOF
-
-      - name: Upload Test Reports
-        if: always() # always run even if the previous step failed or was cancelled
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: Test-Reports-${{ strategy.job-index }}
-          path: '**/target/*-reports/*'
-
-      - name: Upload JaCoCo Reports
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: jacoco-${{ strategy.job-index }}
-          path: '**/target/site/jacoco/**'
-
-      - name: Upload JaCoCo Execution Data
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: jacoco-exec-${{ strategy.job-index }}
-          path: '**/target/jacoco.exec'
