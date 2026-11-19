@@ -7,12 +7,12 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,7 +52,7 @@ class StreamingChatModelHelperTest {
         List<Throwable> handledErrors = new ArrayList<>();
 
         CompletableFuture<ChatResponse> future = StreamingChatModelHelper.chatAsync(
-                StreamingChatModelMock.thatAlwaysStreams("Hi"), null, handledErrors::add);
+                MockStreamingChatModel.thatResponds("Hi"), null, handledErrors::add);
 
         assertThat(future)
                 .failsWithin(Duration.ofSeconds(1))
@@ -67,7 +67,7 @@ class StreamingChatModelHelperTest {
     @Test
     void should_return_failed_future_when_the_model_throws_instead_of_returning_a_stream() {
         List<Throwable> handledErrors = new ArrayList<>();
-        StreamingChatModelMock model = spy(StreamingChatModelMock.thatAlwaysStreams("Hi"));
+        MockStreamingChatModel model = spy(MockStreamingChatModel.thatResponds("Hi"));
         IllegalStateException failure = new IllegalStateException("cannot stream");
         doThrow(failure).when(model).chat(any(ChatRequest.class));
 

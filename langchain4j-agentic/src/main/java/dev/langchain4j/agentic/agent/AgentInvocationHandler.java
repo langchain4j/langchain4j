@@ -190,6 +190,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
         AgenticScope standaloneAgenticScope = ephemeralAgenticScope();
         AgentModelResponse modelResponse = new AgentModelResponse();
         modelResponse.claim(this);
+        Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> callerParameters = LangChain4jManaged.current();
         LangChain4jManaged.setCurrent(
                 Map.of(AgenticScope.class, standaloneAgenticScope, AgentModelResponse.class, modelResponse));
 
@@ -205,7 +206,7 @@ public class AgentInvocationHandler implements InvocationHandler, InternalAgent 
             agentError(agentListener, standaloneAgenticScope, this, namedArgs, invocationException);
             throw invocationException;
         } finally {
-            LangChain4jManaged.removeCurrent();
+            LangChain4jManaged.restore(callerParameters);
             if (result != null) {
                 afterAgentInvocation(
                         agentListener,

@@ -71,9 +71,9 @@ class MistralAiStreamingChatModelIT {
 
         String expectedJson = "{\"name\":\"Klaus\",\"age\":42}";
 
-        StreamingChatModel mistralLargeStreamingModel = MistralAiStreamingChatModel.builder()
+        StreamingChatModel mistralSmallStreamingModel = MistralAiStreamingChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName("mistral-medium-2508")
+                .modelName(MISTRAL_SMALL_LATEST)
                 .temperature(0.0)
                 .responseFormat(ResponseFormat.JSON)
                 .logRequests(true)
@@ -82,7 +82,7 @@ class MistralAiStreamingChatModelIT {
 
         // when
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
-        mistralLargeStreamingModel.chat(userMessage, handler);
+        mistralSmallStreamingModel.chat(userMessage, handler);
         String json = handler.get().aiMessage().text();
 
         // then

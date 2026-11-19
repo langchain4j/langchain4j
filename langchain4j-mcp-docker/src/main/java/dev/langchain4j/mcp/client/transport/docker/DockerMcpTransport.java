@@ -95,7 +95,7 @@ public class DockerMcpTransport implements McpTransport {
     @Override
     public void start(McpOperationHandler messageHandler) {
         this.messageHandler = messageHandler;
-        log.debug("Starting docker container with host: {}, image: {}, command: {}", dockerHost, image, command);
+        log.debug("Starting docker container with image: {} (with {} command arguments)", image, command.size());
         DockerClientConfig config = DefaultDockerClientConfig.createDefaultConfigBuilder()
                 .withDockerHost(dockerHost)
                 .withDockerConfig(dockerConfig)
@@ -279,6 +279,9 @@ public class DockerMcpTransport implements McpTransport {
                 // For messages with null ID, we don't wait for a corresponding response
                 future.complete(null);
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            future.completeExceptionally(e);
         } catch (Exception e) {
             future.completeExceptionally(e);
         } finally {
@@ -480,5 +483,4 @@ public class DockerMcpTransport implements McpTransport {
             return new DockerMcpTransport(this);
         }
     }
-
 }

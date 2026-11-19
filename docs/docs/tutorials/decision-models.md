@@ -126,6 +126,10 @@ YesNoQuestion refundRequested = YesNoQuestion.builder()
         .build();
 ```
 
+The criteria describe what "yes" and "no" mean for this question when the question alone is ambiguous. When only one
+of them is set, how it combines with the question is up to the model: some models read a lone `yesWhen` as the only
+reason to answer "yes". To split the cases clearly, set both.
+
 ### Choice questions
 
 A `ChoiceQuestion` selects exactly one option out of a named set (at least 2 options).
@@ -212,8 +216,9 @@ the model provider: convert them to a `Map` that holds only what the decision ne
 ### Images
 
 The input can also be a list of contents, such as text and images, if the decision model supports them
-(for example [OpenAI](/integrations/decision-models/open-ai), or [Ollama](/integrations/decision-models/ollama) with
-a vision model such as Clef):
+(for example [OpenAI](/integrations/decision-models/open-ai),
+[Google AI Gemini](/integrations/decision-models/google-ai-gemini), or
+[Ollama](/integrations/decision-models/ollama) with a vision model such as Clef):
 
 ```java
 DecisionRequest request = DecisionRequest.builder()
@@ -237,6 +242,24 @@ DecisionRequest request = DecisionRequest.builder()
 
 A decision model that does not support a kind of content throws `UnsupportedFeatureException` without calling
 the model.
+
+### Audio, video and PDF files
+
+Some decision models also take audio, video and PDF files (for example
+[Google AI Gemini](/integrations/decision-models/google-ai-gemini)), as `AudioContent`, `VideoContent` and
+`PdfFileContent`, in the same places as images: in a list of contents, as the values of fields, and in conversations:
+
+```java
+DecisionRequest request = DecisionRequest.builder()
+        .inputContents(List.of(
+                TextContent.from("The customer left this voice message and attached the receipt."),
+                AudioContent.from(base64Audio, "audio/mp3"),
+                PdfFileContent.from(base64Pdf, "application/pdf")))
+        .question("refund", YesNoQuestion.from("Does the customer ask for a refund?"))
+        .build();
+```
+
+See the [comparison table](/integrations/decision-models) for the kinds of input each decision model takes.
 
 ### Conversations
 
@@ -294,8 +317,9 @@ output guardrail) can limit the number of messages and shorten long ones; see ea
 send, including system messages, tool results and retrieved content, goes to the provider of the decision model:
 leave out what must not go there with `messageFilter(...)`.
 
-Images in the conversation are referred to by their position, such as `[image 1]`, and sent next to the transcript
-if the decision model supports images. The decision model sees the names and arguments of the tool calls, but not
+Images, audio, video and PDF files in the conversation are referred to by their kind and their position among the
+contents of that kind, such as `[image 1]` or `[audio 1]`, and sent next to the transcript if the decision model
+supports them. The decision model sees the names and arguments of the tool calls, but not
 the tool specifications: if a decision depends on what a tool does, describe it in a `SystemMessage` or in the
 question. A failed tool result (`isError()`) has `"is_error": true`, and a `UserMessage` with a name has `"name"`.
 A `CustomMessage`, or a content that the decision model does not support, throws `UnsupportedFeatureException`
@@ -359,7 +383,9 @@ exceptionally.
 ## Refusals
 
 A decision model can refuse to answer a question, for example because the input or the question goes against the
-usage policies of the provider. The answers to the other questions are still returned. Check
+usage policies of the provider. The answers to the other questions are still returned, unless the provider blocks the
+whole input, as [Google AI Gemini](/integrations/decision-models/google-ai-gemini#blocked-input) and
+[Google Gen AI](/integrations/decision-models/google-genai#blocked-input) do: then every question is refused. Check
 `response.isRefused(name)` before reading an answer: reading a refused answer, for example with
 `response.yesNo(name)`, throws a `ContentFilteredException`. When a decision is used as a safety check, treat a
 refused answer as a failed check, as the [guardrails](#guardrails) do, rather than as a "no".
@@ -396,8 +422,11 @@ needed. They work with any `DecisionModel` implementation.
 
 Each of these components makes one or more additional calls to the decision model. Their token usage is not included
 in the token usage of the chat response; it is reported to the `DecisionModelListener`s of the decision model.
-A decision agent is the exception: its decision call is the only call of the agent, and its token usage is also reported
-to the agent listeners and counted by the `AgentMonitor`.
+The agentic components are the exception: their token usage is also reported to the agent listeners and counted by the
+`AgentMonitor`. The decision call of a decision agent is the only call of the agent, and is counted on its invocation.
+The decision calls of the three planners are notified to the `onPlannerModelResponse` method of the agent listeners
+and counted on the invocation of the pattern, separately from the tokens of its subagents, as explained in the
+[monitoring](/tutorials/agents#monitoring) section of the agents tutorial.
 
 Each component asks the decision model a default question, which works well in most cases.
 The questions are part of the behavior, so they can be replaced: with `questionTemplate(...)` (a `PromptTemplate`

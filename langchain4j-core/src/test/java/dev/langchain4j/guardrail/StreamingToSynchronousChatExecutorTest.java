@@ -5,15 +5,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -28,7 +29,7 @@ class StreamingToSynchronousChatExecutorTest {
     void execute_should_fail_instead_of_waiting_forever_when_the_stream_fails() {
         IllegalStateException failure = new IllegalStateException("stream failed");
         List<Throwable> handledErrors = new CopyOnWriteArrayList<>();
-        ChatExecutor executor = ChatExecutor.builder(new StreamingChatModelMock(failure))
+        ChatExecutor executor = ChatExecutor.builder(MockStreamingChatModel.thatFails(failure))
                 .errorHandler(handledErrors::add)
                 .chatRequest(CHAT_REQUEST)
                 .invocationContext(InvocationContext.builder().build())
@@ -43,7 +44,9 @@ class StreamingToSynchronousChatExecutorTest {
     void execute_should_fail_when_the_model_throws_from_chat() {
         IllegalStateException failure = new IllegalStateException("cannot send the request");
         List<Throwable> handledErrors = new CopyOnWriteArrayList<>();
-        ChatExecutor executor = ChatExecutor.builder(new StreamingChatModelMock(failure).throwingFromChat())
+        MockStreamingChatModel model = spy(MockStreamingChatModel.thatResponds("Hi")); // its doChat throws
+        doThrow(failure).when(model).doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        ChatExecutor executor = ChatExecutor.builder(model)
                 .errorHandler(handledErrors::add)
                 .chatRequest(CHAT_REQUEST)
                 .invocationContext(InvocationContext.builder().build())
@@ -85,9 +88,9 @@ class StreamingToSynchronousChatExecutorTest {
         assertThat(handledErrors).containsExactly(lateFailure);
     }
 
-    private static StreamingChatModelMock completingThenFailing(ChatResponse response, RuntimeException lateFailure) {
+    private static MockStreamingChatModel completingThenFailing(ChatResponse response, RuntimeException lateFailure) {
         // like a provider whose cleanup after the end of the stream fails, for example closing the connection
-        StreamingChatModelMock model = spy(StreamingChatModelMock.thatAlwaysStreams("Hi"));
+        MockStreamingChatModel model = spy(MockStreamingChatModel.thatResponds("Hi"));
         doAnswer(invocation -> {
                     StreamingChatResponseHandler handler = invocation.getArgument(1);
                     handler.onCompleteResponse(response);

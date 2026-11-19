@@ -18,12 +18,12 @@ import dev.langchain4j.model.decision.listener.DecisionModelErrorContext;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.listener.DecisionModelRequestContext;
 import dev.langchain4j.model.decision.listener.DecisionModelResponseContext;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -377,7 +377,7 @@ class DecisionModelTest {
     void decideAsync_should_return_failed_future_when_listeners_cannot_be_obtained() {
 
         // given
-        DecisionModelMock model = spy(DecisionModelMock.thatAlwaysAnswers(Map.of("urgent", YesNoAnswer.from(0.9))));
+        MockDecisionModel model = spy(MockDecisionModel.thatAnswers(Map.of("urgent", YesNoAnswer.from(0.9))));
         IllegalStateException error = new IllegalStateException("cannot obtain listeners");
         doThrow(error).when(model).listeners();
 
@@ -397,7 +397,7 @@ class DecisionModelTest {
 
         // given
         DecisionModelListener listener = mock(DecisionModelListener.class);
-        DecisionModelMock model = spy(DecisionModelMock.thatAlwaysAnswers(Map.of("urgent", YesNoAnswer.from(0.9)))
+        MockDecisionModel model = spy(MockDecisionModel.thatAnswers(Map.of("urgent", YesNoAnswer.from(0.9)))
                 .withListeners(listener));
         doReturn(null).when(model).provider();
 
@@ -417,9 +417,9 @@ class DecisionModelTest {
 
         // given
         DecisionModelListener listener = mock(DecisionModelListener.class);
-        DecisionModel model = DecisionModelMock.thatAlwaysAnswers(Map.of("urgent", YesNoAnswer.from(0.9)))
-                .withAsyncResponse(request -> null)
-                .withListeners(listener);
+        MockDecisionModel model = spy(MockDecisionModel.thatAnswers(Map.of("urgent", YesNoAnswer.from(0.9)))
+                .withListeners(listener)); // its doDecideAsync returns null
+        doReturn(null).when(model).doDecideAsync(any());
 
         // when
         CompletableFuture<DecisionResponse> future = model.decideAsync(request(DecisionRequestParameters.EMPTY));
@@ -446,11 +446,9 @@ class DecisionModelTest {
         // given
         DecisionModelListener listener = mock(DecisionModelListener.class);
         NoClassDefFoundError error = new NoClassDefFoundError("MissingOptionalDependency");
-        DecisionModel model = DecisionModelMock.thatAlwaysAnswers(Map.of("urgent", YesNoAnswer.from(0.9)))
-                .withAsyncResponse(request -> {
-                    throw error;
-                })
-                .withListeners(listener);
+        MockDecisionModel model = spy(MockDecisionModel.thatAnswers(Map.of("urgent", YesNoAnswer.from(0.9)))
+                .withListeners(listener)); // its doDecideAsync throws
+        doThrow(error).when(model).doDecideAsync(any());
 
         // when
         CompletableFuture<DecisionResponse> future = model.decideAsync(request(DecisionRequestParameters.EMPTY));

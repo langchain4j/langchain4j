@@ -1,5 +1,7 @@
 package dev.langchain4j.data.document.loader.playwright;
 
+import static dev.langchain4j.internal.SecretMasking.withoutCredentials;
+
 import static java.util.Objects.requireNonNull;
 
 import com.microsoft.playwright.Browser;
@@ -85,22 +87,24 @@ public class PlaywrightDocumentLoader implements AutoCloseable {
      */
     public String pageContent(String url) {
         requireNonNull(url, "url must not be null");
-        logger.info("Loading document from URL: {}", url);
+        String urlToLog = withoutCredentials(url);
+        logger.info("Loading document from URL: {}", urlToLog);
 
         try (Page page = browser.newPage()) {
-            logger.info("Navigating to URL: {}", url);
+            logger.info("Navigating to URL: {}", urlToLog);
             page.navigate(url);
 
             // Explicit wait to ensure DOM is loaded (optional in most Playwright actions)
             page.waitForLoadState(LoadState.DOMCONTENTLOADED);
 
-            logger.debug("Web page fully loaded: {}", url);
+            logger.debug("Web page fully loaded: {}", urlToLog);
             return page.content();
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to load document from URL: " + url, e);
+            throw new RuntimeException("Failed to load document from URL: " + urlToLog, e);
         }
     }
+
     /**
      * Closes the underlying Browser instance.
      */

@@ -18,12 +18,12 @@ import static org.mockito.Mockito.when;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
-import dev.langchain4j.model.scoring.mock.ScoringModelMock;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.test.mock.MockScoringModel;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collection;
@@ -141,7 +141,7 @@ class ReRankingContentAggregatorTest {
         queryToContents.put(Query.from("query 1"), null);
         queryToContents.put(Query.from("query 2"), null);
 
-        ScoringModelMock scoringModel = new ScoringModelMock(text -> 0.5);
+        MockScoringModel scoringModel = MockScoringModel.thatScores(text -> 0.5);
         ContentAggregator aggregator = new ReRankingContentAggregator(scoringModel);
 
         // when-then

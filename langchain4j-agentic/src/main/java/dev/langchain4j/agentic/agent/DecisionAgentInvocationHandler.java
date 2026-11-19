@@ -153,6 +153,7 @@ public class DecisionAgentInvocationHandler implements InvocationHandler, Intern
 
         DefaultAgenticScope agenticScope = ephemeralAgenticScope();
         AgentModelResponse modelResponse = new AgentModelResponse();
+        Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> callerParameters = LangChain4jManaged.current();
         LangChain4jManaged.setCurrent(
                 Map.of(AgenticScope.class, agenticScope, AgentModelResponse.class, modelResponse));
         Map<String, Object> namedArgs = namedArgs(args);
@@ -168,7 +169,7 @@ public class DecisionAgentInvocationHandler implements InvocationHandler, Intern
             agentError(agentListener, agenticScope, this, namedArgs, invocationException);
             throw invocationException;
         } finally {
-            LangChain4jManaged.removeCurrent();
+            LangChain4jManaged.restore(callerParameters);
         }
     }
 

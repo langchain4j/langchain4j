@@ -33,12 +33,3 @@ jobs:
 
       - name: Run split package detection
         run: ./check-split-packages.sh
-
-      - name: Upload results as artifact if failure
-        if: failure()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: split-package-report
-          path: |
-            check-split-packages.sh
-            # You could save the output to a file and include that too

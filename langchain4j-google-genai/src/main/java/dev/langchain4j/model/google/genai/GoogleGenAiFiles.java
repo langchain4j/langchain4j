@@ -1,7 +1,9 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.google.genai.GoogleGenAiClientFactory.DEFAULT_TIMEOUT;
 
 import com.google.genai.Client;
 import com.google.genai.types.DeleteFileConfig;
@@ -12,8 +14,10 @@ import com.google.genai.types.UploadFileConfig;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Service for uploading and managing media files with Google AI Gemini using the official com.google.genai SDK.
@@ -34,7 +38,14 @@ public final class GoogleGenAiFiles {
         this.client = builder.client != null
                 ? builder.client
                 : GoogleGenAiClientFactory.createClient(
-                        builder.apiKey, null, null, null, null, builder.customHeaders, builder.apiEndpoint);
+                        builder.apiKey,
+                        null,
+                        null,
+                        null,
+                        getOrDefault(builder.timeout, DEFAULT_TIMEOUT),
+                        builder.customHeaders,
+                        builder.apiEndpoint,
+                        builder.apiVersion);
     }
 
     public static Builder builder() {
@@ -144,7 +155,9 @@ public final class GoogleGenAiFiles {
     public static class Builder {
         private String apiKey;
         private String apiEndpoint;
+        private @Nullable String apiVersion;
         private java.util.Map<String, String> customHeaders;
+        private Duration timeout;
         private Client client;
 
         public Builder apiKey(String apiKey) {
@@ -157,8 +170,35 @@ public final class GoogleGenAiFiles {
             return this;
         }
 
+        /**
+         * The version of the API to call, for example {@code v1beta} or {@code v1}. When not set ({@code null}), the
+         * version set in the {@code GOOGLE_GENAI_API_VERSION} environment variable is used, otherwise {@code v1beta}
+         * on the Gemini Developer API and the default of the Google GenAI SDK on Vertex AI. Ignored when a client is
+         * set with {@code client(...)}.
+         */
+        public Builder apiVersion(@Nullable String apiVersion) {
+            this.apiVersion = apiVersion;
+            return this;
+        }
+
         public Builder customHeaders(java.util.Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets the timeout of each HTTP request to the Google GenAI API.
+         * It limits the whole request: connecting, sending the request and receiving the response.
+         * A large file is uploaded in several parts, each in its own request,
+         * so the timeout limits each part, not the whole upload.
+         * Defaults to 20 minutes.
+         * Ignored when {@link #client(Client)} is set.
+         *
+         * @param timeout the timeout
+         * @return {@code this}
+         */
+        public Builder timeout(Duration timeout) {
+            this.timeout = timeout;
             return this;
         }
 

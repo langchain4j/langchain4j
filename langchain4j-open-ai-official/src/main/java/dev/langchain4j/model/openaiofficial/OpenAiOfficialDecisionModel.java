@@ -38,7 +38,7 @@ import java.util.concurrent.CompletableFuture;
  * or a conversation (a list of {@link dev.langchain4j.data.message.ChatMessage}s), see
  * {@link dev.langchain4j.model.decision.request.DecisionRequest}. Images can be base64 data, {@code data:} URLs or
  * publicly accessible {@code http(s)} URLs. The image detail levels {@code LOW}, {@code HIGH} and {@code AUTO} are
- * supported.
+ * supported; an image created without a detail level is sent without one, so OpenAI's default applies.
  * <p>
  * A conversation is sent as a JSON transcript in a user message, followed by its images.
  * <p>
@@ -98,7 +98,12 @@ public class OpenAiOfficialDecisionModel implements DecisionModel {
     public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
         return failOnThrow(() -> {
             DecisionCreateParams params = toDecisionCreateParams(request);
-            CompletableFuture<Decision> decision = client.async().decisions().create(params);
+            CompletableFuture<Decision> decision;
+            try {
+                decision = client.async().decisions().create(params);
+            } catch (Exception e) {
+                throw OpenAiOfficialExceptionMapper.INSTANCE.mapException(e);
+            }
             CompletableFuture<DecisionResponse> result = decision.handle((response, error) -> {
                 if (error != null) {
                     throw OpenAiOfficialExceptionMapper.INSTANCE.mapException(unwrapCompletionException(error));

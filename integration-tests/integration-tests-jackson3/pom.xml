@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-integration-tests-parent</artifactId>
-        <version>1.24.0-beta34-SNAPSHOT</version>
+        <version>1.25.0-beta35-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
 
@@ -35,7 +35,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.24.0-SNAPSHOT</version>
+            <version>1.25.0-SNAPSHOT</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.fasterxml.jackson.core</groupId>
@@ -51,7 +51,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
-            <version>1.24.0-SNAPSHOT</version>
+            <version>1.25.0-SNAPSHOT</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.fasterxml.jackson.core</groupId>
@@ -67,7 +67,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-anthropic</artifactId>
-            <version>1.24.0-SNAPSHOT</version>
+            <version>1.25.0-SNAPSHOT</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.fasterxml.jackson.core</groupId>
@@ -83,7 +83,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-mistral-ai</artifactId>
-            <version>1.24.0-SNAPSHOT</version>
+            <version>1.25.0-SNAPSHOT</version>
             <exclusions>
                 <exclusion>
                     <groupId>com.fasterxml.jackson.core</groupId>
@@ -96,6 +96,32 @@
             </exclusions>
         </dependency>
 
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j-watsonx</artifactId>
+            <version>${langchain4j.beta.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-databind</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>jackson-core</artifactId>
+                </exclusion>
+                <!-- the watsonx.ai SDK has its own JSON binding: swap the Jackson 2 one for the Jackson 3 one below -->
+                <exclusion>
+                    <groupId>com.ibm.watsonx</groupId>
+                    <artifactId>watsonx-ai-jackson2</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- the same version as watsonx-ai.version in langchain4j-watsonx/pom.xml -->
+        <dependency>
+            <groupId>com.ibm.watsonx</groupId>
+            <artifactId>watsonx-ai-jackson3</artifactId>
+            <version>0.50.0</version>
+        </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-agentic</artifactId>

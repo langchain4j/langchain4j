@@ -169,21 +169,114 @@ jobs:
           echo "Building modules: $modules"
           
           ## compile and install ALL modules to avoid running integration tests on dependent modules in the step below
-          ## retried once, as a transient Maven Central failure would otherwise skip all tests of this job
-          mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install || mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install
+          ## retried once after 2 minutes, as a transient Maven Central failure would otherwise skip all tests of this job;
+          ## the retry clears MAVEN_ARGS (where setup-java puts -ntp), so that its log shows every download from Maven Central
+          mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install || { sleep 120; MAVEN_ARGS= mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install; }
 
           ## kill a module's test JVM after 2 h (with a thread dump in target/*-reports), so that a hung test
           ## does not cost the rest of the modules (the slowest module, langchain4j-google-ai-gemini, takes ~80 min)
           ## the test-assertions-frameworks profile adds the apps that build against released framework versions
+          ## -Dmaven.test.failure.ignore=true and the check below MUST stay together:
+          ## - with the property, a failed test does not fail its module, so Maven still runs the tests of the modules
+          ##   that depend on it; without it, one flaky test skips all of them
+          ## - the property alone hides failures: Maven ends with BUILD SUCCESS and the job stays green
+          ## - the check fails this step on failed tests and test errors, on a test JVM killed by the timeout above or
+          ##   crashed, on tests skipped because a variable in env: below is empty (a missing secret), and on any
+          ##   Maven failure, with error annotations that name the failing test classes
+          ## - still skipped: the modules that depend on a module that does not compile or whose test JVM crashed
+          ##   (Maven fails that module, BUILD FAILURE)
+          maven_exit=0
           mvn -B -U verify ${{ steps.jackson3.outputs.profile }} -Ptest-assertions-frameworks \
             -Dsurefire.timeout=7200 \
             -Dfailsafe.timeout=7200 \
+            -Dmaven.test.failure.ignore=true \
             -pl "${modules}" \
             -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
             --fail-at-end \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
             -DembeddingsSkipCache \
-            -Dtinylog.writer.level=info
+            -Dtinylog.writer.level=info || maven_exit=$?
+
+          ## the check: it also runs when Maven failed, so that failed tests of other modules are reported too
+          MAVEN_EXIT="$maven_exit" python3 << 'PYEOF'
+          import glob, os, re, sys
+          import xml.etree.ElementTree as ET
+
+          def escape(text, prop=False):
+              text = text.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              return text.replace(':', '%3A').replace(',', '%2C') if prop else text
+
+          def module_of(path):
+              return path.split('/target/')[0]
+
+          maven_exit = int(os.environ['MAVEN_EXIT'])
+          problems = []  # (module, what went wrong), the ones that stopped tests from running first
+          failed_classes = {}  # module -> [(test class, its failed tests)]
+          skipped_by_empty_variable = {}  # variable from env: -> number of tests skipped because it is empty
+          if maven_exit:
+              problems.append(('Maven', f'Maven failed (exit code {maven_exit}): a module did not compile, a plugin failed '
+                               'or a test JVM crashed, and the modules of this job that depend on it were skipped. '
+                               'See BUILD FAILURE and the Reactor Summary in the log'))
+          for path in sorted(glob.glob('**/target/failsafe-reports/failsafe-summary.xml', recursive=True)):
+              try:
+                  timeout = ET.parse(path).getroot().get('timeout') == 'true'
+              except Exception as e:
+                  problems.append((module_of(path), f'unreadable test report {path} ({e})'))
+                  continue
+              if timeout:
+                  problems.append((module_of(path), 'failsafe killed the test JVM after the timeout, the tests after the hung one did not run'))
+          # surefire writes no summary: a thread dump of its test JVM is the only trace of a timeout
+          for path in sorted(glob.glob('**/target/surefire-reports/*.dump', recursive=True)):
+              problems.append((module_of(path), f'surefire killed the test JVM after the timeout, or lost it otherwise ({path})'))
+          for path in sorted(glob.glob('**/target/*-reports/TEST-*.xml', recursive=True)):
+              try:
+                  root = ET.parse(path).getroot()
+                  failed = int(root.get('failures', 0)) + int(root.get('errors', 0))
+              except Exception as e:
+                  problems.append((module_of(path), f'unreadable test report {path} ({e})'))
+                  continue
+              if failed > 0:
+                  test_class = (root.get('name') or os.path.basename(path)[5:-4]).rsplit('.', 1)[-1]
+                  tests = sorted({tc.get('name', '').split('(')[0].split('[')[0] for tc in root.iter('testcase')
+                                  if tc.find('failure') is not None or tc.find('error') is not None})
+                  names = ', '.join(tests[:3]) + (f' and {len(tests) - 3} more' if len(tests) > 3 else '')
+                  failed_classes.setdefault(module_of(path), []).append((test_class, f'{failed} of {root.get("tests")} tests failed ({names})'))
+              for skipped in root.iter('skipped'):
+                  match = re.search(r'Environment variable \[(\w+)\] with value \[\] does not match', skipped.get('message') or '')
+                  if match and os.environ.get(match.group(1)) == '':
+                      skipped_by_empty_variable[match.group(1)] = skipped_by_empty_variable.get(match.group(1), 0) + 1
+          for variable, count in sorted(skipped_by_empty_variable.items()):
+              problems.append((variable, f'{variable} is empty (a missing secret?), so {count} tests were skipped'))
+
+          if not problems and not failed_classes:
+              sys.exit(0)
+
+          annotations = list(problems)
+          for module, classes in failed_classes.items():
+              if len(classes) == 1:
+                  annotations.append((module, f'{classes[0][0]}: {classes[0][1]}'))
+              else:
+                  names = ', '.join(c for c, _ in classes[:5]) + (f' and {len(classes) - 5} more' if len(classes) > 5 else '')
+                  annotations.append((module, f'{len(classes)} test classes failed: {names}'))
+          # GitHub shows at most 10 error annotations per step, and the runner adds one when the step fails
+          if len(annotations) > 9:
+              annotations = annotations[:8] + [('More failures', f'{len(annotations) - 8} more, see the job summary')]
+          if not maven_exit:
+              print('BUILD SUCCESS above does not mean that the tests passed:')
+          for module, text in annotations:
+              print(f'::error title={escape(module, True)}::{escape(text)}')
+          details = [f'`{module}`: {problem}' for module, problem in problems]
+          details += [f'`{module}`: {c}: {tests}' for module, classes in failed_classes.items() for c, tests in classes]
+          print('\n'.join(details))
+
+          with open(os.environ.get('GITHUB_STEP_SUMMARY', os.devnull), 'a') as summary:
+              summary.write('## :x: Why this job failed\n\n')
+              summary.write(''.join(f'- {line}\n' for line in details[:50]))
+              if len(details) > 50:
+                  summary.write(f'- ... and {len(details) - 50} more, see the log of this step\n')
+              summary.write('\nThe error message of every failed test is in Test Results below.\n\n')
+          sys.exit(maven_exit or 1)
+          PYEOF
 
         env:
           LC4J_GLOBAL_TEST_RETRY_ENABLED: true
@@ -293,24 +386,3 @@ jobs:
                   if len(failed_tests) > 50:
                       f.write(f'\n*... and {len(failed_tests) - 50} more*\n')
           PYEOF
-
-      - name: Upload Test Reports
-        if: always() # always run even if the previous step failed or was cancelled
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: Test-Reports-${{ strategy.job-index }}
-          path: '**/target/*-reports/*'
-
-      - name: Upload JaCoCo Reports
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: jacoco-${{ strategy.job-index }}
-          path: '**/target/site/jacoco/**'
-
-      - name: Upload JaCoCo Execution Data
-        if: always()
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: jacoco-exec-${{ strategy.job-index }}
-          path: '**/target/jacoco.exec'

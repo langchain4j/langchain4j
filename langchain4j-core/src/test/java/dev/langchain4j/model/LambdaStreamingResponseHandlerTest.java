@@ -9,9 +9,9 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -177,7 +177,7 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
     void onPartialResponseAndErrorBlockingShouldNotWaitWhenTheErrorHandlerThrowsOnAnotherThread() throws Exception {
         // given a model that reports a failure on its own thread, like a provider's I/O thread
         RuntimeException failure = new IllegalStateException("connection reset");
-        StreamingChatModelMock model = spy(StreamingChatModelMock.thatAlwaysStreams("Hi"));
+        MockStreamingChatModel model = spy(MockStreamingChatModel.thatResponds("Hi"));
         doAnswer(invocation -> {
                     StreamingChatResponseHandler handler = invocation.getArgument(1);
                     new Thread(() -> handler.onError(failure)).start();

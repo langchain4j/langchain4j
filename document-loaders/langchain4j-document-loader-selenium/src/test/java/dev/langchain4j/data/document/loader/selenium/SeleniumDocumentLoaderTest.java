@@ -1,7 +1,10 @@
 package dev.langchain4j.data.document.loader.selenium;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.document.Document;
@@ -43,6 +46,21 @@ class SeleniumDocumentLoaderTest {
         assertThat(document.metadata().getString(Document.URL)).isEqualTo(URL);
     }
 
+    @Test
+    void failure_should_report_url_without_query_and_user_info() {
+        String url = "https://user:secret@example.com:8443/report.pdf?token=secret";
+        WebDriver webDriver = mock(WebDriver.class);
+        doThrow(new RuntimeException("navigation failed")).when(webDriver).get(url);
+
+        SeleniumDocumentLoader loader = SeleniumDocumentLoader.builder()
+                .webDriver(webDriver)
+                .timeout(Duration.ofSeconds(1))
+                .build();
+
+        assertThatThrownBy(() -> loader.load(url))
+                .hasMessage("Failed to load document from URL: https://example.com:8443/report.pdf");
+        verify(webDriver).get(url);
+    }
     private static byte[] readAllBytes(InputStream inputStream) {
         try {
             return inputStream.readAllBytes();

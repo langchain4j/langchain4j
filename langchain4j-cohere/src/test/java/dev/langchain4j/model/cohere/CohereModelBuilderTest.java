@@ -39,4 +39,18 @@ class CohereModelBuilderTest {
 
         assertThat(toString).contains("apiKey=null");
     }
+
+    @Test
+    void clientBuilder_toString_should_mask_api_key() {
+        String toString = CohereClient.builder().apiKey("secret-api-key").toString();
+
+        assertThat(toString).doesNotContain("secret-api-key").contains("apiKey=********");
+    }
+
+    @Test
+    void clientBuilder_toString_should_render_null_api_key_as_null() {
+        String toString = CohereClient.builder().toString();
+
+        assertThat(toString).contains("apiKey=null");
+    }
 }

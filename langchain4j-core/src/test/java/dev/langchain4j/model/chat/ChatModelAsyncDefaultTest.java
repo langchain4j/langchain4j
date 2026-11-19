@@ -6,10 +6,10 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
+import dev.langchain4j.test.mock.MockChatModel;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -91,7 +91,7 @@ class ChatModelAsyncDefaultTest {
 
     @Test
     void chatAsync_with_empty_list_of_messages_returns_a_failed_future() {
-        ChatModel model = ChatModelMock.thatAlwaysResponds("Berlin");
+        ChatModel model = MockChatModel.thatResponds("Berlin");
 
         assertThat(model.chatAsync(List.of()))
                 .failsWithin(Duration.ofSeconds(1))
@@ -101,7 +101,7 @@ class ChatModelAsyncDefaultTest {
 
     @Test
     void chatAsync_without_messages_returns_a_failed_future() {
-        ChatModel model = ChatModelMock.thatAlwaysResponds("Berlin");
+        ChatModel model = MockChatModel.thatResponds("Berlin");
 
         assertThat(model.chatAsync(new ChatMessage[0]))
                 .failsWithin(Duration.ofSeconds(1))
@@ -111,7 +111,7 @@ class ChatModelAsyncDefaultTest {
 
     @Test
     void chatAsync_with_null_user_message_returns_a_failed_future() {
-        ChatModel model = ChatModelMock.thatAlwaysResponds("Berlin");
+        ChatModel model = MockChatModel.thatResponds("Berlin");
 
         assertThat(model.chatAsync((String) null))
                 .failsWithin(Duration.ofSeconds(1))
@@ -121,7 +121,7 @@ class ChatModelAsyncDefaultTest {
 
     @Test
     void chatAsync_with_null_chat_request_returns_a_failed_future() {
-        ChatModel model = ChatModelMock.thatAlwaysResponds("Berlin");
+        ChatModel model = MockChatModel.thatResponds("Berlin");
 
         assertThat(model.chatAsync((ChatRequest) null))
                 .failsWithin(Duration.ofSeconds(1))
@@ -133,7 +133,7 @@ class ChatModelAsyncDefaultTest {
 
     @Test
     void chatAsync_returns_a_failed_future_without_notifying_listeners_when_listeners_cannot_be_obtained() {
-        ChatModelMock model = spy(ChatModelMock.thatAlwaysResponds("Berlin"));
+        MockChatModel model = spy(MockChatModel.thatResponds("Berlin"));
         IllegalStateException error = new IllegalStateException("cannot obtain listeners");
         doThrow(error).when(model).listeners();
 
@@ -147,7 +147,7 @@ class ChatModelAsyncDefaultTest {
 
     @Test
     void chatAsync_with_user_message_propagates_cancellation_to_the_model_call() {
-        ChatModelMock model = spy(ChatModelMock.thatAlwaysResponds("Berlin"));
+        MockChatModel model = spy(MockChatModel.thatResponds("Berlin"));
         CompletableFuture<ChatResponse> inFlight = new CompletableFuture<>();
         doReturn(inFlight).when(model).chatAsync(any(ChatRequest.class));
 
@@ -159,7 +159,7 @@ class ChatModelAsyncDefaultTest {
     @Test
     void chatAsync_returns_a_failed_future_without_notifying_listeners_when_the_request_cannot_be_prepared() {
         ChatModelListener listener = mock(ChatModelListener.class);
-        ChatModelMock model = spy(ChatModelMock.thatAlwaysResponds("Berlin").withListeners(listener));
+        MockChatModel model = spy(MockChatModel.thatResponds("Berlin").withListeners(listener));
         IllegalStateException error = new IllegalStateException("cannot merge default parameters");
         doThrow(error).when(model).defaultRequestParameters();
 
@@ -177,7 +177,7 @@ class ChatModelAsyncDefaultTest {
     @Test
     void chatAsync_returns_a_failed_future_and_notifies_listeners_once_when_doChatAsync_returns_null() {
         ChatModelListener listener = mock(ChatModelListener.class);
-        ChatModelMock model = spy(ChatModelMock.thatAlwaysResponds("Berlin").withListeners(listener));
+        MockChatModel model = spy(MockChatModel.thatResponds("Berlin").withListeners(listener));
         doReturn(null).when(model).doChatAsync(any());
 
         CompletableFuture<ChatResponse> future =
@@ -200,7 +200,7 @@ class ChatModelAsyncDefaultTest {
     @Test
     void chatAsync_returns_a_failed_future_and_notifies_listeners_once_when_doChatAsync_throws_an_error() {
         ChatModelListener listener = mock(ChatModelListener.class);
-        ChatModelMock model = spy(ChatModelMock.thatAlwaysResponds("Berlin").withListeners(listener));
+        MockChatModel model = spy(MockChatModel.thatResponds("Berlin").withListeners(listener));
         NoClassDefFoundError error = new NoClassDefFoundError("MissingOptionalDependency");
         doThrow(error).when(model).doChatAsync(any());
 

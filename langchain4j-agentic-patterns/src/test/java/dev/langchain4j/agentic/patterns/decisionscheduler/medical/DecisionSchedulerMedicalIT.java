@@ -76,6 +76,9 @@ public class DecisionSchedulerMedicalIT {
         // the diagnosis needs the symptoms and the lab analysis, and reaches the goal
         assertThat(path).endsWith("diagnose").containsOnlyOnce("diagnose");
         assertThat(path).contains("extractSymptoms", "analyzeLabResults");
+        // the tokens of the decision calls of the scheduler itself, without the ones of its subagents
+        assertThat(monitor.successfulExecutions().get(0).topLevelInvocations().totalTokenCount())
+                .isPositive();
 //        HtmlReportGenerator.generateReport(monitor,
 //                Path.of("src", "test", "resources", "medical-decision-scheduler.html"));
     }

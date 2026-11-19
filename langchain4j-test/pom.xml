@@ -5,13 +5,18 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.24.0-beta34-SNAPSHOT</version>
+        <version>1.25.0-beta35-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
     <artifactId>langchain4j-test</artifactId>
     <name>LangChain4j :: Test</name>
     <description>Testing utility classes and interfaces of LangChain4j</description>
+
+    <!-- The package dev/langchain4j/test/mock is also compiled into the tests of langchain4j-core and langchain4j, and
+         dev/langchain4j/test/guardrail into the tests of langchain4j-core (see their poms). The mocks are left out of
+         their test-jars and test-sources jars, so they are published only here. After changing these packages, build
+         with -pl langchain4j-test -am -amd -->
 
     <licenses>
         <license>
@@ -37,13 +42,13 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.24.0-SNAPSHOT</version>
+            <version>1.25.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.24.0-SNAPSHOT</version>
+            <version>1.25.0-SNAPSHOT</version>
             <optional>true</optional>
         </dependency>
 
@@ -52,12 +57,17 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>io.smallrye.reactive</groupId>
+            <artifactId>mutiny-zero</artifactId>
+        </dependency>
+
         <!-- test dependencies -->
 
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.24.0-SNAPSHOT</version>
+            <version>1.25.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>
@@ -67,7 +77,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-open-ai</artifactId>
-            <version>1.24.0-SNAPSHOT</version>
+            <version>1.25.0-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
 
@@ -75,6 +85,19 @@
             <groupId>org.reactivestreams</groupId>
             <artifactId>reactive-streams</artifactId>
             <version>${reactive-streams-tck.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.reactivestreams</groupId>
+            <artifactId>reactive-streams-tck</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Runs the TestNG-based Reactive Streams TCK (PublisherVerification) under the JUnit Platform -->
+        <dependency>
+            <groupId>org.junit.support</groupId>
+            <artifactId>testng-engine</artifactId>
             <scope>test</scope>
         </dependency>
 
@@ -95,12 +118,11 @@
                         </goals>
                         <configuration>
                             <classpathDependencyExcludes>
-                                <!-- langchain4j and its own compile dependencies, as for a user without it: keep in sync with langchain4j/pom.xml -->
+                                <!-- langchain4j and its own compile dependencies that this module does not have, as for a user without it: keep in sync with langchain4j/pom.xml -->
                                 <classpathDependencyExclude>dev.langchain4j:langchain4j</classpathDependencyExclude>
                                 <classpathDependencyExclude>org.apache.opennlp:opennlp-tools</classpathDependencyExclude>
-                                <classpathDependencyExclude>io.smallrye.reactive:mutiny-zero</classpathDependencyExclude>
                             </classpathDependencyExcludes>
-                            <test>dev/langchain4j/test/OptionalLangChain4jTest.java,dev/langchain4j/test/guardrail/**/*Test.java,dev/langchain4j/test/judge/**/*Test.java,dev/langchain4j/test/internal/**/*Test.java,dev/langchain4j/test/model/ChatRequestAssertTest.java</test>
+                            <test>dev/langchain4j/test/OptionalLangChain4jTest.java,dev/langchain4j/test/guardrail/**/*Test.java,dev/langchain4j/test/judge/**/*Test.java,dev/langchain4j/test/internal/**/*Test.java,dev/langchain4j/test/model/ChatRequestAssertTest.java,dev/langchain4j/test/mock/**/*Test.java</test>
                             <systemPropertyVariables>
                                 <withoutLangChain4j>true</withoutLangChain4j>
                             </systemPropertyVariables>

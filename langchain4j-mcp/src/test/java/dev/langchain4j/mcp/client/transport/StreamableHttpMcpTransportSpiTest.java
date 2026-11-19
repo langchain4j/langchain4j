@@ -197,7 +197,8 @@ class StreamableHttpMcpTransportSpiTest {
     }
 
     @Test
-    void should_complete_with_the_json_rpc_error_of_a_client_that_only_reports_the_failure() throws Exception {
+    void should_fail_with_the_status_code_of_a_json_rpc_error_that_a_client_only_reports_with_the_failure()
+            throws Exception {
         start(builder());
         transport.setModernProtocol(true);
         CompletableFuture<String> result = transport.sendRequest(new McpListToolsRequest(1L, null));
@@ -205,7 +206,9 @@ class StreamableHttpMcpTransportSpiTest {
 
         httpClient.nextExchange().fail(new HttpException(400, error));
 
-        assertThat(result.get(5, TimeUnit.SECONDS)).isEqualTo(error);
+        ExecutionException failure = assertThrows(ExecutionException.class, () -> result.get(5, TimeUnit.SECONDS));
+        assertThat(failure.getCause()).isInstanceOf(HttpException.class).hasMessage("Unexpected status code: 400");
+        assertThat(((HttpException) failure.getCause()).statusCode()).isEqualTo(400);
     }
 
     @ParameterizedTest

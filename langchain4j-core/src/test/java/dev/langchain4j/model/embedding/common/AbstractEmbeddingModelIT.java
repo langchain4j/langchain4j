@@ -1,6 +1,5 @@
 package dev.langchain4j.model.embedding.common;
 
-import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.embedding.request.EmbeddingInputType.DOCUMENT;
 import static dev.langchain4j.model.embedding.request.EmbeddingInputType.QUERY;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,6 +21,9 @@ import dev.langchain4j.model.embedding.listener.EmbeddingModelResponseContext;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.util.Base64;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -59,9 +61,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 @TestInstance(PER_CLASS)
 public abstract class AbstractEmbeddingModelIT {
 
-    // Same image the chat-model ITs use; it is a PNG (matching the mime type below) and reliably fetchable.
-    protected static final String CAT_IMAGE_URL =
-            "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
+    private static final String CAT_IMAGE_RESOURCE = "/images/cat.jpg";
+
+    protected static final String CAT_IMAGE_URL = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/"
+            + "langchain4j-core/src/test/resources/images/cat.jpg";
 
     // ===================== model provisioning =====================
 
@@ -122,8 +125,12 @@ public abstract class AbstractEmbeddingModelIT {
     }
 
     protected ImageContent catImage() {
-        String base64 = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
-        return ImageContent.from(base64, "image/png");
+        try (InputStream inputStream = AbstractEmbeddingModelIT.class.getResourceAsStream(CAT_IMAGE_RESOURCE)) {
+            String base64 = Base64.getEncoder().encodeToString(inputStream.readAllBytes());
+            return ImageContent.from(base64, "image/jpeg");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private static Embedding single(EmbeddingResponse response) {

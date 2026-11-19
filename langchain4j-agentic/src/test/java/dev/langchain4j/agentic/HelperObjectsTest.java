@@ -59,9 +59,9 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.decision.Decide;
@@ -233,8 +233,8 @@ class HelperObjectsTest {
     }
 
     /** Replies with the system message and the last user message it receives. */
-    static ChatModelMock echoModel() {
-        return new ChatModelMock(chatRequest -> {
+    static MockChatModel echoModel() {
+        return MockChatModel.thatResponds(chatRequest -> {
             String system = chatRequest.messages().stream()
                     .filter(SystemMessage.class::isInstance)
                     .map(message -> ((SystemMessage) message).text())
@@ -243,16 +243,16 @@ class HelperObjectsTest {
             ChatMessage last = chatRequest.messages().get(chatRequest.messages().size() - 1);
             String user = last instanceof UserMessage userMessage ? userMessage.singleText() : "";
             return AiMessage.from(system + " | " + user);
-        });
+        }).thenRepeats();
     }
 
     /** Replies with the given responses in order. */
-    static ChatModelMock scriptedModel(String... responses) {
+    static MockChatModel scriptedModel(String... responses) {
         Iterator<String> iterator = List.of(responses).iterator();
-        return new ChatModelMock(chatRequest -> AiMessage.from(iterator.next()));
+        return MockChatModel.thatResponds(chatRequest -> AiMessage.from(iterator.next())).thenRepeats();
     }
 
-    static String receivedTexts(ChatModelMock model) {
+    static String receivedTexts(MockChatModel model) {
         return model.requests().stream()
                 .flatMap(request -> request.messages().stream())
                 .map(message -> message instanceof SystemMessage systemMessage
@@ -581,7 +581,7 @@ class HelperObjectsTest {
         final MemoryStore store = new MemoryStore();
 
         @ChatModelSupplier
-        ChatModel chatModel(@Injected ChatModelMock model) {
+        ChatModel chatModel(@Injected MockChatModel model) {
             return model;
         }
 
@@ -621,7 +621,7 @@ class HelperObjectsTest {
     void ai_agent_suppliers_are_invoked_on_the_helper_object() {
         register(Persona.class, new Persona("Butler"));
         register(Formatter.class, new Formatter());
-        ChatModelMock model = register(ChatModelMock.class, echoModel());
+        MockChatModel model = register(MockChatModel.class, echoModel());
         RecordingListener listener = register(RecordingListener.class, new RecordingListener());
         AssistantHelpers helpers = new AssistantHelpers();
         var configurator = new AgentConfigurator(
@@ -647,8 +647,8 @@ class HelperObjectsTest {
     }
 
     public static class TranslatorHelpers {
-        final ChatModelMock english = ChatModelMock.thatAlwaysResponds("hello");
-        final ChatModelMock italian = ChatModelMock.thatAlwaysResponds("ciao");
+        final MockChatModel english = MockChatModel.thatResponds("hello");
+        final MockChatModel italian = MockChatModel.thatResponds("ciao");
 
         @ChatModelSupplier
         ChatModel chatModel(@V("language") String language, @Injected Formatter formatter) {
@@ -677,7 +677,7 @@ class HelperObjectsTest {
         assertThat(helpers.english.requests()).hasSize(1);
     }
 
-    static final ChatModelMock INHERITED_MODEL = ChatModelMock.thatAlwaysResponds("inherited");
+    static final MockChatModel INHERITED_MODEL = MockChatModel.thatResponds("inherited").thenRepeats();
 
     public interface ModelDefaults {
 
@@ -702,7 +702,7 @@ class HelperObjectsTest {
 
     @Test
     void static_chat_model_supplier_of_a_super_interface_of_an_ai_agent_is_applied() {
-        ChatModelMock systemModel = ChatModelMock.thatAlwaysResponds("system");
+        MockChatModel systemModel = MockChatModel.thatResponds("system");
 
         InheritingTranslation translation =
                 AgenticServices.createAgenticSystem(InheritingTranslation.class, systemModel);
@@ -761,9 +761,9 @@ class HelperObjectsTest {
 
     public static class SupervisorHelpers {
         final MemoryStore store = new MemoryStore();
-        final ChatModelMock plannerModel;
+        final MockChatModel plannerModel;
 
-        SupervisorHelpers(ChatModelMock plannerModel) {
+        SupervisorHelpers(MockChatModel plannerModel) {
             this.plannerModel = plannerModel;
         }
 
@@ -788,7 +788,7 @@ class HelperObjectsTest {
         }
     }
 
-    static ChatModelMock exchangePlannerModel() {
+    static MockChatModel exchangePlannerModel() {
         return scriptedModel("""
             {"agentName": "exchange", "arguments": {"euros": 100}}
             """, """
@@ -824,7 +824,7 @@ class HelperObjectsTest {
         final List<ThresholdContext> contexts = new ArrayList<>();
 
         @DecisionModelSupplier
-        DecisionModel decisionModel(@Injected DecisionModelMock model) {
+        DecisionModel decisionModel(@Injected MockDecisionModel model) {
             return model;
         }
 
@@ -837,7 +837,7 @@ class HelperObjectsTest {
 
     @Test
     void decision_suppliers_are_invoked_on_the_helper_object() {
-        register(DecisionModelMock.class, DecisionModelMock.thatAnswersYesNoQuestions(question -> 0.7));
+        register(MockDecisionModel.class, MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.7));
         register(Threshold.class, new Threshold(80));
         GateHelpers helpers = new GateHelpers();
 
@@ -1016,6 +1016,227 @@ class HelperObjectsTest {
 
         assertThat(signing.run("Mario")).isEqualTo("MARIO SIGNED");
         assertThat(STATIC_SUPPLIED_LISTENER.invokedAgents).containsExactly("sign", "shout");
+    }
+
+    // ── Subagents provided as instances by the subAgentResolver: the helper objects of their type are added ──
+
+    /**
+     * The configurator of an integration providing the subagent of the given type as an instance, with the given
+     * helper objects for that type.
+     */
+    static AgentConfigurator resolvedSubagent(Class<?> declaredType, Object instance, Object... helperObjects) {
+        return AgentConfigurator.builder()
+                .subAgentResolver(type -> type == declaredType ? instance : null)
+                .helperObjectsResolver(type -> type == declaredType ? List.of(helperObjects) : List.of())
+                .build();
+    }
+
+    public static class ListenerHelpers {
+        final RecordingListener listener = new RecordingListener();
+
+        @AgentListenerSupplier
+        AgentListener suppliedListener() {
+            return listener;
+        }
+    }
+
+    public interface InstanceGreeting {
+
+        @SequenceAgent(outputKey = "greeting", subAgents = InstanceGreeter.class)
+        String run(@V("name") String name);
+    }
+
+    @Test
+    void resolved_non_ai_subagent_notifies_the_listener_of_the_helper_object_of_its_type() {
+        register(Formatter.class, new Formatter());
+        register(Policy.class, new Policy("Voldemort"));
+        ListenerHelpers helpers = new ListenerHelpers();
+
+        InstanceGreeting greeting = AgenticServices.createAgenticSystem(
+                InstanceGreeting.class, resolvedSubagent(InstanceGreeter.class, new InstanceGreeter(), helpers));
+
+        assertThat(greeting.run("Mario")).isEqualTo("HELLO MARIO");
+        assertThat(helpers.listener.invokedAgents).containsExactly("greet");
+    }
+
+    public interface InstanceConfirmation {
+
+        @SequenceAgent(outputKey = "confirmation", subAgents = Confirmation.class)
+        String run(@V("name") String name);
+    }
+
+    @Test
+    void resolved_human_in_the_loop_subagent_notifies_the_listener_of_the_helper_object_of_its_type() {
+        register(Console.class, new Console());
+        register(Policy.class, new Policy("Voldemort"));
+        ListenerHelpers helpers = new ListenerHelpers();
+
+        InstanceConfirmation confirmation = AgenticServices.createAgenticSystem(
+                InstanceConfirmation.class, resolvedSubagent(Confirmation.class, new Confirmation(), helpers));
+
+        assertThat(confirmation.run("Mario")).isEqualTo("Confirm Mario? yes");
+        assertThat(helpers.listener.invokedAgents).containsExactly("ask");
+    }
+
+    public interface ListenedGreeting {
+
+        @SequenceAgent(outputKey = "greeting", subAgents = ListenedGreeter.class)
+        String run(@V("name") String name);
+    }
+
+    @Test
+    void resolved_subagent_gets_the_activation_condition_of_the_helper_object_of_its_type() {
+        register(Policy.class, new Policy("Voldemort"));
+        ListenedGreeter greeter = new ListenedGreeter();
+
+        ListenedGreeting greeting = AgenticServices.createAgenticSystem(
+                ListenedGreeting.class, resolvedSubagent(ListenedGreeter.class, greeter, new GreetingGate()));
+
+        assertThat(greeting.run("Mario")).isEqualTo("Hello Mario");
+        assertThat(greeting.run("Voldemort")).isNull();
+        assertThat(resolvedMethods()).contains("allowed");
+        // the listener of the instance is not notified of an agent that its activation condition skips
+        assertThat(greeter.listener.invokedAgents).containsExactly("greet");
+    }
+
+    @Test
+    void helper_object_that_is_the_resolved_subagent_itself_is_counted_once() {
+        // the shape of a container bean with an instance agent method: both resolvers return it
+        ListenedGreeter greeter = new ListenedGreeter();
+
+        ListenedGreeting greeting = AgenticServices.createAgenticSystem(
+                ListenedGreeting.class, resolvedSubagent(ListenedGreeter.class, greeter, greeter));
+
+        assertThat(greeting.run("Mario")).isEqualTo("Hello Mario");
+        assertThat(greeter.listener.invokedAgents).containsExactly("greet");
+    }
+
+    @Test
+    void resolved_subagent_and_helper_object_of_its_type_with_the_same_annotation_are_rejected() {
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(
+                        ListenedGreeting.class,
+                        resolvedSubagent(ListenedGreeter.class, new ListenedGreeter(), new ListenerHelpers())))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("@AgentListenerSupplier")
+                .hasMessageContaining(ListenedGreeter.class.getName() + ".listener()")
+                .hasMessageContaining(ListenerHelpers.class.getName() + ".suppliedListener()");
+    }
+
+    @Test
+    void helper_objects_resolver_is_not_called_for_a_subagent_resolved_already_built() {
+        Rephraser rephraser = AgenticServices.agentBuilder(Rephraser.class)
+                .chatModel(scriptedModel("ciao"))
+                .build();
+        List<Class<?>> resolvedTypes = new CopyOnWriteArrayList<>();
+        var configurator = AgentConfigurator.builder()
+                .subAgentResolver(type -> type == Rephraser.class ? rephraser : null)
+                .helperObjectsResolver(type -> {
+                    resolvedTypes.add(type);
+                    return List.of();
+                })
+                .build();
+
+        Rephrasing rephrasing = AgenticServices.createAgenticSystem(Rephrasing.class, configurator);
+
+        assertThat(rephrasing.run("hello")).isEqualTo("ciao");
+        // the helper objects of the root agent only: the subagent was built elsewhere, with its own helpers
+        assertThat(resolvedTypes).containsExactly(Rephrasing.class);
+    }
+
+    @Test
+    void helper_objects_resolver_is_not_called_for_a_human_in_the_loop_subagent_resolved_already_built() {
+        ListenerHelpers helpers = new ListenerHelpers();
+        List<Class<?>> resolvedTypes = new CopyOnWriteArrayList<>();
+        var configurator = AgentConfigurator.builder()
+                .subAgentResolver(type -> type == Confirmation.class
+                        ? AgenticServices.humanInTheLoopBuilder()
+                                .outputKey("confirmation")
+                                .responseProvider(() -> "yes")
+                                .build()
+                        : null)
+                .helperObjectsResolver(type -> {
+                    resolvedTypes.add(type);
+                    return type == Confirmation.class ? List.of(helpers) : List.of();
+                })
+                .build();
+
+        InstanceConfirmation confirmation =
+                AgenticServices.createAgenticSystem(InstanceConfirmation.class, configurator);
+
+        assertThat(confirmation.run("Mario")).isEqualTo("yes");
+        assertThat(resolvedTypes).containsExactly(InstanceConfirmation.class);
+        assertThat(helpers.listener.invokedAgents).isEmpty();
+    }
+
+    /** Shaped like the proxy of a container bean: a subclass of the subagent type listed in the workflow. */
+    public static class InstanceGreeterProxy extends InstanceGreeter {}
+
+    @Test
+    void helper_objects_of_a_resolved_subagent_are_the_ones_of_its_listed_type_not_of_its_class() {
+        register(Formatter.class, new Formatter());
+        register(Policy.class, new Policy("Voldemort"));
+        ListenerHelpers helpers = new ListenerHelpers();
+        List<Class<?>> resolvedTypes = new CopyOnWriteArrayList<>();
+        var configurator = AgentConfigurator.builder()
+                .subAgentResolver(type -> type == InstanceGreeter.class ? new InstanceGreeterProxy() : null)
+                .helperObjectsResolver(type -> {
+                    resolvedTypes.add(type);
+                    return type == InstanceGreeter.class ? List.of(helpers) : List.of();
+                })
+                .build();
+
+        InstanceGreeting greeting = AgenticServices.createAgenticSystem(InstanceGreeting.class, configurator);
+
+        assertThat(greeting.run("Mario")).isEqualTo("HELLO MARIO");
+        assertThat(helpers.listener.invokedAgents).containsExactly("greet");
+        assertThat(resolvedTypes).containsExactly(InstanceGreeting.class, InstanceGreeter.class);
+    }
+
+    @Test
+    void resolved_subagent_without_a_helper_objects_resolver_is_its_own_and_only_helper_object() {
+        ListenedGreeter greeter = new ListenedGreeter();
+        var configurator = AgentConfigurator.builder()
+                .subAgentResolver(type -> type == ListenedGreeter.class ? greeter : null)
+                .build();
+
+        ListenedGreeting greeting = AgenticServices.createAgenticSystem(ListenedGreeting.class, configurator);
+
+        assertThat(greeting.run("Mario")).isEqualTo("Hello Mario");
+        assertThat(greeter.listener.invokedAgents).containsExactly("greet");
+    }
+
+    @Test
+    void another_instance_of_the_class_of_the_resolved_subagent_is_a_second_helper_object() {
+        // helper objects are compared by identity, so a container returning a new instance at each lookup gives two
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(
+                        ListenedGreeting.class,
+                        resolvedSubagent(ListenedGreeter.class, new ListenedGreeter(), new ListenedGreeter())))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("@AgentListenerSupplier")
+                .hasMessageContaining(ListenedGreeter.class.getName() + ".listener()");
+    }
+
+    @Test
+    void decision_supplier_of_the_helper_object_of_a_resolved_non_ai_subagent_is_rejected() {
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(
+                        InstanceGreeting.class,
+                        resolvedSubagent(InstanceGreeter.class, new InstanceGreeter(), new GateHelpers())))
+                .isInstanceOf(AgenticSystemConfigurationException.class)
+                .hasMessageContaining("@DecisionModelSupplier, but it is not built as a decision agent");
+    }
+
+    @Test
+    void null_helper_object_of_a_resolved_subagent_is_reported_for_its_listed_type() {
+        var configurator = AgentConfigurator.builder()
+                .subAgentResolver(type -> type == InstanceGreeter.class ? new InstanceGreeterProxy() : null)
+                .helperObjectsResolver(
+                        type -> type == InstanceGreeter.class ? Arrays.asList((Object) null) : List.of())
+                .build();
+
+        assertThatThrownBy(() -> AgenticServices.createAgenticSystem(InstanceGreeting.class, configurator))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The helperObjectsResolver returned a null helper object for the agent "
+                        + InstanceGreeter.class.getName());
     }
 
     // ── Class-based workflow agents with an agentInstanceFactory: the contract an integration relies on ──
@@ -1359,7 +1580,7 @@ class HelperObjectsTest {
     }
 
     public static class RephrasingModel {
-        final ChatModelMock model = scriptedModel("ciao");
+        final MockChatModel model = scriptedModel("ciao");
 
         @ChatModelSupplier
         ChatModel chatModel(@Injected Persona persona) {
