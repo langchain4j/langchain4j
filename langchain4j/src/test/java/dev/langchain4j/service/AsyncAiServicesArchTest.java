@@ -96,7 +96,7 @@ class AsyncAiServicesArchTest {
             "triggerModerationIfNeeded|" + ModerationModel.class.getName() + "|moderate",
             // join() runs inside the cross-agent compensation callback handed to onCompensableToolExecution, which
             // the agentic layer invokes off the reactive path (see the comment at the call site).
-            "processToolResults|" + CompletableFuture.class.getName() + "|join");
+            "reportCompensableToolExecution|" + CompletableFuture.class.getName() + "|join");
 
     @Test
     void async_pipeline_must_not_call_blocking_apis() {
