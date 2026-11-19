@@ -188,15 +188,14 @@ public class McpToolProvider implements ToolProvider {
             BiPredicate<McpClient, ToolSpecification> mcpToolsFilter,
             List<McpClient> consideredMcpClients) {
 
-        List<McpClient> clientsSnapshot = List.copyOf(consideredMcpClients);
-        List<KeyedClient> keyedClients =
-                clientsSnapshot.stream().map(this::keyedClient).toList();
+        // a null client fails like a client that cannot list its tools (see failIfOneServerFails)
+        List<McpClient> clientsSnapshot =
+                consideredMcpClients.stream().filter(Objects::nonNull).toList();
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
 
-        for (KeyedClient keyedClient : keyedClients) {
-            McpClient mcpClient = keyedClient.client();
-            ToolSource clientToolSource = ToolSource.mcp(keyedClient.serverKeys());
+        for (McpClient mcpClient : consideredMcpClients) {
             try {
+                ToolSource clientToolSource = ToolSource.mcp(serverKeys(mcpClient));
                 for (ToolSpecification originalSpec : mcpClient.listTools()) {
                     if (mcpToolsFilter.test(mcpClient, originalSpec)) {
                         BiFunction<McpClient, ToolSpecification, String> nameMapper = toolNameMapper.get();
@@ -238,10 +237,9 @@ public class McpToolProvider implements ToolProvider {
             }
         }
         if ((resourcesAsToolsPresenter != null) && !clientsSnapshot.isEmpty()) {
-            ToolSource resourcesToolSource =
-                    ToolSource.mcp(keyedClients.stream()
-                            .flatMap(keyedClient -> keyedClient.serverKeys().stream())
-                            .toList());
+            ToolSource resourcesToolSource = ToolSource.mcp(clientsSnapshot.stream()
+                    .flatMap(client -> serverKeys(client).stream())
+                    .toList());
             ToolSpecification listResourcesToolSpec = resourcesAsToolsPresenter.createListResourcesSpecification();
             if (alwaysVisibleToolNames.contains(listResourcesToolSpec.name())) {
                 listResourcesToolSpec = addSearchBehaviorMetadata(listResourcesToolSpec);
@@ -267,11 +265,9 @@ public class McpToolProvider implements ToolProvider {
     }
 
     /**
-     * A client with the server keys of the {@link ToolSource} of its tools: its key, or none when it has no key.
+     * The server keys of the {@link ToolSource} of the tools of a client: its key, or none when it has no key.
      */
-    private record KeyedClient(McpClient client, List<String> serverKeys) {}
-
-    private KeyedClient keyedClient(McpClient mcpClient) {
+    private List<String> serverKeys(McpClient mcpClient) {
         String key = mcpClient.key();
         List<String> serverKeys = List.of();
 
@@ -287,7 +283,7 @@ public class McpToolProvider implements ToolProvider {
             serverKeys = List.of(key);
         }
 
-        return new KeyedClient(mcpClient, serverKeys);
+        return serverKeys;
     }
 
     private static ToolSpecification addSearchBehaviorMetadata(ToolSpecification toolSpecification) {

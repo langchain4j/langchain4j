@@ -368,18 +368,52 @@ class McpToolProviderTest {
     }
 
     @Test
-    void should_reject_null_client_in_considered_clients() {
+    void should_skip_a_null_client_in_considered_clients_when_one_server_may_fail() {
         var toolProvider = McpToolProvider.builder()
                 .mcpClients(mcpClient)
                 .failIfOneServerFails(false)
                 .build();
         var consideredClients = new ArrayList<McpClient>();
-        consideredClients.add(mcpClient);
         consideredClients.add(null);
+        consideredClients.add(mcpClient);
+
+        var result = toolProvider.provideTools(toolProviderRequest(), consideredClients);
+
+        assertThat(result.aiServiceTools())
+                .extracting(AiServiceTool::name, AiServiceTool::toolSource)
+                .containsExactly(tuple("tool_1", ToolSource.mcp("mcp-1")), tuple("tool_2", ToolSource.mcp("mcp-1")));
+    }
+
+    @Test
+    void should_fail_for_a_null_client_in_considered_clients_when_no_server_may_fail() {
+        var toolProvider = McpToolProvider.builder()
+                .mcpClients(mcpClient)
+                .failIfOneServerFails(true)
+                .build();
+        var consideredClients = new ArrayList<McpClient>();
+        consideredClients.add(null);
+        consideredClients.add(mcpClient);
 
         assertThatThrownBy(() -> toolProvider.provideTools(toolProviderRequest(), consideredClients))
-                .isInstanceOf(NullPointerException.class);
-        verify(mcpClient, never()).listTools();
+                .isInstanceOf(RuntimeException.class)
+                .hasMessage("Failed to retrieve tools from MCP server")
+                .hasCauseInstanceOf(NullPointerException.class);
+    }
+
+    @Test
+    void should_build_the_resource_tools_from_the_non_null_considered_clients() {
+        var toolProvider = resourcesToolProvider(mcpClient);
+        var consideredClients = new ArrayList<McpClient>();
+        consideredClients.add(null);
+        consideredClients.add(mcpClient);
+
+        var result = toolProvider.provideTools(toolProviderRequest(), consideredClients);
+
+        assertThat(result.aiServiceTools())
+                .filteredOn(tool -> List.of("list_resources", "get_resource").contains(tool.name()))
+                .extracting(AiServiceTool::toolSource)
+                .containsOnly(ToolSource.mcp("mcp-1"))
+                .hasSize(2);
     }
 
     @Test
