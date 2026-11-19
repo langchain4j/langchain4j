@@ -10,8 +10,8 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.test.service.AiServiceInvocation;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -110,7 +110,8 @@ class StreamingTest {
 
         // a cancelled invocation does not make capture(...) throw
         AiServiceInvocation invocation = capture(() -> agent.chat("Hi")
-                        .onPartialResponseWithContext((partialResponse, context) -> context.streamingHandle().cancel())
+                        .onPartialResponseWithContext((partialResponse, context) ->
+                                context.streamingHandle().cancel())
                         .onError(error -> {})
                         .start())
                 .invocation();
@@ -124,10 +125,12 @@ class StreamingTest {
                 .hasMessage("The AI Service invocation was cancelled, so it has no output");
         assertThatThrownBy(() -> assertThat(invocation).hasNoToolExecutions())
                 .isInstanceOf(AssertionError.class)
-                .hasMessage("[StreamingCustomerSupportAgent.chat] Expected the invocation to succeed, but it was cancelled");
+                .hasMessage(
+                        "[StreamingCustomerSupportAgent.chat] Expected the invocation to succeed, but it was cancelled");
         assertThatThrownBy(() -> assertThat(invocation).hasFailedWith(RuntimeException.class))
                 .isInstanceOf(AssertionError.class)
-                .hasMessage("[StreamingCustomerSupportAgent.chat] Expected the invocation to fail with <java.lang.RuntimeException>, but it did not fail (it was cancelled)");
+                .hasMessage(
+                        "[StreamingCustomerSupportAgent.chat] Expected the invocation to fail with <java.lang.RuntimeException>, but it did not fail (it was cancelled)");
     }
 
     @Test
@@ -135,9 +138,18 @@ class StreamingTest {
         StreamingCustomerSupportAgent agent =
                 agent(MockStreamingChatModel.thatFails(new RuntimeException("Stream broken")));
         List<Throwable> errors = new CopyOnWriteArrayList<>();
+        CountDownLatch errorHandled = new CountDownLatch(1);
 
-        assertThatThrownBy(() -> capture(() -> agent.chat("Hi").onPartialResponse(token -> {}).onError(errors::add).start()))
+        assertThatThrownBy(() -> capture(() -> agent.chat("Hi")
+                        .onPartialResponse(token -> {})
+                        .onError(error -> {
+                            errors.add(error);
+                            errorHandled.countDown();
+                        })
+                        .start()))
                 .hasMessageContaining("Stream broken");
+        // Capture observes the terminal event before the user's error handler has finished.
+        await(errorHandled);
         assertThat(errors).singleElement().satisfies(error -> assertThat(error).hasMessageContaining("Stream broken"));
     }
 
@@ -146,8 +158,9 @@ class StreamingTest {
         StreamingCustomerSupportAgent agent =
                 agent(MockStreamingChatModel.thatFails(new RuntimeException("Stream broken")));
 
-        AiServiceInvocation invocation =
-                captureExpectingFailure(() -> agent.chat("Hi").ignoreErrors().start()).invocation();
+        AiServiceInvocation invocation = captureExpectingFailure(
+                        () -> agent.chat("Hi").ignoreErrors().start())
+                .invocation();
 
         assertThat(invocation).hasFailedWithMessageContaining("Stream broken");
     }
@@ -155,11 +168,13 @@ class StreamingTest {
     @Test
     void should_return_failed_publisher_invocation_when_failure_is_expected() {
         StreamingCustomerSupportAgent agent =
-                agent(MockStreamingChatModel.thatFails(new RuntimeException("Stream broken")).thenRepeats());
+                agent(MockStreamingChatModel.thatFails(new RuntimeException("Stream broken"))
+                        .thenRepeats());
 
         assertThatThrownBy(() -> capture(() -> agent.chatReactive("Hi"))).hasMessageContaining("Stream broken");
 
-        AiServiceInvocation invocation = captureExpectingFailure(() -> agent.chatReactive("Hi")).invocation();
+        AiServiceInvocation invocation =
+                captureExpectingFailure(() -> agent.chatReactive("Hi")).invocation();
         assertThat(invocation).hasFailedWithMessageContaining("Stream broken");
     }
 
@@ -185,17 +200,24 @@ class StreamingTest {
 
     @Test
     void should_capture_several_token_streams() {
-        StreamingCustomerSupportAgent agent = agent(MockStreamingChatModel.thatResponds(
-                List.of(AiMessage.from("First"),
-                        AiMessage.from("Second"))));
+        StreamingCustomerSupportAgent agent =
+                agent(MockStreamingChatModel.thatResponds(List.of(AiMessage.from("First"), AiMessage.from("Second"))));
 
         List<AiServiceInvocation> invocations = capture(() -> {
-                    agent.chat("One").onPartialResponse(token -> {}).onError(error -> {}).start();
-                    agent.chat("Two").onPartialResponse(token -> {}).onError(error -> {}).start();
+                    agent.chat("One")
+                            .onPartialResponse(token -> {})
+                            .onError(error -> {})
+                            .start();
+                    agent.chat("Two")
+                            .onPartialResponse(token -> {})
+                            .onError(error -> {})
+                            .start();
                 })
                 .invocations();
 
-        assertThat(invocations).extracting(AiServiceInvocation::outputText).containsExactlyInAnyOrder("First", "Second");
+        assertThat(invocations)
+                .extracting(AiServiceInvocation::outputText)
+                .containsExactlyInAnyOrder("First", "Second");
     }
 
     @Test
@@ -204,7 +226,8 @@ class StreamingTest {
         StreamingCustomerSupportAgent agent = agent(model);
 
         AiServiceInvocation invocation = capture(() -> {
-                    TokenStream tokenStream = agent.chat("Hi").onPartialResponse(token -> {}).onError(error -> {});
+                    TokenStream tokenStream =
+                            agent.chat("Hi").onPartialResponse(token -> {}).onError(error -> {});
                     tokenStream.start();
                     return tokenStream;
                 })
