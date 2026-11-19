@@ -60,13 +60,7 @@ public class LambdaStreamingResponseHandler {
 
             @Override
             public void onError(Throwable error) {
-                if (error instanceof RuntimeException runtimeException) {
-                    throw runtimeException;
-                }
-                if (error instanceof Error javaError) {
-                    throw javaError;
-                }
-                throw new RuntimeException(error);
+                throwAsIs(error);
             }
         };
     }
@@ -93,6 +87,12 @@ public class LambdaStreamingResponseHandler {
     /**
      * Creates a streaming response handler that processes partial responses with the given consumer
      * and blocks until the streaming is complete.
+     * <p>
+     * A failure that is reported on the calling thread, for example an invalid request, is thrown from this method
+     * ({@link RuntimeException}s and {@link Error}s as they are, other exceptions wrapped in a
+     * {@link RuntimeException}). A failure that the model reports on another thread while the response streams in is
+     * printed to the standard error stream, and this method returns. To handle failures, use
+     * {@link #onPartialResponseAndErrorBlocking(StreamingChatModel, String, Consumer, Consumer)}.
      *
      * @param model the streaming chat model to use
      * @param message the message to send
@@ -102,7 +102,13 @@ public class LambdaStreamingResponseHandler {
     public static void onPartialResponseBlocking(
             StreamingChatModel model, String message, Consumer<String> onPartialResponse) throws InterruptedException {
 
-        onPartialResponseAndErrorBlocking(model, message, onPartialResponse, Throwable::printStackTrace);
+        Thread callingThread = Thread.currentThread();
+        onPartialResponseAndErrorBlocking(model, message, onPartialResponse, error -> {
+            if (Thread.currentThread() == callingThread) {
+                throwAsIs(error);
+            }
+            error.printStackTrace();
+        });
     }
 
     /**
@@ -144,5 +150,15 @@ public class LambdaStreamingResponseHandler {
 
         model.chat(message, handler);
         completionLatch.await();
+    }
+
+    private static void throwAsIs(Throwable error) {
+        if (error instanceof RuntimeException runtimeException) {
+            throw runtimeException;
+        }
+        if (error instanceof Error javaError) {
+            throw javaError;
+        }
+        throw new RuntimeException(error);
     }
 }

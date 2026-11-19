@@ -6,8 +6,10 @@ import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResp
 import static dev.langchain4j.model.LambdaStreamingResponseHandler.onPartialResponseBlocking;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
@@ -154,6 +156,30 @@ class LambdaStreamingResponseHandlerTest implements WithAssertions {
         // then
         assertThat(receivedTokens).containsExactly("Never ", "ending ");
         assertThat(errorHandled.get()).isTrue(); // Should complete even with error
+    }
+
+    @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
+    void onPartialResponseBlockingShouldThrowAFailureReportedOnTheCallingThread() {
+        // given a model that rejects the request before sending it
+        UnsupportedFeatureException unsupported = new UnsupportedFeatureException("unsupported parameter");
+        MockStreamingChatModel model = spy(MockStreamingChatModel.thatResponds("Hi"));
+        doThrow(unsupported).when(model).doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+
+        // when-then
+        assertThatThrownBy(() -> onPartialResponseBlocking(model, "Hi", token -> {})).isSameAs(unsupported);
+    }
+
+    @Test
+    @Timeout(value = 5, unit = TimeUnit.SECONDS)
+    void onPartialResponseBlockingShouldThrowAnInvalidMessage() {
+        // given
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds("Hi");
+
+        // when-then
+        assertThatThrownBy(() -> onPartialResponseBlocking(model, null, token -> {}))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(model.requests()).isEmpty();
     }
 
     @Test
