@@ -1127,9 +1127,10 @@ For those, the tool provider needs to be configured with
 [`returnToolResultAttributes(true)`](/tutorials/mcp#mcp-tool-result-metadata).
 
 Attributes can be read from the `ToolExecution` (see [Accessing Executed Tools](#accessing-executed-tools) above).
-A [tool output guardrail](/tutorials/tool-guardrails#tool-output-guardrails) that rewrites the result of a tool keeps the attributes, and drops the raw `ToolExecution.resultObject()`, which belongs to the original result.
 They are also propagated into `ToolExecutionResultMessage.attributes()`,
 so they are stored in the [`ChatMemory`](/tutorials/chat-memory) together with the message.
+
+A [tool output guardrail](/tutorials/tool-guardrails#tool-output-guardrails) that rewrites the result of a tool keeps the attributes, and drops the raw `ToolExecution.resultObject()`, which belongs to the original result.
 
 :::note
 If you use a `ChatMemoryStore` that persists messages, they are serialized to JSON.
@@ -1153,10 +1154,10 @@ tools alike:
 ```java
 class WebTools {
 
-    @Tool("Fetches a web page")
+    @Tool(name = "fetch_page", value = "Fetches a web page")
     @ToolOutputGuardrails(InjectionOutputGuardrail.class)
-    String fetchPage(String url) {
-        // ...
+    String fetchPage(@P(name = "url", value = "The URL of the page") String url) {
+        return "<html>...</html>"; // fetch the page here
     }
 }
 ```
@@ -1223,17 +1224,22 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .build();
 ```
 
-To guard a programmatic tool, set its [tool guardrails](/tutorials/tool-guardrails#aiservicetool) and, if you want a
-global guardrail to tell it apart from other tools, its `ToolSource`, on the `AiServiceTool` builder:
+To guard a programmatic tool, set its [tool guardrails](/tutorials/tool-guardrails#aiservicetool) on the
+`AiServiceTool` builder:
 
 ```java
 AiServiceTool tool = AiServiceTool.builder()
         .toolSpecification(toolSpecification)
         .toolExecutor(toolExecutor)
-        .toolSource(ToolSource.programmatic())
-        .toolInputGuardrails(new AllowedHostsInputGuardrail())
+        .toolOutputGuardrails(new InjectionOutputGuardrail())
         .build();
 ```
+
+The [`ToolSource`](/tutorials/tool-guardrails#telling-the-tools-apart-toolsource) of a programmatic tool is
+`ToolSource.programmatic()` by default, the same for all of them, so a global guardrail tells programmatic tools
+apart by `toolName()`. A `ToolSource` can only be `ToolSource.local(...)`, `ToolSource.mcp(...)` or
+`ToolSource.programmatic()`: when a programmatic tool runs a local method or calls an MCP server, you can set the
+matching source with `toolSource(...)` on the `AiServiceTool` builder.
 
 #### Configuring Immediate Return for Programmatic Tools
 

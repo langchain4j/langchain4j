@@ -975,10 +975,11 @@ Note that the compensating actions are executed with a best-effort policy: if on
 
 ## Tool guardrails
 
-The builder of an AI agent has the same setters as `AiServices` to set [tool guardrails](/tutorials/tool-guardrails) that
-apply to every tool of the agent: `toolInputGuardrails(...)`, `toolInputGuardrailClasses(...)`,
-`toolOutputGuardrails(...)`, `toolOutputGuardrailClasses(...)`, and `toolInputGuardrailsConfig(...)` /
-`toolOutputGuardrailsConfig(...)`. They are passed to the `AiServices` of the agent, and run together with the
+The builder of an AI agent has setters for [tool guardrails](/tutorials/tool-guardrails) that apply to every tool of
+the agent: `toolInputGuardrails(...)`, `toolInputGuardrailClasses(...)`, `toolOutputGuardrails(...)` and
+`toolOutputGuardrailClasses(...)`, which take varargs (unlike `AiServices`, there are no `List` variants), and
+`toolInputGuardrailsConfig(...)` / `toolOutputGuardrailsConfig(...)`. They are passed to the `AiServices` of the
+agent, and run together with the
 `@ToolInputGuardrails` and `@ToolOutputGuardrails` annotations of the tool classes (all of them run, they do not
 replace each other, unlike `inputGuardrails(...)` and `outputGuardrails(...)`):
 

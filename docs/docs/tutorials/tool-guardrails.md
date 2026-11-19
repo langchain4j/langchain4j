@@ -1,5 +1,5 @@
 ---
-sidebar_position: 13
+sidebar_position: 12.5
 toc_max_heading_level: 4
 ---
 
@@ -44,6 +44,9 @@ Tool guardrails work the same way for every kind of tool:
 and in every mode of an AI Service: blocking, `CompletableFuture`, `TokenStream` and reactive
 (see [Non-blocking and Reactive](/tutorials/non-blocking)).
 
+The built-in tool search tool of a [`ToolSearchStrategy`](/tutorials/tools#tool-search) is the only exception: tool
+guardrails do not run for it. They run for the tools that it finds.
+
 ## Tool Input Guardrails
 
 A tool input guardrail implements
@@ -68,6 +71,10 @@ public class AllowedHostsInputGuardrail implements ToolInputGuardrail {
 }
 ```
 
+`fetch_page` is the name of the tool, and `url` the name of its parameter, as declared in the
+[`WebTools` class](#annotations) below. The name of a `@Tool` method is the method name, unless `@Tool(name = ...)`
+sets another one.
+
 The request gives access to:
 
 | Accessor                                  | Description                                                                                                                                                                      |
@@ -87,7 +94,7 @@ There are helper methods on the `ToolInputGuardrail` interface for the outcomes:
 | Outcome                         | Helper method                                  | Description                                                                                                                                                                                                                                                                                   |
 |:--------------------------------|:-----------------------------------------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **_success_**                   | `success()`                                    | - The arguments are valid.<br/> - The next guardrail in the chain is executed, then the tool.                                                                                                                                                                                                 |
-| **_success with rewrite_**      | `successWith(String)`                          | - The argument is a JSON object, the new arguments of the tool call. Anything else (malformed JSON, an array, a number) is treated as a fatal failure of the guardrail: the invocation is aborted with a `ToolInputGuardrailException` before the tool runs.<br/> - The following guardrails and the tool receive the rewritten arguments, and so do the output guardrails, the `afterToolExecution` callback and the [events](#observability). `beforeToolExecution` runs before the guardrails and sees the original arguments. |
+| **_success with rewrite_**      | `successWith(String)`                          | - The argument is a JSON object, the new arguments of the tool call. `null` means no rewrite (a plain success). Anything else (malformed JSON, an array, a number) is treated as a fatal failure of the guardrail: the invocation is aborted with a `ToolInputGuardrailException` before the tool runs.<br/> - The following guardrails and the tool receive the rewritten arguments, and so do the output guardrails, the `afterToolExecution` callback and the [events](#observability). `beforeToolExecution` runs before the guardrails and sees the original arguments.<br/> - The rewritten arguments also replace the tool call in the chat memory (the `AiMessage` with the tool call is updated), so the LLM sees them in its later requests. Put values that only the tool needs in [`InvocationParameters`](/tutorials/tools#invocationparameters), not in the arguments. |
 | **_failure_**                   | `failure(String)` or `failure(String, Throwable)` | - The call is rejected and **the tool is not executed**.<br/> - The remaining guardrails of the chain still run, to accumulate all the failures.<br/> - The message is sent to the LLM as an error tool result. See [Failures](#failures-are-error-results-for-the-llm).                       |
 | **_fatal_**                     | `fatal(String)` or `fatal(String, Throwable)`  | - The call is rejected, **the tool is not executed**, the remaining guardrails do not run, and the AI Service invocation is aborted with a `ToolInputGuardrailException`. See [Fatal failures](#fatal-failures).                                                                                |
 
@@ -96,9 +103,15 @@ There are helper methods on the `ToolInputGuardrail` interface for the outcomes:
 The LLM sometimes produces arguments that are not valid JSON. `argumentsAsMap()` then throws a
 `ToolArgumentsException`. A guardrail does not need to catch it: the tool is not executed, and the call is handled
 like any other arguments error, by the
-[`ToolArgumentsErrorHandler`](/tutorials/tools#error-handling) of the AI Service. For example, with
-`ToolArgumentsErrorHandler.sendExceptionMessageToLlm()`, the LLM gets the error and can correct the arguments.
-The invocation is not aborted, unless the handler decides so. The handler, the chat memory and the
+[`ToolArgumentsErrorHandler`](/tutorials/tools#handling-tool-arguments-errors) of the AI Service. The handler decides
+whether the invocation goes on. When you do not set one, it depends on the mode of the AI Service:
+
+- blocking and `TokenStream`: the default handler fails the invocation;
+- `CompletableFuture` and `Flow.Publisher`: the error is sent to the LLM, which can correct the arguments.
+
+To send the error to the LLM in every mode, set
+`.toolArgumentsErrorHandler(ToolArgumentsErrorHandler.sendExceptionMessageToLlm())` on the AI Service builder. The
+handler, the chat memory and the
 [events](#observability) see the tool call as the LLM sent it, even when an earlier guardrail rewrote its arguments.
 
 Any other exception thrown by a guardrail aborts the invocation, like a [fatal failure](#fatal-failures).
@@ -140,7 +153,7 @@ where `arguments()` are the arguments the tool was executed with, and adds:
 | Outcome                                       | Helper method                                          | Description                                                                                                                                                                                                                                                                                                                                                         |
 |:----------------------------------------------|:-------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **_success_**                                 | `success()`                                            | - The result is valid.<br/> - The next guardrail in the chain is executed, then the LLM sees the result.                                                                                                                                                                                                                                                            |
-| **_success with rewritten text_**             | `successWith(String)`                                  | - Replaces the text contents of the result with the given text. Non-text contents and the `isError` flag **are kept**.<br/> - Use it to redact or sanitize: a sanitized success stays a success, and a sanitized error result stays an error (see [Compensation](#compensation)).                                                                                  |
+| **_success with rewritten text_**             | `successWith(String)`                                  | - Replaces the text contents of the result with the given text. Non-text contents and the `isError` flag **are kept**.<br/> - `null` means no rewrite (a plain success), and `successWith("")` gives an empty text.<br/> - Use it to redact or sanitize: a sanitized success stays a success, and a sanitized error result stays an error (see [Compensation](#compensation)).                                                                                  |
 | **_success with rewritten contents_**         | `successWith(List<Content>, boolean isError)`          | - Replaces **all** the contents of the result **and** its `isError` flag.<br/> - The only way to turn a result into an error result, or an error result into a success, without a failure. The list must not be empty.                                                                                                                                              |
 | **_failure_**                                 | `failure(String)` or `failure(String, Throwable)`      | - The result is replaced by an error result with the message. The LLM never sees the original result.<br/> - The remaining guardrails of the chain still run, to accumulate all the failures.<br/> - See [Failures](#failures-are-error-results-for-the-llm).                                                                                                          |
 | **_fatal_**                                   | `fatal(String)` or `fatal(String, Throwable)`          | - The remaining guardrails do not run, and the AI Service invocation is aborted with a `ToolOutputGuardrailException`.<br/> - See [Fatal failures](#fatal-failures).                                                                                                                                                                                               |
@@ -156,9 +169,10 @@ errors opts out:
 @Override
 public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
     if (request.isError()) {
-        return success();
+        return success(); // error results are not checked
     }
-    // ...
+    // ... check request.text()
+    return success();
 }
 ```
 
@@ -221,9 +235,11 @@ arguments, choose another tool, or give up.
   messages are joined with a newline, in the order of the chain.
 - A failing input guardrail means the tool is **not executed**.
 - A failing output guardrail means the tool **was executed**, and its real result is replaced.
-- Unlike AI service guardrails, **a chain keeps running after a non-fatal failure**, and failures are aggregated.
+- Like AI service guardrails, **a chain keeps running after a non-fatal failure**, and failures are aggregated.
   A guardrail that costs money (for instance one that calls an LLM) still runs after an earlier guardrail failed.
-  Put the cheap and most selective guardrails first.
+  Within one level (the builder, a class annotation, a method annotation or an `AiServiceTool`), put the cheap and
+  most selective guardrails first. The guardrails given to the builder always run first (see
+  [Resolution order](#resolution-order-every-guardrail-runs)).
 
 ### Fatal failures
 
@@ -238,6 +254,13 @@ A **fatal** failure (`fatal(...)`) stops the chain and aborts the AI Service inv
 
 `ToolInputGuardrailException#arguments()` gives the arguments that the failing guardrail validated.
 
+:::warning
+A fatal failure ends the invocation and leaves the tool call without a result in the
+[chat memory](/tutorials/chat-memory). With a persistent chat memory, that conversation keeps a tool call that never
+got an answer. For content that the LLM should simply skip, prefer `failure(..)` with a message such as
+"The result was blocked. Do not retry.", and keep `fatal(..)` for the cases where the whole invocation must stop.
+:::
+
 ### No retry and no reprompt
 
 There is no counterpart of `retry` or `reprompt` of [output guardrails](/tutorials/guardrails#output-guardrails),
@@ -248,10 +271,18 @@ that keeps calling a tool will be stopped by `maxToolCallingRoundTrips` (default
 
 There are four ways to declare tool guardrails.
 
+:::note
+One guardrail instance serves every tool it applies to and every invocation of the AI Service, and it can run
+concurrently, for example when tools run in parallel with
+[`executeToolsConcurrently()`](/tutorials/tools#executing-tools-concurrently) or when several invocations run at
+the same time. Make your guardrails thread-safe, and keep the state of one call in local variables, not in fields.
+:::
+
 ### `AiServices` builder
 
 Guardrails set on the builder apply to **every** tool of the AI Service, including tools that have no method (MCP
-and `ToolProvider` tools, programmatic tools). There are instance and class variants, like for
+and `ToolProvider` tools, programmatic tools). The built-in [tool search](/tutorials/tools#tool-search) tool is the
+only exception: it is not guarded. There are instance and class variants, like for
 [input guardrails](/tutorials/guardrails#declaring-input-guardrails):
 
 ```java
@@ -279,18 +310,22 @@ can be placed on a tool **method** or on the **class** that declares the tools:
 @ToolOutputGuardrails(InjectionOutputGuardrail.class) // every tool of the class
 class WebTools {
 
-    @Tool("Fetches a web page")
+    @Tool(name = "fetch_page", value = "Fetches a web page")
     @ToolInputGuardrails(AllowedHostsInputGuardrail.class) // this tool only
-    String fetchPage(String url) {
-        // ...
+    String fetchPage(@P(name = "url", value = "The URL of the page") String url) {
+        return "<html>...</html>"; // fetch the page here
     }
 
     @Tool("Searches the web")
-    String search(String query) {
-        // ...
+    String search(@P(name = "query", value = "What to search for") String query) {
+        return "1. ..."; // search the web here
     }
 }
 ```
+
+`@P(name = "url")` gives the parameter a fixed name. Without it, the name comes from the compiled class, and it is
+`arg0` unless the code is compiled with the `-parameters` option of `javac`. A guardrail that reads
+`argumentsAsMap().get("url")` needs that name.
 
 :::note
 These annotations are unrelated to `@InputGuardrails` and `@OutputGuardrails`. `@InputGuardrails` applies to the user
@@ -318,10 +353,10 @@ This also works for the tools that a `ToolProvider` returns.
 
 ### `AgentBuilder`
 
-The agents of the [`langchain4j-agentic`](/tutorials/agents) module have the same four pairs of setters on their
-builder, `toolInputGuardrails(...)`, `toolInputGuardrailClasses(...)`, `toolOutputGuardrails(...)` and
-`toolOutputGuardrailClasses(...)`, plus the two `...GuardrailsConfig(...)` setters. They are passed to the
-`AiServices` of the agent:
+The builder of the agents of the [`langchain4j-agentic`](/tutorials/agents) module has the setters
+`toolInputGuardrails(...)`, `toolInputGuardrailClasses(...)`, `toolOutputGuardrails(...)` and
+`toolOutputGuardrailClasses(...)`, which take varargs (there are no `List` variants), plus the two
+`...GuardrailsConfig(...)` setters. They are passed to the `AiServices` of the agent:
 
 ```java
 CreativeWriter writer = AgenticServices.agentBuilder(CreativeWriter.class)
@@ -347,6 +382,10 @@ this order:
 3. the guardrails of the annotation on the method
 4. the guardrails of the tool's `AiServiceTool`
 
+Within the builder level, the guardrail instances (`toolInputGuardrails(...)`, `toolOutputGuardrails(...)`) run
+before the guardrails created from classes (`toolInputGuardrailClasses(...)`, `toolOutputGuardrailClasses(...)`),
+whatever order the setters were called in.
+
 Why not replace? A global injection check on the builder and a tool-specific check (a size limit on one tool) must
 both run, and MCP and `ToolProvider` tools can _only_ be guarded from the builder or their `AiServiceTool`: with
 replace semantics, every per-tool guardrail would silently stop running as soon as you add a global one.
@@ -354,31 +393,53 @@ replace semantics, every per-tool guardrail would silently stop running as soon 
 ### Skipping some tools
 
 Tool guardrails have no per-tool opt-out. A guardrail that was declared globally, or on a class, and must not apply to
-some tools, skips them itself, using `toolName()` or [`toolSource()`](#telling-the-tools-apart-toolsource):
+some tools, skips them itself, using `toolName()` or [`toolSource()`](#telling-the-tools-apart-toolsource).
+
+For a security check, check every tool by default, and skip only the tools that you list as trusted. A guardrail
+that checks only the tools it knows about would silently skip any new tool, or any MCP server that you add later:
 
 ```java
-public class NoExternalContentOutputGuardrail implements ToolOutputGuardrail {
+public class ExternalContentOutputGuardrail implements ToolOutputGuardrail {
+
+    // the MCP servers you trust, by the key of their McpClient
+    private static final Set<String> TRUSTED_SERVERS = Set.of("internal-docs");
+
+    // local tools that never return external content
+    private static final Set<String> SAFE_LOCAL_TOOLS = Set.of("clock");
 
     @Override
     public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
-        // only the tools of the "web" MCP server return external content, and the "clock" tool never does
-        boolean external = request.toolSource() instanceof ToolSource.Mcp mcp && mcp.involves("web");
-        if (!external || request.toolName().equals("clock")) {
+        if (isTrusted(request)) {
             return success();
         }
         // ... inspect request.text()
         return success();
     }
+
+    private static boolean isTrusted(ToolOutputGuardrailRequest request) {
+        if (request.toolSource() instanceof ToolSource.Mcp mcp) {
+            // skip only if the keys are known and all of them are trusted
+            return !mcp.serverKeys().isEmpty() && TRUSTED_SERVERS.containsAll(mcp.serverKeys());
+        }
+        return request.toolSource() instanceof ToolSource.Local
+                && SAFE_LOCAL_TOOLS.contains(request.toolName());
+    }
 }
 ```
+
+`serverKeys()` holds only the keys that are known: a client without a key adds none. So a trust decision must
+check that there is at least one key and that **all** of them are trusted. `involves("internal-docs")` alone is not
+enough: it is also `true` for a tool whose source spans a trusted and an untrusted server. A `DefaultMcpClient`
+built without `key(...)` gets a random key, which is never in your list, so its tools are checked (see
+[Guarding MCP tools](/tutorials/mcp#guarding-mcp-tools)).
 
 ### Duplicates
 
 The same guardrail is not executed twice for one tool:
 
 - The same guardrail **class**, declared by annotations or by the `...GuardrailClasses(...)` setters at one or
-  several levels, runs **once**, at the first position where it appears (the builder comes first). Guardrail
-  classes are created without arguments, so all their instances are identical.
+  several levels, runs **once**, at the first position where it appears (the builder comes first). Guardrails
+  created from a class are all configured the same way, so running one of them is enough.
 - **Instances** are only duplicates of themselves: the same object passed twice runs once. Two instances of the
   same class run both, because they may be configured differently (for instance two regular-expression
   guardrails with different patterns), and silently dropping a check is worse than running one twice.
@@ -399,8 +460,13 @@ which is one of:
 
 The source is **trusted** information. It is set by LangChain4j or by your application when the tool is registered,
 and it is **never** derived from remote data such as the tool specification's metadata or the hints an MCP server
-sends. A guardrail can therefore base security decisions on it. To label the tools of a custom `ToolProvider` or of
-`tools(List<AiServiceTool>)`, call `toolSource(...)` on their `AiServiceTool.builder()`.
+sends. A guardrail can therefore base security decisions on it.
+
+All programmatic tools have the same source, `ToolSource.programmatic()`, which is the default, so a guardrail tells
+them apart by `toolName()`. A `ToolSource` can only be created with `ToolSource.local(...)`, `ToolSource.mcp(...)` or
+`ToolSource.programmatic()`. When a tool of a custom `ToolProvider` or of `tools(List<AiServiceTool>)` runs a local
+method or calls an MCP server, you can give it the matching source with `toolSource(...)` on its
+`AiServiceTool.builder()`.
 
 ## Compensation
 
@@ -427,6 +493,8 @@ result the LLM ends up with**, not on which guardrail method was called, so guar
   rejection with `failure(..)` rolls back the writes that happened earlier in the invocation.
 - When a chain has several guardrails, only the **final** result counts.
 - If a round has several failures, the first failing tool in request order decides the reason.
+- A compensating action always gets the result that the tool returned, before its output guardrails, also when a
+  guardrail sanitized that result with `successWith(..)` and the tool is rolled back later because of another tool.
 
 :::note
 A fatal guardrail failure is treated like a tool error that ends the call, in every AI Service mode (a plain return
@@ -445,8 +513,19 @@ suppressed exception to the guardrail's exception (see
   data (clearly delimited, never as instructions), or combine the judge with a check that is not an LLM.
 - **A rejected output usually comes back identical on retry** (the same URL gives the same page). The LLM may call
   the tool again, up to `maxToolCallingRoundTrips` times (default: 100), and each run of an LLM-based guardrail is a
-  paid call. Use `fatal(...)` when a retry cannot help, or write the failure message so that it tells the LLM
-  not to retry. Lower `maxToolCallingRoundTrips` to bound the cost.
+  paid call. Write the failure message so that it tells the LLM not to retry, or use `fatal(...)` when the whole
+  invocation must stop (see the warning in [Fatal failures](#fatal-failures)). Lower `maxToolCallingRoundTrips` to
+  bound the cost.
+- **`text()` only covers the text contents.** Images and other non-text contents of a tool result pass through a
+  guardrail that only checks `text()`, and `successWith(String)` keeps them. For untrusted sources, drop or check
+  them with `successWith(List<Content>, boolean)` (see [Multi-content results](#multi-content-results)).
+- **Some texts that reach the LLM are not guarded.** Tool guardrails do not see:
+  - the tool names, descriptions and parameter schemas that MCP servers send;
+  - the output of the built-in [tool search](/tutorials/tools#tool-search) tool;
+  - the result for a tool name that the LLM made up (see
+    [Handling Tool Name Errors](/tutorials/tools#handling-tool-name-errors));
+  - the text that a `ToolArgumentsErrorHandler` produces when an input guardrail cannot parse the arguments (see
+    [Arguments that cannot be parsed](#arguments-that-cannot-be-parsed)).
 - **A tool guardrail is not a sandbox.** It checks what you tell it to check. Combine it with the least privilege
   principle for the tools themselves.
 - Tool arguments are untrusted. Use [`InvocationParameters`](/tutorials/tools#invocationparameters) or the
@@ -465,9 +544,15 @@ Every execution of a tool guardrail fires an event, which you can listen to with
 
 One event is fired for each guardrail that ran, with its request, its result and the duration. They are distinct from
 `InputGuardrailExecutedEvent` and `OutputGuardrailExecutedEvent`: a listener for AI Service guardrails is **not**
-notified of tool guardrails. See [Observability](/tutorials/observability) for how to register listeners. The tool
-execution events (`ToolExecutedEvent`, `ToolCompensatedEvent`) carry the **guarded** result and, after an
-input rewrite, the **rewritten** request.
+notified of tool guardrails. See [Observability](/tutorials/observability) for how to register listeners.
+
+The tool execution events carry the request as the tool was executed with it, so after an input rewrite they carry
+the **rewritten** request. For the result, they differ:
+
+- `ToolExecutedEvent` carries the **guarded** result, the one the LLM sees.
+- `ToolCompensatedEvent`, like the [compensating action](#compensation) itself, gets the result that the tool
+  actually returned, **before** its output guardrails. This is also the case for a tool whose result a guardrail
+  sanitized and that was rolled back later.
 
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
@@ -551,10 +636,14 @@ The tool guardrails were originally developed in the
 ones in LangChain4j differ in these points:
 
 - The failure message is sent to the LLM **verbatim**, with no framework prefix.
-- Output guardrails also run on **error results**, and the request has `isError()` to opt out.
+- Output guardrails also run when the **tool throws**: they see the error result, with `isError()` returning `true`.
+  The Quarkus extension skips its output guardrails when the tool throws.
 - The chain continues after a non-fatal failure, and the failures are aggregated.
 - The request types (`ToolInputGuardrailRequest`, `ToolOutputGuardrailRequest`) and `ToolSource` are in
   `langchain4j-core`, and a request has `toolSource()`.
-- Guardrails of all the levels (builder, class, method) run, instead of replacing each other.
+- The Quarkus extension declares tool guardrails on tool methods only. In LangChain4j, they can also be declared on
+  the class of the tools, on the `AiServices` or `AgentBuilder` builder and on an `AiServiceTool`, and the guardrails
+  of all the levels run, instead of replacing each other.
 
-The Quarkus extension is expected to adopt these core tool guardrails eventually, which is tracked in [quarkiverse/quarkus-langchain4j#3162](https://github.com/quarkiverse/quarkus-langchain4j/issues/3162). Until then, the two implementations are independent, and the differences above apply when you move from one to the other.
+In a Quarkus application, use the Quarkus extension's own tool guardrails: the annotations and builder methods
+described on this page are not applied by the Quarkus extension.

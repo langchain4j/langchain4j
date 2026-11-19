@@ -424,7 +424,7 @@ public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailReque
 }
 ```
 
-[Tool guardrails](/tutorials/tool-guardrails) have the same contract, and `ToolInputGuardrail` and `ToolOutputGuardrail` have a `validateAsync` too. A tool guardrail that does not implement it fails the call with an `AsyncNotSupportedException`, reported as a fatal `ToolInputGuardrailException` or `ToolOutputGuardrailException`. In this mode, a fatal tool guardrail failure fails the future (or the publisher), it is never thrown from a callback thread, and the [compensable tools](/tutorials/tools#compensating-tool-actions) are rolled back before failing in the `CompletableFuture` mode.
+[Tool guardrails](/tutorials/tool-guardrails) have the same contract, and `ToolInputGuardrail` and `ToolOutputGuardrail` have a `validateAsync` too. A tool guardrail that does not implement it fails the call with an `AsyncNotSupportedException`, reported as a fatal `ToolInputGuardrailException` or `ToolOutputGuardrailException`. In these modes, a fatal tool guardrail failure fails the future (or the publisher), it is never thrown from a callback thread, and the [compensable tools](/tutorials/tools#compensating-tool-actions) are rolled back before the `CompletableFuture` or the `Flow.Publisher` fails.
 
 ### Spring Boot
 
