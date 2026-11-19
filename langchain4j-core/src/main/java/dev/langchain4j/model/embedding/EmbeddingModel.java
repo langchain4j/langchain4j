@@ -8,6 +8,7 @@ import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 
 import dev.langchain4j.Experimental;
@@ -127,7 +128,8 @@ public interface EmbeddingModel {
      * {@link #embed(EmbeddingRequest)} on another thread, which the listeners observe as a separate call; without it,
      * the RAG call fails with an {@code UnsupportedFeatureException}.
      *
-     * @param request the inputs to embed and the per-call parameters.
+     * @param request the inputs to embed and the per-call parameters; must not be {@code null}, otherwise the returned
+     *                future fails with an {@link IllegalArgumentException}.
      * @return a {@link CompletableFuture} of the embeddings and the response metadata.
      * @since 1.20.0
      */
@@ -137,6 +139,7 @@ public interface EmbeddingModel {
         EmbeddingRequest finalRequest;
         List<EmbeddingModelListener> listeners;
         try {
+            ensureNotNull(request, "request");
             finalRequest = validatedRequest(request);
             listeners = ObservabilityListeners.embedding(listeners());
         } catch (Throwable error) {

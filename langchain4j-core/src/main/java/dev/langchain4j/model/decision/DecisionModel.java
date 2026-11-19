@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 import static dev.langchain4j.model.decision.DecisionModelListenerUtils.onError;
 import static dev.langchain4j.model.decision.DecisionModelListenerUtils.onRequest;
@@ -92,7 +93,8 @@ public interface DecisionModel {
      * checked against the request, as in {@link #decide(DecisionRequest)}. This method never throws: any failure,
      * including an invalid request, completes the returned future exceptionally.
      *
-     * @param request the input, the questions and the per-call parameters.
+     * @param request the input, the questions and the per-call parameters; must not be {@code null}, otherwise the
+     *                returned future fails with an {@link IllegalArgumentException}.
      * @return a {@link CompletableFuture} of the answers, keyed by question name.
      */
     default CompletableFuture<DecisionResponse> decideAsync(DecisionRequest request) {
@@ -102,6 +104,7 @@ public interface DecisionModel {
         Map<Object, Object> attributes;
         UUID invocationId;
         try {
+            ensureNotNull(request, "request");
             finalRequest = withDefaultParameters(request);
             listeners = ObservabilityListeners.decision(listeners());
             provider = provider();

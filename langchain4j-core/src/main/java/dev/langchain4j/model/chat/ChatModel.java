@@ -105,7 +105,8 @@ public interface ChatModel {
      * non-blocking, or hand blocking work to your own {@link java.util.concurrent.Executor} via the
      * {@code *Async} variants ({@code thenApplyAsync(fn, executor)}).
      *
-     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
+     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM; must not be
+     *                    {@code null}, otherwise the returned future fails with an {@link IllegalArgumentException}
      * @return a {@link CompletableFuture} of the {@link ChatResponse}
      * @since 1.20.0
      */
@@ -121,7 +122,8 @@ public interface ChatModel {
      * Sends a non-blocking chat request with additional invocation options. This method never throws: any failure,
      * including an invalid request, completes the returned future exceptionally.
      *
-     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM
+     * @param chatRequest a {@link ChatRequest}, containing all the inputs to the LLM; must not be
+     *                    {@code null}, otherwise the returned future fails with an {@link IllegalArgumentException}
      * @param options     a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
      * @return a {@link CompletableFuture} of the {@link ChatResponse}
      * @see #chatAsync(ChatRequest)

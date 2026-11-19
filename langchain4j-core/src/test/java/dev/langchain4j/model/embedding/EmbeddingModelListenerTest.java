@@ -10,9 +10,11 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import dev.langchain4j.data.embedding.Embedding;
@@ -27,6 +29,7 @@ import dev.langchain4j.test.mock.MockEmbeddingModel;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
@@ -478,5 +481,22 @@ class EmbeddingModelListenerTest {
                 .when(withoutAsync)
                 .doEmbedAsync(any());
         return withoutAsync;
+    }
+
+    @Test
+    void embedAsync_should_return_a_failed_future_for_a_null_request_without_notifying_listeners() {
+        EmbeddingModelListener listener = mock(EmbeddingModelListener.class);
+        MockEmbeddingModel model = MockEmbeddingModel.thatEmbeds(1f, 2f).withListeners(listener);
+
+        CompletableFuture<EmbeddingResponse> future = model.embedAsync(null);
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .withMessage("request cannot be null");
+        verifyNoInteractions(listener);
+        assertThat(model.requests()).isEmpty();
     }
 }

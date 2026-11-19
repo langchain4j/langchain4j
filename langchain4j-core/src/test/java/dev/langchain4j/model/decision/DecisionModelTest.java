@@ -466,4 +466,21 @@ class DecisionModelTest {
         verify(listener, never()).onResponse(any());
         assertThat(errorContext.getValue().error()).isSameAs(error);
     }
+
+    @Test
+    void decideAsync_should_return_a_failed_future_for_a_null_request_without_notifying_listeners() {
+        DecisionModelListener listener = mock(DecisionModelListener.class);
+        MockDecisionModel model = MockDecisionModel.thatAnswersYesNoQuestions(question -> 0.5).withListeners(listener);
+
+        CompletableFuture<DecisionResponse> future = model.decideAsync(null);
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .withMessage("request cannot be null");
+        verifyNoInteractions(listener);
+        assertThat(model.requests()).isEmpty();
+    }
 }

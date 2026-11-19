@@ -313,8 +313,12 @@ class ScoringModelListenerTest {
         CompletableFuture<ScoringResponse> future = model.scoreAsync(null);
 
         // then
-        assertThat(future).failsWithin(5, SECONDS).withThrowableThat().havingCause().isInstanceOf(
-                NullPointerException.class);
+        assertThat(future)
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .withMessage("request cannot be null");
         assertThat(listener.events).isEmpty();
     }
 

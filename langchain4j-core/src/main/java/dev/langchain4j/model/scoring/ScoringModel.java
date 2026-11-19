@@ -26,6 +26,7 @@ import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellat
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureEq;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 import static dev.langchain4j.model.scoring.ScoringModelListenerUtils.onError;
 import static dev.langchain4j.model.scoring.ScoringModelListenerUtils.onRequest;
@@ -159,7 +160,8 @@ public interface ScoringModel {
      * as a separate call; without it, the RAG call fails with an {@code UnsupportedFeatureException}. When the returned future is cancelled, the listeners are notified of neither a response nor an
      * error.
      *
-     * @param request the documents to score, the query, and the per-call parameters.
+     * @param request the documents to score, the query, and the per-call parameters; must not be {@code null},
+     *                otherwise the returned future fails with an {@link IllegalArgumentException}.
      * @return a {@link CompletableFuture} of the scores, in the order of {@link ScoringRequest#documents()}.
      * @since 1.20.0
      */
@@ -171,6 +173,7 @@ public interface ScoringModel {
         Map<Object, Object> attributes;
         UUID invocationId = CurrentInvocation.invocationId();
         try {
+            ensureNotNull(request, "request");
             finalRequest = withDefaultParameters(request);
             listeners = ObservabilityListeners.scoring(listeners());
             provider = provider();
