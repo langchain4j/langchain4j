@@ -2,12 +2,6 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.ServiceLoader;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.guardrail.ToolInputGuardrailResult.Failure;
@@ -17,6 +11,12 @@ import dev.langchain4j.internal.Json;
 import dev.langchain4j.observability.api.event.ToolInputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.ToolInputGuardrailExecutedEvent.ToolInputGuardrailExecutedEventBuilder;
 import dev.langchain4j.spi.guardrail.ToolInputGuardrailExecutorBuilderFactory;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.ServiceLoader;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 /**
  * The {@link GuardrailExecutor} for {@link ToolInputGuardrail}s.
@@ -119,7 +119,8 @@ public non-sealed class ToolInputGuardrailExecutor
         if (result.hasRewrittenResult() && !isJsonObject(result.successfulText())) {
             var message = "The tool input guardrail %s rewrote the arguments of tool '%s' to something that is not a "
                     + "JSON object";
-            throw createGuardrailException(message.formatted(guardrail.getClass().getName(), request.toolName()), null)
+            throw createGuardrailException(
+                            message.formatted(guardrail.getClass().getName(), request.toolName()), null)
                     .withArguments(request.arguments());
         }
         return result;

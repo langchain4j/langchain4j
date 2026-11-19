@@ -143,7 +143,8 @@ class ToolGuardrailRequestTest {
                         EXEC.toBuilder().arguments(arguments).build())
                 .build();
 
-        assertThat(output.argumentsAsMap()).isEqualTo(inputWithArguments(arguments).argumentsAsMap());
+        assertThat(output.argumentsAsMap())
+                .isEqualTo(inputWithArguments(arguments).argumentsAsMap());
     }
 
     @Test

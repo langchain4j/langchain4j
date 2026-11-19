@@ -1,13 +1,13 @@
 package dev.langchain4j.guardrail.config;
 
+import java.util.ServiceLoader;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.spi.guardrail.config.ToolInputGuardrailsConfigBuilderFactory;
-import java.util.ServiceLoader;
 
 /**
  * Configuration specifically for tool input guardrails.
  * <p>
- *     Currently there is nothing to configure: unlike {@link InputGuardrailsConfig}, tool guardrails have no retries.
+ *     The default configuration has no settings.
  *     Frameworks that extend this library (like Quarkus or Spring) may provide their own implementations of this configuration.
  * </p>
  *

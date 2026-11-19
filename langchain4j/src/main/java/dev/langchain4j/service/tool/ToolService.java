@@ -1821,10 +1821,6 @@ public class ToolService {
     }
 
     /**
-     * Collects this round's successful compensable tool executions into {@code compensableExecutions} (which
-     * accumulates across rounds), and returns the name of the first tool in this round that errored (or null).
-     */
-    /**
      * Records one completed round's successful compensable tool executions into the shared {@code accumulator} and
      * returns the first errored tool's name (or {@code null}). The caller MUST hold the monitor of {@code accumulator}
      * across this call together with whatever "round is complete" handoff it performs (e.g. clearing the inflight

@@ -159,9 +159,11 @@ class ToolSourceTest {
         assertThat(source)
                 .isEqualTo(ToolSource.mcp(Set.of()))
                 .isNotEqualTo(ToolSource.programmatic())
-                .isInstanceOfSatisfying(ToolSource.Mcp.class, mcp -> assertThat(mcp)
-                        .returns(Set.of(), ToolSource.Mcp::serverKeys)
-                        .returns(false, m -> m.involves("github")));
+                .isInstanceOfSatisfying(
+                        ToolSource.Mcp.class,
+                        mcp -> assertThat(mcp)
+                                .returns(Set.of(), ToolSource.Mcp::serverKeys)
+                                .returns(false, m -> m.involves("github")));
     }
 
     @Test

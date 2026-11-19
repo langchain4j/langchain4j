@@ -36,9 +36,7 @@ import java.util.stream.Stream;
  *     Duplicates are removed from a chain, keeping the first occurrence (so the global position wins). A guardrail
  *     created from a class, by the builder or from an annotation, is identified by its class: these guardrails are
  *     created without arguments and the configuration is the same for the whole chain, so they are identical. A
- *     guardrail instance supplied by the user is only identified by itself. If the configuration ever becomes specific
- *     to a level (for example attributes on the annotations), it has to become part of the identity of a guardrail
- *     created from a class, in {@link #chain(List, List)}.
+ *     guardrail instance supplied by the user is only identified by itself.
  * </p>
  * <p>
  *     The executors of the global guardrails alone are created once, and shared by every tool that has no guardrails

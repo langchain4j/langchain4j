@@ -30,19 +30,6 @@ import java.util.concurrent.CompletableFuture;
  *     for every lookup of this interface, blocking or not.
  * </p>
  * <p>
- *     <strong>Why {@code executeInputGuardrails}, {@code executeOutputGuardrails}, {@code hasInputGuardrails},
- *     {@code hasOutputGuardrails} and the asynchronous variants are declared again.</strong> They add nothing to what
- *     {@link GenericGuardrailService} declares, and they are not needed to compile against this interface. They exist
- *     for binary compatibility with code compiled before this interface extended {@link GenericGuardrailService}: a
- *     method's JVM signature includes its parameter and return types, and the inherited methods have the generic
- *     request and result types erased to {@link dev.langchain4j.guardrail.GuardrailRequest} and
- *     {@link dev.langchain4j.guardrail.GuardrailResult}, not the AI service ones. Without these declarations a caller
- *     would bind to the inherited signature and bypass any implementation compiled against the old one, such as a
- *     framework subclass that overrides these methods to translate its method keys, and the guardrails of its methods
- *     would silently not run. They can be removed when this interface is, or when the next major release no longer needs
- *     to run code compiled against the old one.
- * </p>
- * <p>
  *     <strong>Customizing and extending.</strong> What is shared by every kind of guardrail (looking up the guardrails
  *     to run for a key, and running them) lives in {@link GenericGuardrailService}, which this interface specializes for
  *     AI services. Frameworks customize AI service guardrails through the SPIs the default builder and service use:
@@ -57,6 +44,16 @@ import java.util.concurrent.CompletableFuture;
 public non-sealed interface GuardrailService
         extends GenericGuardrailService<
                 InputGuardrailRequest, InputGuardrailResult, OutputGuardrailRequest, OutputGuardrailResult> {
+
+    // executeInputGuardrails, executeOutputGuardrails, hasInputGuardrails, hasOutputGuardrails and the asynchronous
+    // variants are declared again, with the AI service types, for binary compatibility with code compiled before this
+    // interface extended GenericGuardrailService. A method's JVM signature includes its parameter and return types, and
+    // the inherited methods have the request and result types erased to GuardrailRequest and GuardrailResult. Without
+    // these declarations, a caller would bind to the inherited signature and bypass an
+    // implementation compiled against the old interface, such as a framework subclass that overrides these methods to
+    // translate its method keys, and the guardrails of its methods would silently not run. They can be removed when the
+    // next major release no longer needs to run code compiled against the old interface.
+
     /**
      * Retrieves the class representing the AI service to which the guardrails apply.
      *
@@ -227,27 +224,6 @@ public non-sealed interface GuardrailService
      * <p>
      *     It is the builder of the AI service kind of the {@link GenericGuardrailService.Builder} hierarchy.
      * </p>
-     * <p>
-     *     <strong>Why the methods below are declared again.</strong> They add nothing to what
-     *     {@link GenericGuardrailService.Builder} already declares, and they are not needed to compile against this
-     *     interface. They exist for binary compatibility with code that was compiled before this interface extended
-     *     {@link GenericGuardrailService.Builder}: a method's JVM signature includes its return type, and the inherited
-     *     methods return the builder type as a type variable, which the JVM sees as
-     *     {@code GenericGuardrailService.Builder} (and {@code build()} as {@link GenericGuardrailService}), not as
-     *     {@code GuardrailService.Builder} (and {@link GuardrailService}).
-     * </p>
-     * <ul>
-     *     <li>The abstract methods keep the signatures that the builders of the frameworks that implement this interface
-     *     (compiled against the old one) provide, and that callers compiled against the old interface use. Without
-     *     them, such a caller fails with a {@code NoSuchMethodError}, and a caller compiled against this version fails
-     *     with an {@code AbstractMethodError} on such a builder.</li>
-     *     <li>The default methods (the varargs ones) keep the signatures that callers compiled against the old
-     *     interface use. They only delegate to the inherited implementation.</li>
-     * </ul>
-     * <p>
-     *     They can be removed when this interface is, or when the next major release no longer needs to run code
-     *     compiled against the old one.
-     * </p>
      */
     non-sealed interface Builder
             extends GenericGuardrailService.Builder<
@@ -261,6 +237,19 @@ public non-sealed interface GuardrailService
                     dev.langchain4j.guardrail.config.InputGuardrailsConfig,
                     dev.langchain4j.guardrail.config.OutputGuardrailsConfig,
                     Builder> {
+
+        // Every method of GenericGuardrailService.Builder is declared again with the AI service types, for binary
+        // compatibility with code compiled before this interface extended GenericGuardrailService.Builder. A method's
+        // JVM signature includes its return type, and the inherited methods return the builder type as a type
+        // variable, which the JVM sees as GenericGuardrailService.Builder (and build() as GenericGuardrailService).
+        // - The abstract methods keep the signatures that the builders of frameworks compiled against the old interface
+        //   provide, and that callers compiled against it use. Without them, such a caller fails with a
+        //   NoSuchMethodError, and a caller compiled against this version fails with an AbstractMethodError on such a
+        //   builder.
+        // - The default (varargs) methods keep the signatures that callers compiled against the old interface use.
+        //   They only delegate to the inherited implementation.
+        // They can be removed when the next major release no longer needs to run code compiled against the old
+        // interface.
 
         /** {@inheritDoc} */
         @Override

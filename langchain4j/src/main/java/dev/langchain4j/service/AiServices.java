@@ -1322,7 +1322,7 @@ public abstract class AiServices<T> {
      * <p>
      *     The configuration set this way applies to every tool, including the ones whose guardrails are declared in a
      *     {@link ToolInputGuardrails} annotation or on an {@link dev.langchain4j.service.tool.AiServiceTool AiServiceTool}.
-     *     Currently there is nothing to configure: unlike {@link InputGuardrailsConfig}, tool guardrails have no retries.
+     *     The default configuration has no settings; a framework that provides its own implementation sets it here.
      * </p>
      *
      * @param config the configuration. Must not be null.
@@ -1341,7 +1341,7 @@ public abstract class AiServices<T> {
      * <p>
      *     The configuration set this way applies to every tool, including the ones whose guardrails are declared in a
      *     {@link ToolOutputGuardrails} annotation or on an {@link dev.langchain4j.service.tool.AiServiceTool AiServiceTool}.
-     *     Currently there is nothing to configure: unlike {@link OutputGuardrailsConfig}, tool guardrails have no retries.
+     *     The default configuration has no settings; a framework that provides its own implementation sets it here.
      * </p>
      *
      * @param config the configuration. Must not be null.
@@ -1367,6 +1367,9 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
+     * @param guardrails the tool input guardrails, or {@code null} to clear them
+     * @param <I>        the type of the guardrails
+     * @return the current instance of {@link AiServices} to allow method chaining
      * @since 1.25.0
      */
     @Experimental
@@ -1388,6 +1391,9 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
+     * @param guardrails the tool input guardrails
+     * @param <I>        the type of the guardrails
+     * @return the current instance of {@link AiServices} to allow method chaining
      * @since 1.25.0
      */
     @Experimental
@@ -1410,6 +1416,9 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
+     * @param guardrailClasses the classes of the tool input guardrails
+     * @param <I>              the type of the guardrails
+     * @return the current instance of {@link AiServices} to allow method chaining
      * @since 1.25.0
      */
     @Experimental
@@ -1432,6 +1441,9 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
+     * @param guardrailClasses the classes of the tool input guardrails
+     * @param <I>              the type of the guardrails
+     * @return the current instance of {@link AiServices} to allow method chaining
      * @since 1.25.0
      */
     @Experimental
@@ -1455,6 +1467,9 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
+     * @param guardrails the tool output guardrails, or {@code null} to clear them
+     * @param <O>        the type of the guardrails
+     * @return the current instance of {@link AiServices} to allow method chaining
      * @since 1.25.0
      */
     @Experimental
@@ -1476,6 +1491,9 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
+     * @param guardrails the tool output guardrails
+     * @param <O>        the type of the guardrails
+     * @return the current instance of {@link AiServices} to allow method chaining
      * @since 1.25.0
      */
     @Experimental
@@ -1498,6 +1516,9 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
+     * @param guardrailClasses the classes of the tool output guardrails
+     * @param <O>              the type of the guardrails
+     * @return the current instance of {@link AiServices} to allow method chaining
      * @since 1.25.0
      */
     @Experimental
@@ -1520,6 +1541,9 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
+     * @param guardrailClasses the classes of the tool output guardrails
+     * @param <O>              the type of the guardrails
+     * @return the current instance of {@link AiServices} to allow method chaining
      * @since 1.25.0
      */
     @Experimental

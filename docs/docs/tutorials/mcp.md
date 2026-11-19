@@ -372,9 +372,8 @@ More information on tool support in LangChain4j can be found [here](/tutorials/t
 The text that an MCP server returns, including the text of an error result (`isError: true`), reaches the LLM, and it
 may carry [indirect prompt injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/). Use
 [tool guardrails](/tutorials/tool-guardrails) to check it. They run for MCP tools like for any other tool, so
-there is no need to wrap the `ToolExecutor` of MCP tools, and the `toolWrapper` of the `McpToolProvider` builder is
-no longer needed to validate anything (it is kept for other uses, and it runs inside the guardrails: tool guardrails
-run outside the tool executor).
+there is no need to wrap the `ToolExecutor` of MCP tools to validate them. A `toolWrapper` set on the `McpToolProvider`
+builder runs inside the guardrails: the input guardrails run before it, and the output guardrails after it.
 
 Set the guardrails on the `AiServices` builder. They apply to every tool, so they tell the MCP tools apart by the
 [`ToolSource`](/tutorials/tool-guardrails#telling-the-tools-apart-toolsource) of the request, which the
@@ -426,9 +425,6 @@ The tools of the [resources as tools](#exposing-resources-automatically-via-synt
 `serverKeys()`. `involves("github")` is true for them as well, so a guardrail that routes on `involves` also
 guards the resources of that server. To guard only the regular tools of one server, compare
 `serverKeys()` with `Set.of("github")`.
-
-Guardrails per MCP server, configured on the `McpToolProvider` builder, are not available yet. Until then, route on
-the `ToolSource` as shown above.
 
 ### MCP Tool Name Mapping
 

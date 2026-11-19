@@ -2112,7 +2112,7 @@ sees means a failed step**, whatever produced it.
 A failure rolls back every compensable tool of the **whole invocation**, not only the ones of the current
 tool-calling round, and, with [cross-agent compensation](/tutorials/agents#cross-agent-compensation), also the
 compensable tools that other agents ran earlier. The LLM sees the message of the guardrail verbatim for the rejected
-tool, and the usual rolled-back text for the others. The events carry the new `CompensationReason` constants
+tool, and the usual rolled-back text for the others. The events carry the `CompensationReason` constants
 `TOOL_INPUT_GUARDRAIL_FAILED` and `TOOL_OUTPUT_GUARDRAIL_FAILED`. A guardrail on a read-only tool that only wants to
 sanitize should use `successWith(..)`, which does not roll back. The table of all the cases is in
 [Tool Guardrails](/tutorials/tool-guardrails#compensation).

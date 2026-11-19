@@ -7,7 +7,8 @@ import java.util.ServiceLoader;
 /**
  * Configuration specifically for tool output guardrails.
  * <p>
- *     Currently there is nothing to configure: unlike {@link OutputGuardrailsConfig}, tool guardrails have no retries.
+ *     The default configuration has no settings: unlike {@link OutputGuardrailsConfig}, it has no maximum number of
+ *     retries, because tool guardrails are not retried.
  *     Frameworks that extend this library (like Quarkus or Spring) may provide their own implementations of this configuration.
  * </p>
  *

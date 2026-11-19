@@ -353,7 +353,7 @@ replace semantics, every per-tool guardrail would silently stop running as soon 
 
 ### Skipping some tools
 
-There is no per-tool opt-out (yet). A guardrail that was declared globally, or on a class, and must not apply to
+Tool guardrails have no per-tool opt-out. A guardrail that was declared globally, or on a class, and must not apply to
 some tools, skips them itself, using `toolName()` or [`toolSource()`](#telling-the-tools-apart-toolsource):
 
 ```java
@@ -413,7 +413,7 @@ result the LLM ends up with**, not on which guardrail method was called, so guar
 | An **input** guardrail rejects the call (`failure(..)`)                                                                   | Yes          | The other compensable tools. The rejected tool never ran, so there is nothing to roll back for it.                                                            | `TOOL_INPUT_GUARDRAIL_FAILED`  |
 | An **output** guardrail turns a successful result into an error result (`failure(..)`, or a rewrite with `isError == true`) | Yes          | **All** compensable tools, **including the rejected one**, which stays compensable with its original result (the one before the guardrail).                    | `TOOL_OUTPUT_GUARDRAIL_FAILED` |
 | An output guardrail **rewrites** the result and keeps `isError == false` (`successWith(String)`)                          | No           | Nothing. This is the way to sanitize a result without rolling anything back.                                                                                  | -                              |
-| The tool **returned an error result** and an output guardrail keeps it an error (`successWith(String)` keeps the flag)    | Yes          | A tool failure as before: the other compensable tools; the tool itself did not succeed so it is not compensable.                                              | `TOOL_EXECUTION_FAILED`        |
+| The tool **returned an error result** and an output guardrail keeps it an error (`successWith(String)` keeps the flag)    | Yes          | Like any tool failure: the other compensable tools; the tool itself did not succeed so it is not compensable.                                                 | `TOOL_EXECUTION_FAILED`        |
 | An output guardrail turns an error result into a success (`successWith(contents, false)`)                                 | No           | Nothing, and the tool is not compensable because it did not succeed.                                                                                          | -                              |
 | A guardrail returns **fatal**                                                                                             | Like a thrown tool error | Like a tool that throws, with the rules of the input and output rows above. See the note below. | `TOOL_INPUT_GUARDRAIL_FAILED` or `TOOL_OUTPUT_GUARDRAIL_FAILED` |
 
@@ -429,8 +429,8 @@ result the LLM ends up with**, not on which guardrail method was called, so guar
 - If a round has several failures, the first failing tool in request order decides the reason.
 
 :::note
-A fatal guardrail failure is treated like a tool that throws. Today, the `CompletableFuture` and reactive modes roll
-back the compensable tools before failing. The blocking and `TokenStream` modes do not roll back when a tool throws,
+A fatal guardrail failure is treated like a tool that throws. The `CompletableFuture` and reactive modes roll back
+the compensable tools before failing. The blocking and `TokenStream` modes do not roll back when a tool throws,
 and a fatal tool guardrail failure behaves the same way there.
 :::
 
@@ -464,7 +464,7 @@ Every execution of a tool guardrail fires an event, which you can listen to with
 One event is fired for each guardrail that ran, with its request, its result and the duration. They are distinct from
 `InputGuardrailExecutedEvent` and `OutputGuardrailExecutedEvent`: a listener for AI Service guardrails is **not**
 notified of tool guardrails. See [Observability](/tutorials/observability) for how to register listeners. The tool
-events that already exist (`ToolExecutedEvent`, `ToolCompensatedEvent`) carry the **guarded** result and, after an
+execution events (`ToolExecutedEvent`, `ToolCompensatedEvent`) carry the **guarded** result and, after an
 input rewrite, the **rewritten** request.
 
 ```java
