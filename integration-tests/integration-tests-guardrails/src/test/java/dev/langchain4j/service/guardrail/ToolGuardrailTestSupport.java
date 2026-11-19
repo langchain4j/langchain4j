@@ -59,6 +59,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.Arrays;
 
 /**
  * Fixtures shared by the tool guardrail tests: a scripted model that calls tools, the four invocation modes of an AI
@@ -346,7 +348,7 @@ final class ToolGuardrailTestSupport {
 
     /** The model calls {@code search} {@code times} times, one call per round, then answers {@code done}. */
     static List<AiMessage> callingSearchThenAnswering(int times) {
-        var messages = new java.util.ArrayList<AiMessage>();
+        var messages = new ArrayList<AiMessage>();
         for (int i = 1; i <= times; i++) {
             messages.add(AiMessage.from(toolCall(String.valueOf(i), "search", ORIGINAL_ARGUMENTS)));
         }
@@ -571,6 +573,6 @@ final class ToolGuardrailTestSupport {
     }
 
     static List<Content> texts(String... texts) {
-        return java.util.Arrays.stream(texts).<Content>map(TextContent::from).toList();
+        return Arrays.stream(texts).<Content>map(TextContent::from).toList();
     }
 }

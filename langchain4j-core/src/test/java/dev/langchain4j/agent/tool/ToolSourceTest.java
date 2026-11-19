@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import java.util.ArrayList;
 
 class ToolSourceTest {
 
@@ -65,7 +66,7 @@ class ToolSourceTest {
     @Test
     void local_explicit_factory_equals_method_factory_and_is_immutable() throws Exception {
         ToolSource fromMethod = ToolSource.local(String.class.getMethod("charAt", int.class));
-        List<String> types = new java.util.ArrayList<>(List.of("int"));
+        List<String> types = new ArrayList<>(List.of("int"));
         ToolSource.Local explicit = (ToolSource.Local) ToolSource.local("java.lang.String", "charAt", types);
         types.add("x");
 

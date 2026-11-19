@@ -24,7 +24,7 @@
 
     <properties>
         <slf4j.version>2.0.16</slf4j.version>
-        <logback.version>1.5.38</logback.version>
+        <logback.version>1.5.16</logback.version>
     </properties>
 
     <dependencyManagement>
@@ -41,7 +41,7 @@
                 <!-- Import dependency management from Spring Boot -->
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>4.1.2</version>
+                <version>3.5.5</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -72,7 +72,7 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>4.1.2</version>
+                <version>3.4.5</version>
             </plugin>
         </plugins>
     </build>

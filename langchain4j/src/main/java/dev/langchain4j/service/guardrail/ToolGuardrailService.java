@@ -32,6 +32,14 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import dev.langchain4j.exception.ToolArgumentsException;
+import dev.langchain4j.guardrail.Guardrail;
+import dev.langchain4j.guardrail.GuardrailRequest;
+import dev.langchain4j.guardrail.InputGuardrailRequest;
+import dev.langchain4j.service.tool.ToolProvider;
+import dev.langchain4j.spi.classloading.ClassInstanceFactory;
+import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
+import java.util.concurrent.CompletionException;
 
 /**
  * Executes the tool guardrails of the tools of an AI service: the {@link ToolInputGuardrail}s, which validate or
@@ -41,7 +49,7 @@ import java.util.function.Supplier;
  * <p>
  *     <strong>Keys.</strong> The key of a tool is the {@link ToolKey} that {@link #bind(Class, AiServiceTool)}
  *     returns for it: it is only meaningful to the service that created it. A tool provided anew for every
- *     invocation (by a {@link dev.langchain4j.service.tool.ToolProvider}, for example an MCP server) is bound for every
+ *     invocation (by a {@link ToolProvider}, for example an MCP server) is bound for every
  *     invocation.
  * </p>
  * <p>
@@ -68,19 +76,19 @@ import java.util.function.Supplier;
  * <p>
  *     <strong>Results.</strong> A non-fatal failure is returned as a failed result, never thrown, so that the caller
  *     can send it to the LLM as an error tool result. A fatal failure throws a
- *     {@link dev.langchain4j.guardrail.ToolInputGuardrailException} or a
- *     {@link dev.langchain4j.guardrail.ToolOutputGuardrailException} (the asynchronous methods fail their future
+ *     {@link ToolInputGuardrailException} or a
+ *     {@link ToolOutputGuardrailException} (the asynchronous methods fail their future
  *     with it). {@link #executeGuardrails(ToolKey, ToolExecutionRequest, ToolSpecification, ToolSource,
  *     GuardrailRequestParams, Function)} runs a whole tool call through the guardrails and applies these rules, the
- *     way {@link GuardrailService#executeGuardrails(Object, dev.langchain4j.guardrail.InputGuardrailRequest)} does for
+ *     way {@link GuardrailService#executeGuardrails(Object, InputGuardrailRequest)} does for
  *     the AI service guardrails; {@link #executeGuardrailsAsync(ToolKey, ToolExecutionRequest, ToolSpecification,
  *     ToolSource, GuardrailRequestParams, Function)} is its non-blocking counterpart, for which the guardrails must
- *     implement {@link dev.langchain4j.guardrail.Guardrail#validateAsync(dev.langchain4j.guardrail.GuardrailRequest)}.
+ *     implement {@link Guardrail#validateAsync(GuardrailRequest)}.
  * </p>
  * <p>
  *     <strong>Customizing.</strong> The default implementation finds the annotations through
- *     {@link dev.langchain4j.spi.classloading.ClassMetadataProviderFactory} and creates guardrails from their classes
- *     through {@link dev.langchain4j.spi.classloading.ClassInstanceFactory}, like the AI service guardrails. A
+ *     {@link ClassMetadataProviderFactory} and creates guardrails from their classes
+ *     through {@link ClassInstanceFactory}, like the AI service guardrails. A
  *     framework can also replace the whole builder with a {@link ToolGuardrailServiceBuilderFactory}.
  * </p>
  *
@@ -102,12 +110,12 @@ public non-sealed interface ToolGuardrailService
      *                  the tool: the class of the object the {@code @Tool} method of the tool was found on (the object
      *                  given to {@code AiServices.tools(..)}). {@code null} for a tool that was not found on an object
      *                  (an {@link AiServiceTool} given directly, or provided by a
-     *                  {@link dev.langchain4j.service.tool.ToolProvider} such as an MCP server); the declaring class of
+     *                  {@link ToolProvider} such as an MCP server); the declaring class of
      *                  the tool method is then used, if the tool has one.
      * @param tool      The tool. Must not be null.
      * @return The {@link ToolKey} that identifies this tool to this service: pass it to
-     *         {@link #executeInputGuardrails(Object, dev.langchain4j.guardrail.GuardrailRequest)},
-     *         {@link #executeOutputGuardrails(Object, dev.langchain4j.guardrail.GuardrailRequest)}, their asynchronous
+     *         {@link #executeInputGuardrails(Object, GuardrailRequest)},
+     *         {@link #executeOutputGuardrails(Object, GuardrailRequest)}, their asynchronous
      *         variants, and {@link #hasInputGuardrails(Object)} / {@link #hasOutputGuardrails(Object)}. It is only
      *         meaningful to the service that returned it, and never {@code null}. A tool without guardrails also
      *         gets a key, and running its guardrails returns a success.
@@ -117,7 +125,7 @@ public non-sealed interface ToolGuardrailService
     /**
      * Executes a tool call through the tool guardrails of the tool: the input guardrails, then {@code tool}, then the
      * output guardrails. It is the tool counterpart of {@link GuardrailService#executeGuardrails(Object,
-     * dev.langchain4j.guardrail.InputGuardrailRequest)}: it builds the guardrail requests and turns the guardrail
+     * InputGuardrailRequest)}: it builds the guardrail requests and turns the guardrail
      * results into the request the tool runs with and the result the LLM sees, so a caller needs nothing else.
      * <ul>
      *     <li>Without guardrails for the tool, {@code tool} runs with {@code request}, and its result is returned as
@@ -132,11 +140,11 @@ public non-sealed interface ToolGuardrailService
      *     which no longer matches what the LLM sees. A non-fatal output failure replaces the result with an error
      *     result whose text is the failure message, verbatim.</li>
      *     <li>A fatal failure throws a {@link ToolInputGuardrailException} or a
-     *     {@link dev.langchain4j.guardrail.ToolOutputGuardrailException}. It is thrown outside {@code tool}, so the
+     *     {@link ToolOutputGuardrailException}. It is thrown outside {@code tool}, so the
      *     error handling of the tool does not see it. An exception thrown by {@code tool} propagates as is. When a
      *     fatal input failure ends the call, {@link #rejectedRequest(ToolExecutionRequest, Throwable)} gives the
      *     request as the guardrails before it left it.</li>
-     *     <li>A {@link dev.langchain4j.exception.ToolArgumentsException} thrown by an input guardrail, for example by
+     *     <li>A {@link ToolArgumentsException} thrown by an input guardrail, for example by
      *     {@link ToolInputGuardrailRequest#argumentsAsMap()} for arguments that cannot be parsed, is not a guardrail
      *     failure: {@code tool} does not run, and the exception is thrown as is, so that the caller handles it like an
      *     arguments error of the tool.</li>
@@ -214,13 +222,13 @@ public non-sealed interface ToolGuardrailService
      * Non-blocking counterpart of {@link #executeGuardrails(ToolKey, ToolExecutionRequest, ToolSpecification,
      * ToolSource, GuardrailRequestParams, Function)}, with the same rules, for the asynchronous
      * ({@code CompletableFuture}) and streaming AI service modes. The guardrails run with
-     * {@link #executeInputGuardrailsAsync(Object, dev.langchain4j.guardrail.GuardrailRequest)} and
-     * {@link #executeOutputGuardrailsAsync(Object, dev.langchain4j.guardrail.GuardrailRequest)}, so a guardrail that
-     * overrides {@link dev.langchain4j.guardrail.Guardrail#validateAsync(dev.langchain4j.guardrail.GuardrailRequest)}
+     * {@link #executeInputGuardrailsAsync(Object, GuardrailRequest)} and
+     * {@link #executeOutputGuardrailsAsync(Object, GuardrailRequest)}, so a guardrail that
+     * overrides {@link Guardrail#validateAsync(GuardrailRequest)}
      * does not block the calling thread.
      * <p>
      *     Nothing is thrown from this method: a fatal guardrail failure, an exception thrown by a guardrail or by
-     *     {@code tool} (including the {@link dev.langchain4j.exception.ToolArgumentsException} of an input
+     *     {@code tool} (including the {@link ToolArgumentsException} of an input
      *     guardrail), and a failed future of {@code tool} all fail the returned future. Canceling the returned future
      *     cancels the guardrails or the tool in flight.
      * </p>
@@ -270,7 +278,7 @@ public non-sealed interface ToolGuardrailService
      *
      * @param request The tool call of the LLM. Must not be null.
      * @param failure The exception that ended the call, possibly wrapped in a
-     *                {@link java.util.concurrent.CompletionException}; may be null.
+     *                {@link CompletionException}; may be null.
      * @return The request as the guardrails left it, if the failure tells.
      * @since 1.25.0
      */
@@ -300,7 +308,7 @@ public non-sealed interface ToolGuardrailService
      *
      * @param request The tool call of the LLM. Must not be null.
      * @param failure The exception that ended the call, possibly wrapped in a
-     *                {@link java.util.concurrent.CompletionException}; may be null.
+     *                {@link CompletionException}; may be null.
      * @return The stage of the fatal failure, if the failure is one.
      * @since 1.25.0
      */

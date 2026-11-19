@@ -75,6 +75,8 @@ import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import dev.langchain4j.agent.tool.ToolSource;
+import dev.langchain4j.mcp.McpToolProvider;
 
 public class DefaultMcpClient implements McpClient {
 
@@ -1867,11 +1869,11 @@ public class DefaultMcpClient implements McpClient {
          * Sets a unique identifier for the client. If none is provided, a
          * UUID will be automatically generated.
          * <p>
-         * {@link dev.langchain4j.mcp.McpToolProvider} uses this key for the
-         * {@link dev.langchain4j.agent.tool.ToolSource} of tools obtained from this client, so set an
+         * {@link McpToolProvider} uses this key for the
+         * {@link ToolSource} of tools obtained from this client, so set an
          * explicit key if tool guardrails need to identify the server via
-         * {@link dev.langchain4j.agent.tool.ToolSource.Mcp#serverKeys()} or
-         * {@link dev.langchain4j.agent.tool.ToolSource.Mcp#involves(String)}.
+         * {@link ToolSource.Mcp#serverKeys()} or
+         * {@link ToolSource.Mcp#involves(String)}.
          */
         public Builder key(String key) {
             this.key = key;

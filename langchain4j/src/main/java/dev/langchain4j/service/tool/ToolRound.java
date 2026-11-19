@@ -30,6 +30,8 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import dev.langchain4j.observability.api.event.ToolExecutedEvent;
+import dev.langchain4j.service.guardrail.ToolGuardrailService;
 
 /**
  * One round of tool execution: the tool calls of one {@link AiMessage}, in every AI service mode (blocking,
@@ -190,7 +192,7 @@ public final class ToolRound {
     /**
      * Fails a blocking round whose calls have all ended, when a call failed with an exception that ends the invocation,
      * right before the caller rethrows {@code errorToRethrow}, the way the non-blocking modes fail a round: it fires a
-     * {@link dev.langchain4j.observability.api.event.ToolExecutedEvent} for each call that ended, with the request it
+     * {@link ToolExecutedEvent} for each call that ended, with the request it
      * was executed with, tells cross-agent compensation about the calls that ran successfully and that a call failed,
      * and rolls back the compensable tools that ran successfully in this round and in the earlier rounds, when
      * compensation on tool errors is enabled. A failure of a listener, of cross-agent compensation or of the rollback
@@ -580,7 +582,7 @@ public final class ToolRound {
      * The request to report for a call, also when it failed: the request the call was executed with, as far as it is
      * known. That is the one of its execution if it returned, the one its tool was started with if it failed after
      * that, the one the guardrail service tells for a failure that ended the call before (see
-     * {@link dev.langchain4j.service.guardrail.ToolGuardrailService#rejectedRequest(ToolExecutionRequest,
+     * {@link ToolGuardrailService#rejectedRequest(ToolExecutionRequest,
      * Throwable)}), otherwise the call of the LLM.
      */
     ToolExecutionRequest reportedRequest(ToolExecutionRequest call) {

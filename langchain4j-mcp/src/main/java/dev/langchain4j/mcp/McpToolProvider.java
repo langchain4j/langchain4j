@@ -32,6 +32,9 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import dev.langchain4j.guardrail.ToolInputGuardrail;
+import dev.langchain4j.guardrail.ToolOutputGuardrail;
+import dev.langchain4j.mcp.client.DefaultMcpClient;
 
 /**
  * A tool provider backed by one or more MCP clients.
@@ -46,8 +49,8 @@ import org.slf4j.LoggerFactory;
  * provides tools for every client of this provider. A subclass can pass a subset of the clients to one of the
  * protected {@code provideTools} overloads; if that subset is empty, the synthetic resource tools are not emitted.
  * <p>
- * Note that {@link dev.langchain4j.mcp.client.DefaultMcpClient} defaults its key to a random UUID; set an
- * explicit key via {@link dev.langchain4j.mcp.client.DefaultMcpClient.Builder#key(String)} if tool guardrails
+ * Note that {@link DefaultMcpClient} defaults its key to a random UUID; set an
+ * explicit key via {@link DefaultMcpClient.Builder#key(String)} if tool guardrails
  * inspect {@link ToolSource.Mcp#serverKeys()} or {@link ToolSource.Mcp#involves(String)}.
  */
 public class McpToolProvider implements ToolProvider {
@@ -367,7 +370,7 @@ public class McpToolProvider implements ToolProvider {
          * Provide a wrapper around the {@link ToolExecutor} that can be used to implement tracing for example.
          * <p>
          * For validating or rewriting tool inputs and outputs (such as prompt-injection checks), prefer
-         * {@link dev.langchain4j.guardrail.ToolInputGuardrail} and {@link dev.langchain4j.guardrail.ToolOutputGuardrail}
+         * {@link ToolInputGuardrail} and {@link ToolOutputGuardrail}
          * configured on the AI Service builder. Tool guardrails run outside the tool executor of every tool, so they
          * also run outside this wrapper: the wrapper receives the input after tool input guardrails have validated or
          * rewritten it, and tool output guardrails receive the output returned by the wrapper. For MCP tools, the

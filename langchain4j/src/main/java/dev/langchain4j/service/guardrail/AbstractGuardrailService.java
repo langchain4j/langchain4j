@@ -8,6 +8,9 @@ import dev.langchain4j.guardrail.OutputGuardrailExecutor;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import java.util.Map;
+import dev.langchain4j.service.guardrail.spi.GuardrailServiceBuilderFactory;
+import dev.langchain4j.spi.classloading.ClassInstanceFactory;
+import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
 
 /**
  * Responsible for managing and applying input and output guardrails to methods
@@ -20,12 +23,12 @@ import java.util.Map;
  * and output constraints are applied automatically when methods are invoked.
  *
  * @deprecated Do not extend this class. To customize how guardrails are found and created, provide a
- * {@link dev.langchain4j.spi.classloading.ClassMetadataProviderFactory} (it also decides how the method passed at
+ * {@link ClassMetadataProviderFactory} (it also decides how the method passed at
  * invocation time maps to the method keys, see
- * {@link dev.langchain4j.spi.classloading.ClassMetadataProviderFactory#resolveMethodKey(Object)}) and a
- * {@link dev.langchain4j.spi.classloading.ClassInstanceFactory}, and use {@link GuardrailService#builder(Class)}.
+ * {@link ClassMetadataProviderFactory#resolveMethodKey(Object)}) and a
+ * {@link ClassInstanceFactory}, and use {@link GuardrailService#builder(Class)}.
  * Frameworks that need to replace the whole builder can still provide a
- * {@link dev.langchain4j.service.guardrail.spi.GuardrailServiceBuilderFactory}.
+ * {@link GuardrailServiceBuilderFactory}.
  */
 @Internal
 @Deprecated(since = "1.25.0")

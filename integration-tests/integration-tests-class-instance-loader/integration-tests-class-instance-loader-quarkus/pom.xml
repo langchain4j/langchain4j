@@ -25,9 +25,7 @@
     <properties>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.40.1.2</quarkus.platform.version>
-        <!-- This module is not released: the Quarkus plugin no longer accepts the epoch seconds set in langchain4j-parent, and there is nothing to reproduce -->
-        <project.build.outputTimestamp/>
+        <quarkus.platform.version>3.26.3</quarkus.platform.version>
     </properties>
 
     <dependencyManagement>

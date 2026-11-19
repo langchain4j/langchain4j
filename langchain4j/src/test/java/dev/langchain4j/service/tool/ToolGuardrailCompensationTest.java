@@ -35,6 +35,10 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeoutException;
+import java.util.stream.IntStream;
 
 /**
  * What a tool guardrail rejection means for compensation. The result the LLM ends up with decides whether a step
@@ -70,7 +74,7 @@ class ToolGuardrailCompensationTest {
 
         final List<String> log = new CopyOnWriteArrayList<>();
         // the result each compensating action received, by the name of the tool
-        final Map<String, String> compensatedResults = new java.util.concurrent.ConcurrentHashMap<>();
+        final Map<String, String> compensatedResults = new ConcurrentHashMap<>();
         // whether the compensating action of credit fails
         volatile boolean failingRollback;
 
@@ -160,7 +164,7 @@ class ToolGuardrailCompensationTest {
 
     private static MockChatModel modelCalling(String... tools) {
         return MockChatModel.thatResponds(
-                AiMessage.from(java.util.stream.IntStream.range(0, tools.length)
+                AiMessage.from(IntStream.range(0, tools.length)
                         .mapToObj(i -> call("call-" + i, tools[i]))
                         .toList()),
                 AiMessage.from("done"));
@@ -168,10 +172,10 @@ class ToolGuardrailCompensationTest {
 
     /** A model that calls the tools of each round in turn, then answers. */
     private static MockChatModel modelCallingInRounds(List<String>... rounds) {
-        var messages = new java.util.ArrayList<AiMessage>();
+        var messages = new ArrayList<AiMessage>();
         for (int round = 0; round < rounds.length; round++) {
             int roundNumber = round;
-            messages.add(AiMessage.from(java.util.stream.IntStream.range(0, rounds[round].size())
+            messages.add(AiMessage.from(IntStream.range(0, rounds[round].size())
                     .mapToObj(i -> call("call-" + roundNumber + "-" + i, rounds[roundNumber].get(i)))
                     .toList()));
         }
@@ -237,7 +241,7 @@ class ToolGuardrailCompensationTest {
             }
         } catch (ExecutionException e) {
             run.failure = e.getCause();
-        } catch (RuntimeException | java.util.concurrent.TimeoutException e) {
+        } catch (RuntimeException | TimeoutException e) {
             run.failure = e;
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();

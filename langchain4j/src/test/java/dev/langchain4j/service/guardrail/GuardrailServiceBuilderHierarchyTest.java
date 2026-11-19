@@ -13,6 +13,7 @@ import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import dev.langchain4j.data.message.AiMessage;
 
 /**
  * The builder hierarchy mirrors the service hierarchy: the builder of AI service guardrails is a
@@ -41,7 +42,7 @@ class GuardrailServiceBuilderHierarchyTest {
 
     public static class BuilderOutput implements OutputGuardrail {
         @Override
-        public OutputGuardrailResult validate(dev.langchain4j.data.message.AiMessage responseFromLLM) {
+        public OutputGuardrailResult validate(AiMessage responseFromLLM) {
             return success();
         }
     }

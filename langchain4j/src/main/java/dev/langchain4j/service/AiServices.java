@@ -1330,7 +1330,7 @@ public abstract class AiServices<T> {
      * {@link ToolInputGuardrailsConfig}.
      * <p>
      *     The configuration set this way applies to every tool, including the ones whose guardrails are declared in a
-     *     {@link ToolInputGuardrails} annotation or on an {@link dev.langchain4j.service.tool.AiServiceTool AiServiceTool}.
+     *     {@link ToolInputGuardrails} annotation or on an {@link AiServiceTool AiServiceTool}.
      *     The default configuration has no settings; a framework that provides its own implementation sets it here.
      * </p>
      *
@@ -1349,7 +1349,7 @@ public abstract class AiServices<T> {
      * {@link ToolOutputGuardrailsConfig}.
      * <p>
      *     The configuration set this way applies to every tool, including the ones whose guardrails are declared in a
-     *     {@link ToolOutputGuardrails} annotation or on an {@link dev.langchain4j.service.tool.AiServiceTool AiServiceTool}.
+     *     {@link ToolOutputGuardrails} annotation or on an {@link AiServiceTool AiServiceTool}.
      *     The default configuration has no settings; a framework that provides its own implementation sets it here.
      * </p>
      *
@@ -1367,9 +1367,9 @@ public abstract class AiServices<T> {
      * Sets the {@link ToolInputGuardrail} instances that apply to every tool. Replaces the ones set previously; {@code null} clears them.
      * <p>
      *     These guardrails apply to <strong>every</strong> tool of the AI service, including tools without a method
-     *     (MCP, {@link dev.langchain4j.service.tool.ToolProvider ToolProvider}), and run <strong>first</strong>,
+     *     (MCP, {@link ToolProvider ToolProvider}), and run <strong>first</strong>,
      *     followed by the guardrails of the class annotation, the method annotation and the
-     *     {@link dev.langchain4j.service.tool.AiServiceTool AiServiceTool} of each tool
+     *     {@link AiServiceTool AiServiceTool} of each tool
      *     (see {@link ToolInputGuardrails} and {@link ToolOutputGuardrails}). This <strong>differs</strong> from
      *     {@link #inputGuardrails(List)} and {@link #outputGuardrails(List)}, where the guardrails set on the
      *     builder replace the ones of the annotations. A guardrail that must not apply to some tools can skip them by
@@ -1391,9 +1391,9 @@ public abstract class AiServices<T> {
      * Sets the {@link ToolInputGuardrail} instances that apply to every tool.
      * <p>
      *     These guardrails apply to <strong>every</strong> tool of the AI service, including tools without a method
-     *     (MCP, {@link dev.langchain4j.service.tool.ToolProvider ToolProvider}), and run <strong>first</strong>,
+     *     (MCP, {@link ToolProvider ToolProvider}), and run <strong>first</strong>,
      *     followed by the guardrails of the class annotation, the method annotation and the
-     *     {@link dev.langchain4j.service.tool.AiServiceTool AiServiceTool} of each tool
+     *     {@link AiServiceTool AiServiceTool} of each tool
      *     (see {@link ToolInputGuardrails} and {@link ToolOutputGuardrails}). This <strong>differs</strong> from
      *     {@link #inputGuardrails(List)} and {@link #outputGuardrails(List)}, where the guardrails set on the
      *     builder replace the ones of the annotations. A guardrail that must not apply to some tools can skip them by
@@ -1416,9 +1416,9 @@ public abstract class AiServices<T> {
      * Sets the classes of the {@link ToolInputGuardrail}s that apply to every tool. They are instantiated like the classes of {@link #inputGuardrailClasses(List)}, after the instances set with {@link #toolInputGuardrails(List)}.
      * <p>
      *     These guardrails apply to <strong>every</strong> tool of the AI service, including tools without a method
-     *     (MCP, {@link dev.langchain4j.service.tool.ToolProvider ToolProvider}), and run <strong>first</strong>,
+     *     (MCP, {@link ToolProvider ToolProvider}), and run <strong>first</strong>,
      *     followed by the guardrails of the class annotation, the method annotation and the
-     *     {@link dev.langchain4j.service.tool.AiServiceTool AiServiceTool} of each tool
+     *     {@link AiServiceTool AiServiceTool} of each tool
      *     (see {@link ToolInputGuardrails} and {@link ToolOutputGuardrails}). This <strong>differs</strong> from
      *     {@link #inputGuardrails(List)} and {@link #outputGuardrails(List)}, where the guardrails set on the
      *     builder replace the ones of the annotations. A guardrail that must not apply to some tools can skip them by
@@ -1441,9 +1441,9 @@ public abstract class AiServices<T> {
      * Sets the classes of the {@link ToolInputGuardrail}s that apply to every tool.
      * <p>
      *     These guardrails apply to <strong>every</strong> tool of the AI service, including tools without a method
-     *     (MCP, {@link dev.langchain4j.service.tool.ToolProvider ToolProvider}), and run <strong>first</strong>,
+     *     (MCP, {@link ToolProvider ToolProvider}), and run <strong>first</strong>,
      *     followed by the guardrails of the class annotation, the method annotation and the
-     *     {@link dev.langchain4j.service.tool.AiServiceTool AiServiceTool} of each tool
+     *     {@link AiServiceTool AiServiceTool} of each tool
      *     (see {@link ToolInputGuardrails} and {@link ToolOutputGuardrails}). This <strong>differs</strong> from
      *     {@link #inputGuardrails(List)} and {@link #outputGuardrails(List)}, where the guardrails set on the
      *     builder replace the ones of the annotations. A guardrail that must not apply to some tools can skip them by
@@ -1467,9 +1467,9 @@ public abstract class AiServices<T> {
      * Sets the {@link ToolOutputGuardrail} instances that apply to every tool. Replaces the ones set previously; {@code null} clears them.
      * <p>
      *     These guardrails apply to <strong>every</strong> tool of the AI service, including tools without a method
-     *     (MCP, {@link dev.langchain4j.service.tool.ToolProvider ToolProvider}), and run <strong>first</strong>,
+     *     (MCP, {@link ToolProvider ToolProvider}), and run <strong>first</strong>,
      *     followed by the guardrails of the class annotation, the method annotation and the
-     *     {@link dev.langchain4j.service.tool.AiServiceTool AiServiceTool} of each tool
+     *     {@link AiServiceTool AiServiceTool} of each tool
      *     (see {@link ToolInputGuardrails} and {@link ToolOutputGuardrails}). This <strong>differs</strong> from
      *     {@link #inputGuardrails(List)} and {@link #outputGuardrails(List)}, where the guardrails set on the
      *     builder replace the ones of the annotations. A guardrail that must not apply to some tools can skip them by
@@ -1491,9 +1491,9 @@ public abstract class AiServices<T> {
      * Sets the {@link ToolOutputGuardrail} instances that apply to every tool.
      * <p>
      *     These guardrails apply to <strong>every</strong> tool of the AI service, including tools without a method
-     *     (MCP, {@link dev.langchain4j.service.tool.ToolProvider ToolProvider}), and run <strong>first</strong>,
+     *     (MCP, {@link ToolProvider ToolProvider}), and run <strong>first</strong>,
      *     followed by the guardrails of the class annotation, the method annotation and the
-     *     {@link dev.langchain4j.service.tool.AiServiceTool AiServiceTool} of each tool
+     *     {@link AiServiceTool AiServiceTool} of each tool
      *     (see {@link ToolInputGuardrails} and {@link ToolOutputGuardrails}). This <strong>differs</strong> from
      *     {@link #inputGuardrails(List)} and {@link #outputGuardrails(List)}, where the guardrails set on the
      *     builder replace the ones of the annotations. A guardrail that must not apply to some tools can skip them by
@@ -1516,9 +1516,9 @@ public abstract class AiServices<T> {
      * Sets the classes of the {@link ToolOutputGuardrail}s that apply to every tool. They are instantiated like the classes of {@link #outputGuardrailClasses(List)}, after the instances set with {@link #toolOutputGuardrails(List)}.
      * <p>
      *     These guardrails apply to <strong>every</strong> tool of the AI service, including tools without a method
-     *     (MCP, {@link dev.langchain4j.service.tool.ToolProvider ToolProvider}), and run <strong>first</strong>,
+     *     (MCP, {@link ToolProvider ToolProvider}), and run <strong>first</strong>,
      *     followed by the guardrails of the class annotation, the method annotation and the
-     *     {@link dev.langchain4j.service.tool.AiServiceTool AiServiceTool} of each tool
+     *     {@link AiServiceTool AiServiceTool} of each tool
      *     (see {@link ToolInputGuardrails} and {@link ToolOutputGuardrails}). This <strong>differs</strong> from
      *     {@link #inputGuardrails(List)} and {@link #outputGuardrails(List)}, where the guardrails set on the
      *     builder replace the ones of the annotations. A guardrail that must not apply to some tools can skip them by
@@ -1541,9 +1541,9 @@ public abstract class AiServices<T> {
      * Sets the classes of the {@link ToolOutputGuardrail}s that apply to every tool.
      * <p>
      *     These guardrails apply to <strong>every</strong> tool of the AI service, including tools without a method
-     *     (MCP, {@link dev.langchain4j.service.tool.ToolProvider ToolProvider}), and run <strong>first</strong>,
+     *     (MCP, {@link ToolProvider ToolProvider}), and run <strong>first</strong>,
      *     followed by the guardrails of the class annotation, the method annotation and the
-     *     {@link dev.langchain4j.service.tool.AiServiceTool AiServiceTool} of each tool
+     *     {@link AiServiceTool AiServiceTool} of each tool
      *     (see {@link ToolInputGuardrails} and {@link ToolOutputGuardrails}). This <strong>differs</strong> from
      *     {@link #inputGuardrails(List)} and {@link #outputGuardrails(List)}, where the guardrails set on the
      *     builder replace the ones of the annotations. A guardrail that must not apply to some tools can skip them by

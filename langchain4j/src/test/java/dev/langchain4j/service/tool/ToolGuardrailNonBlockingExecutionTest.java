@@ -44,6 +44,10 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import dev.langchain4j.data.message.ChatMessage;
+import java.util.concurrent.CancellationException;
+import java.util.stream.Stream;
+import org.assertj.core.groups.Tuple;
 
 /**
  * Tool guardrails behave in the non-blocking AI service modes as in the blocking one ({@link ToolGuardrailExecutionTest}):
@@ -141,7 +145,7 @@ class ToolGuardrailNonBlockingExecutionTest {
         }
 
         private static List<ToolExecutionRequest> toolCalls(
-                java.util.stream.Stream<dev.langchain4j.data.message.ChatMessage> messages) {
+                Stream<ChatMessage> messages) {
             return messages.filter(AiMessage.class::isInstance)
                     .map(AiMessage.class::cast)
                     .filter(AiMessage::hasToolExecutionRequests)
@@ -558,8 +562,8 @@ class ToolGuardrailNonBlockingExecutionTest {
         assertThat(run.toolCallsInMemory())
                 .extracting(ToolExecutionRequest::id, ToolExecutionRequest::arguments)
                 .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple("1", REWRITTEN_ARGUMENTS),
-                        org.assertj.core.groups.Tuple.tuple("2", REWRITTEN_ARGUMENTS));
+                        Tuple.tuple("1", REWRITTEN_ARGUMENTS),
+                        Tuple.tuple("2", REWRITTEN_ARGUMENTS));
     }
 
     // ---------- cancellation ----------
@@ -610,7 +614,7 @@ class ToolGuardrailNonBlockingExecutionTest {
                 .satisfies(future -> assertThat(future)
                         .failsWithin(TIMEOUT)
                         .withThrowableThat()
-                        .isInstanceOf(java.util.concurrent.CancellationException.class));
+                        .isInstanceOf(CancellationException.class));
         assertThat(tool.receivedArguments).isEmpty();
         assertThat(model.requests()).hasSize(1);
     }
@@ -661,7 +665,7 @@ class ToolGuardrailNonBlockingExecutionTest {
                 .satisfies(future -> assertThat(future)
                         .failsWithin(TIMEOUT)
                         .withThrowableThat()
-                        .isInstanceOf(java.util.concurrent.CancellationException.class));
+                        .isInstanceOf(CancellationException.class));
         assertThat(tool.receivedArguments).isEmpty();
         assertThat(model.requests()).hasSize(1);
     }

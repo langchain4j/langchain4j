@@ -89,7 +89,8 @@ class McpToolProviderTest {
                         ToolSpecification.builder()
                                 .name("tool_2")
                                 .metadata(Map.of("two", 2))
-                                .build());
+                                .build()
+                );
     }
 
     @Test

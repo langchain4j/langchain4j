@@ -5,12 +5,16 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.guardrail.ToolGuardrailStage;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.Optional;
+import dev.langchain4j.agent.tool.ToolSource;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
+import java.util.function.Function;
 
 /**
  * The outcome of a tool call executed through its tool guardrails by
  * {@link ToolGuardrailService#executeGuardrails(ToolGuardrailService.ToolKey, ToolExecutionRequest,
- * dev.langchain4j.agent.tool.ToolSpecification, dev.langchain4j.agent.tool.ToolSource,
- * dev.langchain4j.guardrail.GuardrailRequestParams, java.util.function.Function)}.
+ * ToolSpecification, ToolSource,
+ * GuardrailRequestParams, Function)}.
  * <p>
  *     An input guardrail can rewrite the arguments of the call. The rewritten request replaces the one of the LLM for
  *     everything that follows, the way a rewritten user message does for the AI service guardrails: report the call

@@ -75,6 +75,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+import dev.langchain4j.service.tool.AiServiceTool;
 
 public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
@@ -737,7 +738,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     /**
      * Sets the {@link ToolInputGuardrail} classes to be instantiated and applied to every tool of the agent.
      * These guardrails apply to every tool of the agent and run first, followed by the guardrails of the class
-     * annotation, the method annotation and the {@link dev.langchain4j.service.tool.AiServiceTool AiServiceTool}
+     * annotation, the method annotation and the {@link AiServiceTool AiServiceTool}
      * of each tool. Unlike {@link InputGuardrails} and {@link OutputGuardrails}, they do not replace the ones declared
      * with the {@link ToolInputGuardrails} and {@link ToolOutputGuardrails} annotations. A guardrail that must not
      * apply to some tools can skip them by checking {@code toolName()} or {@code toolSource()} of its request.
@@ -756,7 +757,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     /**
      * Sets the {@link ToolInputGuardrail} instances applied to every tool of the agent.
      * These guardrails apply to every tool of the agent and run first, followed by the guardrails of the class
-     * annotation, the method annotation and the {@link dev.langchain4j.service.tool.AiServiceTool AiServiceTool}
+     * annotation, the method annotation and the {@link AiServiceTool AiServiceTool}
      * of each tool. Unlike {@link InputGuardrails} and {@link OutputGuardrails}, they do not replace the ones declared
      * with the {@link ToolInputGuardrails} and {@link ToolOutputGuardrails} annotations. A guardrail that must not
      * apply to some tools can skip them by checking {@code toolName()} or {@code toolSource()} of its request.
@@ -775,7 +776,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     /**
      * Sets the {@link ToolOutputGuardrail} classes to be instantiated and applied to every tool of the agent.
      * These guardrails apply to every tool of the agent and run first, followed by the guardrails of the class
-     * annotation, the method annotation and the {@link dev.langchain4j.service.tool.AiServiceTool AiServiceTool}
+     * annotation, the method annotation and the {@link AiServiceTool AiServiceTool}
      * of each tool. Unlike {@link InputGuardrails} and {@link OutputGuardrails}, they do not replace the ones declared
      * with the {@link ToolInputGuardrails} and {@link ToolOutputGuardrails} annotations. A guardrail that must not
      * apply to some tools can skip them by checking {@code toolName()} or {@code toolSource()} of its request.
@@ -795,7 +796,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     /**
      * Sets the {@link ToolOutputGuardrail} instances applied to every tool of the agent.
      * These guardrails apply to every tool of the agent and run first, followed by the guardrails of the class
-     * annotation, the method annotation and the {@link dev.langchain4j.service.tool.AiServiceTool AiServiceTool}
+     * annotation, the method annotation and the {@link AiServiceTool AiServiceTool}
      * of each tool. Unlike {@link InputGuardrails} and {@link OutputGuardrails}, they do not replace the ones declared
      * with the {@link ToolInputGuardrails} and {@link ToolOutputGuardrails} annotations. A guardrail that must not
      * apply to some tools can skip them by checking {@code toolName()} or {@code toolSource()} of its request.

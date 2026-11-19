@@ -21,10 +21,11 @@ import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import java.lang.reflect.Method;
 
 /**
  * The guardrails of an AI service are found, and run, when the method keys of the {@code ClassMetadataProviderFactory}
- * are not {@link java.lang.reflect.Method}s, in the blocking and in the non-blocking modes: input and output guardrails,
+ * are not {@link Method}s, in the blocking and in the non-blocking modes: input and output guardrails,
  * declared on the method or on the class.
  */
 class StringKeyedGuardrailsTests {

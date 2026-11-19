@@ -27,6 +27,7 @@ import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import java.util.Arrays;
 
 class ToolGuardrailExecutorTest {
 
@@ -438,7 +439,7 @@ class ToolGuardrailExecutorTest {
     @Test
     void input_null_guardrails_are_skipped() {
         var executor = ToolInputGuardrailExecutor.builder()
-                .guardrails(java.util.Arrays.asList(null, (ToolInputGuardrail) r -> ToolInputGuardrailResult.success()))
+                .guardrails(Arrays.asList(null, (ToolInputGuardrail) r -> ToolInputGuardrailResult.success()))
                 .build();
 
         assertThat(executor.execute(inputRequest()).isSuccess()).isTrue();

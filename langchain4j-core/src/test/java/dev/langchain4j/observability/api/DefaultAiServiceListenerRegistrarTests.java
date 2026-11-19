@@ -407,9 +407,7 @@ class DefaultAiServiceListenerRegistrarTests {
         registrar.fireEvent(RESPONSE_RECEIVED_EVENT);
 
         assertThat(listener)
-                .extracting(
-                        TestAiServiceInvocationSummaryListener::count,
-                        TestAiServiceInvocationSummaryListener::lastEvent)
+                .extracting(TestAiServiceInvocationSummaryListener::count, TestAiServiceInvocationSummaryListener::lastEvent)
                 .containsExactly(0, null);
     }
 
@@ -584,8 +582,8 @@ class DefaultAiServiceListenerRegistrarTests {
         assertThat(summaries)
                 .hasSize(invocationCount)
                 .allSatisfy(summary -> assertThat(summary.events())
-                        .allSatisfy(
-                                event -> assertThat(event.invocationContext()).isEqualTo(summary.invocationContext()))
+                        .allSatisfy(event ->
+                                assertThat(event.invocationContext()).isEqualTo(summary.invocationContext()))
                         .<Class<?>>map(AiServiceEvent::eventClass)
                         .containsExactly(
                                 AiServiceStartedEvent.class,
@@ -878,8 +876,7 @@ class DefaultAiServiceListenerRegistrarTests {
     private static class TestToolExecutedListener extends AbstractTestEventListener<ToolExecutedEvent>
             implements ToolExecutedEventListener {}
 
-    private static class TestAiServiceInvocationSummaryListener
-            extends AbstractTestEventListener<AiServiceInvocationSummaryEvent>
+    private static class TestAiServiceInvocationSummaryListener extends AbstractTestEventListener<AiServiceInvocationSummaryEvent>
             implements AiServiceInvocationSummaryListener {}
 
     private static class IG implements InputGuardrail {}

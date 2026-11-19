@@ -49,6 +49,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
+import java.util.function.Function;
 
 class ToolGuardrailExecutionTest {
 
@@ -175,7 +176,7 @@ class ToolGuardrailExecutionTest {
     }
 
     private static ToolInputGuardrail recordingInput(
-            Run[] holder, java.util.function.Function<ToolInputGuardrailRequest, ToolInputGuardrailResult> action) {
+            Run[] holder, Function<ToolInputGuardrailRequest, ToolInputGuardrailResult> action) {
         return request -> action.apply(request);
     }
 

@@ -2,6 +2,7 @@ package dev.langchain4j.spi.classloading;
 
 import java.lang.annotation.Annotation;
 import java.util.Optional;
+import java.lang.reflect.Method;
 
 /**
  * A factory interface for providing access to class metadata. Intended to be implemented by downstream frameworks.
@@ -13,9 +14,9 @@ import java.util.Optional;
  * <p>
  *     The method keys this factory returns from {@link #getNonStaticMethodsOnClass(Class)} identify methods wherever
  *     the caller needs to refer to a method of a class it scanned. Code that is handed a
- *     {@link java.lang.reflect.Method} instead (for example the method being invoked) uses
+ *     {@link Method} instead (for example the method being invoked) uses
  *     {@link #resolveMethodKey(Object)} to find the key that corresponds to it, which matters for a factory whose keys
- *     are not {@link java.lang.reflect.Method}s.
+ *     are not {@link Method}s.
  * </p>
  *
  * @param <MethodKey> The type of the method key, representing a unique identifier for methods. Can be whatever it needs to be.
@@ -53,10 +54,10 @@ public interface ClassMetadataProviderFactory<MethodKey> {
 
     /**
      * Resolves the method key for a method that is identified in another way than by this factory's keys, usually by
-     * a {@link java.lang.reflect.Method}.
+     * a {@link Method}.
      * <p>
      *     The keys returned by {@link #getNonStaticMethodsOnClass(Class)} are what this factory uses to identify
-     *     methods. A caller that only has the {@link java.lang.reflect.Method} (for example, the method being invoked)
+     *     methods. A caller that only has the {@link Method} (for example, the method being invoked)
      *     calls this method to find the corresponding key. A factory whose keys are not
      *     {@code Method}s overrides it to translate one into the other.
      * </p>
@@ -65,10 +66,10 @@ public interface ClassMetadataProviderFactory<MethodKey> {
      * </p>
      * <p>
      *     The default implementation returns the given method unchanged, which is right for factories whose keys are
-     *     {@link java.lang.reflect.Method}s, like the reflection based one.
+     *     {@link Method}s, like the reflection based one.
      * </p>
      *
-     * @param method What identifies the method, usually a {@link java.lang.reflect.Method}. Never {@code null}.
+     * @param method What identifies the method, usually a {@link Method}. Never {@code null}.
      * @return The key this factory uses for the method, or {@code null} if the method has none.
      * @since 1.25.0
      */

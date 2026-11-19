@@ -18,6 +18,10 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.ServiceLoader;
 import java.util.concurrent.CompletableFuture;
+import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
+import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.spi.classloading.ClassInstanceFactory;
+import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
 
 /**
  * Defines a service for executing guardrails associated with methods in an AI service.
@@ -26,17 +30,17 @@ import java.util.concurrent.CompletableFuture;
  *     <strong>Method keys.</strong> The guardrails of a method are looked up by a key. An AI service identifies the
  *     method it invokes with its {@link Method}; the default service translates that into the key its guardrails were
  *     registered under with
- *     {@link dev.langchain4j.spi.classloading.ClassMetadataProviderFactory#resolveMethodKey(Object)}. That is the same
+ *     {@link ClassMetadataProviderFactory#resolveMethodKey(Object)}. That is the same
  *     for every lookup of this interface, blocking or not.
  * </p>
  * <p>
  *     <strong>Customizing and extending.</strong> What is shared by every kind of guardrail (looking up the guardrails
  *     to run for a key, and running them) lives in {@link GenericGuardrailService}, which this interface specializes for
  *     AI services. Frameworks customize AI service guardrails through the SPIs the default builder and service use:
- *     {@link dev.langchain4j.spi.classloading.ClassMetadataProviderFactory} (how methods and annotations are found,
+ *     {@link ClassMetadataProviderFactory} (how methods and annotations are found,
  *     and how the method passed at invocation time maps to a method key) and
- *     {@link dev.langchain4j.spi.classloading.ClassInstanceFactory} (how guardrail classes become instances), or by
- *     replacing the whole builder with a {@link dev.langchain4j.service.guardrail.spi.GuardrailServiceBuilderFactory}.
+ *     {@link ClassInstanceFactory} (how guardrail classes become instances), or by
+ *     replacing the whole builder with a {@link GuardrailServiceBuilderFactory}.
  *     {@link AbstractGuardrailService} is deprecated: it was the way to provide a custom service before these SPIs were
  *     enough, and is only kept for the frameworks that subclass it.
  * </p>
@@ -234,8 +238,8 @@ public non-sealed interface GuardrailService
                     GuardrailService,
                     InputGuardrail,
                     OutputGuardrail,
-                    dev.langchain4j.guardrail.config.InputGuardrailsConfig,
-                    dev.langchain4j.guardrail.config.OutputGuardrailsConfig,
+                    InputGuardrailsConfig,
+                    OutputGuardrailsConfig,
                     Builder> {
 
         // Every method of GenericGuardrailService.Builder is declared again with the AI service types, for binary

@@ -12,6 +12,7 @@ import dev.langchain4j.guardrail.ToolInputGuardrail;
 import dev.langchain4j.guardrail.ToolOutputGuardrail;
 import java.util.List;
 import java.util.Objects;
+import dev.langchain4j.service.AiServices;
 
 /**
  * Represents a tool managed by an AI Service, combining:
@@ -74,7 +75,7 @@ public class AiServiceTool {
 
     /**
      * Returns the {@link ToolInputGuardrail}s of this tool. They run after the guardrails set on the
-     * {@link dev.langchain4j.service.AiServices AiServices} builder, after the guardrails of the class annotation and
+     * {@link AiServices AiServices} builder, after the guardrails of the class annotation and
      * after the ones of the method annotation, if any.
      *
      * @return the tool input guardrails of this tool, empty if it has none
@@ -87,7 +88,7 @@ public class AiServiceTool {
 
     /**
      * Returns the {@link ToolOutputGuardrail}s of this tool. They run after the guardrails set on the
-     * {@link dev.langchain4j.service.AiServices AiServices} builder, after the guardrails of the class annotation and
+     * {@link AiServices AiServices} builder, after the guardrails of the class annotation and
      * after the ones of the method annotation, if any.
      *
      * @return the tool output guardrails of this tool, empty if it has none
@@ -192,7 +193,7 @@ public class AiServiceTool {
 
         /**
          * Sets the {@link ToolInputGuardrail}s of this tool, which run in the order given, after the guardrails set
-         * on the {@link dev.langchain4j.service.AiServices AiServices} builder, after the ones of the class
+         * on the {@link AiServices AiServices} builder, after the ones of the class
          * annotation and after the ones of the method annotation, if any. {@code null} means none.
          *
          * @param toolInputGuardrails the tool input guardrails of this tool, or {@code null} for none
@@ -220,7 +221,7 @@ public class AiServiceTool {
 
         /**
          * Sets the {@link ToolOutputGuardrail}s of this tool, which run in the order given, after the guardrails set
-         * on the {@link dev.langchain4j.service.AiServices AiServices} builder, after the ones of the class
+         * on the {@link AiServices AiServices} builder, after the ones of the class
          * annotation and after the ones of the method annotation, if any. {@code null} means none.
          *
          * @param toolOutputGuardrails the tool output guardrails of this tool, or {@code null} for none

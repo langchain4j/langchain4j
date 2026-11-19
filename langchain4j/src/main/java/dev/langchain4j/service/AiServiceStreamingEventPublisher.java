@@ -24,7 +24,6 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.StreamingChatModelHelper;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
@@ -32,6 +31,7 @@ import dev.langchain4j.model.chat.response.PartialResponse;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.RawStreamingEvent;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
@@ -60,13 +60,13 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import org.jspecify.annotations.Nullable;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.Tube;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -200,19 +200,17 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
         TubeConfiguration config = new TubeConfiguration()
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(bufferSize);
-        return ZeroPublisher.create(
-                config,
-                tube -> events.subscribe(new Flow.Subscriber<>() {
+        return ZeroPublisher.create(config, tube -> events.subscribe(new Flow.Subscriber<>() {
 
-                    @Override
-                    public void onSubscribe(Flow.Subscription subscription) {
-                        if (tube.cancelled()) {
-                            subscription.cancel();
-                            return;
-                        }
-                        tube.whenTerminates(subscription::cancel);
-                        subscription.request(Long.MAX_VALUE);
-                    }
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                if (tube.cancelled()) {
+                    subscription.cancel();
+                    return;
+                }
+                tube.whenTerminates(subscription::cancel);
+                subscription.request(Long.MAX_VALUE);
+            }
 
                     @Override
                     public void onNext(AiServiceStreamingEvent event) {
@@ -234,20 +232,20 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                         }
                     }
 
-                    @Override
-                    public void onError(Throwable error) {
-                        if (!tube.cancelled()) {
-                            tube.fail(error);
-                        }
-                    }
+            @Override
+            public void onError(Throwable error) {
+                if (!tube.cancelled()) {
+                    tube.fail(error);
+                }
+            }
 
-                    @Override
-                    public void onComplete() {
-                        if (!tube.cancelled()) {
-                            tube.complete();
-                        }
-                    }
-                }));
+            @Override
+            public void onComplete() {
+                if (!tube.cancelled()) {
+                    tube.complete();
+                }
+            }
+        }));
     }
 
     /**
@@ -375,7 +373,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
             CurrentInvocation.callWith(invocationContext, () -> context.streamingChatModel.chat(chatRequest))
                     .subscribe(new Flow.Subscriber<>() {
 
-                        private ChatResponse roundResponse;
+                private ChatResponse roundResponse;
 
                         @Override
                         public void onSubscribe(Flow.Subscription subscription) {
@@ -436,10 +434,10 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                             }
                         }
 
-                        @Override
-                        public void onError(Throwable error) {
-                            fail(error);
-                        }
+                @Override
+                public void onError(Throwable error) {
+                    fail(error);
+                }
 
                         @Override
                         public void onComplete() {
@@ -734,8 +732,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                                 return;
                             }
 
-                            tokenUsage = TokenUsage.sum(
-                                    tokenUsage, chatResponse.metadata().tokenUsage());
+                            tokenUsage = TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage());
 
                             ToolService.NextChatRequest next = context.toolService.prepareNextChatRequest(
                                     context,
@@ -767,9 +764,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 return;
             }
 
-            GuardrailRequestParams guardrailParams = commonGuardrailParams.toBuilder()
-                    .chatMemory(ChatMemoryService.unwrap(getMemory()))
-                    .build();
+            GuardrailRequestParams guardrailParams =
+                    commonGuardrailParams.toBuilder().chatMemory(ChatMemoryService.unwrap(getMemory())).build();
 
             ChatExecutor toolAwareRepromptExecutor = ToolAwareRepromptExecutor.wrapAsync(
                     chatExecutor,

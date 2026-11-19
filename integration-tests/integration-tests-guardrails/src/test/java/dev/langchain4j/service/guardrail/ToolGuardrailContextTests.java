@@ -35,6 +35,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.guardrail.InputGuardrail;
+import dev.langchain4j.guardrail.InputGuardrailResult;
+import dev.langchain4j.observability.api.listener.InputGuardrailExecutedListener;
+import dev.langchain4j.observability.api.listener.OutputGuardrailExecutedListener;
 
 /**
  * What a tool guardrail knows about the invocation it runs in, where the tool came from, and where its events
@@ -137,9 +142,9 @@ class ToolGuardrailContextTests extends BaseGuardrailTests {
             ToolKind.LIST.register(services, SearchTool.echoing());
             services.toolInputGuardrails(input(request -> ToolInputGuardrailResult.success()))
                     .registerListener(
-                            (dev.langchain4j.observability.api.listener.InputGuardrailExecutedListener) events::add)
+                            (InputGuardrailExecutedListener) events::add)
                     .registerListener(
-                            (dev.langchain4j.observability.api.listener.OutputGuardrailExecutedListener) events::add);
+                            (OutputGuardrailExecutedListener) events::add);
         });
 
         assertThat(events).isEmpty();
@@ -216,11 +221,11 @@ class ToolGuardrailContextTests extends BaseGuardrailTests {
     }
 
     /** Counts the user messages of the AI service that reach it. */
-    public static class AiServiceSideGuardrail implements dev.langchain4j.guardrail.InputGuardrail {
+    public static class AiServiceSideGuardrail implements InputGuardrail {
         final List<String> userMessages = new CopyOnWriteArrayList<>();
 
         @Override
-        public dev.langchain4j.guardrail.InputGuardrailResult validate(dev.langchain4j.data.message.UserMessage um) {
+        public InputGuardrailResult validate(dev.langchain4j.data.message.UserMessage um) {
             userMessages.add(um.singleText());
             return success();
         }
@@ -254,8 +259,8 @@ class ToolGuardrailContextTests extends BaseGuardrailTests {
         var run = run(
                 mode,
                 List.of(
-                        dev.langchain4j.data.message.AiMessage.from(toolCall),
-                        dev.langchain4j.data.message.AiMessage.from("done")),
+                        AiMessage.from(toolCall),
+                        AiMessage.from("done")),
                 services -> services.tools(expert));
 
         assertThat(run.answerText()).isEqualTo("done");

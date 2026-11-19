@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
+import java.lang.reflect.Method;
 
 /**
  * Looks up and runs the {@link GuardrailExecutor} for a key (for AI services, the method of the AI service), for one
@@ -54,7 +55,7 @@ final class KeyedGuardrailExecutors<
      * @param executors          the executor of each key. {@code null} means none.
      * @param noGuardrailsResult provides the result for a key that has no executor
      * @param keyResolver        translates the key a caller identifies the target with into the key the executors are
-     *                           registered under (for example a {@link java.lang.reflect.Method} into the key a
+     *                           registered under (for example a {@link Method} into the key a
      *                           framework uses for it). It is never called with {@code null}, may return
      *                           {@code null} for a key that has no executor, and is called once per key.
      */

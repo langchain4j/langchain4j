@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import dev.langchain4j.exception.ToolArgumentsException;
 
 /**
  * Represents the parameter passed to a tool output guardrail, after a tool has been executed.
@@ -90,7 +91,7 @@ public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOu
      * These are the arguments of the tool call produced by the LLM, and are <b>untrusted</b>.
      *
      * @return the parsed arguments, never null
-     * @throws dev.langchain4j.exception.ToolArgumentsException if the arguments are not a valid JSON object. Thrown
+     * @throws ToolArgumentsException if the arguments are not a valid JSON object. Thrown
      *         from an output guardrail, it aborts the invocation like any other exception of a guardrail.
      * @since 1.25.0
      */

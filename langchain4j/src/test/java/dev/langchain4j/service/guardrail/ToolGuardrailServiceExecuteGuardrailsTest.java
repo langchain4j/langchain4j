@@ -33,6 +33,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
+import java.util.concurrent.CancellationException;
 
 /**
  * The public contract of {@link ToolGuardrailService#executeGuardrails}: what a framework gets when it runs a tool call
@@ -795,7 +796,7 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
 
         assertThat(service.rejectedStage(CALL, new IllegalStateException("boom")))
                 .isEmpty();
-        assertThat(service.rejectedStage(CALL, new java.util.concurrent.CancellationException()))
+        assertThat(service.rejectedStage(CALL, new CancellationException()))
                 .isEmpty();
         assertThat(service.rejectedStage(CALL, null)).isEmpty();
         assertThatThrownBy(() -> service.rejectedStage(null, new IllegalStateException("boom")))

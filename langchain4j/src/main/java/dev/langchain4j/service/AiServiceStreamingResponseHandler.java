@@ -533,9 +533,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     methodKey,
                     compensableExecutions);
 
-            CurrentInvocation.runWith(
-                    invocationContext,
-                    () -> context.streamingChatModel.chat(next.chatRequest(), HandlerWithoutInvocation.wrap(handler)));
+            CurrentInvocation.runWith(invocationContext, () -> context.streamingChatModel.chat(next.chatRequest(), HandlerWithoutInvocation.wrap(handler)));
         } else {
             ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
 

@@ -18,6 +18,8 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import dev.langchain4j.data.message.ContentType;
+import java.util.Arrays;
 
 class ToolGuardrailRequestTest {
 
@@ -28,13 +30,13 @@ class ToolGuardrailRequestTest {
             .build();
     private static final GuardrailRequestParams PARAMS = GuardrailRequestParams.builder()
             .userMessageTemplate("t")
-            .variables(java.util.Map.of())
+            .variables(Map.of())
             .build();
 
     private static GuardrailRequestParams paramsWithMemory(Object memoryId) {
         return GuardrailRequestParams.builder()
                 .userMessageTemplate("t")
-                .variables(java.util.Map.of())
+                .variables(Map.of())
                 .invocationContext(
                         InvocationContext.builder().chatMemoryId(memoryId).build())
                 .build();
@@ -330,7 +332,7 @@ class ToolGuardrailRequestTest {
 
     @Test
     void output_rejects_null_content_elements() {
-        assertThatThrownBy(() -> output().resultContents(java.util.Arrays.asList(new TextContent("a"), null))
+        assertThatThrownBy(() -> output().resultContents(Arrays.asList(new TextContent("a"), null))
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("resultContents");
@@ -340,8 +342,8 @@ class ToolGuardrailRequestTest {
     void output_custom_text_typed_content_is_not_text_content() {
         Content custom = new Content() {
             @Override
-            public dev.langchain4j.data.message.ContentType type() {
-                return dev.langchain4j.data.message.ContentType.TEXT;
+            public ContentType type() {
+                return ContentType.TEXT;
             }
         };
         ToolOutputGuardrailRequest request =
