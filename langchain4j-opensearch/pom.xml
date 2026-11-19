@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: OpenSearch</name>
 
     <properties>
-        <opensearch-java.version>2.9.0</opensearch-java.version>
+        <opensearch-java.version>2.26.0</opensearch-java.version>
         <opensearch-containers.version>2.1.4</opensearch-containers.version>
         <jsonpath.version>2.10.0</jsonpath.version>
     </properties>
