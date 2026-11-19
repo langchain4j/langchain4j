@@ -1,20 +1,16 @@
 package dev.langchain4j.store.embedding.weaviate;
 
+import static dev.langchain4j.internal.Utils.randomUUID;
+
 import dev.langchain4j.data.segment.TextSegment;
-import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
+import java.util.Arrays;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.weaviate.WeaviateContainer;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
-import static dev.langchain4j.internal.Utils.randomUUID;
-import static java.util.Collections.singletonList;
 
 @Testcontainers
 class LocalWeaviateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
@@ -29,6 +25,7 @@ class LocalWeaviateEmbeddingStoreRemovalIT extends EmbeddingStoreWithRemovalIT {
             .scheme("http")
             .host(weaviate.getHost())
             .port(weaviate.getFirstMappedPort())
+            .grpcPort(weaviate.getMappedPort(50051))
             .objectClass("Test" + randomUUID().replace("-", ""))
             .consistencyLevel("ALL")
             .metadataKeys(Arrays.asList("id", "type"))

@@ -1,18 +1,17 @@
 package dev.langchain4j.store.embedding.weaviate;
 
 import static dev.langchain4j.internal.Utils.randomUUID;
-import static java.util.Collections.singletonList;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithoutMetadataIT;
-import io.weaviate.client.Config;
-import io.weaviate.client.WeaviateClient;
-import io.weaviate.client.v1.schema.model.DataType;
-import io.weaviate.client.v1.schema.model.Property;
-import io.weaviate.client.v1.schema.model.WeaviateClass;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.weaviate.WeaviateContainer;
@@ -32,6 +31,7 @@ class LocalWeaviateLegacyVectorEmbeddingStoreIT extends EmbeddingStoreWithoutMet
             .scheme("http")
             .host(weaviate.getHost())
             .port(weaviate.getFirstMappedPort())
+            .grpcPort(weaviate.getMappedPort(50051))
             .objectClass(objectClass)
             .build();
 
@@ -51,20 +51,32 @@ class LocalWeaviateLegacyVectorEmbeddingStoreIT extends EmbeddingStoreWithoutMet
     protected void ensureStoreIsReady() {
         // Weaviate 1.39+ creates collections with a named vector, so a collection with a single
         // (unnamed) vector, like the ones created by older Weaviate versions, is created explicitly here
-        WeaviateClient client = new WeaviateClient(
-                new Config("http", weaviate.getHost() + ":" + weaviate.getFirstMappedPort()));
-        client.schema()
-                .classCreator()
-                .withClass(WeaviateClass.builder()
-                        .className(objectClass)
-                        .vectorizer("none")
-                        .vectorIndexType("hnsw")
-                        .properties(singletonList(Property.builder()
-                                .name("text")
-                                .dataType(singletonList(DataType.TEXT))
-                                .build()))
-                        .build())
-                .run();
+        // The schema endpoint is called directly, since the Weaviate client only creates named vectors.
+        String schema = """
+                {
+                  "class": "%s",
+                  "vectorizer": "none",
+                  "vectorIndexType": "hnsw",
+                  "properties": [{"name": "text", "dataType": ["text"]}]
+                }
+                """.formatted(objectClass);
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create("http://" + weaviate.getHost() + ":" + weaviate.getFirstMappedPort() + "/v1/schema"))
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(schema))
+                .build();
+        try {
+            HttpResponse<String> response =
+                    HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) {
+                throw new IllegalStateException("Failed to create the collection: " + response.body());
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
