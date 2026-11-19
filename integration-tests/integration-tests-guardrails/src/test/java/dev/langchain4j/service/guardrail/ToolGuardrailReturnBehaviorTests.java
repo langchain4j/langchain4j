@@ -1,6 +1,9 @@
 package dev.langchain4j.service.guardrail;
 
 import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.REWRITTEN_ARGUMENTS;
+import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.TEMPLATE;
+import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.TOPIC;
+import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.callingSearchThenAnswering;
 import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.input;
 import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.inputFailure;
 import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.output;
@@ -9,18 +12,25 @@ import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.registe
 import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.run;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.ReturnBehavior;
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.guardrail.ToolInputGuardrailResult;
 import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.UserMessage;
+import dev.langchain4j.service.V;
 import dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.Mode;
 import dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.SearchTool;
 import dev.langchain4j.service.tool.ToolExecution;
+import dev.langchain4j.test.mock.MockChatModel;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 
 /**
  * Tool guardrails and tools that return immediately ({@link ReturnBehavior#IMMEDIATE}): the guarded result is what the
- * AI service returns, and a rejected tool does not return immediately. Run with the blocking AI service, whose
- * {@code Result} return type is what allows an immediate return.
+ * AI service returns in a {@code Result}, and a rejected tool does not return immediately. Run with the blocking AI
+ * service. A plain return type gets the object the tool returned, which a rewrite drops.
  */
 class ToolGuardrailReturnBehaviorTests extends BaseGuardrailTests {
 
@@ -39,11 +49,26 @@ class ToolGuardrailReturnBehaviorTests extends BaseGuardrailTests {
 
         // the LLM is not asked again
         assertThat(run.modelRequests()).hasSize(1);
+        // as without guardrails, an immediate return has no content: the result is in the tool executions
+        assertThat(run.result.content()).isNull();
         assertThat(run.result.toolExecutions())
                 .singleElement()
                 .returns("[removed]", ToolExecution::result)
                 // the raw result belongs to the original, so it is dropped when the contents are rewritten
                 .returns(null, ToolExecution::resultObject);
+    }
+
+    @Test
+    void a_rewritten_immediate_tool_has_no_object_to_return_so_a_plain_return_type_gets_null() {
+        // without guardrails, the AI service returns the object the @Tool method returned
+        assertThat(plainAssistant(services -> {}).chat(TOPIC)).isEqualTo("secret");
+
+        // a rewrite drops that object, so the tool has none, like a programmatic tool, and the AI service returns null;
+        // Result<String> is the return type that gets the guarded contents
+        assertThat(plainAssistant(services -> services.toolOutputGuardrails(
+                                output(request -> ToolOutputGuardrailResult.successWith("[removed]"))))
+                        .chat(TOPIC))
+                .isNull();
     }
 
     @Test
@@ -99,5 +124,27 @@ class ToolGuardrailReturnBehaviorTests extends BaseGuardrailTests {
         assertThat(run.result.content()).isEqualTo("done");
         assertThat(run.toolResultMessageOfSecondRequest("search").text()).isEqualTo("blocked");
         assertThat(run.everythingTheLlmReceived()).doesNotContain("injected");
+    }
+
+    private static PlainAssistant plainAssistant(Consumer<AiServices<PlainAssistant>> configuration) {
+        var services = AiServices.builder(PlainAssistant.class)
+                .chatModel(MockChatModel.thatResponds(callingSearchThenAnswering()))
+                .tools(new ImmediateSearch());
+        configuration.accept(services);
+        return services.build();
+    }
+
+    interface PlainAssistant {
+
+        @UserMessage(TEMPLATE)
+        String chat(@V("topic") String topic);
+    }
+
+    public static class ImmediateSearch {
+
+        @Tool(value = "Searches", returnBehavior = ReturnBehavior.IMMEDIATE)
+        public String search(@P(name = "q") String q) {
+            return "secret";
+        }
     }
 }

@@ -165,9 +165,19 @@ public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
 turn it into a success. Only `successWith(List<Content>, boolean)` can change the flag.
 
 A tool that [returns immediately](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) is
-guarded too, and the guarded result is what the AI Service returns. A call that a guardrail rejects does not return
-immediately: the LLM gets the failure message and is called again. (The `@OutputGuardrails` of the AI Service do not
-run on an immediate return; tool guardrails do.)
+guarded too. A call that a guardrail rejects does not return immediately: the LLM gets the failure message and is
+called again. (The `@OutputGuardrails` of the AI Service do not run on an immediate return; tool guardrails do.)
+
+What the AI Service returns depends on its return type:
+
+- `Result<T>`: the guarded result is in `Result#toolExecutions()`, as `ToolExecution#result()` (or `resultContents()`).
+- Any other type, such as `String`: the AI Service returns the Java object that the `@Tool` method returned,
+  `ToolExecution#resultObject()`. An output guardrail that rewrites the result drops that object, since it no longer
+  matches what the LLM sees, so the tool has no object to return, like a programmatic or MCP tool, and the AI Service
+  returns `null`. Use `Result<T>` to get the guarded result of a tool whose output a guardrail can rewrite.
+
+With any return type, the `afterToolExecution` callback, `TokenStream#onToolExecuted` and the `ToolExecutedEvent`
+also get the guarded result.
 
 ### Multi-content results
 

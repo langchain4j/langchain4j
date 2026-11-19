@@ -1527,7 +1527,7 @@ tool, whatever the return type of the AI Service method. No final `AiMessage` is
 again. The stored result is sent to the LLM on later calls that use the same memory, so it counts towards the tokens
 of those calls, and an immediate return does not keep sensitive data away from the LLM.
 
-Output guardrails (`@OutputGuardrails`) do not run on an immediate return, because the LLM has not produced a final answer to check. [Tool guardrails](/tutorials/tool-guardrails) do run: the guarded result is what the AI service returns, and a call that a tool input or output guardrail rejects does not return immediately (the LLM gets the failure message instead).
+Output guardrails (`@OutputGuardrails`) do not run on an immediate return, because the LLM has not produced a final answer to check. [Tool guardrails](/tutorials/tool-guardrails) do run: the guarded result is what the `Result` holds, and a call that a tool input or output guardrail rejects does not return immediately (the LLM gets the failure message instead).
 
 #### Non-`Result` AI Service method Return Types
 
@@ -1540,6 +1540,12 @@ chat method calls may or may not succeed when there are immediate tool calls bas
 * If there is one and only one non-null tool execution result, and the result can be resolved to the return type, then the request will succeed and return that tool result.
 * If there are multiple non-null tool execution results, the request will fail with a `IllegalConfigurationException` exception.
 * If there is one tool execution result and it cannot be resolved to the return type, the request will fail with a `IllegalConfigurationException` exception.
+
+The tool execution result in these rules is the Java object that a `@Tool` method returned
+(`ToolExecution.resultObject()`), not the text the LLM would see. A programmatic `ToolExecutor` or an MCP tool usually
+has no such object, so its result counts as `null`. The same goes for a result that a
+[tool output guardrail](/tutorials/tool-guardrails#tool-output-guardrails) rewrote: the rewrite drops the object, so
+the AI Service returns `null`. Return a `Result` to get the text or contents of such a result.
 
 #### Immediate-return rule with multiple tool calls in a single response
 

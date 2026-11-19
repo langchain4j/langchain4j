@@ -35,7 +35,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.stream.IntStream;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
@@ -295,7 +294,9 @@ class ToolGuardrailCompensationTests extends BaseGuardrailTests {
     // ---------- fatal rejections (D11: roll back in all modes once the upstream fix is in) ----------
 
     @ParameterizedTest
-    @EnumSource(value = Mode.class, names = {"COMPLETABLE_FUTURE", "REACTIVE"})
+    @EnumSource(
+            value = Mode.class,
+            names = {"COMPLETABLE_FUTURE", "REACTIVE"})
     void a_fatal_rejection_rolls_back_in_the_non_blocking_modes(Mode mode) {
         var output = run(
                 mode,
