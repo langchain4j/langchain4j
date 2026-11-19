@@ -479,6 +479,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             List<ChatMessage> nextMessages = context.toolService.persistToolResultsAndResolveMessagesSync(
                     context, getMemory(), null, outcome.resultMessages(), invocationContext);
 
+            if (rolledBackOnCancellation()) {
+                return;
+            }
+
             if (ToolService.shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
                 ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
                 fireInvocationComplete(finalChatResponse);
@@ -499,6 +503,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     toolServiceContext,
                     toolResults,
                     parameters);
+
+            if (rolledBackOnCancellation()) {
+                return;
+            }
 
             var handler = new AiServiceStreamingResponseHandler(
                     next.chatRequest(),
@@ -661,6 +669,19 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 });
     }
 
+    /**
+     * Rolls back when the invocation was cancelled after this processing claimed the response, once the results of
+     * its round are saved. The round is not passed on: {@code compensateIfNeeded} already collected its compensable
+     * tools, or already rolled them back when one of its tools failed.
+     */
+    private boolean rolledBackOnCancellation() {
+        if (!cancelled) {
+            return false;
+        }
+        compensateOnCancellation(Map.of(), true);
+        return true;
+    }
+
     private void runRollback(Runnable rollback) {
         if (completeResponseProcessingExecutor == null) {
             rollback.run();
@@ -668,8 +689,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         }
         try {
             completeResponseProcessingExecutor.execute(rollback);
-        } catch (RuntimeException e) {
-            LOG.warn("Failed to roll back the tools after the invocation was cancelled", e);
+        } catch (RuntimeException rejected) {
+            rollback.run();
         }
     }
 

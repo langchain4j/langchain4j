@@ -4,6 +4,9 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
@@ -15,8 +18,10 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
@@ -29,6 +34,9 @@ import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolServiceContext;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
+import dev.langchain4j.exception.ToolExecutionException;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -39,6 +47,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
@@ -221,6 +230,31 @@ class AiServiceToolCompensationTest {
         }
     }
 
+    // the rollback of credit fails with a ToolExecutionException that has a cause and an error code, in a compensating
+    // action that takes the ToolExecution and returns a failed future
+    static class BankWithUncreditTakingTheToolExecutionFailingWithAToolExecutionException {
+
+        final ToolExecutionException uncreditFailure =
+                new ToolExecutionException(new IllegalStateException("ledger is down"), 42);
+        volatile InsufficientFundsException thrown;
+
+        @Tool
+        String credit(String name, double amount) {
+            return "credited";
+        }
+
+        @CompensateFor("credit")
+        CompletableFuture<Void> uncredit(ToolExecution toolExecution) {
+            return CompletableFuture.failedFuture(uncreditFailure);
+        }
+
+        @Tool
+        String withdraw(String name, double amount) {
+            thrown = new InsufficientFundsException();
+            throw thrown;
+        }
+    }
+
     // the rollback of credit fails, in a compensating action that takes the ToolExecution and returns a type that a
     // CompletableFutureAdapter adapts
     static class BankWithUncreditTakingTheToolExecutionReturningAFailedFutureBox {
@@ -375,11 +409,13 @@ class AiServiceToolCompensationTest {
     static class SlowBank {
 
         final List<String> calls = new CopyOnWriteArrayList<>();
+        final CountDownLatch started = new CountDownLatch(1);
         final CountDownLatch release = new CountDownLatch(1);
 
         @Tool
         String credit(String name, double amount) {
             calls.add("credit:" + name);
+            started.countDown();
             try {
                 release.await(10, SECONDS);
             } catch (InterruptedException e) {
@@ -432,6 +468,117 @@ class AiServiceToolCompensationTest {
         @Override
         public void set(Iterable<ChatMessage> messages) {
             throw new IllegalStateException("store is down");
+        }
+    }
+
+    enum CancellationWhileSaving {
+        WHILE_THE_FIRST_RESULT_IS_ADDED,
+        ONCE_THE_RESULTS_ARE_ADDED
+    }
+
+    // cancels the invocation while the results of a round are saved: when the first tool result is added, or when the
+    // messages are read once the results are added
+    static class MemoryCancellingWhileSaving extends SyncOnlyMemory {
+
+        private final CancellationWhileSaving moment;
+        private final AtomicBoolean cancelled = new AtomicBoolean();
+        volatile StreamingHandle streamingHandle;
+
+        MemoryCancellingWhileSaving(CancellationWhileSaving moment) {
+            this.moment = moment;
+        }
+
+        @Override
+        public void add(ChatMessage message) {
+            if (moment == CancellationWhileSaving.WHILE_THE_FIRST_RESULT_IS_ADDED
+                    && message instanceof ToolExecutionResultMessage) {
+                cancelOnce();
+            }
+            super.add(message);
+        }
+
+        @Override
+        public List<ChatMessage> messages() {
+            List<ChatMessage> messages = super.messages();
+            if (moment == CancellationWhileSaving.ONCE_THE_RESULTS_ARE_ADDED
+                    && messages.stream().anyMatch(message -> message instanceof ToolExecutionResultMessage)) {
+                cancelOnce();
+            }
+            return messages;
+        }
+
+        private void cancelOnce() {
+            if (cancelled.compareAndSet(false, true)) {
+                streamingHandle.cancel();
+            }
+        }
+    }
+
+    // a store that cannot save tool results
+    static class MemoryFailingToSaveToolResults extends SyncOnlyMemory {
+
+        final IllegalStateException failure = new IllegalStateException("store is down");
+
+        @Override
+        public void add(ChatMessage message) {
+            if (message instanceof ToolExecutionResultMessage) {
+                throw failure;
+            }
+            super.add(message);
+        }
+    }
+
+    // saves the tool results only once it is released, and then fails to save them
+    static class MemoryFailingToSaveToolResultsOnceReleased implements ChatMemory {
+
+        private final ChatMemory delegate = MessageWindowChatMemory.withMaxMessages(20);
+        final CountDownLatch savingToolResults = new CountDownLatch(1);
+        final CountDownLatch release = new CountDownLatch(1);
+
+        @Override
+        public Object id() {
+            return delegate.id();
+        }
+
+        @Override
+        public void add(ChatMessage message) {
+            delegate.add(message);
+        }
+
+        @Override
+        public List<ChatMessage> messages() {
+            return delegate.messages();
+        }
+
+        @Override
+        public void clear() {
+            delegate.clear();
+        }
+
+        @Override
+        public CompletableFuture<Void> addAsync(List<ChatMessage> messages) {
+            if (messages.stream().noneMatch(message -> message instanceof ToolExecutionResultMessage)) {
+                return delegate.addAsync(messages);
+            }
+            savingToolResults.countDown();
+            return CompletableFuture.runAsync(() -> {
+                try {
+                    release.await(10, SECONDS);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                throw new IllegalStateException("store is down");
+            });
+        }
+
+        @Override
+        public CompletableFuture<List<ChatMessage>> messagesAsync() {
+            return delegate.messagesAsync();
+        }
+
+        @Override
+        public CompletableFuture<Void> setAsync(List<ChatMessage> messages) {
+            return delegate.setAsync(messages);
         }
     }
 
@@ -991,22 +1138,25 @@ class AiServiceToolCompensationTest {
     }
 
     static Stream<Arguments> modesAndFailingCompensatingActions() {
-        return Stream.of(Mode.SYNC, Mode.COMPLETABLE_FUTURE)
+        return Stream.of(Mode.values())
                 .flatMap(mode -> Stream.of(
                         Arguments.of(mode, new BankWithFailingUncreditTakingTheToolExecution()),
                         Arguments.of(mode, new BankWithUncreditReturningAFailedFuture()),
-                        Arguments.of(mode, new BankWithUncreditTakingTheToolExecutionReturningAFailedFutureBox())));
+                        Arguments.of(mode, new BankWithUncreditTakingTheToolExecutionReturningAFailedFutureBox()),
+                        Arguments.of(mode, new BankWithUncreditTakingTheToolExecutionFailingWithAToolExecutionException())));
     }
 
     @ParameterizedTest
     @MethodSource("modesAndFailingCompensatingActions")
     void should_report_the_error_the_compensating_action_failed_with(Mode mode, Object bank) throws Exception {
 
-        IllegalStateException uncreditFailure;
+        Throwable uncreditFailure;
         if (bank instanceof BankWithFailingUncreditTakingTheToolExecution taking) {
             uncreditFailure = taking.uncreditFailure;
         } else if (bank instanceof BankWithUncreditReturningAFailedFuture returning) {
             uncreditFailure = returning.uncreditFailure;
+        } else if (bank instanceof BankWithUncreditTakingTheToolExecutionFailingWithAToolExecutionException failing) {
+            uncreditFailure = failing.uncreditFailure;
         } else {
             uncreditFailure = ((BankWithUncreditTakingTheToolExecutionReturningAFailedFutureBox) bank).uncreditFailure;
         }
@@ -1108,23 +1258,8 @@ class AiServiceToolCompensationTest {
                     compensatedEvents.add(event);
                     rolledBack.countDown();
                 });
-        AiMessage[] responses = {AiMessage.from(CREDIT), AiMessage.from(RESERVE), AiMessage.from("done")};
-
-        Runnable cancel;
-        if (mode == Mode.COMPLETABLE_FUTURE) {
-            AiServices<AsyncAssistant> aiServices =
-                    AiServices.builder(AsyncAssistant.class).chatModel(ChatModelMock.thatAlwaysResponds(responses));
-            configurer.accept(aiServices);
-            CompletableFuture<String> answer = aiServices.build().chat("transfer");
-            cancel = () -> answer.cancel(true);
-        } else {
-            AiServices<ReactiveAssistant> aiServices = AiServices.builder(ReactiveAssistant.class)
-                    .streamingChatModel(StreamingEventChatModelMock.thatStreams(responses));
-            configurer.accept(aiServices);
-            StringCollector collector = new StringCollector();
-            aiServices.build().chat("transfer").subscribe(collector);
-            cancel = () -> collector.subscription.cancel();
-        }
+        Runnable cancel = startCancellable(
+                mode, List.of(AiMessage.from(CREDIT), AiMessage.from(RESERVE), AiMessage.from("done")), configurer);
         assertThat(bank.reserveStarted.await(10, SECONDS)).isTrue();
         cancel.run();
         bank.releaseReserve.countDown();
@@ -1145,6 +1280,101 @@ class AiServiceToolCompensationTest {
         assertThat(toolResultTexts(memory, "reserve")).isEmpty();
     }
 
+    static Stream<Arguments> nonBlockingModesAndToolCallIds() {
+        return Stream.of(Mode.COMPLETABLE_FUTURE, Mode.REACTIVE)
+                .flatMap(mode -> Stream.of("1", null).map(id -> Arguments.of(mode, id)));
+    }
+
+    @ParameterizedTest
+    @MethodSource("nonBlockingModesAndToolCallIds")
+    void should_not_rewrite_the_result_of_an_earlier_turn_when_a_tool_is_rolled_back_after_a_cancellation(
+            Mode mode, String toolCallId) throws Exception {
+
+        // an earlier turn of the conversation has the same tool call and result, with the same id or without an id
+        ToolExecutionRequest credit = CREDIT.toBuilder().id(toolCallId).build();
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(20);
+        memory.add(UserMessage.from("transfer"));
+        memory.add(AiMessage.from(credit));
+        memory.add(ToolExecutionResultMessage.builder()
+                .id(toolCallId)
+                .toolName("credit")
+                .text("credited")
+                .isError(false)
+                .build());
+        memory.add(AiMessage.from("transferred"));
+        SlowBank bank = new SlowBank();
+        List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
+        CountDownLatch rolledBack = new CountDownLatch(1);
+        Consumer<AiServices<?>> configurer = aiServices -> aiServices
+                .tools(bank)
+                .chatMemory(memory)
+                .compensateOnToolErrors(true)
+                .registerListener((ToolCompensatedEventListener) event -> {
+                    compensatedEvents.add(event);
+                    rolledBack.countDown();
+                });
+
+        Runnable cancel = startCancellable(mode, List.of(AiMessage.from(credit), AiMessage.from("done")), configurer);
+        assertThat(bank.started.await(10, SECONDS)).isTrue();
+        cancel.run();
+        bank.release.countDown();
+
+        assertThat(rolledBack.await(10, SECONDS)).isTrue();
+        assertThat(bank.calls).containsExactly("credit:Mario", "credit finished", "uncredit:Mario");
+        assertThat(compensatedEvents).singleElement().satisfies(event -> assertThat(event.reason())
+                .isEqualTo(CompensationReason.INVOCATION_CANCELLED));
+        // the result of the cancelled round was not saved, and the result of the earlier turn is left as it was
+        assertThat(toolResultTexts(memory, "credit")).containsExactly("credited");
+    }
+
+    static Stream<String> toolCallIds() {
+        return Stream.of("1", null);
+    }
+
+    @ParameterizedTest
+    @MethodSource("toolCallIds")
+    void flow_publisher_should_not_rewrite_the_result_of_an_earlier_turn_when_cancelled_while_results_fail_to_be_saved(
+            String toolCallId) throws Exception {
+
+        // an earlier turn of the conversation has the same tool call and result, with the same id or without an id
+        ToolExecutionRequest credit = CREDIT.toBuilder().id(toolCallId).build();
+        MemoryFailingToSaveToolResultsOnceReleased memory = new MemoryFailingToSaveToolResultsOnceReleased();
+        memory.add(UserMessage.from("transfer"));
+        memory.add(AiMessage.from(credit));
+        memory.add(ToolExecutionResultMessage.builder()
+                .id(toolCallId)
+                .toolName("credit")
+                .text("credited")
+                .isError(false)
+                .build());
+        memory.add(AiMessage.from("transferred"));
+        Bank bank = new Bank();
+        List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
+        CountDownLatch rolledBack = new CountDownLatch(1);
+        Consumer<AiServices<?>> configurer = aiServices -> aiServices
+                .tools(bank)
+                .chatMemory(memory)
+                .compensateOnToolErrors(true)
+                .registerListener((ToolCompensatedEventListener) event -> {
+                    compensatedEvents.add(event);
+                    rolledBack.countDown();
+                });
+
+        // the round is complete and its results are being saved when the invocation is cancelled
+        Runnable cancel = startCancellable(
+                Mode.REACTIVE, List.of(AiMessage.from(credit), AiMessage.from("done")), configurer);
+        assertThat(memory.savingToolResults.await(10, SECONDS)).isTrue();
+        cancel.run();
+        memory.release.countDown();
+
+        assertThat(rolledBack.await(10, SECONDS)).isTrue();
+        assertThat(bank.calls).containsExactly("credit:Mario", "uncredit:Mario");
+        assertThat(compensatedEvents).singleElement().satisfies(event -> assertThat(event.reason())
+                .isEqualTo(CompensationReason.INVOCATION_CANCELLED));
+        // the results of the round could not be saved, and the result of the earlier turn is left as it was
+        assertThat(toolResultTexts(memory, "credit")).containsExactly("credited");
+    }
+
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
     void token_stream_should_report_to_cross_agent_compensation_before_a_rethrown_tool_error_fails_the_invocation(
@@ -1152,7 +1382,7 @@ class AiServiceToolCompensationTest {
 
         Bank bank = new Bank();
         List<String> reported = new CopyOnWriteArrayList<>();
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
                 AiMessage.from(CREDIT, WITHDRAW_WITH_INVALID_ARGUMENTS), AiMessage.from("done"));
         CompletableFuture<Throwable> error = new CompletableFuture<>();
 
@@ -1176,7 +1406,7 @@ class AiServiceToolCompensationTest {
         BankWithFailingUncredit bank = new BankWithFailingUncredit();
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(20);
         List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
                 AiMessage.from(CREDIT), AiMessage.from("Withdrawing", List.of(WITHDRAW)), AiMessage.from("done"));
 
         TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
@@ -1247,7 +1477,7 @@ class AiServiceToolCompensationTest {
         Bank bank = new Bank();
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(20);
         List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
                 AiMessage.from(CREDIT), AiMessage.from("Withdrawing", List.of(WITHDRAW)), AiMessage.from("done"));
 
         TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
@@ -1293,7 +1523,7 @@ class AiServiceToolCompensationTest {
         List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
 
         TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                .streamingChatModel(MockStreamingChatModel.thatResponds(
                         AiMessage.from(CREDIT), AiMessage.from("Withdrawing", List.of(WITHDRAW))))
                 .chatMemory(memory)
                 .tools(bank)
@@ -1321,7 +1551,7 @@ class AiServiceToolCompensationTest {
 
         Bank bank = new Bank();
         List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
                 AiMessage.from(CREDIT), AiMessage.from("Withdrawing", List.of(WITHDRAW)));
 
         TokenStream tokenStream = tokenStream(model, bank, null, context -> {
@@ -1365,7 +1595,7 @@ class AiServiceToolCompensationTest {
             processingThreads.add(thread);
             thread.start();
         };
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
                 AiMessage.from(CREDIT), AiMessage.from("Withdrawing", List.of(WITHDRAW)));
 
         TokenStream tokenStream = tokenStream(
@@ -1419,8 +1649,8 @@ class AiServiceToolCompensationTest {
             processingThreads.add(thread);
             thread.start();
         };
-        StreamingChatModelMock model =
-                StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(CREDIT), AiMessage.from("done"));
+        MockStreamingChatModel model =
+                MockStreamingChatModel.thatResponds(AiMessage.from(CREDIT), AiMessage.from("done"));
 
         TokenStream tokenStream = tokenStream(model, bank, processingExecutor, memory, context -> context
                 .eventListenerRegistrar.register((ToolCompensatedEventListener) compensated::complete));
@@ -1454,13 +1684,13 @@ class AiServiceToolCompensationTest {
         CancellingBank bank = new CancellingBank();
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(20);
         List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
-        // everything runs on the calling thread, so the invocation is over once start() returns
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
-                        AiMessage.from("Crediting", List.of(CREDIT)), AiMessage.from("done"))
-                .streamingOnCallingThread();
+        // everything runs on the calling thread, so the invocation is over once start() returns; the rest of the
+        // response still arrives after the cancellation
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
+                AiMessage.from("Crediting", List.of(CREDIT)), AiMessage.from("done"));
 
         TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
-                .streamingChatModel(model)
+                .streamingChatModel(StreamingTestModels.streamingOnCallingThreadEvenAfterCancellation(model))
                 .chatMemory(memory)
                 .tools(bank)
                 // the tool is started on its complete tool call, and runs on the thread that streams the response
@@ -1494,12 +1724,12 @@ class AiServiceToolCompensationTest {
 
         CancellingBank bank = new CancellingBank();
         List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
-                        AiMessage.from("Paying", List.of(CREDIT, WITHDRAW)), AiMessage.from("done"))
-                .streamingOnCallingThread();
+        // the complete tool call of withdraw still arrives after credit cancelled the invocation
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
+                AiMessage.from("Paying", List.of(CREDIT, WITHDRAW)), AiMessage.from("done"));
 
         TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
-                .streamingChatModel(model)
+                .streamingChatModel(StreamingTestModels.streamingOnCallingThreadEvenAfterCancellation(model))
                 .tools(bank)
                 .executeToolsConcurrently(Runnable::run)
                 .compensateOnToolErrors(true)
@@ -1525,12 +1755,11 @@ class AiServiceToolCompensationTest {
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(20);
         List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
         CountDownLatch responseReceived = new CountDownLatch(1);
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
-                        AiMessage.from("Crediting", List.of(CREDIT)), AiMessage.from("done"))
-                .streamingOnCallingThread();
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
+                AiMessage.from("Crediting", List.of(CREDIT)), AiMessage.from("done"));
 
         TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
-                .streamingChatModel(model)
+                .streamingChatModel(StreamingTestModels.streamingOnCallingThread(model))
                 .chatMemory(memory)
                 .tools(bank)
                 .executeToolsConcurrently()
@@ -1571,12 +1800,11 @@ class AiServiceToolCompensationTest {
         CancellingBank bank = new CancellingBank();
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(20);
         List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
-                        AiMessage.from("Paying", List.of(CREDIT, WITHDRAW)), AiMessage.from("done"))
-                .streamingOnCallingThread();
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
+                AiMessage.from("Paying", List.of(CREDIT, WITHDRAW)), AiMessage.from("done"));
 
         TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
-                .streamingChatModel(model)
+                .streamingChatModel(StreamingTestModels.streamingOnCallingThread(model))
                 .chatMemory(memory)
                 .tools(bank)
                 .compensateOnToolErrors(true)
@@ -1605,12 +1833,204 @@ class AiServiceToolCompensationTest {
         assertThat(completed).isNotDone();
     }
 
+    @ParameterizedTest
+    @EnumSource(CancellationWhileSaving.class)
+    void token_stream_should_roll_back_and_stop_when_cancelled_while_the_results_of_a_round_are_saved(
+            CancellationWhileSaving moment) {
+
+        Bank bank = new Bank();
+        MemoryCancellingWhileSaving memory = new MemoryCancellingWhileSaving(moment);
+        List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
+        AtomicInteger cancelledEvents = new AtomicInteger();
+        // everything runs on the calling thread, so the invocation is over once start() returns
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
+                AiMessage.from("Crediting", List.of(CREDIT)), AiMessage.from("done"));
+
+        TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
+                .streamingChatModel(StreamingTestModels.streamingOnCallingThread(model))
+                .chatMemory(memory)
+                .tools(bank)
+                .compensateOnToolErrors(true)
+                .registerListener((ToolCompensatedEventListener) compensatedEvents::add)
+                .registerListener((AiServiceCancelledListener) event -> cancelledEvents.incrementAndGet())
+                .build();
+
+        CompletableFuture<Object> completed = new CompletableFuture<>();
+        assistant
+                .chat("transfer")
+                .onPartialResponseWithContext(
+                        (partialResponse, context) -> memory.streamingHandle = context.streamingHandle())
+                .onCompleteResponse(completed::complete)
+                .onError(completed::completeExceptionally)
+                .start();
+
+        assertThat(bank.calls).containsExactly("credit:Mario", "uncredit:Mario");
+        assertThat(compensatedEvents).singleElement().satisfies(event -> {
+            assertThat(event.request().name()).isEqualTo("credit");
+            assertThat(event.reason()).isEqualTo(CompensationReason.INVOCATION_CANCELLED);
+        });
+        assertThat(cancelledEvents).hasValue(1);
+        // the result was saved before the rollback, so the tool call in the chat memory has a result
+        assertThat(toolResultTexts(memory, "credit")).containsExactly(CREDIT_ROLLED_BACK_ON_CANCELLATION);
+        // no next round
+        assertThat(model.requests()).hasSize(1);
+        assertThat(completed).isNotDone();
+    }
+
+    @Test
+    void token_stream_should_roll_back_once_when_cancelled_while_saving_a_round_whose_tool_error_is_sent_to_the_llm() {
+
+        Bank bank = new Bank();
+        MemoryCancellingWhileSaving memory =
+                new MemoryCancellingWhileSaving(CancellationWhileSaving.WHILE_THE_FIRST_RESULT_IS_ADDED);
+        List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
+                AiMessage.from("Paying", List.of(CREDIT, WITHDRAW)), AiMessage.from("done"));
+
+        TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
+                .streamingChatModel(StreamingTestModels.streamingOnCallingThread(model))
+                .chatMemory(memory)
+                .tools(bank)
+                .compensateOnToolErrors(true)
+                .toolExecutionErrorHandler(ToolExecutionErrorHandler.sendExceptionMessageToLlm())
+                .registerListener((ToolCompensatedEventListener) compensatedEvents::add)
+                .build();
+
+        CompletableFuture<Object> completed = new CompletableFuture<>();
+        assistant
+                .chat("transfer")
+                .onPartialResponseWithContext(
+                        (partialResponse, context) -> memory.streamingHandle = context.streamingHandle())
+                .onCompleteResponse(completed::complete)
+                .onError(completed::completeExceptionally)
+                .start();
+
+        // the failed withdraw rolled back credit before the results were saved, so the cancellation has nothing left
+        assertThat(bank.calls).containsExactly("credit:Mario", "withdraw:Mario", "uncredit:Mario");
+        assertThat(compensatedEvents).singleElement().satisfies(event -> assertThat(event.reason())
+                .isEqualTo(CompensationReason.TOOL_EXECUTION_FAILED));
+        assertThat(toolResultTexts(memory, "credit")).containsExactly(CREDIT_ROLLED_BACK);
+        assertThat(model.requests()).hasSize(1);
+        assertThat(completed).isNotDone();
+    }
+
+    @Test
+    void token_stream_should_roll_back_when_cancelled_during_a_round_whose_results_cannot_be_saved() {
+
+        CancellingBank bank = new CancellingBank();
+        MemoryFailingToSaveToolResults memory = new MemoryFailingToSaveToolResults();
+        List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
+                AiMessage.from("Paying", List.of(CREDIT, WITHDRAW)), AiMessage.from("done"));
+
+        TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
+                .streamingChatModel(StreamingTestModels.streamingOnCallingThread(model))
+                .chatMemory(memory)
+                .tools(bank)
+                .compensateOnToolErrors(true)
+                .registerListener((ToolCompensatedEventListener) compensatedEvents::add)
+                .build();
+
+        CompletableFuture<Object> completed = new CompletableFuture<>();
+        assistant
+                .chat("transfer")
+                .onPartialResponseWithContext(
+                        (partialResponse, context) -> bank.streamingHandle = context.streamingHandle())
+                .onCompleteResponse(completed::complete)
+                .onError(completed::completeExceptionally)
+                .start();
+
+        // credit cancels the invocation while the round runs, and then its results cannot be saved
+        assertThat(bank.calls)
+                .containsExactly("credit:Mario", "credit finished", "withdraw:Mario", "uncredit:Mario");
+        assertThat(compensatedEvents).singleElement().satisfies(event -> assertThat(event.reason())
+                .isEqualTo(CompensationReason.INVOCATION_CANCELLED));
+        assertThat(completed)
+                .failsWithin(10, SECONDS)
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isSameAs(memory.failure);
+        assertThat(model.requests()).hasSize(1);
+    }
+
+    @Test
+    void token_stream_cancel_should_roll_back_on_the_calling_thread_when_the_complete_response_processing_executor_rejects_the_rollback() {
+
+        Bank bank = new Bank();
+        List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
+                AiMessage.from(CREDIT), AiMessage.from("Withdrawing", List.of(WITHDRAW)));
+
+        // the processing of the first response runs, the rollback is rejected
+        TokenStream tokenStream = tokenStream(
+                model,
+                bank,
+                new ExecutorRejectingAfter(1),
+                context -> context.eventListenerRegistrar.register(
+                        (ToolCompensatedEventListener) compensatedEvents::add));
+
+        CompletableFuture<Throwable> cancelFailure = new CompletableFuture<>();
+        tokenStream
+                .onPartialResponseWithContext((partialResponse, context) -> {
+                    try {
+                        context.streamingHandle().cancel();
+                        cancelFailure.complete(null);
+                    } catch (RuntimeException e) {
+                        cancelFailure.complete(e);
+                    }
+                })
+                .onError(ignored -> {})
+                .start();
+
+        assertThat(cancelFailure).succeedsWithin(10, SECONDS).isNull();
+        // the rejected rollback runs on the thread that cancels
+        assertThat(bank.calls).containsExactly("credit:Mario", "uncredit:Mario");
+        assertThat(compensatedEvents).singleElement().satisfies(event -> assertThat(event.reason())
+                .isEqualTo(CompensationReason.INVOCATION_CANCELLED));
+    }
+
+    @Test
+    void token_stream_cancel_should_return_normally_when_the_chat_memory_cannot_be_rewritten() {
+
+        Bank bank = new Bank();
+        ChatMemory memory = new MemoryFailingOnRewrite();
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
+                AiMessage.from(CREDIT), AiMessage.from("Withdrawing", List.of(WITHDRAW)));
+
+        TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
+                .streamingChatModel(model)
+                .chatMemory(memory)
+                .tools(bank)
+                .compensateOnToolErrors(true)
+                .build();
+
+        CompletableFuture<Throwable> cancelFailure = new CompletableFuture<>();
+        assistant
+                .chat("transfer")
+                .onPartialResponseWithContext((partialResponse, context) -> {
+                    try {
+                        context.streamingHandle().cancel();
+                        cancelFailure.complete(null);
+                    } catch (RuntimeException e) {
+                        cancelFailure.complete(e);
+                    }
+                })
+                .onError(ignored -> {})
+                .start();
+
+        // no tool was running, so the rollback ran on the thread that cancelled, before cancel() returned
+        assertThat(cancelFailure).succeedsWithin(10, SECONDS).isNull();
+        assertThat(bank.calls).containsExactly("credit:Mario", "uncredit:Mario");
+        // the failed rewrite is logged
+        assertThat(toolResultTexts(memory, "credit")).containsExactly("credited");
+    }
+
     @Test
     void token_stream_should_not_roll_back_when_cancelled_without_compensation() {
 
         Bank bank = new Bank();
         List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
-        StreamingChatModelMock model = StreamingChatModelMock.thatAlwaysStreams(
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
                 AiMessage.from(CREDIT), AiMessage.from("Withdrawing", List.of(WITHDRAW)), AiMessage.from("done"));
 
         TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
@@ -1681,7 +2101,7 @@ class AiServiceToolCompensationTest {
         return switch (mode) {
             case SYNC -> {
                 AiServices<SyncAssistant> aiServices =
-                        AiServices.builder(SyncAssistant.class).chatModel(ChatModelMock.thatAlwaysResponds(aiMessages));
+                        AiServices.builder(SyncAssistant.class).chatModel(chatModel(aiMessages));
                 configurer.accept(aiServices);
                 SyncAssistant assistant = aiServices.build();
                 try {
@@ -1692,7 +2112,7 @@ class AiServiceToolCompensationTest {
             }
             case TOKEN_STREAM -> {
                 AiServices<TokenStreamAssistant> aiServices = AiServices.builder(TokenStreamAssistant.class)
-                        .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(aiMessages));
+                        .streamingChatModel(streamingChatModel(aiMessages));
                 configurer.accept(aiServices);
                 CompletableFuture<String> answer = new CompletableFuture<>();
                 aiServices
@@ -1705,8 +2125,8 @@ class AiServiceToolCompensationTest {
                 yield answer;
             }
             case COMPLETABLE_FUTURE -> {
-                AiServices<AsyncAssistant> aiServices = AiServices.builder(AsyncAssistant.class)
-                        .chatModel(ChatModelMock.thatAlwaysResponds(aiMessages));
+                AiServices<AsyncAssistant> aiServices =
+                        AiServices.builder(AsyncAssistant.class).chatModel(chatModel(aiMessages));
                 configurer.accept(aiServices);
                 yield aiServices.build().chat("transfer");
             }
@@ -1721,8 +2141,72 @@ class AiServiceToolCompensationTest {
         };
     }
 
+    // the mock gives each tool call without an id an id of its own, so a script with tool calls without an id is
+    // answered without ids, as by a provider that gives tool calls no id
+    private static ChatModel chatModel(AiMessage[] aiMessages) {
+        MockChatModel model = MockChatModel.thatResponds(aiMessages);
+        return hasToolCallsWithoutId(aiMessages) ? withoutToolCallIds(model) : model;
+    }
+
+    private static StreamingChatModel streamingChatModel(AiMessage[] aiMessages) {
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(aiMessages);
+        return hasToolCallsWithoutId(aiMessages) ? StreamingTestModels.withoutToolCallIds(model) : model;
+    }
+
+    private static boolean hasToolCallsWithoutId(AiMessage[] aiMessages) {
+        return Stream.of(aiMessages)
+                .flatMap(aiMessage -> aiMessage.toolExecutionRequests().stream())
+                .anyMatch(toolCall -> toolCall.id() == null);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ChatModel withoutToolCallIds(MockChatModel model) {
+        MockChatModel withoutIds = spy(model);
+        doAnswer(invocation -> withoutToolCallIds((ChatResponse) invocation.callRealMethod()))
+                .when(withoutIds)
+                .doChat(any(ChatRequest.class));
+        doAnswer(invocation -> ((CompletableFuture<ChatResponse>) invocation.callRealMethod())
+                        .thenApply(AiServiceToolCompensationTest::withoutToolCallIds))
+                .when(withoutIds)
+                .doChatAsync(any(ChatRequest.class));
+        return withoutIds;
+    }
+
+    private static ChatResponse withoutToolCallIds(ChatResponse response) {
+        AiMessage aiMessage = response.aiMessage();
+        if (!aiMessage.hasToolExecutionRequests()) {
+            return response;
+        }
+        List<ToolExecutionRequest> toolCalls = aiMessage.toolExecutionRequests().stream()
+                .map(toolCall -> toolCall.toBuilder().id(null).build())
+                .toList();
+        return response.toBuilder()
+                .aiMessage(aiMessage.toBuilder().toolExecutionRequests(toolCalls).build())
+                .build();
+    }
+
+    // starts the invocation in a non-blocking mode, and returns what cancels it
+    private static Runnable startCancellable(
+            Mode mode, List<AiMessage> responses, Consumer<AiServices<?>> configurer) {
+        AiMessage[] aiMessages = responses.toArray(new AiMessage[0]);
+        if (mode == Mode.COMPLETABLE_FUTURE) {
+            AiServices<AsyncAssistant> aiServices =
+                    AiServices.builder(AsyncAssistant.class).chatModel(chatModel(aiMessages));
+            configurer.accept(aiServices);
+            CompletableFuture<String> answer = aiServices.build().chat("transfer");
+            return () -> answer.cancel(true);
+        }
+        assertThat(mode).isEqualTo(Mode.REACTIVE);
+        AiServices<ReactiveAssistant> aiServices = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(StreamingEventChatModelMock.thatStreams(aiMessages));
+        configurer.accept(aiServices);
+        StringCollector collector = new StringCollector();
+        aiServices.build().chat("transfer").subscribe(collector);
+        return () -> collector.subscription.cancel();
+    }
+
     private static TokenStream tokenStream(
-            StreamingChatModelMock model,
+            StreamingChatModel model,
             Object tools,
             Executor completeResponseProcessingExecutor,
             Consumer<AiServiceContext> configurer) {
@@ -1730,7 +2214,7 @@ class AiServiceToolCompensationTest {
     }
 
     private static TokenStream tokenStream(
-            StreamingChatModelMock model,
+            StreamingChatModel model,
             Object tools,
             Executor completeResponseProcessingExecutor,
             ChatMemory chatMemory,
@@ -1741,7 +2225,7 @@ class AiServiceToolCompensationTest {
     // built directly, to set what AiServices does not offer (a complete response processing executor, a listener
     // registrar that rethrows the errors of the listeners, the hooks of cross-agent compensation)
     private static TokenStream tokenStream(
-            StreamingChatModelMock model,
+            StreamingChatModel model,
             Object tools,
             Executor completeResponseProcessingExecutor,
             ChatMemory chatMemory,

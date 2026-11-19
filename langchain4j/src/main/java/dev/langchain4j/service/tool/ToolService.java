@@ -359,6 +359,8 @@ public class ToolService {
                             return toVoidFuture(
                                     compensatingMethod.invoke(objectWithTools, toolExecution),
                                     compensatingMethod.getGenericReturnType());
+                        } catch (InvocationTargetException e) {
+                            return CompletableFuture.failedFuture(e.getCause());
                         } catch (Exception e) {
                             return CompletableFuture.failedFuture(e);
                         }
@@ -374,7 +376,10 @@ public class ToolService {
                             toolName,
                             (toolExecution, ctx) -> CurrentInvocation.callWith(
                                             ctx, () -> executor.executeAsync(toolExecution.request(), ctx))
-                                    .thenApply(result -> (Void) null));
+                                    .handle((result, error) -> error == null
+                                            ? CompletableFuture.<Void>completedFuture(null)
+                                            : CompletableFuture.<Void>failedFuture(withoutExecutorWrapper(error)))
+                                    .thenCompose(future -> future));
                 }
             }
         }
@@ -1046,7 +1051,8 @@ public class ToolService {
          * Wraps the loop so that a cancellation rolls back every compensable tool that had already executed
          * successfully (across all rounds) before the {@link CancellationException} is surfaced - the "drain the
          * round, then roll back" contract. Individual rounds only accumulate their compensable tools; this single
-         * handler runs their compensating actions, whether the cancellation arrived mid-round or between rounds.
+         * handler runs their compensating actions, whether the cancellation arrived mid-round or between rounds. A
+         * failure of the rollback is logged, as the invocation was cancelled and there is nobody to report it to.
          */
         CompletableFuture<ToolServiceResult> withCancellationCompensation(CompletableFuture<ToolServiceResult> result) {
             return result.exceptionallyCompose(error -> {
@@ -1065,6 +1071,14 @@ public class ToolService {
                                     invocationContext,
                                     context.eventListenerRegistrar,
                                     null)
+                            .handle((ignored, rollbackError) -> {
+                                if (rollbackError != null) {
+                                    log.warn(
+                                            "Failed to roll back the tools after the invocation was cancelled",
+                                            unwrapCompletionException(rollbackError));
+                                }
+                                return null;
+                            })
                             .thenCompose(ignored -> CompletableFuture.<ToolServiceResult>failedFuture(cause));
                 }
                 return CompletableFuture.failedFuture(error);
@@ -1454,7 +1468,7 @@ public class ToolService {
      *                                   when {@code alreadyCollected} is {@code false}
      * @param invocationError            the error that fails the invocation after the rollback, or {@code null} when
      *                                   the invocation goes on (the tool error is sent to the LLM)
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Internal
     public CompletableFuture<Void> compensateIfNeededAsync(
@@ -1478,17 +1492,25 @@ public class ToolService {
         }
         List<CompensableToolExecution> toCompensate;
         String failedToolName;
-        synchronized (compensableExecutions) {
-            failedToolName = alreadyCollected
-                    ? preCollectedFailedToolName
-                    : collectCompensable(
-                            toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
-            boolean triggered = reason == CompensationReason.INVOCATION_CANCELLED || anyToolErrored;
-            if (!triggered || compensableExecutions.isEmpty()) {
-                return CompletableFuture.completedFuture(null);
+        try {
+            synchronized (compensableExecutions) {
+                failedToolName = alreadyCollected
+                        ? preCollectedFailedToolName
+                        : collectCompensable(
+                                toolExecutionRequests,
+                                toolResults,
+                                resultMessages,
+                                compensableExecutions,
+                                invocationContext);
+                boolean triggered = reason == CompensationReason.INVOCATION_CANCELLED || anyToolErrored;
+                if (!triggered || compensableExecutions.isEmpty()) {
+                    return CompletableFuture.completedFuture(null);
+                }
+                toCompensate = List.copyOf(compensableExecutions);
+                compensableExecutions.clear();
             }
-            toCompensate = List.copyOf(compensableExecutions);
-            compensableExecutions.clear();
+        } catch (RuntimeException e) {
+            return CompletableFuture.failedFuture(e);
         }
         String rolledBackByToolName = failedToolName;
         return compensateToolsActions(toCompensate, invocationContext).thenCompose(rolledBack -> {
@@ -1513,12 +1535,12 @@ public class ToolService {
     }
 
     /**
-     * The exception thrown by the compensating method itself, without the wrappers added while invoking it.
+     * The exception the compensating method failed with, without the {@link ToolExecutionException} that
+     * {@link DefaultToolExecutor} wraps it in.
      */
-    private static Throwable errorOfCompensatingAction(Throwable error) {
+    private static Throwable withoutExecutorWrapper(Throwable error) {
         Throwable cause = unwrapCompletionException(error);
-        if ((cause instanceof ToolExecutionException || cause instanceof InvocationTargetException)
-                && cause.getCause() != null) {
+        if (cause instanceof ToolExecutionException && cause.getCause() != null) {
             return cause.getCause();
         }
         return cause;
@@ -1565,7 +1587,7 @@ public class ToolService {
      * Rolls back, on cancellation, every compensable tool that had already executed successfully - across all
      * rounds - implementing the "drain the round, then roll back" contract for the asynchronous and reactive modes.
      * If the current (drained) round's requests/results are supplied, its successful compensable tools are recorded
-     * first (unless they already were) so they roll back together with those accumulated from earlier rounds; the
+     * first so they roll back together with those accumulated from earlier rounds; the
      * results of that round are not in the chat memory, so only the results of the earlier rounds are rewritten there.
      * Runs the compensating actions, rewrites the chat memory, clears the accumulator, and fires a
      * {@link ToolCompensatedEvent} per rolled-back tool (reason {@link CompensationReason#INVOCATION_CANCELLED}). A
@@ -1602,7 +1624,7 @@ public class ToolService {
      *
      * @param unsavedRequests the requests of the round whose results are not in the chat memory, or {@code null}
      *                        when all results are saved there
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Internal
     public CompletableFuture<Void> compensateOnCancellationAsync(
@@ -1658,7 +1680,7 @@ public class ToolService {
      * @param compensableExecutions the compensable tools collected across rounds, or {@code null} when compensation
      *                              is disabled
      * @param chatMemory            the chat memory, or {@code null} when the AI Service has none
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Internal
     public void compensateOnCancellation(
@@ -1687,7 +1709,8 @@ public class ToolService {
     }
 
     /**
-     * Records the successful compensable tools of the current (drained) round, if given and not recorded yet, then
+     * Records the successful compensable tools of the current (drained) round, if given (callers pass it only when it
+     * was not recorded yet), then
      * takes every compensable tool collected so far out of {@code compensableExecutions}, atomically, so that each tool
      * is rolled back once.
      * Returns an empty list when compensation is disabled or nothing is pending.
@@ -1703,9 +1726,7 @@ public class ToolService {
         // Same accumulator serialization as compensateIfNeededAsync (see its Javadoc): collect the drained round and
         // snapshot+clear atomically so the async rollback runs on an immutable copy and each tool rolls back once.
         synchronized (compensableExecutions) {
-            if (currentRoundRequests != null
-                    && currentRoundResults != null
-                    && !isCollected(currentRoundRequests, compensableExecutions)) {
+            if (currentRoundRequests != null && currentRoundResults != null) {
                 List<ToolExecutionResultMessage> resultMessages = currentRoundRequests.stream()
                         .map(request -> toResultMessage(request, currentRoundResults.get(request)))
                         .toList();
@@ -1716,12 +1737,6 @@ public class ToolService {
             compensableExecutions.clear();
             return toCompensate;
         }
-    }
-
-    private static boolean isCollected(
-            List<ToolExecutionRequest> requests, List<CompensableToolExecution> compensableExecutions) {
-        return compensableExecutions.stream()
-                .anyMatch(execution -> indexOf(requests, execution.toolExecution().request()) >= 0);
     }
 
     /**
@@ -1904,7 +1919,8 @@ public class ToolService {
             ToolExecutionResultMessage candidate, ToolExecutionResultMessage original) {
         return Objects.equals(candidate.id(), original.id())
                 && Objects.equals(candidate.toolName(), original.toolName())
-                && Objects.equals(candidate.contents(), original.contents());
+                && Objects.equals(candidate.contents(), original.contents())
+                && !Boolean.TRUE.equals(candidate.isError());
     }
 
     /**
@@ -1973,7 +1989,7 @@ public class ToolService {
                     action = CompletableFuture.failedFuture(e);
                 }
                 return action.exceptionally(error -> {
-                    Throwable cause = errorOfCompensatingAction(error);
+                    Throwable cause = unwrapCompletionException(error);
                     log.warn("Compensating action failed for tool '{}': {}", toolName, cause.getMessage(), cause);
                     compensationErrors[index] = cause;
                     return null;
@@ -2480,7 +2496,7 @@ public class ToolService {
      * @param chatMemory            the chat memory, or {@code null} when the AI Service has none
      * @param messages              the messages of the invocation, rewritten when {@code chatMemory} is {@code null};
      *                              {@code null} when there is a chat memory
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Internal
     public void failRoundBeforeRethrow(

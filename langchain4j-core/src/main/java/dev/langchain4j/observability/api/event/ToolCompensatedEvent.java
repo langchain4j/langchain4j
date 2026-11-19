@@ -52,13 +52,13 @@ public interface ToolCompensatedEvent extends AiServiceEvent {
 
     /**
      * Returns the error of the compensating action, when it failed: the exception the compensating method threw, or
-     * completed its returned {@code CompletableFuture} with. When this is not {@code null}, the tool could not be
-     * rolled back, and its effects may still be in place.
+     * the error its returned asynchronous result (for example a {@code CompletableFuture}) completed with. When this
+     * is not {@code null}, the tool could not be rolled back, and its effects may still be in place.
      *
      * @return the error of the compensating action, or {@code null} when the tool was rolled back successfully.
      * @throws UnsupportedOperationException if the integration that created this event does not report it. Events
      *                                       built with {@link #builder()} always report it.
-     * @since 1.24.0
+     * @since 1.25.0
      */
     @Experimental
     default @Nullable Throwable compensationError() {
@@ -96,7 +96,10 @@ public interface ToolCompensatedEvent extends AiServiceEvent {
         protected ToolCompensatedEventBuilder() {}
 
         /**
-         * Creates a builder initialized from an existing {@link ToolCompensatedEvent}.
+         * Creates a builder initialized from an existing {@link ToolCompensatedEvent}. When the event does not report
+         * {@link ToolCompensatedEvent#compensationError()} (it throws {@link UnsupportedOperationException}), the
+         * builder copies everything else, and {@link #build()} fails until {@link #compensationError(Throwable)} is
+         * called.
          */
         protected ToolCompensatedEventBuilder(ToolCompensatedEvent src) {
             super(src);
@@ -106,7 +109,7 @@ public interface ToolCompensatedEvent extends AiServiceEvent {
             try {
                 compensationError(src.compensationError());
             } catch (UnsupportedOperationException notReported) {
-                // the copy does not report it either
+                // left unset: build() fails until compensationError(...) is called
             }
         }
 
@@ -150,7 +153,7 @@ public interface ToolCompensatedEvent extends AiServiceEvent {
          * Sets the error of the compensating action: {@code null} when the tool was rolled back successfully,
          * otherwise the exception the compensating action failed with. Required: {@link #build()} fails when it was
          * not called, also when the tool was rolled back successfully.
-         * @since 1.24.0
+         * @since 1.25.0
          */
         @Experimental
         public ToolCompensatedEventBuilder compensationError(@Nullable Throwable compensationError) {
@@ -176,7 +179,7 @@ public interface ToolCompensatedEvent extends AiServiceEvent {
         }
 
         /**
-         * @since 1.24.0
+         * @since 1.25.0
          */
         @Experimental
         public @Nullable Throwable compensationError() {
@@ -185,7 +188,7 @@ public interface ToolCompensatedEvent extends AiServiceEvent {
 
         /**
          * Returns whether {@link #compensationError(Throwable)} was called, also when it was called with {@code null}.
-         * @since 1.24.0
+         * @since 1.25.0
          */
         @Experimental
         public boolean isCompensationErrorSet() {

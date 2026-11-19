@@ -1243,10 +1243,15 @@ class AiServiceStreamingPublisherTest {
         // Regression guard for the accumulator data race: a subscriber cancel and a round's completion touch the
         // shared compensable-tools accumulator on different threads. Aligning the tool's return with the cancel via
         // a barrier maximises the overlap; the compensating action must never run twice for one tool (no double
-        // refund) and the accumulator access must not throw.
+        // refund) and the accumulator access must not throw. Credit always succeeds and withdraw always fails, so
+        // each iteration rolls credit back exactly once: by the round completion or by the cancellation, whichever
+        // claims the round first.
+        List<AtomicInteger> uncreditCounts = new ArrayList<>();
         for (int i = 0; i < 60; i++) {
             AtomicInteger creditCount = new AtomicInteger();
             AtomicInteger uncreditCount = new AtomicInteger();
+            uncreditCounts.add(uncreditCount);
+            CountDownLatch uncredited = new CountDownLatch(1);
             CyclicBarrier barrier = new CyclicBarrier(2);
 
             class RacyTools {
@@ -1260,6 +1265,7 @@ class AiServiceStreamingPublisherTest {
                 @CompensateFor("credit")
                 void uncredit(String city) {
                     uncreditCount.incrementAndGet();
+                    uncredited.countDown();
                 }
 
                 // fails, so the round-completion path also compensates 'credit' - racing the cancel path on the
@@ -1316,11 +1322,16 @@ class AiServiceStreamingPublisherTest {
             canceller.start();
             canceller.join(2000);
 
-            // let any rollback settle
-            Thread.sleep(25);
-            assertThat(uncreditCount.get())
-                    .as("iteration %d: a compensable tool must be rolled back at most once (no double refund)", i)
-                    .isLessThanOrEqualTo(1);
+            assertThat(uncredited.await(5, TimeUnit.SECONDS))
+                    .as("iteration %d: the compensable tool is rolled back", i)
+                    .isTrue();
+            assertThat(creditCount).as("iteration %d", i).hasValue(1);
+        }
+        // checked once all iterations ran, so that a second rollback that comes late is seen too
+        for (int i = 0; i < uncreditCounts.size(); i++) {
+            assertThat(uncreditCounts.get(i))
+                    .as("iteration %d: a compensable tool must be rolled back exactly once (no double refund)", i)
+                    .hasValue(1);
         }
     }
 

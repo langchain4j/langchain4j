@@ -1341,14 +1341,16 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Enables or disables compensating actions on tool errors.
-     * When enabled, if a tool fails, the compensating actions (declared with {@link CompensateFor}) of the tool calls
-     * that succeeded in the same invocation are called in reverse order, to undo their effects.
-     * This also happens when the tool error ends the invocation (for example when the
+     * Enables or disables compensating actions on tool errors and on cancellation.
+     * When enabled, if a tool fails or the invocation is cancelled, the compensating actions (declared with
+     * {@link CompensateFor}) of the tool calls that succeeded in the same invocation are called in reverse order, to
+     * undo their effects.
+     * A tool error starts the rollback also when it ends the invocation (for example when the
      * {@link ToolExecutionErrorHandler} or the {@link ToolArgumentsErrorHandler} rethrows it, or when the LLM calls a
-     * tool that does not exist), before the error reaches the caller, and when the invocation is cancelled.
+     * tool that does not exist): the tool calls are rolled back before the error reaches the caller.
      *
-     * @param compensateOnToolErrors whether to run compensating actions on tool errors
+     * @param compensateOnToolErrors whether to run compensating actions when a tool fails or the invocation is
+     *                               cancelled
      * @return builder
      */
     public AiServices<T> compensateOnToolErrors(boolean compensateOnToolErrors) {

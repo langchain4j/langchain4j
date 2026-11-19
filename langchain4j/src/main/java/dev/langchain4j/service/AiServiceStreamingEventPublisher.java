@@ -66,6 +66,8 @@ import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.Tube;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A cold, non-blocking reactive stream for an AI Service method that returns a
@@ -131,6 +133,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
      * Service does not override it via {@code AiServices.streamingBufferSize(int)}.
      */
     public static final int DEFAULT_BUFFER_SIZE = 16384;
+
+    private static final Logger LOG = LoggerFactory.getLogger(AiServiceStreamingEventPublisher.class);
 
     private final List<ChatMessage> messages;
     private final ToolServiceContext toolServiceContext;
@@ -568,21 +572,30 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
          * those are mutually exclusive via {@code inflightRound}, so no round is collected twice. The results of the
          * round passed here, or else of the round in {@code unsavedRoundRequests}, are not in the chat memory, so they
          * are not searched for there. Stream events are not delivered after a cancel, so only the observability
-         * {@code ToolCompensatedEvent} fires here.
+         * {@code ToolCompensatedEvent} fires here. A failure is logged, as the invocation was cancelled and there is
+         * nobody to report it to.
          */
         private void doCancellationCompensation(
                 @Nullable List<ToolExecutionRequest> currentRoundRequests,
                 @Nullable Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults) {
-            context.toolService.compensateOnCancellationAsync(
-                    currentRoundRequests,
-                    currentRoundResults,
-                    currentRoundRequests != null ? currentRoundRequests : unsavedRoundRequests,
-                    compensableExecutions,
-                    getMemory(),
-                    null,
-                    invocationContext,
-                    context.eventListenerRegistrar,
-                    null);
+            context.toolService
+                    .compensateOnCancellationAsync(
+                            currentRoundRequests,
+                            currentRoundResults,
+                            currentRoundRequests != null ? currentRoundRequests : unsavedRoundRequests,
+                            compensableExecutions,
+                            getMemory(),
+                            null,
+                            invocationContext,
+                            context.eventListenerRegistrar,
+                            null)
+                    .whenComplete((ignored, error) -> {
+                        if (error != null) {
+                            LOG.warn(
+                                    "Failed to roll back the tools after the invocation was cancelled",
+                                    unwrapCompletionException(error));
+                        }
+                    });
         }
 
         private record InflightRound(

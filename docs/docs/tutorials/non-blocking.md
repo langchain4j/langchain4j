@@ -193,6 +193,9 @@ own bounded `Executor` (see below) if that matters to you.
 
 This applies to `@Tool`-annotated methods. A hand-written `ToolExecutor` that does not override `executeAsync`
 fails loudly with an `AsyncNotSupportedException` instead, like any other component that has not opted in.
+Compensating actions (see [Compensating Tool Actions](/tutorials/tools#compensating-tool-actions)) are not offloaded:
+they run on the thread that starts the rollback, so a compensating action that blocks should do its work on its own
+executor and return a `CompletableFuture`.
 
 Tools run **concurrently** by default in the asynchronous and reactive modes. To run them one at a time, pass a
 single-threaded executor:

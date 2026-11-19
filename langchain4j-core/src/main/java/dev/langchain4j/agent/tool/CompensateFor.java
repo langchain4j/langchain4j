@@ -16,6 +16,9 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
  * to undo their effects.
  * The annotated method must have the same parameter types as the tool it compensates for,
  * or accept a single {@code ToolExecution} parameter.
+ * It usually returns {@code void}; when it returns a {@code CompletableFuture}, a {@code CompletionStage} or another
+ * asynchronous type that AI Services support for tools through an adapter, the rollback waits until it completes
+ * before it runs the next compensating action.
  * <p>
  * Only {@link Tool @Tool}-annotated methods support compensating actions. Programmatically
  * or dynamically defined tools (e.g. MCP tools, tools registered via {@code ToolSpecification})

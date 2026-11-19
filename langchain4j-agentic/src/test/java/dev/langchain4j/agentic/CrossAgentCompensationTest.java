@@ -15,7 +15,6 @@ import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
@@ -23,6 +22,7 @@ import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import dev.langchain4j.test.mock.MockChatModel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -459,7 +459,7 @@ public class CrossAgentCompensationTest {
 
         // the credit succeeds in the same round in which the failing tool fails the agent
         var creditAgent = AgenticServices.agentBuilder(CreditAgentService.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(
+                .chatModel(MockChatModel.thatResponds(
                         AiMessage.from(
                                 ToolExecutionRequest.builder()
                                         .id("call-1")
@@ -502,7 +502,7 @@ public class CrossAgentCompensationTest {
         CreditAndFailService service = new CreditAndFailService();
 
         CreditAgentService agent = AgenticServices.agentBuilder(CreditAgentService.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(
+                .chatModel(MockChatModel.thatResponds(
                         AiMessage.from(toolCall("call-1", "credit", "{\"amount\": 50}")),
                         AiMessage.from(toolCall("call-2", "failingTool", "{\"input\": \"test\"}")),
                         AiMessage.from("done")))
@@ -523,7 +523,7 @@ public class CrossAgentCompensationTest {
         CreditAndFailService service = new CreditAndFailService();
 
         CreditAgentService agent = AgenticServices.agentBuilder(CreditAgentService.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(
+                .chatModel(MockChatModel.thatResponds(
                         AiMessage.from(
                                 toolCall("call-1", "credit", "{\"amount\": 50}"),
                                 toolCall("call-2", "failingTool", "{\"input\": \"test\"}")),
@@ -546,14 +546,14 @@ public class CrossAgentCompensationTest {
         CreditService creditService = new CreditService();
 
         var creditAgent = AgenticServices.agentBuilder(CreditAgentService.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(
+                .chatModel(MockChatModel.thatResponds(
                         AiMessage.from(toolCall("call-1", "credit", "{\"amount\": 100}")), AiMessage.from("done")))
                 .tools(creditService)
                 .name("creditAgent")
                 .build();
 
         var failingAgent = AgenticServices.agentBuilder(FailingAgentService.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(
+                .chatModel(MockChatModel.thatResponds(
                         AiMessage.from(toolCall("call-1", "failingTool", "{\"input\": \"test\"}")),
                         AiMessage.from("done")))
                 .tools(new CreditAndFailService())

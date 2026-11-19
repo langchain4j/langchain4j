@@ -2044,6 +2044,21 @@ class BankAccountService {
 }
 ```
 
+A compensating method usually returns `void`. It can also return the result of an asynchronous action:
+a `CompletableFuture`, a `CompletionStage`, or another asynchronous type that AI Services support
+for `@Tool` methods through an adapter (for example a Reactor `Mono`, with the `langchain4j-reactor` module).
+The rollback then waits until that result completes before it runs the next compensating action,
+and a result that completes with an error counts as a failed compensating action (see the notes below).
+
+Compensating actions do not run on the executor that runs the tools.
+When the AI Service method returns a `CompletableFuture` or a `Flow.Publisher`, they run on the thread that starts
+the rollback, for example the thread that delivers the response of the LLM, the thread that cancels the call,
+or the thread that finishes the last tool call.
+So a compensating action that blocks (for example on a call to a database) should do its work on its own executor
+and return a `CompletableFuture`.
+When the AI Service method returns a plain value or a `TokenStream`, the AI Service waits for each compensating
+action.
+
 #### Enabling Compensation
 
 Call `.compensateOnToolErrors(true)` when building the AI Service:
@@ -2098,9 +2113,11 @@ the tool calls that already ran are undone, even though only the answer was stop
 Tool calls that are already running are allowed to finish (for a `TokenStream`, all the tool calls of a response
 that is already being processed), and then every successful tool call that has a
 compensating action is undone. So the rollback can still be running after the cancellation has returned.
-For a `TokenStream`, when no tool call is running, the rollback runs on the thread that calls `cancel()`,
-so `cancel()` returns only after the compensating actions have run; when tool calls are still running,
-it runs on the thread that finishes the last of them.
+For a `TokenStream`, the rollback runs on the thread that calls `cancel()` when no tool call is running
+and no response is being processed, so `cancel()` then returns only after the compensating actions have run.
+When tool calls are still running, it runs on the thread that finishes the last of them.
+When a response is being processed, it runs on the thread that processes it,
+once the results of its tool calls are saved in the `ChatMemory`.
 If the complete final answer of a `TokenStream` has already arrived and is being processed when you cancel,
 it is still delivered, and nothing is undone.
 If the rollback fails, the error is logged at WARN level (see also the notes below).
