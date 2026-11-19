@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.concurrent.Flow;
 import java.util.function.BiConsumer;
 import mutiny.zero.BackpressureStrategy;
@@ -171,7 +172,7 @@ public class ApacheHttpClient implements HttpClient {
     private CompletableFuture<SuccessfulHttpResponse> doExecuteAsync(HttpRequest request) {
         SimpleHttpRequest apacheRequest = toSimpleApacheRequest(request);
         CompletableFuture<SuccessfulHttpResponse> future = new CompletableFuture<>();
-        java.util.concurrent.Future<SimpleHttpResponse> apacheFuture = asyncClient()
+        Future<SimpleHttpResponse> apacheFuture = asyncClient()
                 .execute(apacheRequest, new FutureCallback<>() {
                     @Override
                     public void completed(SimpleHttpResponse apacheResponse) {
@@ -250,7 +251,7 @@ public class ApacheHttpClient implements HttpClient {
                     }
                 }
             };
-            java.util.concurrent.Future<Void> future;
+            Future<Void> future;
             try {
                 future = asyncClient()
                         .execute(
@@ -411,11 +412,11 @@ public class ApacheHttpClient implements HttpClient {
     }
 
     /**
-     * Starts a server-sent-events request and returns the in-flight Apache {@link java.util.concurrent.Future}, so
+     * Starts a server-sent-events request and returns the in-flight Apache {@link Future}, so
      * a caller (the reactive {@link #stream}) can abort the underlying HTTP request. The listener callbacks are
      * unchanged.
      */
-    private java.util.concurrent.Future<SimpleHttpResponse> executeServerSentEvents(
+    private Future<SimpleHttpResponse> executeServerSentEvents(
             HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
         SimpleHttpRequest apacheRequest = toSimpleApacheRequest(request);
         return asyncClient().execute(apacheRequest, new FutureCallback<>() {
