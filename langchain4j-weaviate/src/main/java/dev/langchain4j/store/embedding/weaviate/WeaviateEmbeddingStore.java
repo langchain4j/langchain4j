@@ -40,6 +40,7 @@ import io.weaviate.client6.v1.api.collections.query.NearVector;
 import io.weaviate.client6.v1.api.collections.query.QueryResponse;
 import io.weaviate.client6.v1.api.collections.query.Target;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -50,6 +51,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletionException;
 
@@ -77,6 +79,10 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment>, Auto
             io.weaviate.client6.v1.api.collections.query.Filter.uuid().gte("00000000-0000-0000-0000-000000000000");
 
     private static final int DEFAULT_BATCH_SIZE = 100;
+    /** Identifies the integration to Weaviate, in the form {@code name/version}. */
+    static final String INTEGRATION_HEADER = "X-Weaviate-Client-Integration";
+
+    static final String INTEGRATION = integration();
     private static final List<String> WEAVIATE_CLOUD_DOMAINS =
             List.of(".weaviate.cloud", ".weaviate.network", ".semi.technology");
 
@@ -195,7 +201,8 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment>, Auto
         int httpPort = httpPort(scheme, hostAndPort, port);
         if (hasApiKey && grpcPort == null && httpPort == 443 && isWeaviateCloud(host)) {
             // Weaviate Cloud serves gRPC on a dedicated host that the client derives from the cluster URL
-            return WeaviateClient.connectToWeaviateCloud(host, apiKey);
+            return WeaviateClient.connectToWeaviateCloud(
+                    host, apiKey, connection -> connection.setHeader(INTEGRATION_HEADER, INTEGRATION));
         }
         return WeaviateClient.connectToCustom(connection -> {
             connection
@@ -203,7 +210,8 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment>, Auto
                     .httpHost(host)
                     .httpPort(httpPort)
                     .grpcHost(host)
-                    .grpcPort(getOrDefault(grpcPort, DEFAULT_GRPC_PORT));
+                    .grpcPort(getOrDefault(grpcPort, DEFAULT_GRPC_PORT))
+                    .setHeader(INTEGRATION_HEADER, INTEGRATION);
             if (hasApiKey) {
                 connection.authentication(Authentication.apiKey(apiKey));
             }
@@ -228,6 +236,20 @@ public class WeaviateEmbeddingStore implements EmbeddingStore<TextSegment>, Auto
             return Integer.parseInt(host.substring(colon + 1));
         }
         return "https".equalsIgnoreCase(scheme) ? 443 : 80;
+    }
+
+    private static String integration() {
+        Properties properties = new Properties();
+        try (InputStream stream = WeaviateEmbeddingStore.class.getResourceAsStream("version.properties")) {
+            if (stream != null) {
+                properties.load(stream);
+            }
+        } catch (IOException e) {
+            // the version is informative only
+        }
+        String version = properties.getProperty("version");
+        // the placeholder is left as is when the resource was not processed by the build
+        return "langchain4j/" + (isNullOrBlank(version) || version.startsWith("$") ? "unknown" : version);
     }
 
     private static int portSeparator(String host) {

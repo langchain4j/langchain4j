@@ -63,6 +63,14 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <!-- Provides the version reported to Weaviate in the X-Weaviate-Client-Integration header -->
+                <filtering>true</filtering>
+                <directory>src/main/resources</directory>
+            </resource>
+        </resources>
+
         <plugins>
             <plugin>
                 <groupId>org.honton.chas</groupId>

@@ -41,6 +41,7 @@ Other changes in `1.25.0-beta35`:
   is not reachable or is older than 1.32. Earlier versions connected on first use.
 - Errors reported by Weaviate are thrown as exceptions of the Weaviate client (`WeaviateException`).
 - `WeaviateEmbeddingStore` is `AutoCloseable`. Close it when it is no longer needed to release its connections.
+- Every request carries the `X-Weaviate-Client-Integration: langchain4j/<version>` header, which identifies the integration in Weaviate's usage telemetry.
 - Embeddings are added in batches, see [Batching](#batching).
 
 Existing collections keep working and do not need to be re-created.

@@ -4,11 +4,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.sun.net.httpserver.HttpServer;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import io.weaviate.client6.v1.api.collections.query.ConsistencyLevel;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -212,6 +217,39 @@ class WeaviateEmbeddingStoreTest {
                 .isTrue();
         assertThat(WeaviateEmbeddingStore.matchesFilter(properties, "", TEXT_FIELD, new IsEqualTo("number", 1L)))
                 .isTrue();
+    }
+
+    @Test
+    void should_identify_the_integration_with_its_version() {
+        assertThat(WeaviateEmbeddingStore.INTEGRATION).matches("langchain4j/\\d+\\.\\d+\\.\\d+.*");
+    }
+
+    @Test
+    void should_send_the_integration_header() throws Exception {
+        List<String> integrations = new CopyOnWriteArrayList<>();
+        HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
+        server.createContext("/", exchange -> {
+            integrations.add(exchange.getRequestHeaders().getFirst(WeaviateEmbeddingStore.INTEGRATION_HEADER));
+            byte[] body = "{\"version\": \"1.36.0\"}".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+        server.start();
+        try {
+            // only the HTTP endpoint is served, so building the store may fail once it reaches gRPC
+            try (WeaviateEmbeddingStore ignored =
+                    builder().port(server.getAddress().getPort()).build()) {
+                // nothing to do
+            } catch (RuntimeException e) {
+                // expected
+            }
+        } finally {
+            server.stop(0);
+        }
+
+        assertThat(integrations).isNotEmpty().allMatch(WeaviateEmbeddingStore.INTEGRATION::equals);
     }
 
     private static WeaviateEmbeddingStore.WeaviateEmbeddingStoreBuilder builder() {
