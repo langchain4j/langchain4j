@@ -98,12 +98,8 @@ public class OpenAiOfficialDecisionModel implements DecisionModel {
     public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
         return failOnThrow(() -> {
             DecisionCreateParams params = toDecisionCreateParams(request);
-            CompletableFuture<Decision> decision;
-            try {
-                decision = client.async().decisions().create(params);
-            } catch (Exception e) {
-                throw OpenAiOfficialExceptionMapper.INSTANCE.mapException(e);
-            }
+            CompletableFuture<Decision> decision = OpenAiOfficialExceptionMapper.INSTANCE.withExceptionMapper(
+                    () -> client.async().decisions().create(params));
             CompletableFuture<DecisionResponse> result = decision.handle((response, error) -> {
                 if (error != null) {
                     throw OpenAiOfficialExceptionMapper.INSTANCE.mapException(unwrapCompletionException(error));
