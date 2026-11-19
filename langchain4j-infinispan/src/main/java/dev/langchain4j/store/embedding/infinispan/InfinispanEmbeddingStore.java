@@ -196,10 +196,14 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(EmbeddingSearchRequest request) {
-        Query<Object[]> query = buildVectorQuery(request);
-        return query.executeAsync()
-                .thenApply(queryResult -> toSearchResult(queryResult.list(), request.minScore()))
-                .toCompletableFuture();
+        try {
+            Query<Object[]> query = buildVectorQuery(request);
+            return query.executeAsync()
+                    .thenApply(queryResult -> toSearchResult(queryResult.list(), request.minScore()))
+                    .toCompletableFuture();
+        } catch (Throwable t) {
+            return CompletableFuture.failedFuture(t);
+        }
     }
 
     private Query<Object[]> buildVectorQuery(EmbeddingSearchRequest request) {
