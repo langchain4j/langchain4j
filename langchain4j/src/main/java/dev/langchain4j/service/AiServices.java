@@ -684,10 +684,11 @@ public abstract class AiServices<T> {
      * by default.)
      * <p>
      * <b>Rejected tool calls.</b> When the {@code executor} rejects a tool call (it throws a
-     * {@link RejectedExecutionException}), the rejected tool call counts as a tool call that failed: the AI Service
-     * waits for the tool calls that have already started, and then fails with the rejection (or with the error of
-     * a tool call requested before the rejected one, when that error ends the call). With
-     * {@link #compensateOnToolErrors(boolean)} enabled, the tool calls that succeeded are rolled back first.
+     * {@link RejectedExecutionException}), the rejected tool call counts as a tool call that failed: the other tool
+     * calls of the same response still run, also the ones requested after the rejected one, the AI Service waits for
+     * all of them, and then fails with the rejection (or with the error of a tool call requested before the rejected
+     * one, when that error ends the call). With {@link #compensateOnToolErrors(boolean)} enabled, the tool calls that
+     * succeeded, also the ones that ran after the rejected one, are rolled back first.
      *
      * @param executor The {@link Executor} to be used to execute tools.
      * @return builder

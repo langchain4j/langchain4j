@@ -33,7 +33,6 @@ import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.RawStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.output.TokenUsage;
-import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
 import dev.langchain4j.rag.content.Content;
@@ -587,8 +586,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                             getMemory(),
                             null,
                             invocationContext,
-                            context.eventListenerRegistrar,
-                            null)
+                            context.eventListenerRegistrar)
                     .whenComplete((ignored, error) -> {
                         if (error != null) {
                             LOG.warn(
@@ -669,7 +667,6 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     getMemory(),
                     messages,
                     invocationContext,
-                    CompensationReason.TOOL_EXECUTION_FAILED,
                     context.eventListenerRegistrar,
                     tube::send,
                     true,
@@ -714,13 +711,13 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
                 context.toolService
                         .persistToolResultsAndResolveMessages(
-                                context, getMemory(), null, outcome.resultMessages(), invocationContext)
-                        .whenComplete((ignoredMessages, persistenceError) -> {
-                            if (persistenceError == null) {
-                                unsavedRoundRequests = null;
-                            }
-                            persisted.complete(null);
-                        })
+                                context,
+                                getMemory(),
+                                null,
+                                outcome.resultMessages(),
+                                invocationContext,
+                                () -> unsavedRoundRequests = null)
+                        .whenComplete((ignoredMessages, persistenceError) -> persisted.complete(null))
                         .thenAccept(nextMessages -> {
                             if (tube.cancelled()) {
                                 return;

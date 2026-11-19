@@ -1061,13 +1061,14 @@ we do not yet know how many tools the LLM will call.
 
 If the `Executor` rejects a tool call (it throws a `RejectedExecutionException`, for example because its queue
 is full or it has been shut down), the rejected tool call counts as a tool call that failed.
-The AI Service waits for the tool calls that have already started, fires a `ToolExecutedEvent`
+The other tool calls of the same response still run, also the ones that the LLM requested after the rejected one.
+The AI Service waits for all of them, fires a `ToolExecutedEvent`
 (see [Observability](/tutorials/observability)) for each of them and for the rejected one,
 and then fails with the `RejectedExecutionException`.
 If a tool call that the LLM requested before the rejected one failed with an error that ends the call,
 the AI Service fails with that error instead.
 With [compensating tool actions](#compensating-tool-actions) enabled,
-the tool calls that succeeded are rolled back before the AI Service fails.
+the tool calls that succeeded, also the ones that ran after the rejected one, are rolled back before the AI Service fails.
 
 ### Accessing Executed Tools
 If you wish to access tools executed during the invocation of an AI Service,
@@ -2058,6 +2059,11 @@ So a compensating action that blocks (for example on a call to a database) shoul
 and return a `CompletableFuture`.
 When the AI Service method returns a plain value or a `TokenStream`, the AI Service waits for each compensating
 action.
+LangChain4j does not run compensating actions with the context that the `captureContext()` method of an
+`ExecutorProvider` captures for the tools that run on the executor
+(see [Controlling the executor and propagating context](/tutorials/non-blocking#controlling-the-executor-and-propagating-context)).
+A compensating action has that context only when the thread it runs on already has it: the thread that starts the
+rollback, or the thread that completes the asynchronous result of the compensating action before it.
 
 #### Enabling Compensation
 

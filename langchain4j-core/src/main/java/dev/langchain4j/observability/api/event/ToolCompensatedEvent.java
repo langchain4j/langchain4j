@@ -1,6 +1,7 @@
 package dev.langchain4j.observability.api.event;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
@@ -188,9 +189,10 @@ public interface ToolCompensatedEvent extends AiServiceEvent {
 
         /**
          * Returns whether {@link #compensationError(Throwable)} was called, also when it was called with {@code null}.
+         * Used by {@link DefaultToolCompensatedEvent} to check that it was called.
          * @since 1.25.0
          */
-        @Experimental
+        @Internal
         public boolean isCompensationErrorSet() {
             return compensationErrorSet;
         }

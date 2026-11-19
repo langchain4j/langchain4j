@@ -250,8 +250,8 @@ See [Error Handling](/tutorials/tools#error-handling) for what those handlers ca
 Because tools always run on an `Executor` in these modes, several tool calls in one LLM response run at the same
 time. If your tools are not safe to run concurrently, pass a single-threaded executor:
 `executeToolsConcurrently(Executors.newSingleThreadExecutor())`.
-If the executor rejects a tool call, the invocation fails once the tool calls that have already started have
-finished (see [Executing Tools Concurrently](/tutorials/tools#executing-tools-concurrently)).
+If the executor rejects a tool call, the other tool calls of the response still run, and the invocation fails once
+all of them have finished (see [Executing Tools Concurrently](/tutorials/tools#executing-tools-concurrently)).
 
 ### Event ordering
 

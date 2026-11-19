@@ -8,6 +8,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
@@ -454,13 +455,15 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
             if (cancelled) {
                 // saved first, so that no tool call in the chat memory is left without a result
-                boolean saved = false;
+                int saved = 0;
                 try {
-                    context.toolService.persistToolResultsAndResolveMessagesSync(
-                            context, getMemory(), null, outcome.resultMessages(), invocationContext);
-                    saved = true;
+                    ChatMemory memory = getMemory();
+                    for (ToolExecutionResultMessage resultMessage : outcome.resultMessages()) {
+                        memory.add(resultMessage);
+                        saved++;
+                    }
                 } finally {
-                    compensateOnCancellation(toolResults, saved);
+                    compensateOnCancellation(toolResults, executedRequests.subList(saved, executedRequests.size()));
                 }
                 return;
             }
@@ -665,7 +668,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                             results.put(startedTool.request(), toolRequestResult.result());
                         }
                     }
-                    runRollback(() -> compensateOnCancellation(results, false));
+                    List<ToolExecutionRequest> unsaved =
+                            drained.stream().map(StartedTool::request).toList();
+                    runRollback(() -> compensateOnCancellation(results, unsaved));
                 });
     }
 
@@ -678,7 +683,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         if (!cancelled) {
             return false;
         }
-        compensateOnCancellation(Map.of(), true);
+        compensateOnCancellation(Map.of(), null);
         return true;
     }
 
@@ -695,11 +700,12 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void compensateOnCancellation(
-            Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults, boolean currentRoundSaved) {
+            Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults,
+            @Nullable List<ToolExecutionRequest> unsavedRequests) {
         try {
             context.toolService.compensateOnCancellation(
                     currentRoundResults,
-                    currentRoundSaved,
+                    unsavedRequests,
                     compensableExecutions,
                     getMemory(),
                     invocationContext,
