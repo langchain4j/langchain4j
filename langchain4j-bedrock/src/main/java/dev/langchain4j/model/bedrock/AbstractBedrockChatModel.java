@@ -527,16 +527,21 @@ abstract class AbstractBedrockChatModel {
     protected Message createAiMessage(AiMessage message) {
         List<ContentBlock> blocks = new ArrayList<>();
 
-        if (sendThinking && message.thinking() != null) {
-            ReasoningContentBlock reasoningContentBlock = ReasoningContentBlock.builder()
-                    .reasoningText(ReasoningTextBlock.builder()
-                            .text(message.thinking())
-                            .signature(message.attribute(THINKING_SIGNATURE_KEY, String.class))
-                            .build())
-                    .build();
-            blocks.add(ContentBlock.builder()
-                    .reasoningContent(reasoningContentBlock)
-                    .build());
+        if (sendThinking) {
+            String signature = message.attribute(THINKING_SIGNATURE_KEY, String.class);
+            if (message.thinking() != null || isNotNullOrEmpty(signature)) {
+                ReasoningContentBlock reasoningContentBlock = ReasoningContentBlock.builder()
+                        .reasoningText(ReasoningTextBlock.builder()
+                                // "text" is required by the API, so an empty string is sent when the model returned
+                                // no text
+                                .text(getOrDefault(message.thinking(), ""))
+                                .signature(signature)
+                                .build())
+                        .build();
+                blocks.add(ContentBlock.builder()
+                        .reasoningContent(reasoningContentBlock)
+                        .build());
+            }
         }
 
         if (message.text() != null) {
