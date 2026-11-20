@@ -752,7 +752,7 @@ To interact with GitHub, we first need to set up the GitHub MCP server in Docker
 The GitHub MCP server provides a standardized interface to interact with GitHub through the Model Context Protocol.
 It enables file operations, repository management, and search functionality. 
 
-To build the Docker image for our GitHub MCP server, you need to get the code from the [MCP servers GitHub repo](https://github.com/modelcontextprotocol/servers/tree/main/src/github) either by cloning the repo or downloading the code.
+To build the Docker image for our GitHub MCP server, you need to get the code from the [MCP servers GitHub repo](https://github.com/modelcontextprotocol/servers-archived/tree/main/src/github) either by cloning the repo or downloading the code.
 Then, navigate to the root directory and execute the following Docker command:
 
 ```bash

@@ -115,7 +115,7 @@ chances are that the LLM can too.
 
 LLMs are specifically fine-tuned to detect when to call tools and how to call them.
 Some models can even call multiple tools at once, for example,
-[OpenAI](https://platform.openai.com/docs/guides/function-calling/parallel-function-calling).
+[OpenAI](https://developers.openai.com/api/docs/guides/function-calling#parallel-function-calling).
 
 :::note
 Please note that not all models support tools.

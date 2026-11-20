@@ -943,7 +943,7 @@ int tokenCount = tokenCountEstimator.estimateTokenCountInMessages(messages);
 
 ## Quarkus
 
-See more details [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/anthropic.html).
+See more details [here](https://docs.quarkiverse.io/quarkus-langchain4j/dev/anthropic-chat-model.html).
 
 ## Spring Boot
 

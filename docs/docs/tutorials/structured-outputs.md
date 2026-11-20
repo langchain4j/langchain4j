@@ -506,7 +506,7 @@ in this case: "Person".
 Once LLM responds, the output is parsed into an object and returned from the AI Service method.
 
 You can find many examples of supported use cases
-[here](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/test/java/dev/langchain4j/service/AiServicesWithJsonSchemaIT.java)
+[here](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/test/java/dev/langchain4j/service/common/AbstractAiServiceWithJsonSchemaIT.java)
 and [here](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/test/java/dev/langchain4j/service/AiServicesWithJsonSchemaWithDescriptionsIT.java).
 
 #### Required and Optional

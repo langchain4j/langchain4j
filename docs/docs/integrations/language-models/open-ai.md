@@ -9,7 +9,7 @@ sidebar_position: 15
 This is the documentation for the `OpenAI` integration, that uses a custom Java implementation of the OpenAI REST API, that works best with Quarkus (as it uses the Quarkus REST client) and Spring (as it uses Spring's RestClient).
 
 If you are using Quarkus, please refer to the
-[Quarkus LangChain4j documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/openai.html).
+[Quarkus LangChain4j documentation](https://docs.quarkiverse.io/quarkus-langchain4j/dev/openai-chat-model.html).
 
 LangChain4j provides 3 different integrations with OpenAI for using chat models, and this is #1 :
 
