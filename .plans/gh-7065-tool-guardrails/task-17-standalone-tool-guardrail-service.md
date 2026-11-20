@@ -215,3 +215,11 @@ the two stays, but only in internal classes. The unified contract for both kinds
   `integration-tests-guardrails` 366; `langchain4j-agentic` 672. Spotless not run.
 - **For the user to decide:** the `DefaultGuardrailService` name (brought back, the task default); removing
   `resolveMethodKey` and the string-keys module here rather than in task 18.
+- **Follow-up after the merge of #7106 (user: yes, 2026-11-20):** the branch's `CompletableFutureUtils.startSafely`
+  (only `RuntimeException`, `null` named by a free-form string) is gone; `ToolGuardrailService`, `ToolRound` and
+  `KeyedGuardrailExecutors` use upstream's `failOnThrow`, so an `Error` thrown while starting a stage fails the future too,
+  and a `null` future names the method of the object that returned it (`<tool function>.apply(ToolExecutionRequest)`,
+  `<service>.executeInputGuardrailsAsync(ToolKey, ToolInputGuardrailRequest)`, ...). `ToolRound.startOn` also catches
+  every `Throwable` from the executor. `CompletableFutureUtils` main is now identical to `upstream/main`. Two new tests in
+  `ToolGuardrailServiceExecuteGuardrailsTest` (an `Error` while starting the tool, a tool that returns no future), both
+  mutation-checked.

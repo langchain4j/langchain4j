@@ -1,7 +1,8 @@
 package dev.langchain4j.service.tool;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
-import static dev.langchain4j.internal.CompletableFutureUtils.startSafely;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -327,8 +328,8 @@ public final class ToolRound {
                 // an input guardrail that completed on another thread must not run the tool on that thread
                 boolean onStartingThread = starting.get() && Thread.currentThread() == startingThread;
                 var toolResult = (onStartingThread || executor == null)
-                        ? startSafely(() -> tool.apply(request), "future of the tool")
-                        : startOn(executor, () -> tool.apply(request));
+                        ? failOnThrow(tool, "apply(ToolExecutionRequest)", () -> tool.apply(request))
+                        : startOn(executor, tool, request);
                 recorded = toolResult.thenApply(result -> {
                     toolResults.put(call, result);
                     return result;
@@ -343,11 +344,12 @@ public final class ToolRound {
             execution = CompletableFuture.failedFuture(new CancellationException());
         } else {
             execution = binding(call.name())
-                    .map(binding -> startSafely(
+                    .map(binding -> failOnThrow(
+                            binding.service(),
+                            "executeGuardrailsAsync(ToolKey, ToolExecutionRequest, GuardrailRequestParams, Function)",
                             () -> binding.service()
                                     .executeGuardrailsAsync(
-                                            binding.key(), call, guardrailRequestParams(), recordingTool),
-                            "future of the tool guardrails"))
+                                            binding.key(), call, guardrailRequestParams(), recordingTool)))
                     .orElseGet(() -> recordingTool.apply(call).thenApply(result -> unguarded(call, result)));
             var guarded = execution;
             execution = guarded.exceptionallyCompose(error -> argumentsErrorBeforeTool(call, error)
@@ -367,7 +369,9 @@ public final class ToolRound {
      * future or the round was canceled does not start.
      */
     private CompletableFuture<ToolExecutionResult> startOn(
-            Executor executor, Supplier<CompletableFuture<ToolExecutionResult>> tool) {
+            Executor executor,
+            Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool,
+            ToolExecutionRequest request) {
         var result = new CompletableFuture<ToolExecutionResult>();
         try {
             executor.execute(() -> {
@@ -376,7 +380,7 @@ public final class ToolRound {
                 if (isCancelled()) {
                     result.completeExceptionally(new CancellationException());
                 } else if (!result.isDone()) {
-                    var toolResult = startSafely(tool, "future of the tool");
+                    var toolResult = failOnThrow(tool, "apply(ToolExecutionRequest)", () -> tool.apply(request));
                     propagateCancellation(result, toolResult);
                     toolResult.whenComplete((value, error) -> {
                         if (error != null) {
@@ -387,7 +391,8 @@ public final class ToolRound {
                     });
                 }
             });
-        } catch (RuntimeException rejected) {
+        } catch (Throwable rejected) {
+            restoreInterruptIfInterrupted(rejected);
             result.completeExceptionally(rejected);
         }
         return result;
@@ -403,12 +408,12 @@ public final class ToolRound {
     }
 
     /**
-     * Non-blocking counterpart of {@link #record(ToolExecutionRequest, ToolExecutionResult)}: an exception thrown by
+     * Non-blocking counterpart of {@link #record(ToolExecutionRequest, ToolExecutionResult)}: anything thrown by
      * {@code result} fails the returned future.
      */
     CompletableFuture<ToolExecutionResult> recordAsync(
             ToolExecutionRequest call, Supplier<ToolExecutionResult> result) {
-        return track(call, startSafely(() -> CompletableFuture.completedFuture(unguarded(call, result.get()))));
+        return track(call, failOnThrow(() -> CompletableFuture.completedFuture(unguarded(call, result.get()))));
     }
 
     /**

@@ -1,6 +1,6 @@
 package dev.langchain4j.service.guardrail;
 
-import static dev.langchain4j.internal.CompletableFutureUtils.startSafely;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.guardrail.GuardrailExecutor;
@@ -59,11 +59,11 @@ final class KeyedGuardrailExecutors<
     }
 
     /**
-     * Non-blocking counterpart of {@link #execute(Object, GuardrailRequest)}: an exception thrown by the lookup or while
+     * Non-blocking counterpart of {@link #execute(Object, GuardrailRequest)}: anything thrown by the lookup or while
      * starting the executor fails the returned future.
      */
     CompletableFuture<R> executeAsync(Object key, P request) {
-        return startSafely(() -> executor(key)
+        return failOnThrow(() -> executor(key)
                 .map(executor -> executor.executeAsync(request))
                 .orElseGet(() -> CompletableFuture.completedFuture(this.noGuardrailsResult.get())));
     }

@@ -64,6 +64,17 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
     private static final ToolInputGuardrail INPUT = request -> null;
     private static final ToolOutputGuardrail OUTPUT = request -> null;
     private static final ToolInputGuardrail INPUT_PASS = request -> ToolInputGuardrailResult.success();
+    private static final ToolInputGuardrail INPUT_PASS_ASYNC = new ToolInputGuardrail() {
+        @Override
+        public ToolInputGuardrailResult validate(ToolInputGuardrailRequest request) {
+            return success();
+        }
+
+        @Override
+        public CompletableFuture<ToolInputGuardrailResult> validateAsync(ToolInputGuardrailRequest request) {
+            return CompletableFuture.completedFuture(success());
+        }
+    };
 
     /** A tool that records the requests it ran with. */
     private static final class Tool implements Function<ToolExecutionRequest, ToolExecutionResult> {
@@ -765,6 +776,41 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
         public boolean hasOutputGuardrails(ToolKey key) {
             return delegate.hasOutputGuardrails(key);
         }
+    }
+
+    @Test
+    void async_an_error_thrown_while_starting_the_tool_fails_the_future_instead_of_escaping() {
+        var error = new AssertionError("broken tool");
+        Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool = request -> {
+            throw error;
+        };
+
+        assertThat(executeAsync(List.of(), List.of(), tool))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .withCause(error);
+        assertThat(executeAsync(List.of(INPUT_PASS_ASYNC), List.of(), tool))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .withCause(error);
+    }
+
+    @Test
+    void async_a_tool_that_returns_no_future_fails_the_future_naming_the_tool_function() {
+        Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool = request -> null;
+
+        assertThat(executeAsync(List.of(), List.of(), tool))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isInstanceOf(IllegalStateException.class)
+                .withMessageEndingWith(".apply(ToolExecutionRequest) returned null");
+        assertThat(executeAsync(List.of(INPUT_PASS_ASYNC), List.of(), tool))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isInstanceOf(IllegalStateException.class)
+                .withMessageEndingWith(".apply(ToolExecutionRequest) returned null");
     }
 
     @Test

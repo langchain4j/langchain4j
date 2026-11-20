@@ -1,7 +1,7 @@
 package dev.langchain4j.service.guardrail;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
-import static dev.langchain4j.internal.CompletableFutureUtils.startSafely;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -317,18 +317,16 @@ public interface ToolGuardrailService {
             GuardrailRequestParams requestParams,
             Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool) {
 
-        return startSafely(
-                () -> {
-                    ensureNotNull(key, "key");
-                    ensureNotNull(request, "request");
-                    ensureNotNull(requestParams, "requestParams");
-                    ensureNotNull(tool, "tool");
+        return failOnThrow(() -> {
+            ensureNotNull(key, "key");
+            ensureNotNull(request, "request");
+            ensureNotNull(requestParams, "requestParams");
+            ensureNotNull(tool, "tool");
 
-                    return hasGuardrails(key)
-                            ? guardAsync(key, request, requestParams, tool)
-                            : executeWithoutGuardrailsAsync(request, tool);
-                },
-                "future of the tool guardrails");
+            return hasGuardrails(key)
+                    ? guardAsync(key, request, requestParams, tool)
+                    : executeWithoutGuardrailsAsync(request, tool);
+        });
     }
 
     /**
@@ -404,7 +402,7 @@ public interface ToolGuardrailService {
 
     private static CompletableFuture<GuardedToolExecution> executeWithoutGuardrailsAsync(
             ToolExecutionRequest request, Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool) {
-        var toolResult = startSafely(() -> tool.apply(request), "future of the tool");
+        var toolResult = failOnThrow(tool, "apply(ToolExecutionRequest)", () -> tool.apply(request));
         var execution = toolResult.thenApply(result -> guardedExecution(request, result));
         propagateCancellation(execution, toolResult);
         return execution;
@@ -430,14 +428,20 @@ public interface ToolGuardrailService {
                         result,
                         inFlight,
                         () -> executeInputGuardrailsAsync(key, inputRequest(key, request, requestParams)),
-                        "future of the tool input guardrails")
+                        this,
+                        "executeInputGuardrailsAsync(ToolKey, ToolInputGuardrailRequest)")
                 : CompletableFuture.completedFuture(ToolInputGuardrailResult.success());
 
         inputStage
                 .thenCompose(inputResult -> {
                     var effectiveRequest = effectiveRequest(inputResult, request);
                     return inputResult.isSuccess()
-                            ? startStage(result, inFlight, () -> tool.apply(effectiveRequest), "future of the tool")
+                            ? startStage(
+                                            result,
+                                            inFlight,
+                                            () -> tool.apply(effectiveRequest),
+                                            tool,
+                                            "apply(ToolExecutionRequest)")
                                     .thenCompose(toolResult -> applyOutputGuardrailsAsync(
                                                     result, inFlight, key, effectiveRequest, toolResult, requestParams)
                                             .thenApply(guardedResult -> guardedExecution(
@@ -461,8 +465,9 @@ public interface ToolGuardrailService {
     }
 
     /**
-     * Starts a stage of {@link #executeGuardrailsAsync}, turning an exception thrown while starting it into a failed
-     * future, and makes it the stage that a cancellation cancels. Once {@code execution} is canceled, no stage starts
+     * Starts a stage of {@link #executeGuardrailsAsync}, turning anything thrown while starting it into a failed
+     * future (and a {@code null} future into one that names {@code method} of {@code target}), and makes it the stage
+     * that a cancellation cancels. Once {@code execution} is canceled, no stage starts
      * any more: a cancellation that comes after the previous stage ended, but before this one is the stage in flight,
      * would otherwise cancel nothing.
      */
@@ -470,10 +475,11 @@ public interface ToolGuardrailService {
             CompletableFuture<?> execution,
             AtomicReference<CompletableFuture<?>> inFlight,
             Supplier<CompletableFuture<T>> stage,
-            String name) {
+            Object target,
+            String method) {
         CompletableFuture<T> future = execution.isCancelled()
                 ? CompletableFuture.failedFuture(new CancellationException())
-                : startSafely(stage, name);
+                : failOnThrow(target, method, stage);
         inFlight.set(future);
 
         // a cancellation that came after the check above canceled the previous stage, not this one
@@ -500,7 +506,8 @@ public interface ToolGuardrailService {
                             execution,
                             inFlight,
                             () -> executeOutputGuardrailsAsync(key, guardrailRequest),
-                            "future of the tool output guardrails")
+                            this,
+                            "executeOutputGuardrailsAsync(ToolKey, ToolOutputGuardrailRequest)")
                     .thenApply(outputResult -> guardedResult(outputResult, guardrailRequest, toolResult));
         } else {
             guarded = CompletableFuture.completedFuture(toolResult);
