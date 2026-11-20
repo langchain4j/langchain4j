@@ -8,6 +8,7 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 /**
@@ -28,8 +29,9 @@ final class DefaultGuardrailService extends AbstractGuardrailService {
     DefaultGuardrailService(
             Class<?> aiServiceClass,
             Map<Object, InputGuardrailExecutor> inputGuardrails,
-            Map<Object, OutputGuardrailExecutor> outputGuardrails) {
-        super(aiServiceClass, inputGuardrails, outputGuardrails);
+            Map<Object, OutputGuardrailExecutor> outputGuardrails,
+            Function<Method, Optional<?>> methodKeyResolver) {
+        super(aiServiceClass, inputGuardrails, outputGuardrails, methodKeyResolver);
     }
 
     // These methods below really only exist for testing purposes

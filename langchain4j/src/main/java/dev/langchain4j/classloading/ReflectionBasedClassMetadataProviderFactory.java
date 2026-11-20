@@ -10,7 +10,8 @@ import java.util.stream.Stream;
 /**
  * Implementation of the {@link ClassMetadataProviderFactory} interface using Java Reflection.
  * This class provides methods to retrieve annotations and method metadata from classes
- * via reflection-based mechanisms.
+ * via reflection-based mechanisms. Its method keys are the {@link Method}s themselves, so
+ * {@link #resolveMethodKey(Method)} returns the method it is given.
  */
 public final class ReflectionBasedClassMetadataProviderFactory implements ClassMetadataProviderFactory<Method> {
     @Override
@@ -21,6 +22,11 @@ public final class ReflectionBasedClassMetadataProviderFactory implements ClassM
     @Override
     public <T extends Annotation> Optional<T> getAnnotation(Class<?> clazz, Class<T> annotationClass) {
         return Optional.ofNullable(clazz.getAnnotation(annotationClass));
+    }
+
+    @Override
+    public Optional<Method> resolveMethodKey(Method method) {
+        return Optional.of(method);
     }
 
     @Override
