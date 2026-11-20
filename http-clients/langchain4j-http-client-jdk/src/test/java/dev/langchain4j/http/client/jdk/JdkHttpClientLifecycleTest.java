@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,6 +17,18 @@ import java.io.IOException;
 import org.junit.jupiter.api.Test;
 
 class JdkHttpClientLifecycleTest {
+
+    @Test
+    void should_not_close_caller_owned_supplied_client() throws Exception {
+        CloseableHttpClient delegate = mock(CloseableHttpClient.class);
+        JdkHttpClient first = JdkHttpClient.builder().httpClient(delegate).build();
+        JdkHttpClient second = JdkHttpClient.builder().httpClient(delegate).build();
+
+        first.close();
+        second.close();
+
+        verify((AutoCloseable) delegate, never()).close();
+    }
 
     @Test
     void should_close_underlying_client_when_supported() throws Exception {
