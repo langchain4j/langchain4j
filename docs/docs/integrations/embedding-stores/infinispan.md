@@ -33,11 +33,12 @@ From 15.2 Infinispan Server and above, metadata filtering is supported.
 
 - `InfinispanEmbeddingStore`
 - `InfinispanChatMemoryStore`
+- `InfinispanContentRetriever`
 
-Both classes also implement the non-blocking methods of their interfaces: `searchAsync` on
-`InfinispanEmbeddingStore`, and `getMessagesAsync`, `updateMessagesAsync` and `deleteMessagesAsync` on
-`InfinispanChatMemoryStore`. They use the asynchronous API of the Infinispan Hot Rod client, so you can use them
-in asynchronous and reactive AI Services and RAG without blocking a thread.
+Both `InfinispanEmbeddingStore` and `InfinispanChatMemoryStore` implement the non-blocking methods of their
+interfaces: `searchAsync` on `InfinispanEmbeddingStore`, and `getMessagesAsync`, `updateMessagesAsync` and
+`deleteMessagesAsync` on `InfinispanChatMemoryStore`. They use the asynchronous API of the Infinispan Hot Rod
+client, so you can use them in asynchronous and reactive AI Services and RAG without blocking a thread.
 The returned futures complete on the I/O threads of the Hot Rod client, so do not block in code that you chain to them.
 See [Non-blocking and Reactive](/tutorials/non-blocking).
 
@@ -61,6 +62,49 @@ InfinispanChatMemoryStore store = InfinispanChatMemoryStore.builder()
     .remoteCacheManager(remoteCacheManager)
     .build();
 ```
+
+### InfinispanContentRetriever
+
+A `ContentRetriever` that uses Infinispan's full-text search (Ickle queries powered by Hibernate Search / Lucene)
+to retrieve relevant content without requiring embeddings. This is useful for RAG pipelines where you want
+keyword-based retrieval instead of (or in addition to) vector similarity search.
+
+When full-text search is enabled, the `text` field is indexed with the `standard` analyzer, which tokenizes
+text and applies lowercase normalization.
+
+```java
+InfinispanContentRetriever retriever = InfinispanContentRetriever.builder()
+    .cacheName("my-cache")
+    .dimension(384)
+    .infinispanConfigBuilder(builder)
+    .maxResults(5)
+    .build();
+
+List<Content> results = retriever.retrieve(new Query("search terms"));
+```
+
+The retriever also supports non-blocking retrieval via `retrieveAsync`.
+
+#### Advanced: custom text field annotation
+
+By default, `InfinispanContentRetriever` uses `@Text(projectable=true, analyzer="standard")` on the `text`
+field, while `InfinispanEmbeddingStore` uses `@Basic(projectable=true)` (no full-text analysis needed for
+vector search). These are Infinispan Protobuf schema annotations that control how the text field is indexed.
+
+If you need a different analyzer (e.g., for a specific language or custom tokenization), you can override
+the annotation:
+
+```java
+InfinispanContentRetriever retriever = InfinispanContentRetriever.builder()
+    .cacheName("my-cache")
+    .dimension(384)
+    .infinispanConfigBuilder(builder)
+    .textFieldAnnotation("@Text(projectable=true, analyzer=\"keyword\")")
+    .build();
+```
+
+See the [Infinispan indexing documentation](https://infinispan.org/docs/stable/titles/query/query.html)
+for the full list of available analyzers and annotation options.
 
 ## Examples
 
