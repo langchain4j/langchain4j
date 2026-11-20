@@ -19,6 +19,7 @@ import co.elastic.clients.elasticsearch.core.BulkResponse;
 import co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
+import co.elastic.clients.elasticsearch.core.search.Hit;
 import co.elastic.clients.json.JsonpMapper;
 import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
@@ -286,7 +287,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     @Deprecated(forRemoval = true)
     public List<TextSegment> fullTextSearch(String textQuery) {
         return fullTextSearchMatches(textQuery).stream()
-                .map(match -> match == null ? null : match.embedded())
+                .map(EmbeddingMatch::embedded)
                 .collect(toList());
     }
 
@@ -434,17 +435,33 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     }
 
     private List<EmbeddingMatch<TextSegment>> toMatches(SearchResponse<Document> response) {
-        return response.hits().hits().stream()
-                .map(hit -> Optional.ofNullable(hit.source())
-                        .map(document -> new EmbeddingMatch<>(
-                                hit.score(),
-                                hit.id(),
-                                new Embedding(Optional.ofNullable(document.getVector())
-                                        .orElse(new float[] {})),
-                                document.getText() == null
-                                        ? null
-                                        : TextSegment.from(document.getText(), new Metadata(document.getMetadata()))))
-                        .orElse(null))
+        List<Hit<Document>> hits = response.hits().hits();
+        List<EmbeddingMatch<TextSegment>> matches = hits.stream()
+                // a hit without _source carries no vector, no text and no metadata,
+                // so there is nothing we could build an EmbeddingMatch from
+                .filter(hit -> hit.source() != null)
+                .map(hit -> {
+                    Document document = hit.source();
+                    return new EmbeddingMatch<>(
+                            hit.score(),
+                            hit.id(),
+                            new Embedding(
+                                    Optional.ofNullable(document.getVector()).orElse(new float[] {})),
+                            document.getText() == null
+                                    ? null
+                                    : TextSegment.from(document.getText(), new Metadata(document.getMetadata())));
+                })
                 .collect(toList());
+        if (matches.size() < hits.size()) {
+            log.debug(
+                    "skipped [{}] of [{}] hits because they carry no _source: {}",
+                    hits.size() - matches.size(),
+                    hits.size(),
+                    hits.stream()
+                            .filter(hit -> hit.source() == null)
+                            .map(Hit::id)
+                            .collect(toList()));
+        }
+        return matches;
     }
 }

@@ -162,6 +162,8 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
 
     private List<Content> toContentList(List<EmbeddingMatch<TextSegment>> matches) {
         List<Content> result = matches.stream()
+                // a match without text segment cannot be turned into a Content
+                .filter(match -> match.embedded() != null)
                 .map(match -> Content.from(
                         match.embedded(),
                         Map.of(
