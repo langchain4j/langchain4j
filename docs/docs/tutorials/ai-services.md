@@ -732,8 +732,18 @@ tokenStream
     .start();
 ```
 
-When `StreamingHandle.cancel()` is called, LangChain4j will close the connection and stop the streaming.
-Once `StreamingHandle.cancel()` has been called, `TokenStream` will not receive any further callbacks.
+When `StreamingHandle.cancel()` is called, LangChain4j will close the connection and stop the streaming,
+so the response that is being streamed delivers no further partial responses.
+Work that is already under way still reports through its callbacks:
+- a tool call that is already running calls `onToolExecuted` when it finishes;
+- a response that had fully arrived and is being processed when you cancel is processed to the end:
+  `onIntermediateResponse`, `beforeToolExecution` and `onToolExecuted` for its tool calls,
+  `onCompleteResponse` when it is the final answer,
+  and `onError` when one of its tool calls fails with an error that ends the call.
+
+If the AI Service is built with `.compensateOnToolErrors(true)`, such a response is the last one:
+no further request is sent to the LLM, and cancelling also rolls back the tool calls that already succeeded
+(see [Compensating Tool Actions](/tutorials/tools#compensating-tool-actions)).
 
 ### Flux
 You can also use `Flux<String>` instead of `TokenStream`.
@@ -744,7 +754,7 @@ For this, please import `langchain4j-reactor` module:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>1.23.0-beta33</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 ```java

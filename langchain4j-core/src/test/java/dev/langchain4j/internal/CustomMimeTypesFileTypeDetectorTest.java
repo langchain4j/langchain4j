@@ -8,11 +8,14 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class CustomMimeTypesFileTypeDetectorTest {
@@ -398,6 +401,73 @@ class CustomMimeTypesFileTypeDetectorTest {
 
         // then
         assertThat(mimeType).isEqualTo("audio/mp3");
+    }
+
+    @Test
+    void should_guess_mime_type_of_remote_uri_from_file_name_only(@TempDir Path directory) throws Exception {
+        // given
+        CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
+        Path file = directory.resolve("picture");
+        byte[] pngHeader = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n', 0, 0, 0, 0x0D, 'I', 'H', 'D', 'R'};
+        Files.write(file, pngHeader);
+        URI remoteUri = new URI("https", "example.com", file.toUri().getPath(), null);
+
+        // when-then
+        assertThat(detector.probeContentType(file.toUri())).isEqualTo("image/png");
+        assertThat(detector.probeContentType(remoteUri)).isNull();
+        assertThat(detector.probeContentType(URI.create("https://example.com/images/picture.png")))
+                .isEqualTo("image/png");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "https://example.com/photos/IMG_1234.heic, image/heic",
+        "https://example.com/photos/IMG_1234.HEIF, image/heif",
+        "https://example.com/clips/clip.3gp, video/3gpp",
+        "https://example.com/images/a%00.png, image/png",
+        "https://commons.wikimedia.org/wiki/Special:FilePath/Example.jpg, image/jpeg",
+        "https://example.com/2026-11-17T10:00:00.jpg, image/jpeg",
+        "gs://my-bucket/clips/clip.mp4, video/mp4"
+    })
+    void should_guess_mime_type_of_remote_uri_from_its_name(String uri, String expectedMimeType) {
+        // given
+        CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
+
+        // when-then
+        assertThat(detector.probeContentType(URI.create(uri))).isEqualTo(expectedMimeType);
+        assertThat(detector.probeContentTypeFromName(URI.create(uri))).isEqualTo(expectedMimeType);
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "https://example.com/",
+                "https://example.com",
+                "https://example.com/images/",
+                "data:image/png;base64,iVBORw0KGgo=",
+                "https://example.com/images/picture"
+            })
+    void should_return_null_from_name_when_uri_has_no_known_file_name(String url) {
+        // given
+        CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
+
+        // when-then
+        assertThat(detector.probeContentTypeFromName(URI.create(url))).isNull();
+    }
+
+    @Test
+    void should_guess_mime_type_from_name_only_also_for_local_file(@TempDir Path directory) throws Exception {
+        // given
+        CustomMimeTypesFileTypeDetector detector = new CustomMimeTypesFileTypeDetector();
+        Path file = directory.resolve("picture");
+        byte[] pngHeader = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n', 0, 0, 0, 0x0D, 'I', 'H', 'D', 'R'};
+        Files.write(file, pngHeader);
+
+        // when-then
+        assertThat(detector.probeContentTypeFromName(file.toUri())).isNull();
+        assertThat(detector.probeContentTypeFromName(URI.create(file.toUri().getPath()))).isNull();
+        assertThat(detector.probeContentTypeFromName(directory.resolve("picture.png").toUri()))
+                .isEqualTo("image/png");
     }
 
     @Test

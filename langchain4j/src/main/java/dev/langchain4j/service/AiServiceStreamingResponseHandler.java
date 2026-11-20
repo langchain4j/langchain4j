@@ -8,6 +8,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
@@ -38,6 +39,7 @@ import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolService;
+import dev.langchain4j.service.tool.ToolService.CompensableToolExecution;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -48,10 +50,10 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,14 +98,24 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final ToolExecutionErrorHandler toolExecutionErrorHandler;
     private final Executor toolExecutor;
     private final Executor completeResponseProcessingExecutor;
-    private final Queue<Future<ToolRequestResult>> toolExecutionFutures = new ConcurrentLinkedQueue<>();
+    private final Queue<StartedTool> startedTools = new ConcurrentLinkedQueue<>();
+    private final @Nullable List<CompensableToolExecution> compensableExecutions;
+
+    // Only used when compensation on tool errors is enabled, and written under the monitor of compensableExecutions.
+    // A cancellation rolls back the tools of this round itself, unless the response of the round was claimed first by
+    // its processing, which then runs them to the end, saves their results and rolls them back, or delivers the
+    // final answer.
+    private volatile boolean cancelled;
+    private boolean responseClaimed;
 
     private final List<String> responseBuffer = new ArrayList<>();
     private final boolean hasOutputGuardrails;
 
     private int toolCallingRoundTripsLeft;
 
-    private record ToolRequestResult(ToolExecutionRequest request, ToolExecutionResult result, Throwable error) {}
+    private record ToolRequestResult(ToolExecutionResult result, Throwable error) {}
+
+    private record StartedTool(ToolExecutionRequest request, CompletableFuture<ToolRequestResult> execution) {}
 
     AiServiceStreamingResponseHandler(
             ChatRequest chatRequest,
@@ -131,7 +143,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             Executor toolExecutor,
             Executor completeResponseProcessingExecutor,
             GuardrailRequestParams commonGuardrailParams,
-            Object methodKey) {
+            Object methodKey,
+            @Nullable List<CompensableToolExecution> compensableExecutions) {
         this.chatRequest = ensureNotNull(chatRequest, "chatRequest");
         this.chatExecutor = ensureNotNull(chatExecutor, "chatExecutor");
         this.context = ensureNotNull(context, "context");
@@ -165,6 +178,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.hasOutputGuardrails = context.guardrailService().hasOutputGuardrails(methodKey);
 
         this.toolCallingRoundTripsLeft = toolCallingRoundTripsLeft;
+        this.compensableExecutions = compensableExecutions;
     }
 
     @Override
@@ -237,18 +251,37 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     public void onCompleteToolCall(CompleteToolCall completeToolCall) {
         if (toolExecutor != null) {
             ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
-            var future = CompletableFuture.supplyAsync(
-                    () -> {
-                        try {
-                            return new ToolRequestResult(toolRequest, execute(toolRequest), null);
-                        } catch (VirtualMachineError e) {
-                            throw e;
-                        } catch (Throwable e) {
-                            return new ToolRequestResult(toolRequest, null, e);
-                        }
-                    },
-                    toolExecutor);
-            toolExecutionFutures.add(future);
+            if (compensableExecutions == null) {
+                CompletableFuture<ToolRequestResult> execution;
+                try {
+                    execution = CompletableFuture.supplyAsync(() -> executeCatching(toolRequest), toolExecutor);
+                } catch (RuntimeException rejected) {
+                    execution = CompletableFuture.failedFuture(rejected);
+                }
+                startedTools.add(new StartedTool(toolRequest, execution));
+                return;
+            }
+            // registered before it starts, so that a cancellation waits for it, also when the executor runs it inline
+            CompletableFuture<Void> start = new CompletableFuture<>();
+            StartedTool startedTool = new StartedTool(
+                    toolRequest, start.thenApplyAsync(ignored -> executeCatching(toolRequest), toolExecutor));
+            synchronized (compensableExecutions) {
+                if (cancelled) {
+                    return;
+                }
+                startedTools.add(startedTool);
+            }
+            start.complete(null);
+        }
+    }
+
+    private ToolRequestResult executeCatching(ToolExecutionRequest toolRequest) {
+        try {
+            return new ToolRequestResult(execute(toolRequest), null);
+        } catch (VirtualMachineError e) {
+            throw e;
+        } catch (Throwable e) {
+            return new ToolRequestResult(null, e);
         }
     }
 
@@ -280,7 +313,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         public void cancel() {
             delegate.cancel();
             if (terminated.compareAndSet(false, true)) {
-                TerminalEvents.fireCancelled(context.eventListenerRegistrar, invocationContext);
+                try {
+                    TerminalEvents.fireCancelled(context.eventListenerRegistrar, invocationContext);
+                } finally {
+                    compensateOnCancellation();
+                }
             }
         }
 
@@ -341,6 +378,15 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     }
 
     private void processCompleteResponse(ChatResponse chatResponse) {
+        if (compensableExecutions != null) {
+            synchronized (compensableExecutions) {
+                if (cancelled) {
+                    return; // the cancellation rolls back the tools that had already run, nothing is delivered
+                }
+                responseClaimed = true;
+            }
+        }
+
         fireResponseReceivedEvent(chatResponse);
         AiMessage aiMessage = chatResponse.aiMessage();
 
@@ -363,40 +409,32 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             if (toolExecutor != null) {
                 executedRequests = new ArrayList<>();
                 Map<ToolExecutionRequest, Throwable> toolErrors = new LinkedHashMap<>();
-                for (Future<ToolRequestResult> toolExecutionFuture : toolExecutionFutures) {
+                for (StartedTool startedTool : startedTools) {
+                    executedRequests.add(startedTool.request());
                     try {
-                        ToolRequestResult toolRequestResult = toolExecutionFuture.get();
-                        executedRequests.add(toolRequestResult.request());
+                        ToolRequestResult toolRequestResult = startedTool.execution().get();
                         if (toolRequestResult.error() != null) {
-                            toolErrors.put(toolRequestResult.request(), toolRequestResult.error());
+                            toolErrors.put(startedTool.request(), toolRequestResult.error());
                         } else {
-                            toolResults.put(toolRequestResult.request(), toolRequestResult.result());
+                            toolResults.put(startedTool.request(), toolRequestResult.result());
                         }
                     } catch (ExecutionException e) {
                         if (e.getCause() instanceof VirtualMachineError vmError) {
                             throw vmError;
-                        } else if (e.getCause() instanceof RuntimeException re) {
-                            throw re;
-                        } else {
-                            throw new RuntimeException(e.getCause());
                         }
+                        // e.g. the tool executor rejected the tool
+                        toolErrors.put(startedTool.request(), e.getCause());
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         throw new RuntimeException(e);
                     }
                 }
                 if (!toolErrors.isEmpty()) {
-                    ToolService.fireToolExecutedEventsOfFailedRound(
-                            invocationContext,
-                            executedRequests,
-                            toolResults,
-                            toolErrors,
-                            context.eventListenerRegistrar);
                     Throwable error = toolErrors.values().iterator().next();
-                    if (error instanceof RuntimeException re) {
-                        throw re;
-                    }
-                    throw new RuntimeException(error);
+                    RuntimeException errorToRethrow =
+                            error instanceof RuntimeException re ? re : new RuntimeException(error);
+                    failRoundBeforeRethrow(executedRequests, toolResults, toolErrors, errorToRethrow);
+                    throw errorToRethrow;
                 }
             } else {
                 for (ToolExecutionRequest toolRequest : executedRequests) {
@@ -405,12 +443,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     } catch (VirtualMachineError e) {
                         throw e;
                     } catch (RuntimeException | Error e) {
-                        ToolService.fireToolExecutedEventsOfFailedRound(
-                                invocationContext,
-                                executedRequests,
-                                toolResults,
-                                Map.of(toolRequest, e),
-                                context.eventListenerRegistrar);
+                        failRoundBeforeRethrow(executedRequests, toolResults, Map.of(toolRequest, e), e);
                         throw e;
                     }
                 }
@@ -420,8 +453,38 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
                     context, executedRequests, toolResults, new ArrayList<>(), invocationContext, toolServiceContext);
 
+            if (cancelled) {
+                // saved first, so that no tool call in the chat memory is left without a result
+                int saved = 0;
+                try {
+                    ChatMemory memory = getMemory();
+                    for (ToolExecutionResultMessage resultMessage : outcome.resultMessages()) {
+                        memory.add(resultMessage);
+                        saved++;
+                    }
+                } finally {
+                    compensateOnCancellation(toolResults, executedRequests.subList(saved, executedRequests.size()));
+                }
+                return;
+            }
+
+            context.toolService.compensateIfNeeded(
+                    executedRequests,
+                    toolResults,
+                    outcome.resultMessages(),
+                    compensableExecutions,
+                    outcome.anyToolErrored(),
+                    getMemory(),
+                    List.of(),
+                    invocationContext,
+                    context.eventListenerRegistrar);
+
             List<ChatMessage> nextMessages = context.toolService.persistToolResultsAndResolveMessagesSync(
                     context, getMemory(), null, outcome.resultMessages(), invocationContext);
+
+            if (rolledBackOnCancellation()) {
+                return;
+            }
 
             if (ToolService.shouldReturnImmediately(outcome.anyToolErrored(), outcome.returnBehaviors())) {
                 ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
@@ -443,6 +506,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     toolServiceContext,
                     toolResults,
                     parameters);
+
+            if (rolledBackOnCancellation()) {
+                return;
+            }
 
             var handler = new AiServiceStreamingResponseHandler(
                     next.chatRequest(),
@@ -470,7 +537,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     toolExecutor,
                     completeResponseProcessingExecutor,
                     commonGuardrailParams,
-                    methodKey);
+                    methodKey,
+                    compensableExecutions);
 
             CurrentInvocation.runWith(invocationContext, () -> context.streamingChatModel.chat(next.chatRequest(), HandlerWithoutInvocation.wrap(handler)));
         } else {
@@ -565,6 +633,103 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                         .tokenUsage(totalTokenUsage)
                         .build())
                 .build();
+    }
+
+    /**
+     * Rolls back the compensable tools on cancellation, the way the non-blocking modes do: the tools of this round
+     * that had already started are drained first, and then every compensable tool that succeeded, in this round and in
+     * the earlier ones, is rolled back. The thread that cancels does not wait for the running tools: the rollback runs
+     * on the {@code completeResponseProcessingExecutor} when it is set, otherwise on the thread that cancels (when no
+     * tool is running) or on the one that finishes the last running tool. A failure is logged, as the invocation was
+     * cancelled and there is nobody to report it to. Nothing to do when the processing of the response claimed it
+     * first: it runs the tools of the round to the end, saves their results and then rolls back, or delivers the final
+     * answer.
+     */
+    private void compensateOnCancellation() {
+        if (compensableExecutions == null) {
+            return;
+        }
+        List<StartedTool> drained;
+        synchronized (compensableExecutions) {
+            cancelled = true;
+            if (responseClaimed) {
+                return;
+            }
+            drained = new ArrayList<>(startedTools);
+        }
+        CompletableFuture.allOf(drained.stream().map(StartedTool::execution).toArray(CompletableFuture<?>[]::new))
+                .whenComplete((ignored, error) -> {
+                    Map<ToolExecutionRequest, ToolExecutionResult> results = new LinkedHashMap<>();
+                    for (StartedTool startedTool : drained) {
+                        ToolRequestResult toolRequestResult = startedTool.execution().isCompletedExceptionally()
+                                ? null
+                                : startedTool.execution().getNow(null);
+                        if (toolRequestResult != null && toolRequestResult.error() == null) {
+                            results.put(startedTool.request(), toolRequestResult.result());
+                        }
+                    }
+                    List<ToolExecutionRequest> unsaved =
+                            drained.stream().map(StartedTool::request).toList();
+                    runRollback(() -> compensateOnCancellation(results, unsaved));
+                });
+    }
+
+    /**
+     * Rolls back when the invocation was cancelled after this processing claimed the response, once the results of
+     * its round are saved. The round is not passed on: {@code compensateIfNeeded} already collected its compensable
+     * tools, or already rolled them back when one of its tools failed.
+     */
+    private boolean rolledBackOnCancellation() {
+        if (!cancelled) {
+            return false;
+        }
+        compensateOnCancellation(Map.of(), null);
+        return true;
+    }
+
+    private void runRollback(Runnable rollback) {
+        if (completeResponseProcessingExecutor == null) {
+            rollback.run();
+            return;
+        }
+        try {
+            completeResponseProcessingExecutor.execute(rollback);
+        } catch (RuntimeException rejected) {
+            rollback.run();
+        }
+    }
+
+    private void compensateOnCancellation(
+            Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults,
+            @Nullable List<ToolExecutionRequest> unsavedRequests) {
+        try {
+            context.toolService.compensateOnCancellation(
+                    currentRoundResults,
+                    unsavedRequests,
+                    compensableExecutions,
+                    getMemory(),
+                    invocationContext,
+                    context.eventListenerRegistrar);
+        } catch (RuntimeException e) {
+            LOG.warn("Failed to roll back the tools after the invocation was cancelled", e);
+        }
+    }
+
+    private void failRoundBeforeRethrow(
+            List<ToolExecutionRequest> executedRequests,
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            Map<ToolExecutionRequest, Throwable> toolErrors,
+            Throwable errorToRethrow) {
+        context.toolService.failRoundBeforeRethrow(
+                executedRequests,
+                toolResults,
+                toolErrors,
+                errorToRethrow,
+                compensableExecutions,
+                getMemory(),
+                null,
+                invocationContext,
+                context.eventListenerRegistrar);
     }
 
     private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {

@@ -10,6 +10,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.AgenticServices.AgentConfigurator;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
+import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.data.message.AiMessage;
@@ -20,11 +21,14 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
+import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
+import dev.langchain4j.test.mock.MockChatModel;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 
 public class CrossAgentCompensationTest {
@@ -446,6 +450,140 @@ public class CrossAgentCompensationTest {
         assertThat(service.credited).isTrue();
         assertThat(service.compensated).isTrue();
         assertThat(compensationLog).containsExactly("credit:50", "uncredit:50");
+    }
+
+    @Test
+    void should_compensate_tools_of_a_round_that_a_rethrown_tool_error_fails() {
+        compensationLog.clear();
+        CreditAndFailService service = new CreditAndFailService();
+
+        // the credit succeeds in the same round in which the failing tool fails the agent
+        var creditAgent = AgenticServices.agentBuilder(CreditAgentService.class)
+                .chatModel(MockChatModel.thatResponds(
+                        AiMessage.from(
+                                ToolExecutionRequest.builder()
+                                        .id("call-1")
+                                        .name("credit")
+                                        .arguments("{\"amount\": 50}")
+                                        .build(),
+                                ToolExecutionRequest.builder()
+                                        .id("call-2")
+                                        .name("failingTool")
+                                        .arguments("{\"input\": \"test\"}")
+                                        .build()),
+                        AiMessage.from("done")))
+                .tools(service)
+                .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
+                .name("creditAgent")
+                .build();
+
+        interface TestAgent {
+            String run(@V("request") String request);
+        }
+
+        TestAgent sequenceAgent = AgenticServices.<TestAgent>sequenceBuilder(TestAgent.class)
+                .subAgents(creditAgent)
+                .compensateOnError(true)
+                .name("sequenceAgent")
+                .build();
+
+        assertThrows(AgentInvocationException.class, () -> sequenceAgent.run("test"));
+
+        assertThat(compensationLog).containsExactly("credit:50", "uncredit:50");
+    }
+
+    static ToolExecutionRequest toolCall(String id, String name, String arguments) {
+        return ToolExecutionRequest.builder().id(id).name(name).arguments(arguments).build();
+    }
+
+    @Test
+    void should_compensate_at_once_when_a_tool_error_of_a_standalone_agent_is_rethrown() {
+        compensationLog.clear();
+        CreditAndFailService service = new CreditAndFailService();
+
+        CreditAgentService agent = AgenticServices.agentBuilder(CreditAgentService.class)
+                .chatModel(MockChatModel.thatResponds(
+                        AiMessage.from(toolCall("call-1", "credit", "{\"amount\": 50}")),
+                        AiMessage.from(toolCall("call-2", "failingTool", "{\"input\": \"test\"}")),
+                        AiMessage.from("done")))
+                .tools(service)
+                .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
+                .compensateOnError(true)
+                .name("standaloneAgent")
+                .build();
+
+        assertThatThrownBy(() -> agent.execute("test")).hasRootCauseMessage("tool failure");
+
+        assertThat(compensationLog).containsExactly("credit:50", "uncredit:50");
+    }
+
+    @Test
+    void should_compensate_a_tool_of_the_same_round_when_a_tool_error_of_a_standalone_agent_is_rethrown() {
+        compensationLog.clear();
+        CreditAndFailService service = new CreditAndFailService();
+
+        CreditAgentService agent = AgenticServices.agentBuilder(CreditAgentService.class)
+                .chatModel(MockChatModel.thatResponds(
+                        AiMessage.from(
+                                toolCall("call-1", "credit", "{\"amount\": 50}"),
+                                toolCall("call-2", "failingTool", "{\"input\": \"test\"}")),
+                        AiMessage.from("done")))
+                .tools(service)
+                .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
+                .compensateOnError(true)
+                .name("standaloneAgent")
+                .build();
+
+        assertThatThrownBy(() -> agent.execute("test")).hasRootCauseMessage("tool failure");
+
+        // the credit is reported to cross-agent compensation before it is told that a tool failed
+        assertThat(compensationLog).containsExactly("credit:50", "uncredit:50");
+    }
+
+    @Test
+    void should_compensate_at_once_when_a_tool_error_is_rethrown_even_if_the_error_handler_recovers() {
+        compensationLog.clear();
+        CreditService creditService = new CreditService();
+
+        var creditAgent = AgenticServices.agentBuilder(CreditAgentService.class)
+                .chatModel(MockChatModel.thatResponds(
+                        AiMessage.from(toolCall("call-1", "credit", "{\"amount\": 100}")), AiMessage.from("done")))
+                .tools(creditService)
+                .name("creditAgent")
+                .build();
+
+        var failingAgent = AgenticServices.agentBuilder(FailingAgentService.class)
+                .chatModel(MockChatModel.thatResponds(
+                        AiMessage.from(toolCall("call-1", "failingTool", "{\"input\": \"test\"}")),
+                        AiMessage.from("done")))
+                .tools(new CreditAndFailService())
+                .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
+                .name("failingAgent")
+                .build();
+
+        interface TestAgent {
+            String run(@V("request") String request);
+        }
+
+        AtomicBoolean compensatedWhenTheErrorHandlerRuns = new AtomicBoolean();
+        TestAgent sequenceAgent = AgenticServices.<TestAgent>sequenceBuilder(TestAgent.class)
+                .subAgents(creditAgent, failingAgent)
+                .compensateOnError(true)
+                .errorHandler(errorContext -> {
+                    compensatedWhenTheErrorHandlerRuns.set(creditService.compensated);
+                    return ErrorRecoveryResult.result("recovered");
+                })
+                .name("sequenceAgent")
+                .build();
+
+        sequenceAgent.run("test");
+
+        // like any other tool error, the failed tool rolls back the compensable tools of the agentic system right
+        // away, before the error handler decides how the agentic system goes on
+        assertThat(compensatedWhenTheErrorHandlerRuns).isTrue();
+        assertThat(creditService.credited).isTrue();
+        assertThat(creditService.compensated).isTrue();
+        assertThat(compensationLog).containsExactly("credit:100", "uncredit:100");
     }
 
     // ----- Declarative annotation test -----

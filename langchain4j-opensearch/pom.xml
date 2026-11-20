@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-parent</artifactId>
-        <version>1.24.0-beta34-SNAPSHOT</version>
+        <version>1.25.0-beta35-SNAPSHOT</version>
         <relativePath>../langchain4j-parent/pom.xml</relativePath>
     </parent>
 
@@ -13,7 +13,7 @@
     <name>LangChain4j :: Integration :: OpenSearch</name>
 
     <properties>
-        <opensearch-java.version>2.9.0</opensearch-java.version>
+        <opensearch-java.version>2.26.0</opensearch-java.version>
         <opensearch-containers.version>2.1.4</opensearch-containers.version>
         <jsonpath.version>2.10.0</jsonpath.version>
     </properties>
@@ -24,6 +24,11 @@
                 <groupId>commons-codec</groupId>
                 <artifactId>commons-codec</artifactId>
                 <version>1.23.0</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-logging</groupId>
+                <artifactId>commons-logging</artifactId>
+                <version>1.3.5</version>
             </dependency>
             <dependency>
                 <groupId>jakarta.json</groupId>
@@ -45,6 +50,11 @@
                 <artifactId>httpcore5</artifactId>
                 <version>5.4.4</version>
             </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents.core5</groupId>
+                <artifactId>httpcore5-h2</artifactId>
+                <version>5.3.6</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -53,7 +63,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.24.0-SNAPSHOT</version>
+            <version>1.25.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
@@ -100,7 +110,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.24.0-SNAPSHOT</version>
+            <version>1.25.0-SNAPSHOT</version>
             <classifier>tests</classifier>
             <type>test-jar</type>
             <scope>test</scope>

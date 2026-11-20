@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.genai.Client;
+import com.google.genai.gaos.models.decisions.CreateDecisionResponse;
 import com.google.genai.types.HttpOptions;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -383,6 +384,7 @@ class GoogleGenAiDecisionModelTest {
         assertThat(response.metadata()).isInstanceOfSatisfying(GoogleGenAiDecisionResponseMetadata.class, metadata -> {
             assertThat(metadata.blockReason()).isNull();
             assertThat(metadata.blockMessage()).isNull();
+            assertThat(metadata.rawResponse().answers()).isPresent();
         });
         assertThat(response.answers()).containsOnlyKeys("urgent", "team", "frustration");
         assertThat(response.yesNo("urgent").probability()).isEqualTo(0.93);
@@ -408,7 +410,8 @@ class GoogleGenAiDecisionModelTest {
         enqueueJson(answers(
                 "\"q0\": {\"type\": \"noul\", \"noul\": 0.9, \"confidence\": 0.9}",
                 "\"q1\": {\"type\": \"noul\", \"noul\": 0.8, \"confidence\": 0.8}",
-                "\"q2\": {\"type\": \"noul\", \"noul\": 0.1, \"confidence\": 0.9}"));
+                "\"q2\": {\"type\": \"noul\", \"noul\": 0.7, \"confidence\": 0.8}",
+                "\"q3\": {\"type\": \"noul\", \"noul\": 0.1, \"confidence\": 0.9}"));
 
         DecisionRequest request = DecisionRequest.builder()
                 .input("I want my money back.")
@@ -424,6 +427,13 @@ class GoogleGenAiDecisionModelTest {
                                 .text("Is it a complaint?")
                                 .noWhen("Only a question")
                                 .build())
+                .question(
+                        "urgent",
+                        YesNoQuestion.builder()
+                                .text("Is it urgent?")
+                                .yesWhen("Money is not reaching the customer")
+                                .noWhen("Only a question")
+                                .build())
                 .question("spam", YesNoQuestion.from("Is it spam?"))
                 .build();
 
@@ -431,13 +441,21 @@ class GoogleGenAiDecisionModelTest {
 
         JsonNode questions =
                 OBJECT_MAPPER.readTree(recordedRequests.get(0).body()).get("questions");
+        assertThat(questions.get("q0").get("instructions").asText()).isEqualTo("Do they want a refund?");
         assertThat(questions.get("q0").get("criteria").get("true_description").asText())
                 .isEqualTo("They ask for their money back");
         assertThat(questions.get("q0").get("criteria").has("false_description")).isFalse();
+        assertThat(questions.get("q1").get("instructions").asText()).isEqualTo("Is it a complaint?");
         assertThat(questions.get("q1").get("criteria").get("false_description").asText())
                 .isEqualTo("Only a question");
         assertThat(questions.get("q1").get("criteria").has("true_description")).isFalse();
-        assertThat(questions.get("q2").has("criteria")).isFalse();
+        assertThat(questions.get("q2").get("instructions").asText()).isEqualTo("Is it urgent?");
+        assertThat(questions.get("q2").get("criteria").get("true_description").asText())
+                .isEqualTo("Money is not reaching the customer");
+        assertThat(questions.get("q2").get("criteria").get("false_description").asText())
+                .isEqualTo("Only a question");
+        assertThat(questions.get("q3").get("instructions").asText()).isEqualTo("Is it spam?");
+        assertThat(questions.get("q3").has("criteria")).isFalse();
     }
 
     @Test
@@ -572,6 +590,57 @@ class GoogleGenAiDecisionModelTest {
         assertThat(input.get(3).get("type").asText()).isEqualTo("image");
         assertThat(input.get(4).get("text").asText()).isEqualTo("Fourth\n");
         assertThat(input.get(5).get("text").asText()).isEqualTo("Fifth");
+    }
+
+    @Test
+    void should_read_data_url_in_any_case_and_prefer_mime_type_set_on_content() throws Exception {
+        enqueueJson(answers("\"q0\": {\"type\": \"noul\", \"noul\": 0.9, \"confidence\": 0.9}"));
+        DecisionRequest request = DecisionRequest.builder()
+                .inputContents(List.of(
+                        ImageContent.from("DATA:image/webp;BASE64,d2VicA=="),
+                        ImageContent.from(Image.builder()
+                                .url("data:application/octet-stream;base64,aW1n")
+                                .mimeType("image/png")
+                                .build())))
+                .question("ok", YesNoQuestion.from("All good?"))
+                .build();
+
+        model().decide(request);
+
+        JsonNode input = OBJECT_MAPPER.readTree(recordedRequests.get(0).body()).get("input");
+        assertThat(input.get(0).get("data").asText()).isEqualTo("d2VicA==");
+        assertThat(input.get(0).get("mime_type").asText()).isEqualTo("image/webp");
+        assertThat(input.get(1).get("data").asText()).isEqualTo("aW1n");
+        assertThat(input.get(1).get("mime_type").asText()).isEqualTo("image/png");
+    }
+
+    @Test
+    void should_decode_percent_escapes_of_data_url() throws Exception {
+        enqueueJson(answers("\"q0\": {\"type\": \"noul\", \"noul\": 0.9, \"confidence\": 0.9}"));
+        DecisionRequest request = DecisionRequest.builder()
+                .inputContents(List.of(ImageContent.from("data:image/png;base64,aW1hZ2U%3D")))
+                .question("ok", YesNoQuestion.from("All good?"))
+                .build();
+
+        model().decide(request);
+
+        JsonNode input = OBJECT_MAPPER.readTree(recordedRequests.get(0).body()).get("input");
+        assertThat(input.get(0).get("data").asText()).isEqualTo("aW1hZ2U=");
+        assertThat(input.get(0).get("mime_type").asText()).isEqualTo("image/png");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"data:image/png", "data:text/plain,hello", "data:image/png;charset=utf-8,aW1n"})
+    void should_reject_data_url_that_is_not_base64_without_calling_the_api(String dataUrl) {
+        DecisionRequest request = DecisionRequest.builder()
+                .inputContents(List.of(ImageContent.from(dataUrl)))
+                .question("ok", YesNoQuestion.from("All good?"))
+                .build();
+
+        assertThatThrownBy(() -> model().decide(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The data URL of the image is not valid, expected data:<MIME type>;base64,<data>");
+        assertThat(recordedRequests).isEmpty();
     }
 
     @Test
@@ -897,11 +966,14 @@ class GoogleGenAiDecisionModelTest {
         assertThat(response.tokenUsage()).isNotNull();
         assertThat(response.tokenUsage().inputTokenCount()).isEqualTo(12);
         assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(12);
+        CreateDecisionResponse rawResponse = ((GoogleGenAiDecisionResponseMetadata) response.metadata()).rawResponse();
+        assertThat(rawResponse.promptFeedback()).isPresent();
         GoogleGenAiDecisionResponseMetadata expectedMetadata = GoogleGenAiDecisionResponseMetadata.builder()
                 .modelName(MODEL_NAME)
                 .tokenUsage(response.tokenUsage())
                 .blockReason("safety")
                 .blockMessage("The input was blocked.")
+                .rawResponse(rawResponse)
                 .build();
         assertThat(response.metadata()).isEqualTo(expectedMetadata);
         assertThat(asyncResponse.metadata()).isEqualTo(expectedMetadata);
@@ -937,6 +1009,8 @@ class GoogleGenAiDecisionModelTest {
                 .build();
         assertThat(response.metadata()).isEqualTo(expectedMetadata);
         assertThat(asyncResponse.metadata()).isEqualTo(expectedMetadata);
+        assertThat(((GoogleGenAiDecisionResponseMetadata) response.metadata()).rawResponse())
+                .isNull();
         assertThat(observed).containsExactly(response, asyncResponse);
         assertThat(recordedRequests).hasSize(2);
     }

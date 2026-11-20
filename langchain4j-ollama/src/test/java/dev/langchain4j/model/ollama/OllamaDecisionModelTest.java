@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.InternalServerException;
@@ -47,6 +48,7 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -950,6 +952,66 @@ class OllamaDecisionModelTest {
 
     private static String answers(String... answers) {
         return "{\"model\": \"nimble\", \"answers\": {" + String.join(", ", answers) + "}}";
+    }
+
+    @Test
+    void should_reject_audio_and_pdf_in_conversation_without_calling_the_api() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        OllamaDecisionModel model = model(httpClient);
+
+        List.of(AudioContent.from("YXVkaW8=", "audio/wav"), PdfFileContent.from("JVBERi0=", "application/pdf"))
+                .forEach(content -> {
+                    DecisionRequest request = DecisionRequest.builder()
+                            .inputMessages(UserMessage.from(TextContent.from("See attached."), content))
+                            .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                            .build();
+
+                    // when-then
+                    assertThatThrownBy(() -> model.decide(request))
+                            .isInstanceOf(UnsupportedFeatureException.class)
+                            .hasMessage("The Ollama decision model supports only text and images in a conversation, but it "
+                                    + "contains " + content.type());
+                    assertThat(model.decideAsync(request))
+                            .failsWithin(Duration.ZERO)
+                            .withThrowableOfType(ExecutionException.class)
+                            .withCauseInstanceOf(UnsupportedFeatureException.class);
+                });
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void do_decide_async_should_return_failed_future_instead_of_throwing() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        OllamaDecisionModel model = model(httpClient);
+        // doDecideAsync is called directly, so the model name of the builder is not applied
+        DecisionRequest withoutModelName = DecisionRequest.builder()
+                .input("Hi")
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                .build();
+        DecisionRequest withCustomInput = DecisionRequest.builder()
+                .input(() -> DecisionInputType.TEXT)
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                .parameters(DecisionRequestParameters.builder().modelName("nimble").build())
+                .build();
+
+        // when
+        CompletableFuture<DecisionResponse> missingModelName = model.doDecideAsync(withoutModelName);
+        CompletableFuture<DecisionResponse> customInput = model.doDecideAsync(withCustomInput);
+
+        // then
+        assertThat(missingModelName)
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseExactlyInstanceOf(IllegalArgumentException.class);
+        assertThat(customInput)
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(UnsupportedFeatureException.class);
+        assertThat(httpClient.requests()).isEmpty();
     }
 
     private static OllamaDecisionModel model(MockHttpClient httpClient) {

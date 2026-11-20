@@ -85,7 +85,7 @@ information the callback-based `TokenStream` gives you:
 | `BeforeToolExecutionEvent`, `AfterToolExecutionEvent` | a tool about to run, and its result |
 | `IntermediateResponseEvent` | the response that closed one tool-calling round |
 | `RetrievedContentsEvent` | content retrieved by RAG |
-| `ToolCompensatedEvent` | a completed tool was compensated after the interaction was cancelled or failed |
+| `ToolCompensatedEvent` | a completed tool was compensated (rolled back), because another tool call failed (see [Compensating Tool Actions](/tutorials/tools#compensating-tool-actions)); `compensationError()` returns the error when the rollback failed. A rollback after a cancellation is not in the stream, because nothing is delivered after a cancel: register a `ToolCompensatedEventListener` for it (see [Observability](/tutorials/observability)) |
 | `RawEvent` | a provider-specific event LangChain4j does not map |
 | `FinalResponseEvent` | the final answer |
 
@@ -193,6 +193,9 @@ own bounded `Executor` (see below) if that matters to you.
 
 This applies to `@Tool`-annotated methods. A hand-written `ToolExecutor` that does not override `executeAsync`
 fails loudly with an `AsyncNotSupportedException` instead, like any other component that has not opted in.
+Compensating actions (see [Compensating Tool Actions](/tutorials/tools#compensating-tool-actions)) are not offloaded:
+they run on the thread that starts the rollback, so a compensating action that blocks should do its work on its own
+executor and return a `CompletableFuture`.
 
 Tools run **concurrently** by default in the asynchronous and reactive modes. To run them one at a time, pass a
 single-threaded executor:
@@ -247,6 +250,8 @@ See [Error Handling](/tutorials/tools#error-handling) for what those handlers ca
 Because tools always run on an `Executor` in these modes, several tool calls in one LLM response run at the same
 time. If your tools are not safe to run concurrently, pass a single-threaded executor:
 `executeToolsConcurrently(Executors.newSingleThreadExecutor())`.
+If the executor rejects a tool call, the other tool calls of the response still run, and the invocation fails once
+all of them have finished (see [Executing Tools Concurrently](/tutorials/tools#executing-tools-concurrently)).
 
 ### Event ordering
 
@@ -443,7 +448,7 @@ LangChain4j then runs offloaded work on the application's task executor, whose p
 `spring.task.execution.*`. It is off by default because the setting is process-wide, not scoped to one application
 context.
 
-Starting with version 1.23.0-beta33 of the Spring Boot starters, the caller's context is captured as well (see
+Starting with version 1.24.0-beta34 of the Spring Boot starters, the caller's context is captured as well (see
 [above](#controlling-the-executor-and-propagating-context)), so that tracing spans, MDC and security context follow
 the work LangChain4j offloads:
 
