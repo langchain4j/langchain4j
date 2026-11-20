@@ -10,6 +10,7 @@ import com.openai.client.okhttp.OpenAIOkHttpClientAsync;
 import com.openai.credential.Credential;
 import dev.langchain4j.model.ModelProvider;
 import java.net.Proxy;
+import java.net.URI;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
@@ -29,6 +30,8 @@ public class OpenAiOfficialSetup {
     static final String GITHUB_MODELS_URL = "https://models.github.ai/inference";
     static final String GITHUB_TOKEN = "GITHUB_TOKEN";
     static final String DEFAULT_USER_AGENT = "langchain4j-openai-official";
+
+    private static final String UNUSED_API_KEY = "unused";
 
     private static final Logger logger = LoggerFactory.getLogger(OpenAiOfficialSetup.class);
 
@@ -69,11 +72,14 @@ public class OpenAiOfficialSetup {
             builder.credential(credential);
         } else if (calculatedApiKey != null) {
             builder.apiKey(calculatedApiKey);
+        } else if (credential != null) {
+            builder.credential(credential);
+        } else if (isLocalOpenAiCompatibleEndpointWithoutAuthentication(baseUrl, modelProvider)) {
+            // The OpenAI SDK requires a credential even when a compatible endpoint does not use authentication.
+            builder.apiKey(UNUSED_API_KEY);
+            builder.removeHeaders("Authorization");
         } else {
-            if (credential != null) {
-                builder.credential(credential);
-            } else if (modelProvider == ModelProvider.MICROSOFT_FOUNDRY
-                    || modelProvider == ModelProvider.AZURE_OPEN_AI) {
+            if (modelProvider == ModelProvider.MICROSOFT_FOUNDRY || modelProvider == ModelProvider.AZURE_OPEN_AI) {
                 // If no API key is provided for Microsoft Foundry, we try to use passwordless
                 // authentication
                 builder.credential(azureAuthentication());
@@ -138,11 +144,14 @@ public class OpenAiOfficialSetup {
             builder.credential(credential);
         } else if (calculatedApiKey != null) {
             builder.apiKey(calculatedApiKey);
+        } else if (credential != null) {
+            builder.credential(credential);
+        } else if (isLocalOpenAiCompatibleEndpointWithoutAuthentication(baseUrl, modelProvider)) {
+            // The OpenAI SDK requires a credential even when a compatible endpoint does not use authentication.
+            builder.apiKey(UNUSED_API_KEY);
+            builder.removeHeaders("Authorization");
         } else {
-            if (credential != null) {
-                builder.credential(credential);
-            } else if (modelProvider == ModelProvider.MICROSOFT_FOUNDRY
-                    || modelProvider == ModelProvider.AZURE_OPEN_AI) {
+            if (modelProvider == ModelProvider.MICROSOFT_FOUNDRY || modelProvider == ModelProvider.AZURE_OPEN_AI) {
                 // If no API key is provided for Microsoft Foundry, we try to use passwordless
                 // authentication
                 builder.credential(azureAuthentication());
@@ -251,6 +260,39 @@ public class OpenAiOfficialSetup {
         } else {
             throw new IllegalArgumentException("Unknown model provider: " + modelProvider);
         }
+    }
+
+    private static boolean isLocalOpenAiCompatibleEndpointWithoutAuthentication(
+            String baseUrl, ModelProvider modelProvider) {
+        if (modelProvider != ModelProvider.OPEN_AI || baseUrl == null || baseUrl.isBlank()) {
+            return false;
+        }
+        try {
+            String host = URI.create(baseUrl).getHost();
+            return host != null
+                    && (host.equalsIgnoreCase("localhost")
+                            || isIpv4LoopbackAddress(host)
+                            || host.equals("::1")
+                            || host.equals("0:0:0:0:0:0:0:1"));
+        } catch (IllegalArgumentException ignored) {
+            return false;
+        }
+    }
+
+    private static boolean isIpv4LoopbackAddress(String host) {
+        String[] octets = host.split("\\.", -1);
+        if (octets.length != 4 || !octets[0].equals("127")) {
+            return false;
+        }
+        for (String octet : octets) {
+            if (octet.isEmpty()
+                    || octet.length() > 3
+                    || !octet.chars().allMatch(Character::isDigit)
+                    || Integer.parseInt(octet) > 255) {
+                return false;
+            }
+        }
+        return true;
     }
 
     static Credential azureAuthentication() {
