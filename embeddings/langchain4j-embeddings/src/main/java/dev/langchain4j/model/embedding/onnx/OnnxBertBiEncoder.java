@@ -4,7 +4,6 @@ import static ai.onnxruntime.OnnxTensor.createTensor;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.nio.LongBuffer.wrap;
-import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toList;
 
 import ai.djl.huggingface.tokenizers.Encoding;
@@ -35,7 +34,8 @@ public class OnnxBertBiEncoder {
             this.environment = OrtEnvironment.getEnvironment();
             this.session = environment.createSession(pathToModel.toString());
             this.expectedInputs = session.getInputNames();
-            this.tokenizer = HuggingFaceTokenizer.newInstance(pathToTokenizer, singletonMap("padding", "false"));
+            this.tokenizer = HuggingFaceTokenizer.newInstance(
+                    pathToTokenizer, Map.of("padding", "false", "truncation", "false"));
             this.poolingMode = ensureNotNull(poolingMode, "poolingMode");
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -47,7 +47,8 @@ public class OnnxBertBiEncoder {
             this.environment = OrtEnvironment.getEnvironment();
             this.session = environment.createSession(loadModel(model));
             this.expectedInputs = session.getInputNames();
-            this.tokenizer = HuggingFaceTokenizer.newInstance(tokenizer, singletonMap("padding", "false"));
+            this.tokenizer =
+                    HuggingFaceTokenizer.newInstance(tokenizer, Map.of("padding", "false", "truncation", "false"));
             this.poolingMode = ensureNotNull(poolingMode, "poolingMode");
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -60,7 +61,8 @@ public class OnnxBertBiEncoder {
             this.environment = environment;
             this.session = session;
             this.expectedInputs = session.getInputNames();
-            this.tokenizer = HuggingFaceTokenizer.newInstance(tokenizer, singletonMap("padding", "false"));
+            this.tokenizer =
+                    HuggingFaceTokenizer.newInstance(tokenizer, Map.of("padding", "false", "truncation", "false"));
             this.poolingMode = ensureNotNull(poolingMode, "poolingMode");
         } catch (Exception e) {
             throw new RuntimeException(e);

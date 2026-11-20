@@ -124,6 +124,18 @@ class OnnxEmbeddingModelIT {
     }
 
     @Test
+    void should_embed_content_beyond_the_tokenizer_sequence_limit() {
+        String sharedPrefix = repeat("hello ", 512);
+
+        Embedding first = model.embed(sharedPrefix + repeat("hello ", 10)).content();
+        Embedding second = model.embed(sharedPrefix + repeat("world ", 10)).content();
+
+        assertThat(first.vector()).isNotEqualTo(second.vector());
+        assertThat(magnitudeOf(first)).isCloseTo(1, withPercentage(0.01));
+        assertThat(magnitudeOf(second)).isCloseTo(1, withPercentage(0.01));
+    }
+
+    @Test
     void should_produce_normalized_vectors() {
 
         String oneToken = "hello ";
