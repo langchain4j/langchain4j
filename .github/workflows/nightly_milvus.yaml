@@ -45,7 +45,8 @@ jobs:
           ## compile and install the Milvus modules and their dependencies, so that the step below only tests the Milvus modules
           ## retried once after 2 minutes, as a transient Maven Central failure would otherwise skip all tests of this job;
           ## the retry clears MAVEN_ARGS (where setup-java puts -ntp), so that its log shows every download from Maven Central
-          mvn -B -U -T8C -pl langchain4j-milvus,langchain4j-milvus-v2,langchain4j-hibernate-milvus -am -DskipTests -DskipITs -DembeddingsSkipCache install || { sleep 120; MAVEN_ARGS= mvn -B -U -T8C -pl langchain4j-milvus,langchain4j-milvus-v2,langchain4j-hibernate-milvus -am -DskipTests -DskipITs -DembeddingsSkipCache install; }
+          ## before the wait, it logs what Maven Central answers for the files that failed to resolve and what the local Maven repository holds
+          mvn -B -U -T8C -pl langchain4j-milvus,langchain4j-milvus-v2,langchain4j-hibernate-milvus -am -DskipTests -DskipITs -DembeddingsSkipCache install || { bash .github/scripts/maven-central-diagnostics.sh || true; sleep 120; MAVEN_ARGS= mvn -B -U -T8C -pl langchain4j-milvus,langchain4j-milvus-v2,langchain4j-hibernate-milvus -am -DskipTests -DskipITs -DembeddingsSkipCache install; }
 
       - name: Test Milvus modules with JDK 17
         run: |
