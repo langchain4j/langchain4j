@@ -92,7 +92,8 @@ public non-sealed class OutputGuardrailExecutor
                 result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
 
                 var exchange = accumulatedRequest.chatExecutor().exchange(chatMessages);
-                repromptTokenUsage = TokenUsage.sum(repromptTokenUsage, exchange.response().tokenUsage());
+                repromptTokenUsage =
+                        TokenUsage.sum(repromptTokenUsage, exchange.response().tokenUsage());
                 accumulatedRequest = OutputGuardrailRequest.builder()
                         .responseFromLLM(exchange.response())
                         .chatExecutor(accumulatedRequest.chatExecutor())
@@ -276,8 +277,8 @@ public non-sealed class OutputGuardrailExecutor
         ChatResponse validatedResponse = validatedRequest.responseFromLLM();
         return result.withValidatedResponse(validatedResponse.toBuilder()
                 .metadata(validatedResponse.metadata().toBuilder()
-                        .tokenUsage(TokenUsage.sum(
-                                originalRequest.responseFromLLM().tokenUsage(), repromptTokenUsage))
+                        .tokenUsage(
+                                TokenUsage.sum(originalRequest.responseFromLLM().tokenUsage(), repromptTokenUsage))
                         .build())
                 .build());
     }
