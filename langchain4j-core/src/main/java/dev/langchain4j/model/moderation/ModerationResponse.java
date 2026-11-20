@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import java.util.Map;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents a moderation response.
@@ -14,9 +15,13 @@ public class ModerationResponse {
     private final Moderation moderation;
     private final Map<String, Object> metadata;
 
+    @Nullable
+    private final ModerationResponseMetadata typedMetadata;
+
     private ModerationResponse(Builder builder) {
         this.moderation = ensureNotNull(builder.moderation, "moderation");
         this.metadata = copy(builder.metadata);
+        this.typedMetadata = builder.typedMetadata;
     }
 
     /**
@@ -37,6 +42,16 @@ public class ModerationResponse {
         return metadata;
     }
 
+    /**
+     * Returns typed provider-specific metadata.
+     *
+     * @return the typed metadata, or {@code null} if unavailable.
+     */
+    @Nullable
+    public ModerationResponseMetadata typedMetadata() {
+        return typedMetadata;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -52,7 +67,11 @@ public class ModerationResponse {
 
     @Override
     public String toString() {
-        return "ModerationResponse{" + "moderation=" + moderation + ", metadata=" + metadata + '}';
+        return "ModerationResponse{"
+                + "moderation=" + moderation
+                + ", metadata=" + metadata
+                + ", typedMetadata=" + typedMetadata
+                + '}';
     }
 
     /**
@@ -80,13 +99,19 @@ public class ModerationResponse {
     public static class Builder {
 
         private Moderation moderation;
+
+        @Nullable
         private Map<String, Object> metadata;
+
+        @Nullable
+        private ModerationResponseMetadata typedMetadata;
 
         private Builder() {}
 
         private Builder(ModerationResponse response) {
             this.moderation = response.moderation;
             this.metadata = response.metadata;
+            this.typedMetadata = response.typedMetadata;
         }
 
         /**
@@ -103,11 +128,22 @@ public class ModerationResponse {
         /**
          * Sets the metadata.
          *
-         * @param metadata the metadata.
+         * @param metadata the metadata, or {@code null} if unavailable.
          * @return this builder.
          */
-        public Builder metadata(Map<String, Object> metadata) {
+        public Builder metadata(@Nullable Map<String, Object> metadata) {
             this.metadata = metadata;
+            return this;
+        }
+
+        /**
+         * Sets typed provider-specific metadata.
+         *
+         * @param typedMetadata the typed metadata, or {@code null} if unavailable.
+         * @return this builder.
+         */
+        public Builder typedMetadata(@Nullable ModerationResponseMetadata typedMetadata) {
+            this.typedMetadata = typedMetadata;
             return this;
         }
 
