@@ -3,6 +3,7 @@ package dev.langchain4j.mcp.client.transport.http;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.HttpException;
@@ -969,6 +970,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private HttpClient httpClient;
         private Executor executor;
         private String url;
+        private String name;
         private McpHeadersSupplier customHeadersSupplier;
         private Duration timeout;
         private boolean logRequests = false;
@@ -1038,6 +1040,40 @@ public class StreamableHttpMcpTransport implements McpTransport {
         public StreamableHttpMcpTransport.Builder url(String url) {
             this.url = url;
             return this;
+        }
+
+        /**
+         * The URL of the MCP server that was set with {@link #url(String)}, or {@code null} if none was set yet.
+         * A {@link StreamableHttpMcpTransportListener} uses this to find out where the transport is going to connect.
+         *
+         * @since 1.25.0
+         */
+        public String getUrl() {
+            return url;
+        }
+
+        /**
+         * An optional name that tells this transport apart from the others of the application, for example
+         * the {@code key} of the MCP client that uses it. The transport itself does not use the name and never
+         * sends it to the server: it is there for a {@link StreamableHttpMcpTransportListener}, which reads it
+         * with {@link #getName()} to know which transport is being built.
+         *
+         * @param name the name of the transport, may be {@code null}
+         * @return this builder
+         * @since 1.25.0
+         */
+        public StreamableHttpMcpTransport.Builder name(String name) {
+            this.name = name;
+            return this;
+        }
+
+        /**
+         * The name that was set with {@link #name(String)}, or {@code null} if none was set.
+         *
+         * @since 1.25.0
+         */
+        public String getName() {
+            return name;
         }
 
         /**
@@ -1192,7 +1228,15 @@ public class StreamableHttpMcpTransport implements McpTransport {
             return this;
         }
 
+        /**
+         * Creates the transport, after every {@link StreamableHttpMcpTransportListener} was notified
+         * and had the chance to adjust this builder.
+         */
         public StreamableHttpMcpTransport build() {
+            for (StreamableHttpMcpTransportListener listener :
+                    loadFactories(StreamableHttpMcpTransportListener.class)) {
+                listener.onNewTransport(this);
+            }
             return new StreamableHttpMcpTransport(this);
         }
     }
