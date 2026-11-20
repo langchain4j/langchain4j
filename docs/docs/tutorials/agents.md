@@ -4380,6 +4380,35 @@ the agent's resolution timeout. A successful card is cached; this does not refre
 invocation. A `null` supplier, or a supplier/method returning `null` or an empty map, adds no headers. These headers
 apply only to card discovery; configure authentication for A2A messages separately through `clientCustomizer`.
 
+### Configuring every A2A client
+
+To apply the same configuration to all the A2A client agents of an application, including declarative ones, implement
+`A2AClientConfigurer` and register it with the `ServiceLoader`, in
+`META-INF/services/dev.langchain4j.agentic.a2a.A2AClientConfigurer`. This lets a framework, for example, add
+credentials to the card request and to the A2A messages of every agent:
+
+```java
+public class AuthenticatingConfigurer implements A2AClientConfigurer {
+
+    private final TokenSource tokens = TokenSource.create(); // your application's tokens
+
+    @Override
+    public Map<String, String> agentCardHeaders(String a2aServerUrl) {
+        return Map.of("Authorization", "Bearer " + tokens.tokenFor(a2aServerUrl));
+    }
+
+    @Override
+    public void customize(String a2aServerUrl, AgentCard agentCard, ClientBuilder clientBuilder) {
+        clientBuilder.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder()
+                .addInterceptor(new BearerTokenInterceptor(tokens, agentCard.name())));
+    }
+}
+```
+
+`agentCardHeaders` is called each time the card is fetched; the agent's own `agentCardHeaders` take precedence over
+it. `customize` receives the agent's Agent Card, so credentials can be chosen per agent. It runs before the agent's own client customizer, so a customizer that configures the same transport
+replaces what the configurer set.
+
 ### Streaming A2A Client Listener
 
 When invoking a remote A2A agent with streaming enabled, you can use `A2AStreamingClientListener` to observe events received from the remote agent and control when the client should stop consuming the stream.
