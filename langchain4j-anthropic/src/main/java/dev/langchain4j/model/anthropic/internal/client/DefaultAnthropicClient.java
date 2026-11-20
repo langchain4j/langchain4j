@@ -473,6 +473,12 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 String blockType = data.contentBlock.type;
                 contentBlockTypes.put(data.index, blockType);
 
+                if (!CONTENT_BLOCK_TEXT.equals(blockType)) {
+                    // adjacent text blocks are parts of the same text (e.g. split around a citation);
+                    // only another block in between ends the current paragraph
+                    completeTextParagraph();
+                }
+
                 if (CONTENT_BLOCK_TEXT.equals(blockType)) {
                     String text = data.contentBlock.text;
                     if (isNotNullOrEmpty(text)) {
@@ -561,10 +567,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
             private void handleContentBlockStop(AnthropicStreamingData data, StreamingHandle streamingHandle) {
                 String blockType = contentBlockTypes.remove(data.index);
 
-                if (CONTENT_BLOCK_TEXT.equals(blockType)) {
-                    contents.add(contentBuilder.toString());
-                    contentBuilder.setLength(0);
-                } else if (CONTENT_BLOCK_THINKING.equals(blockType) && options.returnThinking()) {
+                // a text block is not completed here: a directly following text block continues its paragraph
+                if (CONTENT_BLOCK_THINKING.equals(blockType) && options.returnThinking()) {
                     thinkings.add(thinkingBuilder.toString());
                     thinkingBuilder.setLength(0);
                 } else if (CONTENT_BLOCK_TOOL_USE.equals(blockType)) {
@@ -604,7 +608,16 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 onCompleteResponse(handler, completeResponse);
             }
 
+            private void completeTextParagraph() {
+                if (contentBuilder.length() > 0) {
+                    contents.add(contentBuilder.toString());
+                    contentBuilder.setLength(0);
+                }
+            }
+
             private ChatResponse build() {
+
+                completeTextParagraph();
 
                 String text =
                         contents.stream().filter(content -> !content.isEmpty()).collect(joining("\n"));

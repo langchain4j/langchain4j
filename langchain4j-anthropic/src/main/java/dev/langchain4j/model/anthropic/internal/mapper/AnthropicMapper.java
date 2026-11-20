@@ -342,13 +342,40 @@ public class AnthropicMapper {
         return toAiMessage(contents, returnThinking, false);
     }
 
+    /**
+     * Joins the text blocks of a response into one text.
+     * <p>
+     * Adjacent text blocks are parts of the same text: Claude splits its answer into several text blocks when it
+     * cites sources (for example with the web search tool), often in the middle of a sentence. They are therefore
+     * concatenated as they are, which is also what streaming delivers via {@code onPartialResponse}. Text blocks that
+     * are separated by another block (for example a server tool call and its result) are joined with a new line.
+     *
+     * @param contents the content blocks of a response
+     * @return the joined text, or an empty string if there is no text
+     */
+    private static String joinTextBlocks(List<AnthropicContent> contents) {
+        List<String> paragraphs = new ArrayList<>();
+        StringBuilder paragraph = new StringBuilder();
+        for (AnthropicContent content : contents) {
+            if ("text".equals(content.type)) {
+                if (content.text != null) {
+                    paragraph.append(content.text);
+                }
+            } else if (!paragraph.isEmpty()) {
+                paragraphs.add(paragraph.toString());
+                paragraph.setLength(0);
+            }
+        }
+        if (!paragraph.isEmpty()) {
+            paragraphs.add(paragraph.toString());
+        }
+        return String.join("\n", paragraphs);
+    }
+
     public static AiMessage toAiMessage(
             List<AnthropicContent> contents, boolean returnThinking, boolean returnServerToolResults) {
 
-        String text = contents.stream()
-                .filter(content -> "text".equals(content.type))
-                .map(content -> content.text)
-                .collect(joining("\n"));
+        String text = joinTextBlocks(contents);
 
         String thinking = null;
         Map<String, Object> attributes = new HashMap<>();

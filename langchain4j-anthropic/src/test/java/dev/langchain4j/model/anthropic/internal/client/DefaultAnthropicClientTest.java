@@ -439,6 +439,62 @@ class DefaultAnthropicClientTest {
         }
 
         @Test
+        void shouldJoinAdjacentTextBlocksWithoutSeparator() throws Exception {
+            // Given: Claude splits a sentence into several text blocks around citations
+            List<ServerSentEvent> events = new ArrayList<>();
+            events.add(createMessageStartEvent());
+            events.addAll(textBlock(0, "Based on the search results, "));
+            events.addAll(textBlock(1, "Claude Shannon was born on April 30, 1916"));
+            events.addAll(textBlock(2, " and died on February 24, 2001."));
+            events.add(createMessageDeltaEvent());
+            events.add(createMessageStopEvent());
+
+            StringBuilder partialResponses = new StringBuilder();
+
+            // When
+            ChatResponse response = stream(events, partialResponses);
+
+            // Then
+            assertThat(response.aiMessage().text())
+                    .isEqualTo("Based on the search results, Claude Shannon was born on April 30, 1916"
+                            + " and died on February 24, 2001.")
+                    .isEqualTo(partialResponses.toString());
+        }
+
+        @Test
+        void shouldSeparateTextBlocksThatAreSeparatedByAnotherBlock() throws Exception {
+            // Given: text, a server tool call and its result, then text split around a citation
+            List<ServerSentEvent> events = new ArrayList<>();
+            events.add(createMessageStartEvent());
+            events.addAll(textBlock(0, "I'll search for that."));
+            events.add(
+                    new ServerSentEvent(
+                            "content_block_start",
+                            "{\"type\":\"content_block_start\",\"index\":1,\"content_block\":{\"type\":\"server_tool_use\",\"id\":\"srvtoolu_1\",\"name\":\"web_search\",\"input\":{}}}"));
+            events.add(
+                    new ServerSentEvent(
+                            "content_block_delta",
+                            "{\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"query\\\": \\\"Claude Shannon\\\"}\"}}"));
+            events.add(new ServerSentEvent("content_block_stop", "{\"type\":\"content_block_stop\",\"index\":1}"));
+            events.add(
+                    new ServerSentEvent(
+                            "content_block_start",
+                            "{\"type\":\"content_block_start\",\"index\":2,\"content_block\":{\"type\":\"web_search_tool_result\",\"tool_use_id\":\"srvtoolu_1\",\"content\":[]}}"));
+            events.add(new ServerSentEvent("content_block_stop", "{\"type\":\"content_block_stop\",\"index\":2}"));
+            events.addAll(textBlock(3, "Claude Shannon was born in 1916"));
+            events.addAll(textBlock(4, " in Petoskey, Michigan."));
+            events.add(createMessageDeltaEvent());
+            events.add(createMessageStopEvent());
+
+            // When
+            ChatResponse response = stream(events, new StringBuilder());
+
+            // Then
+            assertThat(response.aiMessage().text())
+                    .isEqualTo("I'll search for that.\nClaude Shannon was born in 1916 in Petoskey, Michigan.");
+        }
+
+        @Test
         void shouldForwardOnlyRawEventsNotExposedViaTypedCallbacks() throws Exception {
             // Given
             ServerSentEvent messageStart = createMessageStartEvent();
@@ -811,6 +867,41 @@ class DefaultAnthropicClientTest {
                 .stopSequence(null)
                 .usage(createUsage())
                 .build();
+    }
+
+    private static List<ServerSentEvent> textBlock(int index, String text) {
+        return List.of(
+                new ServerSentEvent(
+                        "content_block_start",
+                        "{\"type\":\"content_block_start\",\"index\":" + index
+                                + ",\"content_block\":{\"type\":\"text\",\"text\":\"\"}}"),
+                new ServerSentEvent(
+                        "content_block_delta",
+                        "{\"type\":\"content_block_delta\",\"index\":" + index
+                                + ",\"delta\":{\"type\":\"text_delta\",\"text\":\"" + text + "\"}}"),
+                new ServerSentEvent("content_block_stop", "{\"type\":\"content_block_stop\",\"index\":" + index + "}"));
+    }
+
+    private static ChatResponse stream(List<ServerSentEvent> events, StringBuilder partialResponses) throws Exception {
+        DefaultAnthropicClient subject = createClient(MockHttpClient.thatAlwaysResponds(events));
+        CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
+        subject.createMessage(createMessageRequest(), new StreamingChatResponseHandler() {
+            @Override
+            public void onPartialResponse(String partialResponse) {
+                partialResponses.append(partialResponse);
+            }
+
+            @Override
+            public void onCompleteResponse(ChatResponse completeResponse) {
+                futureResponse.complete(completeResponse);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                futureResponse.completeExceptionally(error);
+            }
+        });
+        return futureResponse.get(5, TimeUnit.SECONDS);
     }
 
     private static ServerSentEvent createMessageStartEvent() {
