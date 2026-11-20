@@ -164,7 +164,11 @@ public class HttpRequest {
         }
 
         public Builder headers(Map<String, List<String>> headers) {
-            this.headers = headers;
+            if (headers == null) {
+                this.headers = null;
+            } else {
+                this.headers = new LinkedHashMap<>(headers);
+            }
             return this;
         }
 
