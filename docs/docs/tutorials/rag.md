@@ -492,6 +492,8 @@ while `DocumentBySentenceSplitter` uses the OpenNLP library's sentence detector 
 a document into sentences, and so on.
 4. The `DocumentSplitter` then combines these smaller units (paragraphs, sentences, words, etc.) into `TextSegment`s,
 attempting to include as many units as possible in a single `TextSegment` without exceeding the limit set in step 1.
+If the overlap from the previous segment prevents the next unit from fitting, the splitter starts a fresh
+segment with that unit when it fits on its own.
 If some of the units are still too large to fit into a `TextSegment`, it calls a sub-splitter.
 This is another `DocumentSplitter` capable of splitting units that do not fit into more granular units.
 All `Metadata` entries are copied from the `Document` to each `TextSegment`.
