@@ -34,6 +34,13 @@ From 15.2 Infinispan Server and above, metadata filtering is supported.
 - `InfinispanEmbeddingStore`
 - `InfinispanChatMemoryStore`
 
+Both classes also implement the non-blocking methods of their interfaces: `searchAsync` on
+`InfinispanEmbeddingStore`, and `getMessagesAsync`, `updateMessagesAsync` and `deleteMessagesAsync` on
+`InfinispanChatMemoryStore`. They use the asynchronous API of the Infinispan Hot Rod client, so you can use them
+in asynchronous and reactive AI Services and RAG without blocking a thread.
+The returned futures complete on the I/O threads of the Hot Rod client, so do not block in code that you chain to them.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+
 ### InfinispanChatMemoryStore
 
 A `ChatMemoryStore` backed by an Infinispan cache. Messages are serialized to JSON

@@ -414,10 +414,10 @@ interaction fails the call the same way. In practice that means:
 
 | Component | What it must implement | Bundled implementations |
 |---|---|---|
-| Chat memory | `addAsync` / `messagesAsync` / `setAsync` | `MessageWindowChatMemory` and `InMemoryChatMemoryStore` already do |
+| Chat memory | `addAsync` / `messagesAsync` / `setAsync` | `MessageWindowChatMemory`, `InMemoryChatMemoryStore` and `InfinispanChatMemoryStore` already do |
 | Guardrails | `validateAsync` | none — a guardrail you write must override it, even if it does no I/O |
 | Content retriever, query router, aggregator | `retrieveAsync`, `routeAsync`, `aggregateAsync` | opt into offloading instead with `offloadBlocking(true)` |
-| Embedding store | `searchAsync` | as above, via the retriever's `offloadBlocking(true)` |
+| Embedding store | `searchAsync` | `InMemoryEmbeddingStore` and `InfinispanEmbeddingStore` already do; for other stores, use the retriever's `offloadBlocking(true)` |
 | Custom `ToolExecutor` | `executeAsync` | `@Tool`-annotated methods are offloaded for you |
 | Chat model router ([`RoutingChatModel`](/tutorials/model-routing)) | `routeAsync` | `DecisionModelChatModelRouter` does, if its decision model supports `decideAsync` |
 
