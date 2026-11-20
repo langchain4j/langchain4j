@@ -1,9 +1,10 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.internal.CompletableFutureUtils.startSafely;
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.allConcreteMethods;
@@ -1374,6 +1375,7 @@ public class ToolService {
                             memoryMessages -> resolveMessagesForNextRequest(memoryMessages, context, invocationContext))
                     .exceptionallyCompose(ToolService::translateBlockingChatMemory);
         } catch (Throwable t) {
+            restoreInterruptIfInterrupted(t);
             return translateBlockingChatMemory(t);
         }
     }
@@ -1751,7 +1753,8 @@ public class ToolService {
 
         CompletableFuture<Void> compensated = CompletableFuture.completedFuture(null);
         if (compensateOnToolErrors) {
-            try {
+            compensated = failOnThrow(() -> {
+                CompletableFuture<Void> rollback = CompletableFuture.completedFuture(null);
                 List<CompensableToolExecution> toCompensate = List.of();
                 Optional<FailedStep> failedStep;
                 synchronized (compensableExecutions) {
@@ -1767,7 +1770,7 @@ public class ToolService {
                     String failedToolName = failedStep.map(FailedStep::toolName).orElse(null);
                     CompensationReason reason =
                             failedStep.map(FailedStep::reason).orElse(CompensationReason.TOOL_EXECUTION_FAILED);
-                    compensated = compensateToolsActions(toCompensate, invocationContext)
+                    rollback = compensateToolsActions(toCompensate, invocationContext)
                             .thenCompose(rolledBack -> {
                                 if (invocationError != null) {
                                     addCompensationErrorsAsSuppressed(rolledBack, invocationError);
@@ -1785,9 +1788,8 @@ public class ToolService {
                                                 streamEventEmitter));
                             });
                 }
-            } catch (RuntimeException e) {
-                compensated = CompletableFuture.failedFuture(e);
-            }
+                return rollback;
+            });
         }
         return compensated;
     }
@@ -1959,21 +1961,19 @@ public class ToolService {
             InvocationContext invocationContext,
             AiServiceListenerRegistrar listenerRegistrar) {
 
-        List<CompensableToolExecution> toCompensate;
-        try {
-            toCompensate = takeCompensableOnCancellation(currentRound, compensableExecutions, invocationContext);
-        } catch (RuntimeException e) {
-            return CompletableFuture.failedFuture(e);
-        }
-        if (toCompensate.isEmpty()) {
-            return CompletableFuture.completedFuture(null);
-        }
-        CompensationReason reason = CompensationReason.INVOCATION_CANCELLED;
-        return compensateToolsActions(toCompensate, invocationContext)
-                .thenCompose(rolledBack -> rewriteChatMemoryForCompensatedToolsAsync(
-                                messages, chatMemory, withoutToolsOf(rolledBack, unsavedRequests), reason, null)
-                        .whenComplete((ignored, rewriteFailure) -> fireCompensatedEventsAfterRewrite(
-                                rewriteFailure, rolledBack, reason, invocationContext, listenerRegistrar, null)));
+        return failOnThrow(() -> {
+            List<CompensableToolExecution> toCompensate =
+                    takeCompensableOnCancellation(currentRound, compensableExecutions, invocationContext);
+            if (toCompensate.isEmpty()) {
+                return CompletableFuture.completedFuture(null);
+            }
+            CompensationReason reason = CompensationReason.INVOCATION_CANCELLED;
+            return compensateToolsActions(toCompensate, invocationContext)
+                    .thenCompose(rolledBack -> rewriteChatMemoryForCompensatedToolsAsync(
+                                    messages, chatMemory, withoutToolsOf(rolledBack, unsavedRequests), reason, null)
+                            .whenComplete((ignored, rewriteFailure) -> fireCompensatedEventsAfterRewrite(
+                                    rewriteFailure, rolledBack, reason, invocationContext, listenerRegistrar, null)));
+        });
     }
 
     /**
@@ -2325,10 +2325,10 @@ public class ToolService {
             List<RolledBackTool> rolledBack,
             CompensationReason reason,
             @Nullable String failedToolName) {
-        if (rolledBack.isEmpty() || (chatMemory == null && messages == null)) {
-            return CompletableFuture.completedFuture(null);
-        }
-        try {
+        return failOnThrow(() -> {
+            if (rolledBack.isEmpty() || (chatMemory == null && messages == null)) {
+                return CompletableFuture.completedFuture(null);
+            }
             if (chatMemory == null) {
                 replaceCompensatedMessages(messages, rolledBack, reason, failedToolName);
                 return CompletableFuture.completedFuture(null);
@@ -2338,9 +2338,7 @@ public class ToolService {
                 replaceCompensatedMessages(rewritten, rolledBack, reason, failedToolName);
                 return chatMemory.setAsync(rewritten);
             });
-        } catch (RuntimeException e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        });
     }
 
     /**
@@ -2456,12 +2454,8 @@ public class ToolService {
             BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>> compensatingAction =
                     compensatingExecutors.get(toolName);
             chain = chain.thenCompose(ignored -> {
-                CompletableFuture<Void> action;
-                try {
-                    action = compensatingAction.apply(toolExecution, invocationContext);
-                } catch (Exception e) {
-                    action = CompletableFuture.failedFuture(e);
-                }
+                CompletableFuture<Void> action =
+                        failOnThrow(() -> compensatingAction.apply(toolExecution, invocationContext));
                 return action.exceptionally(error -> {
                     Throwable cause = unwrapCompletionException(error);
                     log.warn("Compensating action failed for tool '{}': {}", toolName, cause.getMessage(), cause);
@@ -2712,7 +2706,7 @@ public class ToolService {
             Consumer<BeforeToolExecution> externalBeforeToolExecution,
             Consumer<ToolExecution> externalAfterToolExecution,
             Executor executor) {
-        return startSafely(() -> {
+        return failOnThrow(() -> {
             warnIfToolGuardrailsAreSkipped(toolRequest, toolExecutors, "startTool");
             return startTool(
                     registeredToolsRound(toolExecutors, invocationContext),
@@ -2738,23 +2732,17 @@ public class ToolService {
             Consumer<BeforeToolExecution> externalBeforeToolExecution,
             Consumer<ToolExecution> externalAfterToolExecution,
             Executor executor) {
-        CompletableFuture<ToolExecutionResult> started;
-        try {
-            started = CompletableFuture.supplyAsync(
-                            () -> executeToolAsync(
-                                    invocationContext,
-                                    toolExecutors,
-                                    round,
-                                    toolRequest,
-                                    externalBeforeToolExecution,
-                                    externalAfterToolExecution,
-                                    executor),
-                            executor)
-                    .thenCompose(toolResultFuture -> toolResultFuture);
-        } catch (RuntimeException rejected) {
-            started = CompletableFuture.failedFuture(rejected);
-        }
-        return started;
+        return failOnThrow(() -> CompletableFuture.supplyAsync(
+                        () -> executeToolAsync(
+                                invocationContext,
+                                toolExecutors,
+                                round,
+                                toolRequest,
+                                externalBeforeToolExecution,
+                                externalAfterToolExecution,
+                                executor),
+                        executor)
+                .thenCompose(toolResultFuture -> toolResultFuture));
     }
 
     /**

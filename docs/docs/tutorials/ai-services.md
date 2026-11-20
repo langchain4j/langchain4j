@@ -712,6 +712,17 @@ tokenStream
 futureResponse.join(); // Blocks the main thread until the streaming process (running in another thread) is complete
 ```
 
+A failure of the model call, including an invalid request, is not thrown from `start()`:
+it is passed to `onError`, possibly before `start()` returns.
+`start()` throws only if the `TokenStream` is not configured correctly (an `IllegalConfigurationException`,
+for example if neither or both of `onError(...)` and `ignoreErrors()` are called),
+or if your `onRetrieved` callback or the chat request transformer of the AI Service throws.
+If your `onError` callback throws an exception, it is logged and not thrown from `start()`,
+but an `Error` that it throws on the calling thread before `start()` returns comes out of `start()`.
+If you call `ignoreErrors()` instead of `onError(...)`, failures are only logged,
+and after a failure of the model call no other callback is called,
+so code that waits for `onCompleteResponse` (like the `futureResponse.join()` above) would wait forever.
+
 ### Streaming Cancellation
 
 If you wish to cancel the streaming, you can do so from one of the following callbacks:

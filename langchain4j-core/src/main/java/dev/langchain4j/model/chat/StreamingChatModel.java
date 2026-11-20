@@ -7,6 +7,7 @@ import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.CurrentInvocation;
+import dev.langchain4j.internal.StreamingChatHandlerGuard;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -23,8 +24,11 @@ import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
 
-import static dev.langchain4j.internal.InternalFlowUtils.EMPTY_SUBSCRIPTION;
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
+import static dev.langchain4j.internal.InternalFlowUtils.failPublisherOnThrow;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.notifyListenersIgnoringFailures;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 import static dev.langchain4j.model.chat.ChatModelListenerUtils.onRequest;
 import static dev.langchain4j.model.chat.ChatModelListenerUtils.onResponse;
@@ -45,9 +49,17 @@ public interface StreamingChatModel {
 
     /**
      * This is the main API to interact with the chat model.
+     * <p>
+     * This method does not throw: every failure, including an invalid request, is reported to
+     * {@link StreamingChatResponseHandler#onError(Throwable)}. {@code onError} may be called on the calling thread,
+     * before this method returns. If {@code onError} itself throws while a failure is reported on the calling thread,
+     * before this method returns, that exception is thrown from this method. If it throws on another thread, or after
+     * this method returned, the exception is logged. If the model implementation throws after the handler already
+     * received the complete response or an error, that exception is logged instead of being reported.
      *
      * @param request a {@link ChatRequest}, containing all the inputs to the LLM
-     * @param handler a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
+     * @param handler a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM; must not
+     *                be {@code null}, otherwise an {@link IllegalArgumentException} is thrown before anything is sent
      */
     default void chat(ChatRequest request, StreamingChatResponseHandler handler) {
         chat(request, ChatRequestOptions.EMPTY, handler);
@@ -55,25 +67,48 @@ public interface StreamingChatModel {
 
     /**
      * Sends a streaming chat request with additional invocation options.
+     * <p>
+     * This method does not throw: every failure, including an invalid request, is reported to
+     * {@link StreamingChatResponseHandler#onError(Throwable)}. {@code onError} may be called on the calling thread,
+     * before this method returns. If {@code onError} itself throws while a failure is reported on the calling thread,
+     * before this method returns, that exception is thrown from this method. If it throws on another thread, or after
+     * this method returned, the exception is logged. If the model implementation throws after the handler already
+     * received the complete response or an error, that exception is logged instead of being reported.
      *
      * @param request a {@link ChatRequest}, containing all the inputs to the LLM
      * @param options a {@link ChatRequestOptions} carrying listener attributes and other per-call metadata
-     * @param handler a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM
+     * @param handler a {@link StreamingChatResponseHandler} that will handle streaming response from the LLM; must not
+     *                be {@code null}, otherwise an {@link IllegalArgumentException} is thrown before anything is sent
      * @since 1.13.0
      */
     default void chat(ChatRequest request, ChatRequestOptions options, StreamingChatResponseHandler handler) {
+        ensureNotNull(handler, "handler");
 
-        ChatRequest finalChatRequest = ChatRequest.builder()
-                .messages(request.messages())
-                .parameters(defaultRequestParameters().overrideWith(request.parameters()))
-                .build();
+        ChatRequest finalChatRequest;
+        ModelProvider modelProvider;
+        List<ChatModelListener> listeners;
+        Map<Object, Object> attributes;
+        UUID invocationId;
+        try {
+            ensureNotNull(request, "request");
+            modelProvider = provider();
+            finalChatRequest = ChatRequest.builder()
+                    .messages(request.messages())
+                    .parameters(defaultRequestParameters().overrideWith(request.parameters()))
+                    .build();
 
-        ChatRequestOptions effectiveOptions = getOrDefault(options, ChatRequestOptions.EMPTY);
+            ChatRequestOptions effectiveOptions = getOrDefault(options, ChatRequestOptions.EMPTY);
 
-        List<ChatModelListener> listeners = ObservabilityListeners.chat(listeners());
-        Map<Object, Object> attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
-        UUID invocationId = CurrentInvocation.invocationId(effectiveOptions);
+            listeners = ObservabilityListeners.chat(listeners());
+            attributes = new ConcurrentHashMap<>(effectiveOptions.listenerAttributes());
+            invocationId = CurrentInvocation.invocationId(effectiveOptions);
+        } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
+            handler.onError(error);
+            return;
+        }
 
+        StreamingChatHandlerGuard guard = new StreamingChatHandlerGuard(handler);
         StreamingChatResponseHandler observingHandler = new StreamingChatResponseHandler() {
 
             @Override
@@ -118,21 +153,41 @@ public interface StreamingChatModel {
 
             @Override
             public void onCompleteResponse(ChatResponse completeResponse) {
-                onResponse(completeResponse, finalChatRequest, provider(), attributes, invocationId, listeners);
-                handler.onCompleteResponse(completeResponse);
+                notifyListenersIgnoringFailures(() -> onResponse(
+                        completeResponse, finalChatRequest, modelProvider, attributes, invocationId, listeners));
+                guard.onCompleteResponse(completeResponse);
             }
 
             @Override
             public void onError(Throwable error) {
-                ChatModelListenerUtils.onError(error, finalChatRequest, provider(), attributes, invocationId, listeners);
-                handler.onError(error);
+                notifyListenersIgnoringFailures(() -> ChatModelListenerUtils.onError(
+                        error, finalChatRequest, modelProvider, attributes, invocationId, listeners));
+                guard.onError(error);
             }
         };
 
-        onRequest(finalChatRequest, provider(), attributes, invocationId, listeners);
-        doChat(finalChatRequest, observingHandler);
+        guard.run(
+                () -> {
+                    onRequest(finalChatRequest, modelProvider, attributes, invocationId, listeners);
+                    doChat(finalChatRequest, observingHandler);
+                },
+                observingHandler);
     }
 
+    /**
+     * Provider-specific implementation of {@link #chat(ChatRequest, StreamingChatResponseHandler)}, which wraps it with
+     * {@link ChatModelListener} invocation and failure reporting.
+     * <p>
+     * An implementation may throw a failure that it finds before the request is sent, for example an invalid request:
+     * {@link #chat(ChatRequest, StreamingChatResponseHandler)} then reports it to
+     * {@link StreamingChatResponseHandler#onError(Throwable)}. Every later failure goes to {@code handler.onError(...)}.
+     * An implementation does not need to care about what the user's {@code onError} throws: it never reaches the
+     * implementation. Core throws it from {@code chat(...)} when it happens on the calling thread before
+     * {@code chat(...)} returns, and logs it otherwise.
+     *
+     * @param chatRequest the request, with the default request parameters of this model applied
+     * @param handler     the handler to send the streamed response and failures to
+     */
     default void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         throw new RuntimeException("Not implemented");
     }
@@ -153,7 +208,8 @@ public interface StreamingChatModel {
      *         interleaved with the above),</li>
      *     <li>exactly one terminal {@link CompleteResponse} (wrapping the aggregated final {@link ChatResponse}),</li>
      * </ul>
-     * followed by {@code onComplete}. On failure, {@code onError} is signaled after {@code onSubscribe}.
+     * followed by {@code onComplete}. On failure, {@code onError} is signaled after {@code onSubscribe}. This method
+     * never throws: any failure, including an invalid request, reaches the subscriber's {@code onError}.
      * <p>
      * Registered {@link ChatModelListener}s are invoked: {@code onRequest} on each new subscription
      * (just before the underlying request goes out), {@code onResponse} after the terminal
@@ -190,68 +246,67 @@ public interface StreamingChatModel {
      */
     @Experimental
     default Publisher<ChatModelStreamingEvent> chat(ChatRequest request) {
+        return failPublisherOnThrow(() -> {
+            ensureNotNull(request, "request");
+            ChatRequest finalChatRequest = ChatRequest.builder()
+                    .messages(request.messages())
+                    .parameters(defaultRequestParameters().overrideWith(request.parameters()))
+                    .build();
 
-        ChatRequest finalChatRequest = ChatRequest.builder()
-                .messages(request.messages())
-                .parameters(defaultRequestParameters().overrideWith(request.parameters()))
-                .build();
+            List<ChatModelListener> listeners = ObservabilityListeners.chat(listeners());
 
-        List<ChatModelListener> listeners = ObservabilityListeners.chat(listeners());
+            ModelProvider provider = provider();
+            UUID invocationId = CurrentInvocation.invocationId();
 
-        ModelProvider provider = provider();
-        UUID invocationId = CurrentInvocation.invocationId();
+            return new Publisher<ChatModelStreamingEvent>() {
 
-        return new Publisher<ChatModelStreamingEvent>() {
+                @Override
+                public void subscribe(Subscriber<? super ChatModelStreamingEvent> downstream) {
 
-            @Override
-            public void subscribe(Subscriber<? super ChatModelStreamingEvent> downstream) {
+                    Map<Object, Object> attributes = new ConcurrentHashMap<>();
 
-                Map<Object, Object> attributes = new ConcurrentHashMap<>();
+                    Publisher<ChatModelStreamingEvent> innerPublisher =
+                            failPublisherOnThrow(StreamingChatModel.this, "doChat(ChatRequest)", () -> {
+                                onRequest(finalChatRequest, provider, attributes, invocationId, listeners);
+                                return doChat(finalChatRequest);
+                            });
 
-                Publisher<ChatModelStreamingEvent> innerPublisher;
-                try {
-                    onRequest(finalChatRequest, provider, attributes, invocationId, listeners);
-                    innerPublisher = doChat(finalChatRequest);
-                } catch (Throwable error) {
-                    ChatModelListenerUtils.onError(error, finalChatRequest, provider, attributes, invocationId, listeners);
-                    downstream.onSubscribe(EMPTY_SUBSCRIPTION);
-                    downstream.onError(error);
-                    return;
+                    innerPublisher.subscribe(new Subscriber<>() {
+
+                        private ChatResponse completeResponse;
+
+                        @Override
+                        public void onSubscribe(Subscription subscription) {
+                            downstream.onSubscribe(subscription);
+                        }
+
+                        @Override
+                        public void onNext(ChatModelStreamingEvent event) {
+                            if (event instanceof CompleteResponse completeResponseEvent) {
+                                completeResponse = completeResponseEvent.chatResponse();
+                            }
+                            downstream.onNext(event);
+                        }
+
+                        @Override
+                        public void onError(Throwable throwable) {
+                            notifyListenersIgnoringFailures(() -> ChatModelListenerUtils.onError(
+                                    throwable, finalChatRequest, provider, attributes, invocationId, listeners));
+                            downstream.onError(throwable);
+                        }
+
+                        @Override
+                        public void onComplete() {
+                            if (completeResponse != null) {
+                                notifyListenersIgnoringFailures(() -> onResponse(
+                                        completeResponse, finalChatRequest, provider, attributes, invocationId, listeners));
+                            }
+                            downstream.onComplete();
+                        }
+                    });
                 }
-
-                innerPublisher.subscribe(new Subscriber<>() {
-
-                    private ChatResponse completeResponse;
-
-                    @Override
-                    public void onSubscribe(Subscription subscription) {
-                        downstream.onSubscribe(subscription);
-                    }
-
-                    @Override
-                    public void onNext(ChatModelStreamingEvent event) {
-                        if (event instanceof CompleteResponse completeResponseEvent) {
-                            completeResponse = completeResponseEvent.chatResponse();
-                        }
-                        downstream.onNext(event);
-                    }
-
-                    @Override
-                    public void onError(Throwable throwable) {
-                        ChatModelListenerUtils.onError(throwable, finalChatRequest, provider, attributes, invocationId, listeners);
-                        downstream.onError(throwable);
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        if (completeResponse != null) {
-                            onResponse(completeResponse, finalChatRequest, provider, attributes, invocationId, listeners);
-                        }
-                        downstream.onComplete();
-                    }
-                });
-            }
-        };
+            };
+        });
     }
 
     /**
@@ -264,6 +319,9 @@ public interface StreamingChatModel {
      * The default implementation returns an immediately-failing Publisher carrying {@link AsyncNotSupportedException} to signal that this model has no
      * native reactive-streaming implementation; a provider that does not support reactive streaming leaves it
      * unimplemented (consistent with {@code ChatModel#doChatAsync} and the other async defaults).
+     * <p>
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid request,
+     * is signaled to the subscriber's {@code onError} after {@code onSubscribe}.
      *
      * @since 1.20.0
      */
@@ -284,17 +342,48 @@ public interface StreamingChatModel {
         return OTHER;
     }
 
+    /**
+     * Sends a single user message. Like {@link #chat(ChatRequest, StreamingChatResponseHandler)}, it does not throw:
+     * an invalid argument, for example a {@code null} message, is reported to the handler's {@code onError}.
+     *
+     * @param userMessage the user message to send
+     * @param handler     the handler of the streamed response; must not be {@code null}, otherwise an
+     *                    {@link IllegalArgumentException} is thrown before anything is sent
+     */
     default void chat(String userMessage, StreamingChatResponseHandler handler) {
+        ensureNotNull(handler, "handler");
 
-        ChatRequest chatRequest =
-                ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
+        ChatRequest chatRequest;
+        try {
+            chatRequest = ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
+        } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
+            handler.onError(error);
+            return;
+        }
 
         chat(chatRequest, handler);
     }
 
+    /**
+     * Sends the given messages. Like {@link #chat(ChatRequest, StreamingChatResponseHandler)}, it does not throw: an
+     * invalid argument, for example no messages, is reported to the handler's {@code onError}.
+     *
+     * @param messages the messages to send
+     * @param handler  the handler of the streamed response; must not be {@code null}, otherwise an
+     *                 {@link IllegalArgumentException} is thrown before anything is sent
+     */
     default void chat(List<ChatMessage> messages, StreamingChatResponseHandler handler) {
+        ensureNotNull(handler, "handler");
 
-        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
+        ChatRequest chatRequest;
+        try {
+            chatRequest = ChatRequest.builder().messages(messages).build();
+        } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
+            handler.onError(error);
+            return;
+        }
 
         chat(chatRequest, handler);
     }
@@ -314,38 +403,39 @@ public interface StreamingChatModel {
      */
     @Experimental
     default Publisher<String> chat(String userMessage) {
+        return failPublisherOnThrow(() -> {
+            ChatRequest chatRequest =
+                    ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
 
-        ChatRequest chatRequest =
-                ChatRequest.builder().messages(UserMessage.from(userMessage)).build();
+            return downstream -> chat(chatRequest).subscribe(new Subscriber<>() {
 
-        return downstream -> chat(chatRequest).subscribe(new Subscriber<>() {
+                private Subscription subscription;
 
-            private Subscription subscription;
-
-            @Override
-            public void onSubscribe(Subscription subscription) {
-                this.subscription = subscription;
-                downstream.onSubscribe(subscription);
-            }
-
-            @Override
-            public void onNext(ChatModelStreamingEvent event) {
-                if (event instanceof PartialResponse partialResponse) {
-                    downstream.onNext(partialResponse.text());
-                } else {
-                    subscription.request(1);
+                @Override
+                public void onSubscribe(Subscription subscription) {
+                    this.subscription = subscription;
+                    downstream.onSubscribe(subscription);
                 }
-            }
 
-            @Override
-            public void onError(Throwable throwable) {
-                downstream.onError(throwable);
-            }
+                @Override
+                public void onNext(ChatModelStreamingEvent event) {
+                    if (event instanceof PartialResponse partialResponse) {
+                        downstream.onNext(partialResponse.text());
+                    } else {
+                        subscription.request(1);
+                    }
+                }
 
-            @Override
-            public void onComplete() {
-                downstream.onComplete();
-            }
+                @Override
+                public void onError(Throwable throwable) {
+                    downstream.onError(throwable);
+                }
+
+                @Override
+                public void onComplete() {
+                    downstream.onComplete();
+                }
+            });
         });
     }
 
@@ -359,10 +449,8 @@ public interface StreamingChatModel {
      */
     @Experimental
     default Publisher<ChatModelStreamingEvent> chat(ChatMessage... messages) {
-
-        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
-
-        return chat(chatRequest);
+        return failPublisherOnThrow(
+                this, "chat(ChatRequest)", () -> chat(ChatRequest.builder().messages(messages).build()));
     }
 
     /**
@@ -375,10 +463,8 @@ public interface StreamingChatModel {
      */
     @Experimental
     default Publisher<ChatModelStreamingEvent> chat(List<ChatMessage> messages) {
-
-        ChatRequest chatRequest = ChatRequest.builder().messages(messages).build();
-
-        return chat(chatRequest);
+        return failPublisherOnThrow(
+                this, "chat(ChatRequest)", () -> chat(ChatRequest.builder().messages(messages).build()));
     }
 
     default Set<Capability> supportedCapabilities() {

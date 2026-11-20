@@ -179,6 +179,10 @@ future or publisher fails with an `AsyncNotSupportedException` naming the compon
 `AsyncNotSupportedException` is an `UnsupportedFeatureException`, so one catch clause covers both flavours of
 "not supported", and it is never retried.
 
+The asynchronous methods never throw: every failure, including an invalid request, completes the returned future
+exceptionally or reaches the subscriber's `onError`. So handle errors on the future (for example with
+`exceptionally(...)` or `whenComplete(...)`) or in `onError`, not with a `try`/`catch` around the call.
+
 ## Blocking code you cannot avoid
 
 Tools are the common case: a tool that calls a database or a blocking HTTP API cannot be made non-blocking. Such
@@ -393,10 +397,12 @@ Support is opt-in per provider and is being rolled out gradually. Today:
 | OpenAI — Responses | ✅ | ✅ |
 | Anthropic | ✅ | ✅ |
 | Bedrock | ✅ | ✅ |
+| Google GenAI | ✅ | ❌ |
 | every other provider | ❌ | ❌ |
 
 Beyond chat models: OpenAI implements asynchronous embeddings (`embedAsync`), Cohere asynchronous scoring
-(`scoreAsync`) and Tavily asynchronous web search (`searchAsync`).
+(`scoreAsync`) and Tavily asynchronous web search (`searchAsync`). The decision models of OpenAI, OpenAI Official,
+Ollama, TypeSafe, Google AI Gemini and Google GenAI implement asynchronous decisions (`decideAsync`).
 
 A provider that has not opted in is unaffected on the synchronous and `TokenStream` APIs — those keep working
 exactly as before.
@@ -408,19 +414,24 @@ interaction fails the call the same way. In practice that means:
 
 | Component | What it must implement | Bundled implementations |
 |---|---|---|
-| Chat memory | `addAsync` / `messagesAsync` / `setAsync` | `MessageWindowChatMemory` and `InMemoryChatMemoryStore` already do |
+| Chat memory | `addAsync` / `messagesAsync` / `setAsync` | `MessageWindowChatMemory`, `InMemoryChatMemoryStore` and `InfinispanChatMemoryStore` already do |
 | Guardrails, including [tool guardrails](/tutorials/tool-guardrails) | `validateAsync` | none — a guardrail you write must override it, even if it does no I/O |
 | Content retriever, query router, aggregator | `retrieveAsync`, `routeAsync`, `aggregateAsync` | opt into offloading instead with `offloadBlocking(true)` |
-| Embedding store | `searchAsync` | as above, via the retriever's `offloadBlocking(true)` |
+| Embedding store | `searchAsync` | `InMemoryEmbeddingStore` and `InfinispanEmbeddingStore` already do; for other stores, use the retriever's `offloadBlocking(true)` |
 | Custom `ToolExecutor` | `executeAsync` | `@Tool`-annotated methods are offloaded for you |
 | Chat model router ([`RoutingChatModel`](/tutorials/model-routing)) | `routeAsync` | `DecisionModelChatModelRouter` does, if its decision model supports `decideAsync` |
 
-A guardrail that does no blocking work satisfies the contract in one line:
+A guardrail that does no blocking work can call `validate(...)` directly. Like every asynchronous method, it reports
+a failure through the returned future instead of throwing:
 
 ```java
 @Override
 public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
-    return CompletableFuture.completedFuture(validate(request));
+    try {
+        return CompletableFuture.completedFuture(validate(request));
+    } catch (Throwable e) {
+        return CompletableFuture.failedFuture(e);
+    }
 }
 ```
 

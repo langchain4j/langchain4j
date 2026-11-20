@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
@@ -97,7 +98,7 @@ public class OpenAiDecisionModel implements DecisionModel {
 
     @Override
     public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
-        try {
+        return failOnThrow(() -> {
             DecisionCreateRequest openAiRequest = DecisionMapper.toOpenAiRequest(request);
             CompletableFuture<ParsedAndRawResponse<DecisionCreateResponse>> responseFuture =
                     withRetryMappingExceptionsAsync(() -> client.decision(openAiRequest).executeRawAsync(), maxRetries);
@@ -105,9 +106,7 @@ public class OpenAiDecisionModel implements DecisionModel {
                     response -> DecisionMapper.toDecisionResponse(response.parsedResponse(), request));
             propagateCancellation(result, responseFuture);
             return result;
-        } catch (RuntimeException e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        });
     }
 
     @Override

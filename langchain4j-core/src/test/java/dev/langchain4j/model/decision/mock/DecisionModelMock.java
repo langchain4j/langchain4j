@@ -132,6 +132,11 @@ public class DecisionModelMock implements DecisionModel {
                 .build();
     }
 
+    /**
+     * @deprecated use {@link MockDecisionModel#requests()} instead. Removed together with this class, in 1.26.0 at the
+     * earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public List<DecisionRequest> requests() {
         return new ArrayList<>(requests);
     }
@@ -140,7 +145,10 @@ public class DecisionModelMock implements DecisionModel {
      * The only request received so far.
      *
      * @throws IllegalStateException if the mock received no request or several requests.
+     * @deprecated use {@link MockDecisionModel#request()} instead. Removed together with this class, in 1.26.0 at the
+     * earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public DecisionRequest request() {
         List<DecisionRequest> requests = requests();
         if (requests.size() != 1) {
