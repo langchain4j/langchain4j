@@ -174,6 +174,9 @@
                         <configuration>
                             <excludes>
                                 <exclude>junit-platform.properties</exclude>
+                                <!-- the tool guardrail service builder of this module's tests must not replace the -->
+                                <!-- default one in the tests of the modules that use this test-jar -->
+                                <exclude>META-INF/services/dev.langchain4j.service.guardrail.spi.ToolGuardrailServiceBuilderFactory</exclude>
                                 <!-- the model mocks copied below are published only in langchain4j-test: a module that uses -->
                                 <!-- test classes of this test-jar which need the mocks must also depend on langchain4j-test -->
                                 <exclude>dev/langchain4j/test/mock/**</exclude>

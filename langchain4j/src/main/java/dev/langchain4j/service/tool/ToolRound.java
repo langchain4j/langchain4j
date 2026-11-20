@@ -178,17 +178,20 @@ public final class ToolRound {
             Consumer<BeforeToolExecution> beforeToolExecution,
             Consumer<ToolExecution> afterToolExecution,
             Executor executor) {
-        var started = toolService.startTool(
-                this, call, toolExecutors(), invocationContext, beforeToolExecution, afterToolExecution, executor);
-        // the round waits for this future, which completes only once the failure is recorded
-        CompletableFuture<ToolExecutionResult> recorded = started.whenComplete((ignored, error) -> {
-            if (error != null) {
-                errors.put(call, unwrapCompletionException(error));
-            }
+        return failOnThrow(() -> {
+            ensureNotNull(call, "call");
+            var started = toolService.startTool(
+                    this, call, toolExecutors(), invocationContext, beforeToolExecution, afterToolExecution, executor);
+            // the round waits for this future, which completes only once the failure is recorded
+            CompletableFuture<ToolExecutionResult> recorded = started.whenComplete((ignored, error) -> {
+                if (error != null) {
+                    errors.put(call, unwrapCompletionException(error));
+                }
+            });
+            propagateCancellation(recorded, started);
+            futures.put(call, recorded);
+            return recorded;
         });
-        propagateCancellation(recorded, started);
-        futures.put(call, recorded);
-        return recorded;
     }
 
     /**
@@ -492,11 +495,11 @@ public final class ToolRound {
      */
     public CompletableFuture<Outcome> completeAsync(
             AiMessage aiMessage, List<ToolExecutionRequest> calls, ChatMemory chatMemory, List<ChatMessage> messages) {
-        return settleAsync(calls, messages)
+        return failOnThrow(() -> settleAsync(calls, messages)
                 .thenCompose(outcome -> (outcome.firstError().isPresent())
                         ? CompletableFuture.completedFuture(outcome)
                         : updateHistoryAsync(aiMessage, calls, outcome.requests(), chatMemory, messages)
-                                .thenApply(outcome::withMessages));
+                                .thenApply(outcome::withMessages)));
     }
 
     /**
@@ -505,7 +508,7 @@ public final class ToolRound {
      * is canceled. The {@link Outcome#messages()} are empty.
      */
     public CompletableFuture<Outcome> settleAsync(List<ToolExecutionRequest> calls) {
-        return settleAsync(calls, List.of()).thenApply(Function.<Outcome>identity());
+        return failOnThrow(() -> settleAsync(calls, List.of()).thenApply(Function.<Outcome>identity()));
     }
 
     private CompletableFuture<DefaultToolRoundOutcome> settleAsync(

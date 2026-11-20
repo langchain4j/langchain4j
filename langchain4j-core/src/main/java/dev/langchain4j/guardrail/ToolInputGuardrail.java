@@ -48,6 +48,11 @@ public interface ToolInputGuardrail extends Guardrail<ToolInputGuardrailRequest,
     /**
      * Produces a successful result with rewritten tool arguments, which replace the original ones for the
      * following guardrails and for the tool execution.
+     * <p>
+     *     The rewritten call also replaces the tool call of the LLM in the chat memory, so it is sent to the LLM in
+     *     the following requests. Pass values that only the tool needs through {@code InvocationParameters}, not
+     *     through the arguments.
+     * </p>
      *
      * @param rewrittenArguments
      *            the new arguments of the tool, as a JSON object. {@code null} means no rewrite (a plain

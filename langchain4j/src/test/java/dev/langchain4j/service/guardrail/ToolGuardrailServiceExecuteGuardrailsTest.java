@@ -599,6 +599,25 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
         assertEveryLookupFails(service, keyOfTheOtherService);
     }
 
+    @Test
+    void the_key_of_another_tool_than_the_called_one_is_rejected() {
+        var service = ToolGuardrailService.builder(Assistant.class).build();
+        var key = service.bind(null, toolWithInputGuardrail(INPUT_PASS));
+        var callOfAnotherTool = CALL.toBuilder().name("other").build();
+
+        assertThatThrownBy(() -> service.executeGuardrails(
+                        key, callOfAnotherTool, PARAMS, request -> toolResult(false)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The key of the tool 'search' was given for a call of the tool 'other'");
+        assertThat(service.executeGuardrailsAsync(
+                        key, callOfAnotherTool, PARAMS, request -> CompletableFuture.completedFuture(toolResult(false))))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .havingRootCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .withMessage("The key of the tool 'search' was given for a call of the tool 'other'");
+    }
+
     private static ToolInputGuardrail rejecting() {
         return request -> INPUT.failure("rejected");
     }

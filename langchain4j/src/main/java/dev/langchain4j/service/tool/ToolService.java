@@ -2655,6 +2655,11 @@ public class ToolService {
      * Starts a round of tool execution: the tool calls of one model response. The round is the only way to execute
      * them through the tool guardrails: {@link ToolRound#executeTool} / {@link ToolRound#startTool} execute a call,
      * and {@link ToolRound#complete} / {@link ToolRound#completeAsync} report the round.
+     * <p>
+     * The round applies the tool guardrails of the tools that {@code toolServiceContext} has a binding for. Create the
+     * context with {@link #createContext(InvocationContext, UserMessage, List, GuardrailRequestParams)}, which binds
+     * the tools of this service and of its tool providers. A tool of a context built without bindings, for example
+     * with {@link ToolServiceContext#builder()}, runs <b>without</b> tool guardrails.
      *
      * @param toolServiceContext the context of the tools of the invocation; {@code null} for a round without tools
      * @param listenerRegistrar  the registrar of the invocation, for the events of the round; may be {@code null}

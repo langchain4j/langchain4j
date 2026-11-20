@@ -1,17 +1,20 @@
 package dev.langchain4j.service.guardrail;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import dev.langchain4j.guardrail.ToolInputGuardrailExecutor;
+import dev.langchain4j.guardrail.GuardrailExecutor;
+import dev.langchain4j.guardrail.GuardrailRequest;
+import dev.langchain4j.guardrail.GuardrailResult;
 import dev.langchain4j.guardrail.ToolInputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolInputGuardrailResult;
-import dev.langchain4j.guardrail.ToolOutputGuardrailExecutor;
 import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
 import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.ToolProvider;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The default {@link ToolGuardrailService}. Obtain instances via {@link ToolGuardrailService#builder(Class)}.
@@ -26,7 +29,8 @@ import java.util.concurrent.CompletableFuture;
  * </p>
  * <p>
  *     {@link #bind(Class, AiServiceTool)} returns a {@link DefaultToolKey} that holds the executors of the chains of
- *     the tool, and the lookups read them out of the key. Nothing is kept here per tool, so a map of keys cannot grow
+ *     the tool, and the lookups read them out of the key. A key without an executor has nothing to run: its result is a
+ *     success. Nothing is kept here per tool, so a map of keys cannot grow
  *     with every invocation: the keys of the tools provided for an invocation are not retained after it.
  * </p>
  * <p>
@@ -39,19 +43,10 @@ final class DefaultToolGuardrailService implements ToolGuardrailService {
 
     private final Class<?> aiServiceClass;
     private final ToolGuardrailChainResolver chainResolver;
-    private final KeyedGuardrailExecutors<ToolInputGuardrailRequest, ToolInputGuardrailResult, ToolInputGuardrailExecutor>
-            inputGuardrails;
-    private final KeyedGuardrailExecutors<
-                    ToolOutputGuardrailRequest, ToolOutputGuardrailResult, ToolOutputGuardrailExecutor>
-            outputGuardrails;
 
     DefaultToolGuardrailService(Class<?> aiServiceClass, ToolGuardrailChainResolver chainResolver) {
         this.aiServiceClass = ensureNotNull(aiServiceClass, "aiServiceClass");
         this.chainResolver = ensureNotNull(chainResolver, "chainResolver");
-        this.inputGuardrails = new KeyedGuardrailExecutors<>(
-                key -> ownKey(key).inputExecutor(), ToolInputGuardrailResult::success);
-        this.outputGuardrails = new KeyedGuardrailExecutors<>(
-                key -> ownKey(key).outputExecutor(), ToolOutputGuardrailResult::success);
     }
 
     @Override
@@ -60,40 +55,61 @@ final class DefaultToolGuardrailService implements ToolGuardrailService {
     }
 
     @Override
-    public ToolKey bind(Class<?> toolClass, AiServiceTool tool) {
+    public ToolKey bind(@Nullable Class<?> toolClass, AiServiceTool tool) {
         return this.chainResolver.resolve(this, toolClass, tool);
     }
 
     @Override
     public ToolInputGuardrailResult executeInputGuardrails(ToolKey key, ToolInputGuardrailRequest request) {
-        return this.inputGuardrails.execute(key, request);
+        return execute(ownKey(key).inputExecutor(), request, ToolInputGuardrailResult.success());
     }
 
     @Override
     public CompletableFuture<ToolInputGuardrailResult> executeInputGuardrailsAsync(
             ToolKey key, ToolInputGuardrailRequest request) {
-        return this.inputGuardrails.executeAsync(key, request);
+        return failOnThrow(() -> executeAsync(ownKey(key).inputExecutor(), request, ToolInputGuardrailResult.success()));
     }
 
     @Override
     public ToolOutputGuardrailResult executeOutputGuardrails(ToolKey key, ToolOutputGuardrailRequest request) {
-        return this.outputGuardrails.execute(key, request);
+        return execute(ownKey(key).outputExecutor(), request, ToolOutputGuardrailResult.success());
     }
 
     @Override
     public CompletableFuture<ToolOutputGuardrailResult> executeOutputGuardrailsAsync(
             ToolKey key, ToolOutputGuardrailRequest request) {
-        return this.outputGuardrails.executeAsync(key, request);
+        return failOnThrow(
+                () -> executeAsync(ownKey(key).outputExecutor(), request, ToolOutputGuardrailResult.success()));
     }
 
     @Override
     public boolean hasInputGuardrails(ToolKey key) {
-        return this.inputGuardrails.hasGuardrails(key);
+        return hasGuardrails(ownKey(key).inputExecutor());
     }
 
     @Override
     public boolean hasOutputGuardrails(ToolKey key) {
-        return this.outputGuardrails.hasGuardrails(key);
+        return hasGuardrails(ownKey(key).outputExecutor());
+    }
+
+    private static <P extends GuardrailRequest<P>, R extends GuardrailResult<R>> R execute(
+            Optional<? extends GuardrailExecutor<?, P, R, ?, ?>> executor, P request, R noGuardrailsResult) {
+        // a null result of an executor must not pass as "no guardrails"
+        return executor.isPresent()
+                ? ensureNotNull(executor.get().execute(request), "result of the guardrail executor")
+                : noGuardrailsResult;
+    }
+
+    private static <P extends GuardrailRequest<P>, R extends GuardrailResult<R>> CompletableFuture<R> executeAsync(
+            Optional<? extends GuardrailExecutor<?, P, R, ?, ?>> executor, P request, R noGuardrailsResult) {
+        // a null future of an executor fails the future of failOnThrow instead of passing as "no guardrails"
+        return executor.isPresent()
+                ? executor.get().executeAsync(request)
+                : CompletableFuture.completedFuture(noGuardrailsResult);
+    }
+
+    private static boolean hasGuardrails(Optional<? extends GuardrailExecutor<?, ?, ?, ?, ?>> executor) {
+        return executor.map(it -> !it.guardrails().isEmpty()).orElse(false);
     }
 
     /**

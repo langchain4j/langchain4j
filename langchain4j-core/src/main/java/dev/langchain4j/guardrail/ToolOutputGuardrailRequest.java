@@ -270,10 +270,10 @@ public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOu
         /**
          * Sets the contents of the tool result.
          *
-         * @param resultContents the contents
+         * @param resultContents the contents, or {@code null} for no contents
          * @return this builder
          */
-        public Builder resultContents(List<Content> resultContents) {
+        public Builder resultContents(@Nullable List<Content> resultContents) {
             this.resultContents = resultContents;
             return this;
         }

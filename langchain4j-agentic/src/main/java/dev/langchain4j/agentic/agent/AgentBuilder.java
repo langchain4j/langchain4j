@@ -739,8 +739,9 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      * Sets the {@link ToolInputGuardrail} classes to be instantiated and applied to every tool of the agent.
      * These guardrails apply to every tool of the agent and run first, followed by the guardrails of the class
      * annotation, the method annotation and the {@link AiServiceTool}
-     * of each tool. Unlike {@link InputGuardrails} and {@link OutputGuardrails}, they do not replace the ones declared
-     * with the {@link ToolInputGuardrails} and {@link ToolOutputGuardrails} annotations. A guardrail that must not
+     * of each tool. Unlike the guardrails set with {@code inputGuardrails(..)} and {@code outputGuardrails(..)}, which
+     * replace the {@link InputGuardrails} and {@link OutputGuardrails} annotations, they do not replace the ones
+     * declared with the {@link ToolInputGuardrails} and {@link ToolOutputGuardrails} annotations. A guardrail that must not
      * apply to some tools can skip them by checking {@code toolName()} or {@code toolSource()} of its request.
      *
      * @param toolInputGuardrailClasses the tool input guardrail classes
@@ -758,8 +759,9 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      * Sets the {@link ToolInputGuardrail} instances applied to every tool of the agent.
      * These guardrails apply to every tool of the agent and run first, followed by the guardrails of the class
      * annotation, the method annotation and the {@link AiServiceTool}
-     * of each tool. Unlike {@link InputGuardrails} and {@link OutputGuardrails}, they do not replace the ones declared
-     * with the {@link ToolInputGuardrails} and {@link ToolOutputGuardrails} annotations. A guardrail that must not
+     * of each tool. Unlike the guardrails set with {@code inputGuardrails(..)} and {@code outputGuardrails(..)}, which
+     * replace the {@link InputGuardrails} and {@link OutputGuardrails} annotations, they do not replace the ones
+     * declared with the {@link ToolInputGuardrails} and {@link ToolOutputGuardrails} annotations. A guardrail that must not
      * apply to some tools can skip them by checking {@code toolName()} or {@code toolSource()} of its request.
      *
      * @param toolInputGuardrails the tool input guardrails
@@ -777,8 +779,9 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      * Sets the {@link ToolOutputGuardrail} classes to be instantiated and applied to every tool of the agent.
      * These guardrails apply to every tool of the agent and run first, followed by the guardrails of the class
      * annotation, the method annotation and the {@link AiServiceTool}
-     * of each tool. Unlike {@link InputGuardrails} and {@link OutputGuardrails}, they do not replace the ones declared
-     * with the {@link ToolInputGuardrails} and {@link ToolOutputGuardrails} annotations. A guardrail that must not
+     * of each tool. Unlike the guardrails set with {@code inputGuardrails(..)} and {@code outputGuardrails(..)}, which
+     * replace the {@link InputGuardrails} and {@link OutputGuardrails} annotations, they do not replace the ones
+     * declared with the {@link ToolInputGuardrails} and {@link ToolOutputGuardrails} annotations. A guardrail that must not
      * apply to some tools can skip them by checking {@code toolName()} or {@code toolSource()} of its request.
      *
      * @param toolOutputGuardrailClasses the tool output guardrail classes
@@ -797,8 +800,9 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      * Sets the {@link ToolOutputGuardrail} instances applied to every tool of the agent.
      * These guardrails apply to every tool of the agent and run first, followed by the guardrails of the class
      * annotation, the method annotation and the {@link AiServiceTool}
-     * of each tool. Unlike {@link InputGuardrails} and {@link OutputGuardrails}, they do not replace the ones declared
-     * with the {@link ToolInputGuardrails} and {@link ToolOutputGuardrails} annotations. A guardrail that must not
+     * of each tool. Unlike the guardrails set with {@code inputGuardrails(..)} and {@code outputGuardrails(..)}, which
+     * replace the {@link InputGuardrails} and {@link OutputGuardrails} annotations, they do not replace the ones
+     * declared with the {@link ToolInputGuardrails} and {@link ToolOutputGuardrails} annotations. A guardrail that must not
      * apply to some tools can skip them by checking {@code toolName()} or {@code toolSource()} of its request.
      *
      * @param toolOutputGuardrails the tool output guardrails

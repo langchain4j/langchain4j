@@ -93,6 +93,8 @@ import org.jspecify.annotations.Nullable;
  *     through {@link ClassMetadataProviderFactory}, reads the annotations of the tool methods from the {@code Method}
  *     itself, and creates guardrails from their classes through {@link ClassInstanceFactory}, like the AI service
  *     guardrails. A framework can also replace the whole builder with a {@link ToolGuardrailServiceBuilderFactory}.
+ *     An implementation must be thread-safe: one AI service runs many invocations at the same time, and the tools of
+ *     one LLM response can run in parallel.
  * </p>
  * <p>
  *     This interface is separate from {@link GuardrailService}: the two kinds of guardrails share their
@@ -236,8 +238,9 @@ public interface ToolGuardrailService {
      * @param tool          Executes the tool for the request it is given (the call, or the call as the input
      *                      guardrails rewrote it) and returns its result. Must not be null.
      * @return The request as the input guardrails left it, and the result to send to the LLM.
-     * @throws IllegalArgumentException if a parameter is {@code null}, or the key is one this service rejects (see
-     *                                  {@link #bind(Class, AiServiceTool)})
+     * @throws IllegalArgumentException if a parameter is {@code null}, the key is one this service rejects (see
+     *                                  {@link #bind(Class, AiServiceTool)}), or the key is not the key of the tool
+     *                                  that {@code request} calls
      */
     default GuardedToolExecution executeGuardrails(
             ToolKey key,
@@ -249,10 +252,18 @@ public interface ToolGuardrailService {
         ensureNotNull(request, "request");
         ensureNotNull(requestParams, "requestParams");
         ensureNotNull(tool, "tool");
+        ensureKeyOfTheCalledTool(key, request);
 
         return hasGuardrails(key)
                 ? guard(key, request, requestParams, tool)
                 : guardedExecution(request, tool.apply(request));
+    }
+
+    private static void ensureKeyOfTheCalledTool(ToolKey key, ToolExecutionRequest request) {
+        if (!key.toolName().equals(request.name())) {
+            throw new IllegalArgumentException("The key of the tool '%s' was given for a call of the tool '%s'"
+                    .formatted(key.toolName(), request.name()));
+        }
     }
 
     private GuardedToolExecution guard(
@@ -298,8 +309,8 @@ public interface ToolGuardrailService {
      * <p>
      *     Nothing is thrown from this method: a fatal guardrail failure, an exception thrown by a guardrail or by
      *     {@code tool} (including the {@link ToolArgumentsException} of an input
-     *     guardrail), a failed future of {@code tool}, a {@code null} parameter and a key this service rejects all
-     *     fail the returned future. Canceling the returned future cancels the guardrails or the tool in flight.
+     *     guardrail), a failed future of {@code tool}, a {@code null} parameter, a key this service rejects and a key
+     *     of another tool than the one {@code request} calls all fail the returned future. Canceling the returned future cancels the guardrails or the tool in flight.
      * </p>
      *
      * @param key           The key {@link #bind(Class, AiServiceTool)} returned for the tool. It also gives the
@@ -322,6 +333,7 @@ public interface ToolGuardrailService {
             ensureNotNull(request, "request");
             ensureNotNull(requestParams, "requestParams");
             ensureNotNull(tool, "tool");
+            ensureKeyOfTheCalledTool(key, request);
 
             return hasGuardrails(key)
                     ? guardAsync(key, request, requestParams, tool)
@@ -711,7 +723,7 @@ public interface ToolGuardrailService {
          * @param <I> The type of the input guardrails
          * @return This builder.
          */
-        <I extends ToolInputGuardrail> Builder inputGuardrailClasses(List<Class<? extends I>> guardrailClasses);
+        <I extends ToolInputGuardrail> Builder inputGuardrailClasses(@Nullable List<Class<? extends I>> guardrailClasses);
 
         /**
          * Sets the classes of the input guardrails that apply to every tool, replacing the ones set before.
@@ -722,9 +734,7 @@ public interface ToolGuardrailService {
          */
         @SuppressWarnings("unchecked")
         default <I extends ToolInputGuardrail> Builder inputGuardrailClasses(Class<? extends I>... guardrailClasses) {
-            return Optional.ofNullable(guardrailClasses)
-                    .map(classes -> inputGuardrailClasses(List.of(classes)))
-                    .orElse(this);
+            return inputGuardrailClasses((guardrailClasses != null) ? List.of(guardrailClasses) : null);
         }
 
         /**
@@ -734,7 +744,7 @@ public interface ToolGuardrailService {
          * @param <O> The type of the output guardrails
          * @return This builder.
          */
-        <O extends ToolOutputGuardrail> Builder outputGuardrailClasses(List<Class<? extends O>> guardrailClasses);
+        <O extends ToolOutputGuardrail> Builder outputGuardrailClasses(@Nullable List<Class<? extends O>> guardrailClasses);
 
         /**
          * Sets the classes of the output guardrails that apply to every tool, replacing the ones set before.
@@ -746,9 +756,7 @@ public interface ToolGuardrailService {
         @SuppressWarnings("unchecked")
         default <O extends ToolOutputGuardrail> Builder outputGuardrailClasses(
                 Class<? extends O>... guardrailClasses) {
-            return Optional.ofNullable(guardrailClasses)
-                    .map(classes -> outputGuardrailClasses(List.of(classes)))
-                    .orElse(this);
+            return outputGuardrailClasses((guardrailClasses != null) ? List.of(guardrailClasses) : null);
         }
 
         /**
@@ -758,7 +766,7 @@ public interface ToolGuardrailService {
          * @param <I> The type of the input guardrails
          * @return This builder.
          */
-        <I extends ToolInputGuardrail> Builder inputGuardrails(List<I> guardrails);
+        <I extends ToolInputGuardrail> Builder inputGuardrails(@Nullable List<I> guardrails);
 
         /**
          * Sets the input guardrails that apply to every tool, replacing the ones set before.
@@ -769,9 +777,7 @@ public interface ToolGuardrailService {
          */
         @SuppressWarnings("unchecked")
         default <I extends ToolInputGuardrail> Builder inputGuardrails(I... guardrails) {
-            return Optional.ofNullable(guardrails)
-                    .map(instances -> inputGuardrails(List.of(instances)))
-                    .orElse(this);
+            return inputGuardrails((guardrails != null) ? List.of(guardrails) : null);
         }
 
         /**
@@ -781,7 +787,7 @@ public interface ToolGuardrailService {
          * @param <O> The type of the output guardrails
          * @return This builder.
          */
-        <O extends ToolOutputGuardrail> Builder outputGuardrails(List<O> guardrails);
+        <O extends ToolOutputGuardrail> Builder outputGuardrails(@Nullable List<O> guardrails);
 
         /**
          * Sets the output guardrails that apply to every tool, replacing the ones set before.
@@ -792,9 +798,7 @@ public interface ToolGuardrailService {
          */
         @SuppressWarnings("unchecked")
         default <O extends ToolOutputGuardrail> Builder outputGuardrails(O... guardrails) {
-            return Optional.ofNullable(guardrails)
-                    .map(instances -> outputGuardrails(List.of(instances)))
-                    .orElse(this);
+            return outputGuardrails((guardrails != null) ? List.of(guardrails) : null);
         }
 
         /**

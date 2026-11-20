@@ -27,24 +27,4 @@ public class ToolExecutionRequestUtil {
     public static Map<String, Object> argumentsAsMap(String arguments) {
         return ToolArgumentsParser.argumentsAsMap(arguments);
     }
-
-    /**
-     * Removes trailing commas before closing braces or brackets in JSON strings.
-     *
-     * @param json the JSON string
-     * @return the corrected JSON string
-     */
-    static String removeTrailingComma(String json) {
-        return ToolArgumentsParser.removeTrailingComma(json);
-    }
-
-    /**
-     * Normalizes a JSON string by removing leading and trailing quotes and unescaping internal double quotes.
-     *
-     * @param arguments the raw JSON string
-     * @return the normalized JSON string
-     */
-    static String normalizeJsonString(String arguments) {
-        return ToolArgumentsParser.normalizeJsonString(arguments);
-    }
 }

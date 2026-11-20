@@ -98,8 +98,7 @@ public final class ToolOutputGuardrailResult implements GuardrailResult<ToolOutp
      *
      * @param rewrittenContents
      *            the new contents of the tool result, must not be {@code null} or empty (a tool result always has
-     *            contents; use {@link #successWith(String)} with an empty string to blank the text) and must not
-     *            contain {@code null}
+     *            contents) and must not contain {@code null}
      * @param isError
      *            whether the rewritten tool result is an error
      * @return a successful result carrying the rewritten contents and error flag

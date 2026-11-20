@@ -372,81 +372,81 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
                 private ChatResponse roundResponse;
 
-                        @Override
-                        public void onSubscribe(Flow.Subscription subscription) {
-                            modelSubscription.set(subscription);
-                            if (tube.cancelled()) {
-                                subscription.cancel();
-                                return;
-                            }
-                            subscription.request(Long.MAX_VALUE);
-                        }
+                @Override
+                public void onSubscribe(Flow.Subscription subscription) {
+                    modelSubscription.set(subscription);
+                    if (tube.cancelled()) {
+                        subscription.cancel();
+                        return;
+                    }
+                    subscription.request(Long.MAX_VALUE);
+                }
 
-                        @Override
-                        public void onNext(ChatModelStreamingEvent event) {
-                            handleNext(event);
-                        }
+                @Override
+                public void onNext(ChatModelStreamingEvent event) {
+                    handleNext(event);
+                }
 
-                        private void handleNext(ChatModelStreamingEvent event) {
-                            if (tube.cancelled()) {
-                                return;
-                            }
-                            if (event instanceof CompleteResponse completeResponse) {
-                                this.roundResponse = completeResponse.chatResponse();
-                            } else if (event instanceof PartialResponse partialResponse) {
-                                if (!hasOutputGuardrails) {
-                                    tube.send(new PartialResponseEvent(partialResponse, invocationContext));
-                                }
-                            } else if (event instanceof PartialThinking partialThinking) {
-                                tube.send(new PartialThinkingEvent(partialThinking, invocationContext));
-                            } else if (event instanceof PartialToolCall partialToolCall) {
-                                tube.send(new PartialToolCallEvent(partialToolCall, invocationContext));
-                            } else if (event instanceof CompleteToolCall completeToolCall) {
-                                tube.send(new CompleteToolCallEvent(completeToolCall, invocationContext));
-                                ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
-                                // registered before it starts, so that a cancellation waits for it, also when the
-                                // executor runs it inline
-                                CompletableFuture<Void> start = new CompletableFuture<>();
-                                CompletableFuture<ToolExecutionResult> startedTool =
-                                        start.thenCompose(ignored -> startedRound
-                                                .round()
-                                                .startTool(
-                                                        toolRequest,
-                                                        Loop.this::emitBeforeToolExecution,
-                                                        Loop.this::emitAfterToolExecution,
-                                                        toolExecutor));
-                                boolean registered = underAccumulatorLock(() -> {
-                                    boolean isCurrentRound =
-                                            !tube.cancelled() && (startedRoundTools.get() == startedRound);
-                                    if (isCurrentRound) {
-                                        startedTools.put(toolRequest, startedTool);
-                                    }
-                                    return isCurrentRound;
-                                });
-                                if (registered) {
-                                    start.complete(null);
-                                }
-                            } else if (event instanceof RawStreamingEvent rawStreamingEvent) {
-                                tube.send(new RawEvent(rawStreamingEvent, invocationContext));
-                            }
+                private void handleNext(ChatModelStreamingEvent event) {
+                    if (tube.cancelled()) {
+                        return;
+                    }
+                    if (event instanceof CompleteResponse completeResponse) {
+                        this.roundResponse = completeResponse.chatResponse();
+                    } else if (event instanceof PartialResponse partialResponse) {
+                        if (!hasOutputGuardrails) {
+                            tube.send(new PartialResponseEvent(partialResponse, invocationContext));
                         }
+                    } else if (event instanceof PartialThinking partialThinking) {
+                        tube.send(new PartialThinkingEvent(partialThinking, invocationContext));
+                    } else if (event instanceof PartialToolCall partialToolCall) {
+                        tube.send(new PartialToolCallEvent(partialToolCall, invocationContext));
+                    } else if (event instanceof CompleteToolCall completeToolCall) {
+                        tube.send(new CompleteToolCallEvent(completeToolCall, invocationContext));
+                        ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
+                        // registered before it starts, so that a cancellation waits for it, also when the
+                        // executor runs it inline
+                        CompletableFuture<Void> start = new CompletableFuture<>();
+                        CompletableFuture<ToolExecutionResult> startedTool =
+                                start.thenCompose(ignored -> startedRound
+                                        .round()
+                                        .startTool(
+                                                toolRequest,
+                                                Loop.this::emitBeforeToolExecution,
+                                                Loop.this::emitAfterToolExecution,
+                                                toolExecutor));
+                        boolean registered = underAccumulatorLock(() -> {
+                            boolean isCurrentRound =
+                                    !tube.cancelled() && (startedRoundTools.get() == startedRound);
+                            if (isCurrentRound) {
+                                startedTools.put(toolRequest, startedTool);
+                            }
+                            return isCurrentRound;
+                        });
+                        if (registered) {
+                            start.complete(null);
+                        }
+                    } else if (event instanceof RawStreamingEvent rawStreamingEvent) {
+                        tube.send(new RawEvent(rawStreamingEvent, invocationContext));
+                    }
+                }
 
                 @Override
                 public void onError(Throwable error) {
                     fail(error);
                 }
 
-                        @Override
-                        public void onComplete() {
-                            if (tube.cancelled()) {
-                                return;
-                            }
-                            try {
-                                processRound(chatRequest, currentToolContext, parameters, roundResponse, startedRound);
-                            } catch (Throwable error) {
-                                fail(error);
-                            }
-                        }
+                @Override
+                public void onComplete() {
+                    if (tube.cancelled()) {
+                        return;
+                    }
+                    try {
+                        processRound(chatRequest, currentToolContext, parameters, roundResponse, startedRound);
+                    } catch (Throwable error) {
+                        fail(error);
+                    }
+                }
                     });
         }
 

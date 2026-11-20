@@ -76,6 +76,7 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
+import org.jspecify.annotations.Nullable;
 
 /**
  * AI Services is a high-level API of LangChain4j to interact with {@link ChatModel} and {@link StreamingChatModel}.
@@ -1382,7 +1383,7 @@ public abstract class AiServices<T> {
      * @since 1.25.0
      */
     @Experimental
-    public <I extends ToolInputGuardrail> AiServices<T> toolInputGuardrails(List<I> guardrails) {
+    public <I extends ToolInputGuardrail> AiServices<T> toolInputGuardrails(@Nullable List<I> guardrails) {
         context.toolGuardrailServiceBuilder.inputGuardrails(guardrails);
         return this;
     }
@@ -1425,14 +1426,14 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
-     * @param guardrailClasses the classes of the tool input guardrails
+     * @param guardrailClasses the classes of the tool input guardrails, or {@code null} to clear them
      * @param <I>              the type of the guardrails
      * @return the current instance of {@link AiServices} to allow method chaining
      * @since 1.25.0
      */
     @Experimental
     public <I extends ToolInputGuardrail> AiServices<T> toolInputGuardrailClasses(
-            List<Class<? extends I>> guardrailClasses) {
+            @Nullable List<Class<? extends I>> guardrailClasses) {
         context.toolGuardrailServiceBuilder.inputGuardrailClasses(guardrailClasses);
         return this;
     }
@@ -1482,7 +1483,7 @@ public abstract class AiServices<T> {
      * @since 1.25.0
      */
     @Experimental
-    public <O extends ToolOutputGuardrail> AiServices<T> toolOutputGuardrails(List<O> guardrails) {
+    public <O extends ToolOutputGuardrail> AiServices<T> toolOutputGuardrails(@Nullable List<O> guardrails) {
         context.toolGuardrailServiceBuilder.outputGuardrails(guardrails);
         return this;
     }
@@ -1525,14 +1526,14 @@ public abstract class AiServices<T> {
      *     checking {@code toolName()} or {@code toolSource()} of its request.
      * </p>
      *
-     * @param guardrailClasses the classes of the tool output guardrails
+     * @param guardrailClasses the classes of the tool output guardrails, or {@code null} to clear them
      * @param <O>              the type of the guardrails
      * @return the current instance of {@link AiServices} to allow method chaining
      * @since 1.25.0
      */
     @Experimental
     public <O extends ToolOutputGuardrail> AiServices<T> toolOutputGuardrailClasses(
-            List<Class<? extends O>> guardrailClasses) {
+            @Nullable List<Class<? extends O>> guardrailClasses) {
         context.toolGuardrailServiceBuilder.outputGuardrailClasses(guardrailClasses);
         return this;
     }

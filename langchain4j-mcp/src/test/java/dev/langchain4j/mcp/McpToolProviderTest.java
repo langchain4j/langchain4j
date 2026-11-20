@@ -364,8 +364,9 @@ class McpToolProviderTest {
                 .containsExactlyInAnyOrder(
                         tuple("keyless_tool", ToolSource.mcp(List.of())),
                         tuple("keyed_tool", ToolSource.mcp("keyed")),
-                        tuple("list_resources", ToolSource.mcp("keyed")),
-                        tuple("get_resource", ToolSource.mcp("keyed")));
+                        // the resource tools also reach the keyless client: their source names no server
+                        tuple("list_resources", ToolSource.mcp(List.of())),
+                        tuple("get_resource", ToolSource.mcp(List.of())));
     }
 
     @Test
@@ -418,9 +419,11 @@ class McpToolProviderTest {
     }
 
     @Test
-    void should_preserve_fail_if_one_server_fails_when_the_key_of_a_client_throws_with_resources_as_tools() {
+    void should_still_provide_the_tools_of_a_client_whose_key_throws_and_name_no_server_for_the_resource_tools() {
         var failingKeyClient = mock(McpClient.class);
         when(failingKeyClient.key()).thenThrow(new IllegalStateException("cannot connect"));
+        when(failingKeyClient.listTools())
+                .thenReturn(List.of(ToolSpecification.builder().name("tool_3").build()));
 
         var resilientProvider = McpToolProvider.builder()
                 .mcpClients(failingKeyClient, mcpClient)
@@ -431,8 +434,9 @@ class McpToolProviderTest {
 
         var result = resilientProvider.provideTools(toolProviderRequest());
 
-        assertThat(toolByName(result, "list_resources").toolSource()).isEqualTo(ToolSource.mcp("mcp-1"));
+        assertThat(toolByName(result, "tool_3").toolSource()).isEqualTo(ToolSource.mcp(List.of()));
         assertThat(toolByName(result, "tool_1").toolSource()).isEqualTo(ToolSource.mcp("mcp-1"));
+        assertThat(toolByName(result, "list_resources").toolSource()).isEqualTo(ToolSource.mcp(List.of()));
     }
 
     @Test

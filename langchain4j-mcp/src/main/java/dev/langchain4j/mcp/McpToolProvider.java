@@ -46,7 +46,8 @@ import dev.langchain4j.mcp.client.DefaultMcpClient;
  * <p>
  * When a {@link McpResourcesAsToolsPresenter} is configured, the provider also emits the synthetic
  * {@code list_resources} and {@code get_resource} tools. Their source holds the keys of all the clients the
- * tools were provided for, and their executors only query those clients. {@link #provideTools(ToolProviderRequest)}
+ * tools were provided for, or no server keys when one of those clients has no known key, and their executors only
+ * query those clients. {@link #provideTools(ToolProviderRequest)}
  * provides tools for every client of this provider. A subclass can pass a subset of the clients to one of the
  * protected {@code provideTools} overloads; if that subset is empty, the synthetic resource tools are not emitted.
  * <p>
@@ -197,11 +198,13 @@ public class McpToolProvider implements ToolProvider {
                 consideredMcpClients.stream().filter(Objects::nonNull).toList();
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
         List<String> resourcesServerKeys = new ArrayList<>();
+        boolean everyClientHasAKey = true;
 
         for (McpClient mcpClient : consideredMcpClients) {
             try {
                 List<String> clientServerKeys = serverKeys(mcpClient);
                 resourcesServerKeys.addAll(clientServerKeys);
+                everyClientHasAKey &= !clientServerKeys.isEmpty();
                 ToolSource clientToolSource = ToolSource.mcp(clientServerKeys);
                 for (ToolSpecification originalSpec : mcpClient.listTools()) {
                     if (mcpToolsFilter.test(mcpClient, originalSpec)) {
@@ -244,7 +247,9 @@ public class McpToolProvider implements ToolProvider {
             }
         }
         if ((resourcesAsToolsPresenter != null) && !clientsSnapshot.isEmpty()) {
-            ToolSource resourcesToolSource = ToolSource.mcp(resourcesServerKeys);
+            // the resource tools reach every client: if one of them has no known key, naming only the others would let
+            // a guardrail that trusts servers by key trust a server it cannot identify
+            ToolSource resourcesToolSource = ToolSource.mcp(everyClientHasAKey ? resourcesServerKeys : List.of());
             ToolSpecification listResourcesToolSpec = resourcesAsToolsPresenter.createListResourcesSpecification();
             if (alwaysVisibleToolNames.contains(listResourcesToolSpec.name())) {
                 listResourcesToolSpec = addSearchBehaviorMetadata(listResourcesToolSpec);
@@ -273,7 +278,18 @@ public class McpToolProvider implements ToolProvider {
      * The server keys of the {@link ToolSource} of the tools of a client: its key, or none when it has no key.
      */
     private List<String> serverKeys(McpClient mcpClient) {
-        String key = mcpClient.key();
+        Objects.requireNonNull(mcpClient, "mcpClient");
+        String key;
+        try {
+            key = mcpClient.key();
+        } catch (RuntimeException e) {
+            // the key only labels the tools for tool guardrails: the tools of the client are still provided
+            if (keylessClientsReported.add(mcpClient)) {
+                log.warn("Failed to get the key() of MCP client {}: tool guardrails see its tools as an MCP source "
+                        + "without server keys", mcpClient.getClass().getName(), e);
+            }
+            return List.of();
+        }
         List<String> serverKeys = List.of();
 
         if (isNullOrBlank(key)) {

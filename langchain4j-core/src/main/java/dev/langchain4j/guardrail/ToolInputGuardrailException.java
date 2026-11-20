@@ -2,6 +2,7 @@ package dev.langchain4j.guardrail;
 
 import dev.langchain4j.Experimental;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Exception thrown when a fatal {@link ToolInputGuardrail} failure aborts the AI service invocation.
@@ -15,7 +16,7 @@ import java.util.Optional;
 @Experimental
 public final class ToolInputGuardrailException extends GuardrailException {
 
-    private final String arguments;
+    private final @Nullable String arguments;
 
     /**
      * Creates the exception with a message.
@@ -37,7 +38,7 @@ public final class ToolInputGuardrailException extends GuardrailException {
         this(message, cause, null);
     }
 
-    private ToolInputGuardrailException(String message, Throwable cause, String arguments) {
+    private ToolInputGuardrailException(String message, Throwable cause, @Nullable String arguments) {
         super(message, cause);
         this.arguments = arguments;
     }

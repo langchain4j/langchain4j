@@ -52,8 +52,8 @@ public interface ToolOutputGuardrail extends Guardrail<ToolOutputGuardrailReques
      * other contents and the error flag are kept.
      *
      * @param rewrittenText
-     *            the new text of the tool result. {@code null} means no rewrite (a plain success); use
-     *            {@code ""} for an empty text
+     *            the new text of the tool result. {@code null} means no rewrite (a plain success). To remove the
+     *            text, prefer a short placeholder to an empty text, which some LLM providers reject
      * @return the result of a successful tool output guardrail validation carrying the rewritten text
      */
     default ToolOutputGuardrailResult successWith(@Nullable String rewrittenText) {
@@ -68,10 +68,12 @@ public interface ToolOutputGuardrail extends Guardrail<ToolOutputGuardrailReques
      * </p>
      *
      * @param rewrittenContents
-     *            the new contents of the tool result
+     *            the new contents of the tool result, must not be {@code null} or empty (a tool result always has
+     *            contents) and must not contain {@code null}
      * @param isError
      *            whether the rewritten tool result is an error
      * @return the result of a successful tool output guardrail validation carrying the rewritten contents
+     * @throws IllegalArgumentException if {@code rewrittenContents} is {@code null} or empty, or contains {@code null}
      */
     default ToolOutputGuardrailResult successWith(List<Content> rewrittenContents, boolean isError) {
         return ToolOutputGuardrailResult.successWith(rewrittenContents, isError);

@@ -393,6 +393,23 @@ class ToolGuardrailResolutionTest {
     }
 
     @Test
+    void null_varargs_clear_the_builder_guardrails_like_a_null_list() {
+        var setup = setupWith(new Plain());
+        setup.guardrails()
+                .inputGuardrails(new InGlobal())
+                .inputGuardrailClasses(InClass.class)
+                .outputGuardrails(new OutGlobal())
+                .outputGuardrailClasses(OutClass.class)
+                .inputGuardrails((ToolInputGuardrail[]) null)
+                .inputGuardrailClasses((Class<? extends ToolInputGuardrail>[]) null)
+                .outputGuardrails((ToolOutputGuardrail[]) null)
+                .outputGuardrailClasses((Class<? extends ToolOutputGuardrail>[]) null);
+
+        assertThat(setup.inputChain("plain")).isEmpty();
+        assertThat(setup.outputChain("plain")).isEmpty();
+    }
+
+    @Test
     void class_only() {
         var setup = setupWith(new ClassOnly());
 

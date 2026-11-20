@@ -91,8 +91,9 @@ public final class ToolInputGuardrailRequest implements GuardrailRequest<ToolInp
      * <p>
      * If the arguments cannot be parsed, a {@link ToolArgumentsException} is thrown. A
      * guardrail can let it propagate: the tool is then not executed, and the call is handled like an arguments error of
-     * the tool, by the {@code ToolArgumentsErrorHandler} of the AI service (for example, the error is sent to the LLM
-     * so that it can correct the arguments), instead of aborting the invocation.
+     * the tool, by the {@code ToolArgumentsErrorHandler} of the AI service. The default handler fails the invocation
+     * in the blocking and {@code TokenStream} modes, and sends the error to the LLM, so that it can correct the
+     * arguments, in the {@code CompletableFuture} and {@code Flow.Publisher} modes.
      *
      * @return the parsed arguments, never null
      * @throws ToolArgumentsException if the arguments are not a valid JSON object (malformed

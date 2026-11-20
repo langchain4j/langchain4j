@@ -8,6 +8,7 @@ import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Leniently parses the JSON arguments of a tool execution request.
@@ -34,7 +35,7 @@ public class ToolArgumentsParser {
      * @param arguments json string
      * @return the parsed map (mutable; may be null if the JSON is the literal {@code null})
      */
-    public static Map<String, Object> argumentsAsMap(String arguments) {
+    public static @Nullable Map<String, Object> argumentsAsMap(@Nullable String arguments) {
         if (isNullOrBlank(arguments)) {
             return Map.of();
         }
