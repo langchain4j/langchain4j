@@ -2,6 +2,7 @@ package dev.langchain4j.internal;
 
 import dev.langchain4j.Internal;
 import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -170,7 +171,7 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
         }
 
         // First let's try to guess via the Path
-        Path path = Path.of(uriPath);
+        Path path = toLocalPath(uri, uriPath);
 
         // Paths that denote a root (e.g. "file:///") have no file name either
         Path fileName = path.getFileName();
@@ -199,6 +200,18 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
         }
     }
 
+    private static Path toLocalPath(URI uri, String uriPath) {
+        if (uri.getScheme() != null) {
+            try {
+                // File handles platform-specific file URI paths without opening an authority as a UNC share.
+                return new File(uri).toPath();
+            } catch (IllegalArgumentException ignored) {
+                // Preserve the decoded-path behavior for authorities, queries and fragments.
+            }
+        }
+        return Path.of(uriPath);
+    }
+
     /**
      * Guess the mime-type of a given URI from its file name only, whatever its scheme: from the mappings of this
      * detector, then from {@link URLConnection#guessContentTypeFromName(String)}. The local file system is never
@@ -224,9 +237,7 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
         String mimeTypeFromMappings = lastDotPosition > 0
                 ? mappings.get(fileName.substring(lastDotPosition + 1).toLowerCase(Locale.ROOT))
                 : null;
-        return mimeTypeFromMappings != null
-                ? mimeTypeFromMappings
-                : URLConnection.guessContentTypeFromName(fileName);
+        return mimeTypeFromMappings != null ? mimeTypeFromMappings : URLConnection.guessContentTypeFromName(fileName);
     }
 
     static String extension(Path path) {
