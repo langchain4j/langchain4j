@@ -147,34 +147,34 @@ public class TestToolGuardrailServiceBuilderFactory implements ToolGuardrailServ
         }
 
         @Override
-        public <K> ToolInputGuardrailResult executeInputGuardrails(K key, ToolInputGuardrailRequest request) {
+        public ToolInputGuardrailResult executeInputGuardrails(ToolKey key, ToolInputGuardrailRequest request) {
             return this.delegate.executeInputGuardrails(key, request);
         }
 
         @Override
-        public <K> CompletableFuture<ToolInputGuardrailResult> executeInputGuardrailsAsync(
-                K key, ToolInputGuardrailRequest request) {
+        public CompletableFuture<ToolInputGuardrailResult> executeInputGuardrailsAsync(
+                ToolKey key, ToolInputGuardrailRequest request) {
             return this.delegate.executeInputGuardrailsAsync(key, request);
         }
 
         @Override
-        public <K> ToolOutputGuardrailResult executeOutputGuardrails(K key, ToolOutputGuardrailRequest request) {
+        public ToolOutputGuardrailResult executeOutputGuardrails(ToolKey key, ToolOutputGuardrailRequest request) {
             return this.delegate.executeOutputGuardrails(key, request);
         }
 
         @Override
-        public <K> CompletableFuture<ToolOutputGuardrailResult> executeOutputGuardrailsAsync(
-                K key, ToolOutputGuardrailRequest request) {
+        public CompletableFuture<ToolOutputGuardrailResult> executeOutputGuardrailsAsync(
+                ToolKey key, ToolOutputGuardrailRequest request) {
             return this.delegate.executeOutputGuardrailsAsync(key, request);
         }
 
         @Override
-        public <K> boolean hasInputGuardrails(K key) {
+        public boolean hasInputGuardrails(ToolKey key) {
             return this.delegate.hasInputGuardrails(key);
         }
 
         @Override
-        public <K> boolean hasOutputGuardrails(K key) {
+        public boolean hasOutputGuardrails(ToolKey key) {
             return this.delegate.hasOutputGuardrails(key);
         }
     }

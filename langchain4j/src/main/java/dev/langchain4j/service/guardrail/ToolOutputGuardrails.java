@@ -11,6 +11,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.tool.AiServiceTool;
+import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
 
 /**
  * Applies {@link ToolOutputGuardrail}s to a tool: they validate, or rewrite, the result of the tool
@@ -23,6 +24,13 @@ import dev.langchain4j.service.tool.AiServiceTool;
  * <p>
  *     A class annotation is looked up on the class of the tool, then on its superclasses, then on its interfaces, and
  *     the first one found is used: an annotation on a subclass hides the one of its parents, it does not add to it.
+ *     The class annotation is found through the {@link ClassMetadataProviderFactory}, and the method annotation is
+ *     read from the tool method.
+ * </p>
+ * <p>
+ *     A framework that runs its own tool loop, and has no {@code Method} for a tool, does not have these annotations
+ *     read: it passes the guardrails it found for the tool as the guardrails of the {@link AiServiceTool}, and binds
+ *     the tool with {@link ToolGuardrailService#bind(Class, AiServiceTool) bind(null, tool)}.
  * </p>
  * <p>
  *     Every tool guardrail that applies to a tool runs, as one chain, in this order:

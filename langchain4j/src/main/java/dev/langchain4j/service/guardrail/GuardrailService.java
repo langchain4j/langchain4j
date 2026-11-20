@@ -16,78 +16,38 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.guardrail.spi.GuardrailServiceBuilderFactory;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.CompletableFuture;
-import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
-import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
-import dev.langchain4j.spi.classloading.ClassInstanceFactory;
-import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
 
 /**
  * Defines a service for executing guardrails associated with methods in an AI service.
  * Guardrails are constraints or validations applied either to input or output of a method.
- * <p>
- *     <strong>Method keys.</strong> The guardrails of a method are looked up by a key. An AI service identifies the
- *     method it invokes with its {@link Method}; the default service translates that into the key its guardrails were
- *     registered under with
- *     {@link ClassMetadataProviderFactory#resolveMethodKey(Object)}. That is the same
- *     for every lookup of this interface, blocking or not.
- * </p>
- * <p>
- *     <strong>Customizing and extending.</strong> What is shared by every kind of guardrail (looking up the guardrails
- *     to run for a key, and running them) lives in {@link GenericGuardrailService}, which this interface specializes for
- *     AI services. Frameworks customize AI service guardrails through the SPIs the default builder and service use:
- *     {@link ClassMetadataProviderFactory} (how methods and annotations are found,
- *     and how the method passed at invocation time maps to a method key) and
- *     {@link ClassInstanceFactory} (how guardrail classes become instances), or by
- *     replacing the whole builder with a {@link GuardrailServiceBuilderFactory}.
- *     {@link AbstractGuardrailService} is deprecated: it was the way to provide a custom service before these SPIs were
- *     enough, and is only kept for the frameworks that subclass it.
- * </p>
  */
-public non-sealed interface GuardrailService
-        extends GenericGuardrailService<
-                InputGuardrailRequest, InputGuardrailResult, OutputGuardrailRequest, OutputGuardrailResult> {
-
-    // executeInputGuardrails, executeOutputGuardrails, hasInputGuardrails, hasOutputGuardrails and the asynchronous
-    // variants are declared again, with the AI service types, for binary compatibility with code compiled before this
-    // interface extended GenericGuardrailService. A method's JVM signature includes its parameter and return types, and
-    // the inherited methods have the request and result types erased to GuardrailRequest and GuardrailResult. Without
-    // these declarations, a caller would bind to the inherited signature and bypass an
-    // implementation compiled against the old interface, such as a framework subclass that overrides these methods to
-    // translate its method keys, and the guardrails of its methods would silently not run. They can be removed when the
-    // next major release no longer needs to run code compiled against the old interface.
-
+public interface GuardrailService {
     /**
      * Retrieves the class representing the AI service to which the guardrails apply.
      *
      * @return The {@code Class} object representing the AI service.
-     * @deprecated use {@link #targetClass()} instead
      */
-    @Deprecated(since = "1.25.0")
     Class<?> aiServiceClass();
 
     /**
-     * The class representing the AI service to which the guardrails apply. By default, it is the
-     * {@link #aiServiceClass()}, so that implementations written before {@code targetClass()} existed keep working.
+     * Executes the input guardrails associated with a given {@link Method}
      *
-     * @return The {@code Class} object representing the AI service.
-     * @since 1.25.0
+     * @param method The method whose input guardrails are to be executed.
+     * @param request The parameters to validate against the input guardrails. Must not be null.
+     * @return The result of executing the input guardrails, encapsulated in an {@code InputGuardrailResult}.
+     * If no guardrails are associated with the method, a successful result is returned by default.
+     * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
      */
-    @Override
-    default Class<?> targetClass() {
-        return aiServiceClass();
-    }
-
-    /** {@inheritDoc} */
-    @Override
     <MethodKey> InputGuardrailResult executeInputGuardrails(MethodKey method, InputGuardrailRequest request);
 
     /**
      * Non-blocking counterpart of {@link #executeInputGuardrails(Object, InputGuardrailRequest)}.
      * <p>
      * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; the internal implementation
-     * ({@code AbstractKeyedGuardrailService}) overrides it, and only implementors that opt into the non-blocking
+     * ({@code AbstractGuardrailService}) overrides it, and only implementors that opt into the non-blocking
      * AI Service modes need to provide it.
      *
      * @param method The method whose input guardrails are to be executed.
@@ -96,7 +56,6 @@ public non-sealed interface GuardrailService
      * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
      * @since 1.20.0
      */
-    @Override
     @Experimental
     default <MethodKey> CompletableFuture<InputGuardrailResult> executeInputGuardrailsAsync(
             MethodKey method, InputGuardrailRequest request) {
@@ -123,10 +82,6 @@ public non-sealed interface GuardrailService
      * Non-blocking counterpart of {@link #executeGuardrails(Object, InputGuardrailRequest)}: runs the input
      * guardrails without blocking the calling thread and yields the (possibly rewritten) {@link UserMessage}.
      *
-     * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
-     * @param method The method whose input guardrails are to be executed. Nullable.
-     * @param request The parameters to validate against the input guardrails. Must not be null.
-     * @return A {@link CompletableFuture} that completes with the (possibly rewritten) {@link UserMessage}.
      * @since 1.20.0
      */
     @Experimental
@@ -138,15 +93,22 @@ public non-sealed interface GuardrailService
         return result;
     }
 
-    /** {@inheritDoc} */
-    @Override
+    /**
+     * Executes the output guardrails associated with a given {@code Method}.
+     *
+     * @param method The method whose output guardrails are to be executed.
+     * @param request The parameters to validate against the output guardrails. Must not be null.
+     * @return The result of executing the output guardrails, encapsulated in an {@code OutputGuardrailResult}.
+     * If no guardrails are associated with the method, a successful result is returned by default.
+     * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
+     */
     <MethodKey> OutputGuardrailResult executeOutputGuardrails(MethodKey method, OutputGuardrailRequest request);
 
     /**
      * Non-blocking counterpart of {@link #executeOutputGuardrails(Object, OutputGuardrailRequest)}.
      * <p>
      * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; the internal implementation
-     * ({@code AbstractKeyedGuardrailService}) overrides it, and only implementors that opt into the non-blocking
+     * ({@code AbstractGuardrailService}) overrides it, and only implementors that opt into the non-blocking
      * AI Service modes need to provide it.
      *
      * @param method The method whose output guardrails are to be executed.
@@ -155,19 +117,26 @@ public non-sealed interface GuardrailService
      * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
      * @since 1.20.0
      */
-    @Override
     @Experimental
     default <MethodKey> CompletableFuture<OutputGuardrailResult> executeOutputGuardrailsAsync(
             MethodKey method, OutputGuardrailRequest request) {
         return AsyncNotSupported.failedFuture(getClass(), "executeOutputGuardrailsAsync");
     }
 
-    /** {@inheritDoc} */
-    @Override
+    /**
+     * Whether or not a method has any input guardrails associated with it
+     * @param method The method
+     * @return {@code true} If {@code method} has input guardrails. {@code false} otherwise
+     * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
+     */
     <MethodKey> boolean hasInputGuardrails(MethodKey method);
 
-    /** {@inheritDoc} */
-    @Override
+    /**
+     * Whether or not a method has any output guardrails associated with it
+     * @param method The method
+     * @return {@code true} If {@code method} has output guardrails. {@code false} otherwise
+     * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
+     */
     <MethodKey> boolean hasOutputGuardrails(MethodKey method);
 
     /**
@@ -190,11 +159,6 @@ public non-sealed interface GuardrailService
      * performs blocking I/O keeps the calling thread free only if it overrides
      * {@link dev.langchain4j.guardrail.Guardrail#validateAsync(dev.langchain4j.guardrail.GuardrailRequest)}.
      *
-     * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
-     * @param <T> The type of response to produce
-     * @param method The method whose output guardrails are to be executed. Nullable.
-     * @param request The parameters to validate against the output guardrails. Must not be null.
-     * @return A {@link CompletableFuture} that completes with the response to use once the output guardrails have run.
      * @since 1.20.0
      */
     @Experimental
@@ -224,87 +188,122 @@ public non-sealed interface GuardrailService
     }
 
     /**
-     * Builder class for building {@link GuardrailService} instances.
-     * <p>
-     *     It is the builder of the AI service kind of the {@link GenericGuardrailService.Builder} hierarchy.
-     * </p>
+     * Builder class for building {@link GuardrailService} instances
      */
-    non-sealed interface Builder
-            extends GenericGuardrailService.Builder<
-                    InputGuardrailRequest,
-                    InputGuardrailResult,
-                    OutputGuardrailRequest,
-                    OutputGuardrailResult,
-                    GuardrailService,
-                    InputGuardrail,
-                    OutputGuardrail,
-                    InputGuardrailsConfig,
-                    OutputGuardrailsConfig,
-                    Builder> {
-
-        // Every method of GenericGuardrailService.Builder is declared again with the AI service types, for binary
-        // compatibility with code compiled before this interface extended GenericGuardrailService.Builder. A method's
-        // JVM signature includes its return type, and the inherited methods return the builder type as a type
-        // variable, which the JVM sees as GenericGuardrailService.Builder (and build() as GenericGuardrailService).
-        // - The abstract methods keep the signatures that the builders of frameworks compiled against the old interface
-        //   provide, and that callers compiled against it use. Without them, such a caller fails with a
-        //   NoSuchMethodError, and a caller compiled against this version fails with an AbstractMethodError on such a
-        //   builder.
-        // - The default (varargs) methods keep the signatures that callers compiled against the old interface use.
-        //   They only delegate to the inherited implementation.
-        // They can be removed when the next major release no longer needs to run code compiled against the old
-        // interface.
-
-        /** {@inheritDoc} */
-        @Override
+    interface Builder {
+        /**
+         * Configures the input guardrails for the builder.
+         *
+         * @param config The configuration for input guardrails. Must not be null.
+         * @return The current instance of {@link Builder} for method chaining.
+         * @throws IllegalArgumentException if {@code config} is null.
+         */
         Builder inputGuardrailsConfig(dev.langchain4j.guardrail.config.InputGuardrailsConfig config);
 
-        /** {@inheritDoc} */
-        @Override
+        /**
+         * Configures the output guardrails for the Builder.
+         *
+         * @param config The configuration for output guardrails. Must not be null.
+         * @return The current instance of {@link Builder} for method chaining.
+         * @throws IllegalArgumentException if {@code config} is null.
+         */
         Builder outputGuardrailsConfig(dev.langchain4j.guardrail.config.OutputGuardrailsConfig config);
 
-        /** {@inheritDoc} */
-        @Override
+        /**
+         * Configures the classes of input guardrails for the Builder. Existing input guardrail classes will be cleared.
+         *
+         * @param guardrailClasses A list of classes implementing the {@link InputGuardrail} interface to be used
+         *                         as input guardrails. May be {@code null}.
+         * @param <I> The type of {@link InputGuardrail}
+         * @return The current instance of {@link Builder} for method chaining.
+         */
         <I extends InputGuardrail> Builder inputGuardrailClasses(List<Class<? extends I>> guardrailClasses);
 
-        /** {@inheritDoc} */
-        @Override
-        @SuppressWarnings("unchecked")
+        /**
+         * Configures the classes of input guardrails for the Builder.
+         * Existing input guardrail classes will be cleared.
+         *
+         * @param guardrailClasses An array of classes implementing the {@link InputGuardrail} interface to be used
+         *                         as input guardrails. May be {@code null}.
+         * @param <I> The type of {@link InputGuardrail}
+         * @return The current instance of {@link Builder} for method chaining.
+         */
         default <I extends InputGuardrail> Builder inputGuardrailClasses(Class<? extends I>... guardrailClasses) {
-            return GenericGuardrailService.Builder.super.inputGuardrailClasses(guardrailClasses);
+            return Optional.ofNullable(guardrailClasses)
+                    .map(g -> inputGuardrailClasses(List.of(g)))
+                    .orElse(this);
         }
 
-        /** {@inheritDoc} */
-        @Override
+        /**
+         * Configures the classes of output guardrails for the Builder.
+         * Existing output guardrail classes will be cleared.
+         *
+         * @param guardrailClasses A list of classes implementing the {@link OutputGuardrail} interface to be used
+         *                         as output guardrails. May be {@code null}.
+         * @param <O> The type of {@link OutputGuardrail}
+         * @return The current instance of {@link Builder} for method chaining.
+         */
         <O extends OutputGuardrail> Builder outputGuardrailClasses(List<Class<? extends O>> guardrailClasses);
 
-        /** {@inheritDoc} */
-        @Override
-        @SuppressWarnings("unchecked")
+        /**
+         * Configures the classes of output guardrails for the Builder.
+         * Existing output guardrail classes will be cleared.
+         *
+         * @param guardrailClasses An array of classes implementing the {@link OutputGuardrail} interface to be used
+         *                         as output guardrails. May be {@code null}.
+         * @param <O> The type of {@link OutputGuardrail}
+         * @return The current instance of {@link Builder} for method chaining.
+         */
         default <O extends OutputGuardrail> Builder outputGuardrailClasses(Class<? extends O>... guardrailClasses) {
-            return GenericGuardrailService.Builder.super.outputGuardrailClasses(guardrailClasses);
+            return Optional.ofNullable(guardrailClasses)
+                    .map(g -> outputGuardrailClasses(List.of(g)))
+                    .orElse(this);
         }
 
-        /** {@inheritDoc} */
-        @Override
+        /**
+         * Sets the input guardrails for the Builder. Existing input guardrails
+         * will be cleared, and the provided input guardrails will be added.
+         *
+         * @param guardrails A list of input guardrails implementing the {@link InputGuardrail} interface.
+         *                   Can be {@code null}, in which case no guardrails will be added.
+         * @return The current instance of {@link Builder} for method chaining.
+         */
         <I extends InputGuardrail> Builder inputGuardrails(List<I> guardrails);
 
-        /** {@inheritDoc} */
-        @Override
-        @SuppressWarnings("unchecked")
+        /**
+         * Configures the input guardrails for the Builder.
+         *
+         * @param guardrails An array of input guardrails implementing the {@link InputGuardrail} interface.
+         *                   May be {@code null}, in which case no guardrails will be added.
+         * @return The current instance of {@link Builder} for method chaining.
+         */
         default <I extends InputGuardrail> Builder inputGuardrails(I... guardrails) {
-            return GenericGuardrailService.Builder.super.inputGuardrails(guardrails);
+            return Optional.ofNullable(guardrails)
+                    .map(ig -> inputGuardrails(List.of(ig)))
+                    .orElse(this);
         }
 
-        /** {@inheritDoc} */
-        @Override
+        /**
+         * Sets the output guardrails for the Builder. Existing output guardrails
+         * will be cleared, and the provided output guardrails will be added.
+         *
+         * @param guardrails A list of output guardrails implementing the {@link OutputGuardrail}
+         *                   interface. Can be {@code null}, in which case no guardrails will be added.
+         * @return The current instance of {@link Builder} for method chaining.
+         */
         <O extends OutputGuardrail> Builder outputGuardrails(List<O> guardrails);
 
-        /** {@inheritDoc} */
-        @Override
-        @SuppressWarnings("unchecked")
+        /**
+         * Configures the output guardrails for the Builder.
+         *
+         * @param guardrails An array of output guardrails implementing the {@link OutputGuardrail} interface.
+         *                   May be {@code null}, in which case no guardrails will be added.
+         * @return The current instance of {@link Builder} for method chaining.
+         */
         default <O extends OutputGuardrail> Builder outputGuardrails(O... guardrails) {
-            return GenericGuardrailService.Builder.super.outputGuardrails(guardrails);
+            return Optional.ofNullable(guardrails)
+                    .map(og -> outputGuardrails(List.of(og)))
+                    .orElse(this);
         }
 
         /**
@@ -322,7 +321,6 @@ public non-sealed interface GuardrailService
          * @return an instance of {@link GuardrailService} configured with appropriate
          * input and output guardrails.
          */
-        @Override
         GuardrailService build();
     }
 }

@@ -56,17 +56,16 @@ final class ToolGuardrailChainResolver {
     private final ClassMetadataProviderFactory<Object> classMetadataProviderFactory;
     private final Optional<ToolInputGuardrailExecutor> globalInputExecutor;
     private final Optional<ToolOutputGuardrailExecutor> globalOutputExecutor;
+    private final Map<AnnotationSite, List<? extends GuardrailEntry<?>>> annotationGuardrails =
+            new ConcurrentHashMap<>();
 
     /**
      * @param globalInputGuardrails        the input guardrails that apply to every tool, in the order they run
      * @param globalOutputGuardrails       the output guardrails that apply to every tool, in the order they run
      * @param inputConfig                  the configuration of the input executors. {@code null} means the default.
      * @param outputConfig                 the configuration of the output executors. {@code null} means the default.
-     * @param classMetadataProviderFactory finds the annotations of the tools
+     * @param classMetadataProviderFactory finds the annotations of the classes of the tools
      */
-    private final Map<AnnotationSite, List<? extends GuardrailEntry<?>>> annotationGuardrails =
-            new ConcurrentHashMap<>();
-
     ToolGuardrailChainResolver(
             List<GuardrailEntry<ToolInputGuardrail>> globalInputGuardrails,
             List<GuardrailEntry<ToolOutputGuardrail>> globalOutputGuardrails,
@@ -88,11 +87,12 @@ final class ToolGuardrailChainResolver {
     /**
      * Resolves the chains of the tool, and returns the key that holds their executors.
      *
+     * @param owner     the service the tool is bound to
      * @param toolClass the class whose annotations apply to the tool. {@code null} means the declaring class of the
      *                  tool method, if the tool has one.
      * @param tool      the tool
      */
-    DefaultToolKey resolve(Class<?> toolClass, AiServiceTool tool) {
+    DefaultToolKey resolve(DefaultToolGuardrailService owner, Class<?> toolClass, AiServiceTool tool) {
         ensureNotNull(tool, "tool");
         var method = (tool.toolExecutor() instanceof DefaultToolExecutor defaultToolExecutor)
                 ? defaultToolExecutor.originalMethod()
@@ -111,7 +111,9 @@ final class ToolGuardrailChainResolver {
                 tool.toolOutputGuardrails());
 
         return new DefaultToolKey(
-                tool.name(),
+                owner,
+                tool.toolSpecification(),
+                tool.toolSource(),
                 chainExecutor(
                         this.globalInputGuardrails,
                         ownInputGuardrails,
@@ -208,27 +210,24 @@ final class ToolGuardrailChainResolver {
     }
 
     /**
-     * Finds the annotation on the class, then on its superclasses, then on its interfaces: the first one found wins,
-     * so an annotation on a subclass hides the one of its parents.
+     * Finds the annotation on the class, then on its superclasses, then on its interfaces, through the
+     * {@link ClassMetadataProviderFactory}: the first one found wins, so an annotation on a subclass hides the one of
+     * its parents. The answer of the factory is final: a class it returns no annotation for has none.
      */
     private <A extends Annotation> Optional<A> findClassAnnotation(Class<?> clazz, Class<A> annotationType) {
         return hierarchy(clazz)
-                .map(c -> this.classMetadataProviderFactory
-                        .getAnnotation(c, annotationType)
-                        .or(() -> Optional.ofNullable(c.getAnnotation(annotationType))))
+                .map(c -> this.classMetadataProviderFactory.getAnnotation(c, annotationType))
                 .flatMap(Optional::stream)
                 .findFirst();
     }
 
     /**
-     * Finds the annotation of a method through the key the {@link ClassMetadataProviderFactory} uses for it. A method
-     * the factory has no key for (a factory may only know the public methods, and tool methods may have any
-     * visibility) is looked up directly on the {@link Method}, so that its guardrails are never silently ignored.
+     * Finds the annotation of a tool method on the {@link Method} itself.
      */
-    private <A extends Annotation> Optional<A> findMethodAnnotation(Method method, Class<A> annotationType) {
-        return Optional.ofNullable(this.classMetadataProviderFactory.resolveMethodKey(method))
-                .flatMap(key -> this.classMetadataProviderFactory.getAnnotation(key, annotationType))
-                .or(() -> Optional.ofNullable(method.getAnnotation(annotationType)));
+    private static <A extends Annotation> Optional<A> findMethodAnnotation(Method method, Class<A> annotationType) {
+        // Read by reflection for now: the ClassMetadataProviderFactory identifies methods by its own keys, and has no
+        // way yet to find the key of a Method. Going through the factory for methods too comes with that.
+        return Optional.ofNullable(method.getAnnotation(annotationType));
     }
 
     private static Stream<Class<?>> hierarchy(Class<?> clazz) {

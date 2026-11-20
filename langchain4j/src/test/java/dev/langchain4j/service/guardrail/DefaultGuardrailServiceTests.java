@@ -1,6 +1,5 @@
 package dev.langchain4j.service.guardrail;
 
-import static dev.langchain4j.service.guardrail.GuardrailServiceInspector.inspect;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.AiMessage;
@@ -18,11 +17,11 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-class DefaultAiServiceGuardrailServiceTests {
+class DefaultGuardrailServiceTests {
     @Test
     void noGuardrails() {
-        var guardrailService =
-                inspect(GuardrailService.builder(NoGuardrailAssistant.class).build());
+        var guardrailService = (DefaultGuardrailService)
+                GuardrailService.builder(NoGuardrailAssistant.class).build();
 
         assertThat(guardrailService.getInputGuardrailMethodCount()).isEqualTo(0);
         assertThat(guardrailService.getOutputGuardrailMethodCount()).isEqualTo(0);
@@ -39,8 +38,8 @@ class DefaultAiServiceGuardrailServiceTests {
     @Test
     void classLevelGuardrailsNoBuilders() {
         var gs = GuardrailService.builder(ClassLevelAssistant.class).build();
-        assertThat(gs).isInstanceOf(DefaultAiServiceGuardrailService.class);
-        var guardrailService = inspect(gs);
+        assertThat(gs).isInstanceOf(DefaultGuardrailService.class);
+        var guardrailService = (DefaultGuardrailService) gs;
 
         assertThat(guardrailService.getInputGuardrailMethodCount()).isEqualTo(2);
         assertThat(guardrailService.getOutputGuardrailMethodCount()).isEqualTo(2);
@@ -72,8 +71,8 @@ class DefaultAiServiceGuardrailServiceTests {
     @ParameterizedTest
     @MethodSource("classLevelGuardrailBuilders")
     void classLevelGuardrails(String testDescription, GuardrailService gs) {
-        assertThat(gs).isInstanceOf(DefaultAiServiceGuardrailService.class);
-        var guardrailService = inspect(gs);
+        assertThat(gs).isInstanceOf(DefaultGuardrailService.class);
+        var guardrailService = (DefaultGuardrailService) gs;
 
         assertThat(guardrailService.getInputGuardrailMethodCount()).isEqualTo(2);
         assertThat(guardrailService.getOutputGuardrailMethodCount()).isEqualTo(2);
@@ -104,8 +103,8 @@ class DefaultAiServiceGuardrailServiceTests {
 
     @Test
     void methodLevelGuardrails() {
-        var guardrailService =
-                inspect(GuardrailService.builder(MethodLevelAssistant.class).build());
+        var guardrailService = (DefaultGuardrailService)
+                GuardrailService.builder(MethodLevelAssistant.class).build();
 
         assertThat(guardrailService.getInputGuardrailMethodCount()).isEqualTo(2);
         assertThat(guardrailService.getOutputGuardrailMethodCount()).isEqualTo(2);
@@ -137,8 +136,8 @@ class DefaultAiServiceGuardrailServiceTests {
     @Test
     void classAndMethodLevelGuardrailsNoBuilders() {
         var gs = GuardrailService.builder(ClassAndMethodLevelAssistant.class).build();
-        assertThat(gs).isInstanceOf(DefaultAiServiceGuardrailService.class);
-        var guardrailService = inspect(gs);
+        assertThat(gs).isInstanceOf(DefaultGuardrailService.class);
+        var guardrailService = (DefaultGuardrailService) gs;
 
         assertThat(guardrailService.getInputGuardrailMethodCount()).isEqualTo(2);
         assertThat(guardrailService.getOutputGuardrailMethodCount()).isEqualTo(2);
@@ -177,10 +176,10 @@ class DefaultAiServiceGuardrailServiceTests {
 
     @Test
     void builderGuardrailsTakePrecedenceOverClassAndMethodAnnotations() {
-        var guardrailService = inspect(GuardrailService.builder(ClassAndMethodLevelAssistant.class)
+        var guardrailService = (DefaultGuardrailService) GuardrailService.builder(ClassAndMethodLevelAssistant.class)
                 .inputGuardrailClasses(IG2.class)
                 .outputGuardrails(new OG2())
-                .build());
+                .build();
 
         assertThat(guardrailService.getInputGuardrails("chat")).singleElement().isExactlyInstanceOf(IG2.class);
         assertThat(guardrailService.getInputGuardrails("chat2")).singleElement().isExactlyInstanceOf(IG2.class);
@@ -203,11 +202,11 @@ class DefaultAiServiceGuardrailServiceTests {
     @Test
     void builderConfigTakesPrecedenceOverAnnotationConfig() {
         var inputGuardrailsConfig = InputGuardrailsConfig.builder().build();
-        var guardrailService = inspect(GuardrailService.builder(ClassAndMethodLevelAssistant.class)
+        var guardrailService = (DefaultGuardrailService) GuardrailService.builder(ClassAndMethodLevelAssistant.class)
                 .inputGuardrailsConfig(inputGuardrailsConfig)
                 .outputGuardrailsConfig(
                         OutputGuardrailsConfig.builder().maxRetries(5).build())
-                .build());
+                .build();
 
         // the guardrails still come from the annotations
         assertThat(guardrailService.getInputGuardrails("chat"))
@@ -238,13 +237,13 @@ class DefaultAiServiceGuardrailServiceTests {
     @Test
     void builderGuardrailsAndConfigsTakePrecedenceOverClassAndMethodAnnotations() {
         var inputGuardrailsConfig = InputGuardrailsConfig.builder().build();
-        var guardrailService = inspect(GuardrailService.builder(ClassAndMethodLevelAssistant.class)
+        var guardrailService = (DefaultGuardrailService) GuardrailService.builder(ClassAndMethodLevelAssistant.class)
                 .inputGuardrails(new IG2())
                 .inputGuardrailsConfig(inputGuardrailsConfig)
                 .outputGuardrailClasses(OG2.class)
                 .outputGuardrailsConfig(
                         OutputGuardrailsConfig.builder().maxRetries(5).build())
-                .build());
+                .build();
 
         assertThat(Stream.of("chat", "chat2")).allSatisfy(method -> {
             assertThat(guardrailService.getInputGuardrails(method))
@@ -264,8 +263,8 @@ class DefaultAiServiceGuardrailServiceTests {
     @ParameterizedTest
     @MethodSource("classAndMethodLevelGuardrailBuilders")
     void classAndMethodLevelGuardrails(String testDescription, GuardrailService gs) {
-        assertThat(gs).isInstanceOf(DefaultAiServiceGuardrailService.class);
-        var guardrailService = inspect(gs);
+        assertThat(gs).isInstanceOf(DefaultGuardrailService.class);
+        var guardrailService = (DefaultGuardrailService) gs;
 
         assertThat(guardrailService.getInputGuardrailMethodCount()).isEqualTo(2);
         assertThat(guardrailService.getOutputGuardrailMethodCount()).isEqualTo(2);
@@ -311,7 +310,7 @@ class DefaultAiServiceGuardrailServiceTests {
     @ParameterizedTest
     @MethodSource("nullOrEmptyBuilderGuardrails")
     void nullOrEmptyBuilderGuardrailsDoNotDisableAnnotationGuardrails(String testDescription, GuardrailService gs) {
-        var guardrailService = inspect(gs);
+        var guardrailService = (DefaultGuardrailService) gs;
 
         assertThat(guardrailService.getInputGuardrails("chat"))
                 .map(Object::getClass)
@@ -333,8 +332,8 @@ class DefaultAiServiceGuardrailServiceTests {
 
     @Test
     void methodAnnotationReplacesClassAnnotationAsAWhole() {
-        var guardrailService = inspect(
-                GuardrailService.builder(EmptyMethodAnnotationAssistant.class).build());
+        var guardrailService = (DefaultGuardrailService)
+                GuardrailService.builder(EmptyMethodAnnotationAssistant.class).build();
 
         // an empty annotation on the method still replaces the one on the class
         assertThat(guardrailService.getInputGuardrails("chat")).isEmpty();

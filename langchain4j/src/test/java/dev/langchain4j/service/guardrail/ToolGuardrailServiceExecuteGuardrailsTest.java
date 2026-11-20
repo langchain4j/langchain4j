@@ -100,11 +100,12 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
                 null,
                 AiServiceTool.builder()
                         .toolSpecification(SPECIFICATION)
+                        .toolSource(SOURCE)
                         .toolExecutor((request, memoryId) -> "unused")
                         .toolInputGuardrails(inputs)
                         .toolOutputGuardrails(outputs)
                         .build());
-        return service.executeGuardrails(key, CALL, SPECIFICATION, SOURCE, PARAMS, tool);
+        return service.executeGuardrails(key, CALL, PARAMS, tool);
     }
 
     @Test
@@ -270,17 +271,18 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
                 null,
                 AiServiceTool.builder()
                         .toolSpecification(SPECIFICATION)
+                        .toolSource(SOURCE)
                         .toolExecutor((request, memoryId) -> "unused")
                         .build());
         var tool = new Tool(toolResult(false));
 
-        assertThatThrownBy(() -> service.executeGuardrails(null, CALL, SPECIFICATION, SOURCE, PARAMS, tool))
+        assertThatThrownBy(() -> service.executeGuardrails(null, CALL, PARAMS, tool))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.executeGuardrails(key, null, SPECIFICATION, SOURCE, PARAMS, tool))
+        assertThatThrownBy(() -> service.executeGuardrails(key, null, PARAMS, tool))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.executeGuardrails(key, CALL, SPECIFICATION, SOURCE, null, tool))
+        assertThatThrownBy(() -> service.executeGuardrails(key, CALL, null, tool))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.executeGuardrails(key, CALL, SPECIFICATION, SOURCE, PARAMS, null))
+        assertThatThrownBy(() -> service.executeGuardrails(key, CALL, PARAMS, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -342,11 +344,12 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
                 null,
                 AiServiceTool.builder()
                         .toolSpecification(SPECIFICATION)
+                        .toolSource(SOURCE)
                         .toolExecutor((request, memoryId) -> "unused")
                         .toolInputGuardrails(inputs)
                         .toolOutputGuardrails(outputs)
                         .build());
-        return service.executeGuardrailsAsync(key, CALL, SPECIFICATION, SOURCE, PARAMS, tool);
+        return service.executeGuardrailsAsync(key, CALL, PARAMS, tool);
     }
 
     private static Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> async(Tool tool) {
@@ -516,21 +519,117 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
     }
 
     @Test
-    void a_key_that_the_service_did_not_return_fails_instead_of_running_no_guardrails() {
-        ToolInputGuardrail rejecting = request -> INPUT.failure("rejected");
+    void the_key_carries_the_specification_and_the_source_of_the_tool() {
+        var service = ToolGuardrailService.builder(Assistant.class).build();
+
+        var key = service.bind(null, toolWithInputGuardrail(request -> INPUT.success()));
+
+        assertThat(key)
+                .returns(SPECIFICATION, ToolGuardrailService.ToolKey::toolSpecification)
+                .returns(SOURCE, ToolGuardrailService.ToolKey::toolSource)
+                .returns("search", ToolGuardrailService.ToolKey::toolName);
+    }
+
+    @Test
+    void a_tool_without_a_source_gets_a_key_with_the_programmatic_source() {
+        var service = ToolGuardrailService.builder(Assistant.class).build();
+
+        var key = service.bind(
+                null,
+                AiServiceTool.builder()
+                        .toolSpecification(SPECIFICATION)
+                        .toolExecutor((request, memoryId) -> "unused")
+                        .build());
+
+        assertThat(key.toolSource()).isEqualTo(ToolSource.programmatic());
+    }
+
+    @Test
+    void a_null_key_fails_every_lookup() {
+        var service = ToolGuardrailService.builder(Assistant.class)
+                .inputGuardrails(rejecting())
+                .build();
+
+        assertEveryLookupFails(service, null);
+    }
+
+    @Test
+    void a_key_of_another_implementation_fails_every_lookup() {
+        var service = ToolGuardrailService.builder(Assistant.class)
+                .inputGuardrails(rejecting())
+                .build();
+        var handWrittenKey = new ToolGuardrailService.ToolKey() {
+            @Override
+            public ToolSpecification toolSpecification() {
+                return SPECIFICATION;
+            }
+
+            @Override
+            public ToolSource toolSource() {
+                return SOURCE;
+            }
+        };
+
+        assertEveryLookupFails(service, handWrittenKey);
+    }
+
+    @Test
+    void a_key_bound_by_another_service_built_the_same_way_fails_every_lookup() {
+        ToolInputGuardrail rejecting = rejecting();
         var service = ToolGuardrailService.builder(Assistant.class)
                 .inputGuardrails(rejecting)
                 .build();
-        ToolGuardrailService.ToolKey foreignKey = () -> "search";
-        Function<ToolExecutionRequest, ToolExecutionResult> tool = request -> toolResult(false);
-        Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> asyncTool =
-                request -> CompletableFuture.completedFuture(toolResult(false));
+        var otherService = ToolGuardrailService.builder(Assistant.class)
+                .inputGuardrails(rejecting)
+                .build();
+        var keyOfTheOtherService = otherService.bind(null, toolWithInputGuardrail(INPUT_PASS));
 
-        assertThatThrownBy(() -> service.executeGuardrails(foreignKey, CALL, SPECIFICATION, SOURCE, PARAMS, tool))
+        assertThat(otherService.hasInputGuardrails(keyOfTheOtherService)).isTrue();
+        assertEveryLookupFails(service, keyOfTheOtherService);
+    }
+
+    private static ToolInputGuardrail rejecting() {
+        return request -> INPUT.failure("rejected");
+    }
+
+    private static AiServiceTool toolWithInputGuardrail(ToolInputGuardrail guardrail) {
+        return AiServiceTool.builder()
+                .toolSpecification(SPECIFICATION)
+                .toolSource(SOURCE)
+                .toolExecutor((request, memoryId) -> "unused")
+                .toolInputGuardrails(guardrail)
+                .build();
+    }
+
+    /**
+     * Every lookup of the service fails for the key, the blocking ones by throwing and the non-blocking ones by failing
+     * their future, and the tool never runs.
+     */
+    private static void assertEveryLookupFails(ToolGuardrailService service, ToolGuardrailService.ToolKey key) {
+        var tool = new Tool(toolResult(false));
+        var inputRequest = ToolInputGuardrailRequest.builder()
+                .toolExecutionRequest(CALL)
+                .requestParams(PARAMS)
+                .build();
+        var outputRequest = ToolOutputGuardrailRequest.builder()
+                .toolExecutionRequest(CALL)
+                .requestParams(PARAMS)
+                .resultContents(List.of(TextContent.from("found")))
+                .isError(false)
+                .build();
+
+        assertThatThrownBy(() -> service.hasInputGuardrails(key)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.hasOutputGuardrails(key)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.executeInputGuardrails(key, inputRequest))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.hasInputGuardrails("search")).isInstanceOf(IllegalArgumentException.class);
-        assertFailsWithIllegalArgument(
-                service.executeGuardrailsAsync(foreignKey, CALL, SPECIFICATION, SOURCE, PARAMS, asyncTool), "key");
+        assertThatThrownBy(() -> service.executeOutputGuardrails(key, outputRequest))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> service.executeGuardrails(key, CALL, PARAMS, tool))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertFailsWithIllegalArgument(service.executeInputGuardrailsAsync(key, inputRequest), "key");
+        assertFailsWithIllegalArgument(service.executeOutputGuardrailsAsync(key, outputRequest), "key");
+        assertFailsWithIllegalArgument(service.executeGuardrailsAsync(key, CALL, PARAMS, async(tool)), "key");
+        assertThat(tool.requests).isEmpty();
     }
 
     @Test
@@ -540,16 +639,16 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
                 null,
                 AiServiceTool.builder()
                         .toolSpecification(SPECIFICATION)
+                        .toolSource(SOURCE)
                         .toolExecutor((request, memoryId) -> "unused")
                         .build());
         Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool =
                 request -> CompletableFuture.completedFuture(toolResult(false));
 
-        assertFailsWithIllegalArgument(service.executeGuardrailsAsync(null, CALL, SPECIFICATION, SOURCE, PARAMS, tool), "key");
-        assertFailsWithIllegalArgument(service.executeGuardrailsAsync(key, null, SPECIFICATION, SOURCE, PARAMS, tool), "request");
-        assertFailsWithIllegalArgument(
-                service.executeGuardrailsAsync(key, CALL, SPECIFICATION, SOURCE, null, tool), "requestParams");
-        assertFailsWithIllegalArgument(service.executeGuardrailsAsync(key, CALL, SPECIFICATION, SOURCE, PARAMS, null), "tool");
+        assertFailsWithIllegalArgument(service.executeGuardrailsAsync(null, CALL, PARAMS, tool), "key");
+        assertFailsWithIllegalArgument(service.executeGuardrailsAsync(key, null, PARAMS, tool), "request");
+        assertFailsWithIllegalArgument(service.executeGuardrailsAsync(key, CALL, null, tool), "requestParams");
+        assertFailsWithIllegalArgument(service.executeGuardrailsAsync(key, CALL, PARAMS, null), "tool");
     }
 
     @Test
@@ -572,12 +671,13 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
                 null,
                 AiServiceTool.builder()
                         .toolSpecification(SPECIFICATION)
+                        .toolSource(SOURCE)
                         .toolExecutor((request, memoryId) -> "unused")
                         .toolInputGuardrails(INPUT_PASS)
                         .build());
         var tool = new Tool(toolResult(false));
 
-        var execution = service.executeGuardrailsAsync(key, CALL, SPECIFICATION, SOURCE, PARAMS, async(tool));
+        var execution = service.executeGuardrailsAsync(key, CALL, PARAMS, async(tool));
         // registered after the service's own continuation, so it runs first: the input stage has ended, and the tool
         // stage has not started yet
         service.inputStage.whenComplete((ignored, error) -> execution.cancel(true));
@@ -635,34 +735,34 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
         }
 
         @Override
-        public <K> ToolInputGuardrailResult executeInputGuardrails(K key, ToolInputGuardrailRequest request) {
+        public ToolInputGuardrailResult executeInputGuardrails(ToolKey key, ToolInputGuardrailRequest request) {
             return delegate.executeInputGuardrails(key, request);
         }
 
         @Override
-        public <K> CompletableFuture<ToolInputGuardrailResult> executeInputGuardrailsAsync(
-                K key, ToolInputGuardrailRequest request) {
+        public CompletableFuture<ToolInputGuardrailResult> executeInputGuardrailsAsync(
+                ToolKey key, ToolInputGuardrailRequest request) {
             return inputStage;
         }
 
         @Override
-        public <K> ToolOutputGuardrailResult executeOutputGuardrails(K key, ToolOutputGuardrailRequest request) {
+        public ToolOutputGuardrailResult executeOutputGuardrails(ToolKey key, ToolOutputGuardrailRequest request) {
             return delegate.executeOutputGuardrails(key, request);
         }
 
         @Override
-        public <K> CompletableFuture<ToolOutputGuardrailResult> executeOutputGuardrailsAsync(
-                K key, ToolOutputGuardrailRequest request) {
+        public CompletableFuture<ToolOutputGuardrailResult> executeOutputGuardrailsAsync(
+                ToolKey key, ToolOutputGuardrailRequest request) {
             return delegate.executeOutputGuardrailsAsync(key, request);
         }
 
         @Override
-        public <K> boolean hasInputGuardrails(K key) {
+        public boolean hasInputGuardrails(ToolKey key) {
             return delegate.hasInputGuardrails(key);
         }
 
         @Override
-        public <K> boolean hasOutputGuardrails(K key) {
+        public boolean hasOutputGuardrails(ToolKey key) {
             return delegate.hasOutputGuardrails(key);
         }
     }

@@ -74,11 +74,4 @@ class ReflectionBasedClassMetadataProviderFactoryTests {
         @Experimental("This is another test")
         TokenStream helloStreaming();
     }
-
-    @Test
-    void theMethodKeyPassedAtInvocationTimeIsUsedAsIs() throws Exception {
-        var method = Object.class.getMethod("toString");
-
-        assertThat(factory.resolveMethodKey(method)).isSameAs(method);
-    }
 }

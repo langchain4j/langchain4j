@@ -91,6 +91,15 @@ tool guardrails PR; task 15 (Micronaut FYI) happens after the PR is open.
 - [x] `task-16-fatal-rollback-parity.md`: Circle back (before task 14) on fatal-rejection rollback in the sync / `TokenStream` modes, which task 09 ships `CompletableFuture`-only because @dliubarskyi's rollback-before-rethrow PR is not open yet **(implemented 2026-11-19: [#7168](https://github.com/langchain4j/langchain4j/pull/7168) merged upstream and is brought in with one merge commit (user decision); a fatal rejection now rolls back in every mode; reviewed by the user, committed as the merge commit and pushed to the fork; see Task Outcomes)**
 - [x] `task-15-micronaut-follow-up.md`: After the PR is open, file an FYI issue on `micronaut-langchain4j` that links to the PR and explains the guardrail hierarchy changes, the deprecations and `resolveMethodKey` (the `langchain4j-cdi` issue [#339](https://github.com/langchain4j/langchain4j-cdi/issues/339) is left alone) **(filed 2026-11-19: [micronaut-projects/micronaut-langchain4j#455](https://github.com/micronaut-projects/micronaut-langchain4j/issues/455))**
 
+**Review rework (after @dliubarskyi's review of PR #7202, 2026-11-20; see `### Review Rework (2026-11-20)`).** Task 17
+goes into PR #7202, on top of his four review commits. Tasks 18 and 20 are separate PRs from `upstream/main`. Task 19 is
+communication only.
+
+- [x] `task-17-standalone-tool-guardrail-service.md`: Make `ToolGuardrailService` a standalone `@Experimental` interface typed by `ToolKey` (which carries the specification and source), fail fast on `null` and foreign keys (owner check included), put `GuardrailService` / its `Builder` / `AbstractGuardrailService` back to `main`'s public shape with no deprecations, propagate cancellation after the executor hop, and fix the misplaced Javadoc; no spotless run (user decision, 2026-11-20: formatting only on changed lines, per Dmytro)
+- [ ] `task-18-resolve-method-key-pr.md`: (Separate PR, 1.25.0) Move `ClassMetadataProviderFactory#resolveMethodKey` and the AI service key resolution out of PR #7202, with the string-keys integration module; settle the parameter type and the default with the reviewer (AI service guardrails only: task 17 takes the tool path off the factory)
+- [ ] `task-19-follow-up-comments.md`: Keep the Micronaut, CDI and Quarkus issues up to date, by editing them in place (user, 2026-11-20). **Done on 2026-11-20:** [micronaut-langchain4j#455](https://github.com/micronaut-projects/micronaut-langchain4j/issues/455) (title and body), [langchain4j-cdi#339](https://github.com/langchain4j/langchain4j-cdi/issues/339) and [#340](https://github.com/langchain4j/langchain4j-cdi/pull/340), and the [#3162 notes](https://github.com/quarkiverse/quarkus-langchain4j/issues/3162#issuecomment-7041587374). Left: re-check them after task 17 is pushed, and link task 18's PR from #455
+- [ ] `task-20-dependency-bump-pr.md`: (Optional, separate PR) The Spring Boot / Quarkus / logback bump of the integration test modules that `3fdea6601` took out of PR #7202
+
 ---
 
 ## Shared Context
@@ -383,6 +392,73 @@ Tests and docs:
   `Fixes [#7065](https://github.com/langchain4j/langchain4j/issues/7065)` at the end of the commit body and in the PR body only.
 - **Never commit before the user has reviewed and approved.**
 
+### Review Rework (2026-11-20)
+
+@dliubarskyi's design review of PR #7202 (agreed by the user) **supersedes** these earlier decisions. Where the Task
+Outcomes, the Compatibility Summary or older task files say otherwise, this section wins.
+
+- **No shared public parent.** `GenericGuardrailService` (and its `Builder`) is dropped, together with the sealing of the
+  hierarchy and the redeclarations in `GuardrailService` / `GuardrailService.Builder`. Why: in 1.x a shared parent has to
+  keep the per-method `<K>` keys, so any object compiles as a tool key; it is public, sealed and not `@Experimental`, so
+  it would be frozen until 2.0; nothing uses it as a type. The reuse stays in internal classes (`KeyedGuardrailExecutors`,
+  `GuardrailBuilderSettings`, `ToolGuardrailChainResolver`).
+- **`ToolGuardrailService` is standalone and `@Experimental`**, with `ToolKey`-typed methods. `ToolKey` carries the tool
+  specification and source, so `executeGuardrails` / `executeGuardrailsAsync` drop those parameters. A `null` key or a key
+  the default service did not bind fails with `IllegalArgumentException`.
+- **No deprecations:** `GuardrailService#aiServiceClass()` and `AbstractGuardrailService` stay as on `main` (public and
+  protected API, supertypes, behavior); revapi against 1.24.0 must pass with no new justifications. Why: the deprecations
+  give existing implementations (Micronaut, CDI) warnings they cannot get rid of before 2.0. `targetClass()` naming and
+  dropping `AbstractGuardrailService` are left for the 2.0 contract.
+- **`resolveMethodKey` leaves PR #7202** for its own 1.25.0 PR (task 18).
+- **The integration test version bump leaves PR #7202** (`3fdea6601`; optional task 20).
+- **Quarkus ([#3162](https://github.com/quarkiverse/quarkus-langchain4j/issues/3162))** is still done once, against
+  `ToolGuardrailService`. The guardrail types it would migrate to are unchanged by the rework.
+- **Tool guardrail annotations go through `ClassMetadataProviderFactory` (user decision, 2026-11-20, agreeing with
+  Dmytro; task 17 item 7; supersedes a reflection-only proposal made the same day).** Class side: the factory only, no
+  reflection fallback; the SPI's Javadoc says it is asked about tool classes and the tool guardrail annotations and must
+  return empty for what it has no metadata for. Method side: task 18 (`resolveMethodKey`); until then PR #7202 reads
+  method annotations by reflection. Why: it is what the SPI is for, it keeps tool guardrails on the AI service guardrail
+  pattern that Quarkus reuses, and the only real framework implementation on GitHub is Quarkus's (CDI and Micronaut do
+  not implement it). Consequence: `QuarkusClassMetadataProviderFactory` throws for any annotation other than
+  `@InputGuardrails` / `@OutputGuardrails`, so core's programmatic `AiServices` with tools fails at `build()` in a
+  Quarkus app until Quarkus's factory returns empty for (or answers) the tool guardrail annotations; recorded on #3162.
+- **Quarkus reuse path (the goal: Quarkus drops its own tool guardrail implementation and reuses upstream's, as it does
+  for AI service guardrails; user, 2026-11-20).** Verified by reading quarkus-langchain4j `main` (2026-11-20), not run:
+  - Today Quarkus runs its own tool loop (`AiServiceMethodImplementationSupport`) and its own `ToolGuardrailsWrapper`
+    (a `QuarkusToolExecutor.Wrapper`). `ToolProcessor` reads the annotations at build time (Jandex) into
+    `ToolMethodCreateInfo` literals, and its `ToolGuardrailService` looks the guardrails up through CDI. It has no
+    `java.lang.reflect.Method` for a tool at runtime (generated invokers).
+  - With the reworked core, it can: build one `ToolGuardrailService` per AI service with
+    `ToolGuardrailService.builder(aiServiceClass)` (global guardrails); for each tool, create an `AiServiceTool` with its
+    specification, its `QuarkusToolExecutor`, a `ToolSource`, and the guardrail instances `ToolMethodCreateInfo` names
+    (CDI lookups, class level then method level); `bind(null, tool)` (with no class and an executor that is not a
+    `DefaultToolExecutor`, core reads no annotations: the chain is global, then the `AiServiceTool` guardrails); and in
+    its wrapper call `executeGuardrails(key, request, requestParams, tool)`, so core applies the failure, rewrite, fatal
+    and output-on-error rules. Quarkus keeps only its build-time annotation reading and the CDI lookups, the same split
+    as for AI service guardrails. Task 17 item 7a pins this path with a contract test.
+  - Caveats for #3162: the class and method levels arrive as instances in one slot, and instances are deduplicated by
+    reference only (`@ApplicationScoped` client proxies are the same object, `@Dependent` beans are not; Quarkus can
+    deduplicate at build time); core's additive order may differ from Quarkus's current rule; Quarkus's
+    `"Input validation failed: "` prefix goes away (core sends the message verbatim); its own events and metrics types are
+    replaced by core's.
+  - If Quarkus later wants core to read its annotations (like `ClassMetadataProviderFactory` for AI services), that needs
+    a way to pass a framework method key through `bind(..)`. It is additive on `@Experimental` API, so it can come later
+    without a second migration.
+- Sources: [design review](https://github.com/langchain4j/langchain4j/pull/7202#issuecomment-7037036391),
+  [our agreement](https://github.com/langchain4j/langchain4j/pull/7202#issuecomment-7040595689),
+  [his answers](https://github.com/langchain4j/langchain4j/pull/7202#issuecomment-7040946058),
+  [his review commits](https://github.com/langchain4j/langchain4j/pull/7202#issuecomment-7041051258) (`3fdea6601`,
+  `7e4d448cb`, `9ca25227f`, `eb0f9c499`), and
+  [our questions on them](https://github.com/langchain4j/langchain4j/pull/7202#issuecomment-7041291412) (foreign keys
+  of another service instance, the reflection fallback, cancellation after the executor hop, Jackson instead of the
+  JSON scanner), and [his answers](https://github.com/langchain4j/langchain4j/pull/7202#issuecomment-7041470460) (owner
+  check: yes; class side: the factory, reopened by the Quarkus finding; cancellation: propagate and recheck; keep the
+  scanner; formatting only on changed lines, so spotless is not run).
+  [Our reply agreeing to all four](https://github.com/langchain4j/langchain4j/pull/7202#issuecomment-7042047705)
+  (with the Quarkus factory FYI and the "return empty, don't throw" Javadoc).
+- `3fdea6601` dropped `/.junie/` and `/skills/` from `.gitignore`, so both show as untracked locally: do not commit
+  them (keep them out with `.git/info/exclude` if needed).
+
 ### Task Outcomes
 
 **Task 01 (complete; our PR https://github.com/langchain4j/langchain4j/pull/7109 was closed unmerged, superseded by [#7088](https://github.com/langchain4j/langchain4j/pull/7088); see the update below).** Commit `6284225c1`, pushed to `origin` (fork). Branch `guardrail-precedence-javadoc` (from
@@ -583,11 +659,36 @@ builder config each beat conflicting method and class annotations; before this, 
 
 **Task 16 (complete; reviewed by the user, committed as the merge of `upstream/main` and pushed to the fork, 2026-11-19).** [#7168](https://github.com/langchain4j/langchain4j/pull/7168) merged upstream (`70dc8fec3`). The user chose **one merge commit** of `upstream/main` over a 42-commit rebase (a trial merge had 31 conflict hunks, 18 in `ToolService`, which a rebase would have replayed in about 8 commits). The branch's `ToolRound` / `ToolRoundCall` design stays and #7168's behavior is carried over onto it; the details, the replaced `@Internal` methods and the tests are in the task file's Outcome. A fatal tool guardrail rejection now rolls back the compensable tools in every mode, with its guardrail `CompensationReason`; `TokenStream` compensates (also on cancellation) and the `TOKEN_STREAM` exclusion of `ToolGuardrailCompensationTests` is gone. #7168's own tests pass unchanged, except one race test: the user kept the branch's rule that no tool starts once the invocation is canceled, and that test now asserts that every tool that ran is rolled back exactly once instead of requiring the tool to run (see the task file).
 
+**Task 17 (complete; reviewed by the user, committed and pushed to the fork, 2026-11-20; `upstream/main` merged in after
+the commit).** Details in the task file's Outcome. In short: the AI
+service side is `main`'s again (zero diff against the merge base for `GuardrailService`, `AbstractGuardrailService`,
+`DefaultGuardrailService` and its test); `GenericGuardrailService` and the `AbstractKeyed*` classes are gone;
+`ToolGuardrailService` is standalone with `ToolKey`-typed methods and its own `Builder`; the key carries the spec, the
+source and its owner, and every lookup rejects `null`, foreign and other-instance keys; `resolveMethodKey` and the
+string-keys module are off the branch (task 18 recovers them from `eb0f9c499`); class-side annotations come from the
+factory only; the executor hop propagates and rechecks the cancellation. Revapi vs 1.24.0 clean (no justification
+changes); core 2083, `langchain4j` 2498 (+597 ITs), guardrail ITs 366, agentic 672: 0 failures. Spotless not run.
+
 ### Compatibility Summary
 
-For the PR body (task 14). Verified by the revapi runs above and by `grep` on 2026-11-18.
+For the PR body. Rewritten in task 17 (2026-11-20) for the reworked PR; revapi re-run in task 17 (see its Outcome).
 
 - **Source-compatible for normal use.** Revapi reports no break against 1.24.0 in any of the four modules.
+- **The AI service guardrail API is exactly as on `main`:** `GuardrailService`, `GuardrailService.Builder`,
+  `AbstractGuardrailService` and `DefaultGuardrailService` have no diff against the merge base (no shared parent, no
+  `non-sealed`, no redeclarations, no `targetClass()`, no deprecations). Frameworks that subclass
+  `AbstractGuardrailService` or implement `GuardrailService.Builder` (CDI, Micronaut) see no change and no new warning.
+  The default builder (`GuardrailServiceBuilder`, package-private) now keeps its settings in the internal
+  `GuardrailBuilderSettings`, with the same behavior.
+- **No `ClassMetadataProviderFactory#resolveMethodKey` in this PR:** it moves to its own PR (task 18), with the
+  string-keys integration module and its tests. The only change to the SPI is Javadoc: it is also asked about the classes
+  of tools, for `@ToolInputGuardrails` / `@ToolOutputGuardrails`, and must return empty, not throw, for what it has no
+  metadata for.
+- **Tool guardrails are a separate, `@Experimental` API:** `ToolGuardrailService` (standalone interface, `ToolKey`-typed
+  methods; the key carries the specification and source of the tool), its `Builder`, `ToolGuardrailServiceBuilderFactory`,
+  `GuardedToolExecution`, the tool guardrail annotations and core types. Everything new is `@since 1.25.0`. The default
+  service rejects, with an `IllegalArgumentException`, a `null` key and any key it did not bind itself, including a key of
+  another instance.
 - **May break exhaustive `switch`es in user code** over the extended sealed types (`GuardrailRequest`, `GuardrailResult`, `GuardrailResult.Failure`,
   `GuardrailException`, `GuardrailExecutorBuilderFactory`, `GuardrailExecutedListener`, and `GuardrailExecutor` / `AbstractGuardrailExecutor`'s builder
   hierarchy) and over `CompensationReason` (two new constants). Revapi does not model sealing. None exist in this repository: `grep` over every `.java` / `.kt` file
@@ -600,15 +701,14 @@ For the PR body (task 14). Verified by the revapi runs above and by `grep` on 20
   `list_resources` / `get_resource` are scoped to the clients of that `provideTools(..)` call. A null or blank `McpClient#key()` no longer fails
   `provideTools(..)` (review item 1, 2026-11-19): its tools get a `ToolSource.Mcp` with no server keys (`ToolSource.mcp(..)` now accepts an empty
   collection) and a WARN is logged once per client. See the task 10 outcome for all four.
-- **Everything new is `@Experimental` (D19), except** `GenericGuardrailService` (+ its `Builder`), which the stable `GuardrailService` extends, and
-  `ClassMetadataProviderFactory#resolveMethodKey` (user decision, 2026-11-17). Everything is `@since 1.25.0`.
-- **Guardrail service hierarchy (task 06a):** `GenericGuardrailService` and its `Builder` are new and sealed; `GuardrailService` and
-  `GuardrailService.Builder` became `non-sealed` and redeclare their methods for binary compatibility (removing a redeclaration fails revapi with
-  `java.method.*TypeErasureChanged`, verified 2026-11-17); `AbstractGuardrailService` and `GuardrailService#aiServiceClass()` are deprecated since
-  1.25.0; frameworks that subclass `AbstractGuardrailService` or implement `GuardrailService.Builder` (CDI, Micronaut) keep working.
-- **Quarkus (#3162):** it needs no change for the sealed SPI factories (it provides none), uses `GuardrailService#executeGuardrails`
-  (unchanged), and, **if it adopts tool guardrails, probably needs to override `resolveMethodKey`** in its `QuarkusClassMetadataProviderFactory`, whose keys are
-  `AiServiceMethodCreateInfo`, not `Method`s (read from its source; not run).
+- **Quarkus ([#3162](https://github.com/quarkiverse/quarkus-langchain4j/issues/3162)):** it uses
+  `GuardrailService#executeGuardrails` (unchanged) and provides no sealed SPI factory. Since `DefaultAiServices.build()`
+  binds every tool, and the class side of the tool guardrail annotations goes through `ClassMetadataProviderFactory`,
+  `QuarkusClassMetadataProviderFactory` (which throws for any annotation other than `@InputGuardrails` /
+  `@OutputGuardrails`) makes core's programmatic `AiServices` with tools fail at `build()` in a Quarkus app until it returns
+  empty for (or answers) the tool guardrail annotations (read from both sources, not run). Quarkus's own tool loop can
+  reuse the tool guardrails through `ToolGuardrailService` (`bind(null, tool)`, see "Quarkus reuse path"); it needs no
+  `resolveMethodKey` for that.
 
 ### Caveats & Problems
 

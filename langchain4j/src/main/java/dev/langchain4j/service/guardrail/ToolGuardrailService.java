@@ -25,6 +25,7 @@ import dev.langchain4j.internal.Exceptions;
 import dev.langchain4j.service.guardrail.spi.ToolGuardrailServiceBuilderFactory;
 import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.ToolExecutionResult;
+import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.CancellationException;
@@ -46,12 +47,13 @@ import org.jspecify.annotations.Nullable;
  * Executes the tool guardrails of the tools of an AI service: the {@link ToolInputGuardrail}s, which validate or
  * rewrite the arguments of a tool call before the tool runs, and the {@link ToolOutputGuardrail}s, which validate or
  * rewrite its result before the LLM sees it. It is the tool counterpart of {@link GuardrailService}, and its
- * {@link #targetClass()} is the AI service class too.
+ * {@link #targetClass()} is the AI service class.
  * <p>
  *     <strong>Keys.</strong> The key of a tool is the {@link ToolKey} that {@link #bind(Class, AiServiceTool)}
  *     returns for it: it is only meaningful to the service that created it. A tool provided anew for every
  *     invocation (by a {@link ToolProvider}, for example an MCP server) is bound for every
- *     invocation.
+ *     invocation. The key carries the specification and the source of the tool, so the guardrail requests are built
+ *     from it.
  * </p>
  * <p>
  *     <strong>Which guardrails run.</strong> Every tool guardrail that applies to a tool runs, as one chain, in this
@@ -79,33 +81,46 @@ import org.jspecify.annotations.Nullable;
  *     can send it to the LLM as an error tool result. A fatal failure throws a
  *     {@link ToolInputGuardrailException} or a
  *     {@link ToolOutputGuardrailException} (the asynchronous methods fail their future
- *     with it). {@link #executeGuardrails(ToolKey, ToolExecutionRequest, ToolSpecification, ToolSource,
- *     GuardrailRequestParams, Function)} runs a whole tool call through the guardrails and applies these rules, the
- *     way {@link GuardrailService#executeGuardrails(Object, InputGuardrailRequest)} does for
- *     the AI service guardrails; {@link #executeGuardrailsAsync(ToolKey, ToolExecutionRequest, ToolSpecification,
- *     ToolSource, GuardrailRequestParams, Function)} is its non-blocking counterpart, for which the guardrails must
- *     implement {@link Guardrail#validateAsync(GuardrailRequest)}.
+ *     with it). {@link #executeGuardrails(ToolKey, ToolExecutionRequest, GuardrailRequestParams, Function)} runs a
+ *     whole tool call through the guardrails and applies these rules, the way
+ *     {@link GuardrailService#executeGuardrails(Object, InputGuardrailRequest)} does for the AI service guardrails;
+ *     {@link #executeGuardrailsAsync(ToolKey, ToolExecutionRequest, GuardrailRequestParams, Function)} is its
+ *     non-blocking counterpart, for which the guardrails must implement
+ *     {@link Guardrail#validateAsync(GuardrailRequest)}.
  * </p>
  * <p>
- *     <strong>Customizing.</strong> The default implementation finds the annotations through
- *     {@link ClassMetadataProviderFactory} and creates guardrails from their classes
- *     through {@link ClassInstanceFactory}, like the AI service guardrails. A
- *     framework can also replace the whole builder with a {@link ToolGuardrailServiceBuilderFactory}.
+ *     <strong>Customizing.</strong> The default implementation finds the annotations of the classes of the tools
+ *     through {@link ClassMetadataProviderFactory}, reads the annotations of the tool methods from the {@code Method}
+ *     itself, and creates guardrails from their classes through {@link ClassInstanceFactory}, like the AI service
+ *     guardrails. A framework can also replace the whole builder with a {@link ToolGuardrailServiceBuilderFactory}.
+ * </p>
+ * <p>
+ *     This interface is separate from {@link GuardrailService}: the two kinds of guardrails share their
+ *     implementation, not a public contract.
  * </p>
  *
  * @since 1.25.0
  */
 @Experimental
-public non-sealed interface ToolGuardrailService
-        extends GenericGuardrailService<
-                ToolInputGuardrailRequest,
-                ToolInputGuardrailResult,
-                ToolOutputGuardrailRequest,
-                ToolOutputGuardrailResult> {
+public interface ToolGuardrailService {
+
+    /**
+     * The class the tool guardrails of this service apply to: the AI service class whose tools are guarded.
+     *
+     * @return The AI service class.
+     */
+    Class<?> targetClass();
 
     /**
      * Binds a tool to this service: resolves the tool guardrails that apply to the tool, and returns the key to run
      * them with.
+     * <p>
+     *     A framework that runs its own tool loop, and has no {@code Method} for a tool, passes the guardrails of the
+     *     class and of the method of the tool as the guardrails of the {@link AiServiceTool}, and calls
+     *     {@code bind(null, tool)} with a tool whose executor is not a {@code DefaultToolExecutor}: no annotation is
+     *     read then, and the chain of the tool is the guardrails given to the builder, followed by the
+     *     {@link AiServiceTool} guardrails.
+     * </p>
      *
      * @param toolClass The class whose {@link ToolInputGuardrails} / {@link ToolOutputGuardrails} annotations apply to
      *                  the tool: the class of the object the {@code @Tool} method of the tool was found on (the object
@@ -115,13 +130,74 @@ public non-sealed interface ToolGuardrailService
      *                  the tool method is then used, if the tool has one.
      * @param tool      The tool. Must not be null.
      * @return The {@link ToolKey} that identifies this tool to this service: pass it to
-     *         {@link #executeInputGuardrails(Object, GuardrailRequest)},
-     *         {@link #executeOutputGuardrails(Object, GuardrailRequest)}, their asynchronous
-     *         variants, and {@link #hasInputGuardrails(Object)} / {@link #hasOutputGuardrails(Object)}. It is only
-     *         meaningful to the service that returned it, and never {@code null}. A tool without guardrails also
-     *         gets a key, and running its guardrails returns a success.
+     *         {@link #executeInputGuardrails(ToolKey, ToolInputGuardrailRequest)},
+     *         {@link #executeOutputGuardrails(ToolKey, ToolOutputGuardrailRequest)}, their asynchronous variants,
+     *         {@link #hasInputGuardrails(ToolKey)} / {@link #hasOutputGuardrails(ToolKey)} and
+     *         {@link #executeGuardrails(ToolKey, ToolExecutionRequest, GuardrailRequestParams, Function)}. It carries
+     *         the specification and the source of the tool, is only meaningful to the service that returned it, and is
+     *         never {@code null}. A tool without guardrails also gets a key, and running its guardrails returns a
+     *         success. The default implementation rejects, with an {@link IllegalArgumentException}, a {@code null}
+     *         key and any key it did not return itself, including a key of another service built the same way.
      */
     ToolKey bind(@Nullable Class<?> toolClass, AiServiceTool tool);
+
+    /**
+     * Executes the input guardrails of the tool.
+     *
+     * @param key     The key {@link #bind(Class, AiServiceTool)} returned for the tool. Must not be null.
+     * @param request The request to validate. Must not be null.
+     * @return The result, a success if the tool has no input guardrails. A non-fatal failure is returned, not thrown.
+     * @throws ToolInputGuardrailException for a fatal failure
+     */
+    ToolInputGuardrailResult executeInputGuardrails(ToolKey key, ToolInputGuardrailRequest request);
+
+    /**
+     * Non-blocking counterpart of {@link #executeInputGuardrails(ToolKey, ToolInputGuardrailRequest)}: nothing is
+     * thrown, a fatal failure or an invalid key fails the returned future.
+     *
+     * @param key     The key {@link #bind(Class, AiServiceTool)} returned for the tool. Must not be null.
+     * @param request The request to validate. Must not be null.
+     * @return A future of the result.
+     */
+    CompletableFuture<ToolInputGuardrailResult> executeInputGuardrailsAsync(
+            ToolKey key, ToolInputGuardrailRequest request);
+
+    /**
+     * Executes the output guardrails of the tool.
+     *
+     * @param key     The key {@link #bind(Class, AiServiceTool)} returned for the tool. Must not be null.
+     * @param request The request to validate. Must not be null.
+     * @return The result, a success if the tool has no output guardrails. A non-fatal failure is returned, not thrown.
+     * @throws ToolOutputGuardrailException for a fatal failure
+     */
+    ToolOutputGuardrailResult executeOutputGuardrails(ToolKey key, ToolOutputGuardrailRequest request);
+
+    /**
+     * Non-blocking counterpart of {@link #executeOutputGuardrails(ToolKey, ToolOutputGuardrailRequest)}: nothing is
+     * thrown, a fatal failure or an invalid key fails the returned future.
+     *
+     * @param key     The key {@link #bind(Class, AiServiceTool)} returned for the tool. Must not be null.
+     * @param request The request to validate. Must not be null.
+     * @return A future of the result.
+     */
+    CompletableFuture<ToolOutputGuardrailResult> executeOutputGuardrailsAsync(
+            ToolKey key, ToolOutputGuardrailRequest request);
+
+    /**
+     * Whether the tool has input guardrails.
+     *
+     * @param key The key {@link #bind(Class, AiServiceTool)} returned for the tool. Must not be null.
+     * @return {@code true} if at least one input guardrail applies to the tool.
+     */
+    boolean hasInputGuardrails(ToolKey key);
+
+    /**
+     * Whether the tool has output guardrails.
+     *
+     * @param key The key {@link #bind(Class, AiServiceTool)} returned for the tool. Must not be null.
+     * @return {@code true} if at least one output guardrail applies to the tool.
+     */
+    boolean hasOutputGuardrails(ToolKey key);
 
     /**
      * Executes a tool call through the tool guardrails of the tool: the input guardrails, then {@code tool}, then the
@@ -151,23 +227,21 @@ public non-sealed interface ToolGuardrailService
      *     arguments error of the tool.</li>
      * </ul>
      *
-     * @param key               The key {@link #bind(Class, AiServiceTool)} returned for the tool. Must not be null.
-     * @param request           The tool call of the LLM. Must not be null.
-     * @param toolSpecification The specification of the tool, for the guardrail requests; may be null.
-     * @param toolSource        Where the tool comes from, for the guardrail requests; {@code null} means
-     *                          {@link ToolSource#programmatic()}.
-     * @param requestParams     The parameters of the guardrail requests: those of the AI service invocation, so the
-     *                          tool guardrails see the same context as the AI service guardrails and their events
-     *                          reach the listeners of the invocation. Must not be null.
-     * @param tool              Executes the tool for the request it is given (the call, or the call as the input
-     *                          guardrails rewrote it) and returns its result. Must not be null.
+     * @param key           The key {@link #bind(Class, AiServiceTool)} returned for the tool. It also gives the
+     *                      specification and the source of the tool to the guardrail requests. Must not be null.
+     * @param request       The tool call of the LLM. Must not be null.
+     * @param requestParams The parameters of the guardrail requests: those of the AI service invocation, so the tool
+     *                      guardrails see the same context as the AI service guardrails and their events reach the
+     *                      listeners of the invocation. Must not be null.
+     * @param tool          Executes the tool for the request it is given (the call, or the call as the input
+     *                      guardrails rewrote it) and returns its result. Must not be null.
      * @return The request as the input guardrails left it, and the result to send to the LLM.
+     * @throws IllegalArgumentException if a parameter is {@code null}, or the key is one this service rejects (see
+     *                                  {@link #bind(Class, AiServiceTool)})
      */
     default GuardedToolExecution executeGuardrails(
             ToolKey key,
             ToolExecutionRequest request,
-            @Nullable ToolSpecification toolSpecification,
-            @Nullable ToolSource toolSource,
             GuardrailRequestParams requestParams,
             Function<ToolExecutionRequest, ToolExecutionResult> tool) {
 
@@ -177,27 +251,24 @@ public non-sealed interface ToolGuardrailService
         ensureNotNull(tool, "tool");
 
         return hasGuardrails(key)
-                ? guard(key, request, toolSpecification, toolSource, requestParams, tool)
+                ? guard(key, request, requestParams, tool)
                 : guardedExecution(request, tool.apply(request));
     }
 
     private GuardedToolExecution guard(
             ToolKey key,
             ToolExecutionRequest request,
-            ToolSpecification toolSpecification,
-            ToolSource toolSource,
             GuardrailRequestParams requestParams,
             Function<ToolExecutionRequest, ToolExecutionResult> tool) {
 
         var inputResult = hasInputGuardrails(key)
-                ? executeInputGuardrails(key, inputRequest(request, toolSpecification, toolSource, requestParams))
+                ? executeInputGuardrails(key, inputRequest(key, request, requestParams))
                 : ToolInputGuardrailResult.success();
 
         var effectiveRequest = effectiveRequest(inputResult, request);
 
         return inputResult.isSuccess()
-                ? executeToolAndOutputGuardrails(
-                        key, effectiveRequest, toolSpecification, toolSource, requestParams, tool)
+                ? executeToolAndOutputGuardrails(key, effectiveRequest, requestParams, tool)
                 : guardedExecution(
                         effectiveRequest,
                         errorResult(inputResult.failureMessage()),
@@ -207,51 +278,42 @@ public non-sealed interface ToolGuardrailService
     private GuardedToolExecution executeToolAndOutputGuardrails(
             ToolKey key,
             ToolExecutionRequest request,
-            ToolSpecification toolSpecification,
-            ToolSource toolSource,
             GuardrailRequestParams requestParams,
             Function<ToolExecutionRequest, ToolExecutionResult> tool) {
 
         var toolResult = tool.apply(request);
-        var guardedResult =
-                applyOutputGuardrails(key, request, toolResult, toolSpecification, toolSource, requestParams);
+        var guardedResult = applyOutputGuardrails(key, request, toolResult, requestParams);
 
         return guardedExecution(request, guardedResult, failedOutputStage(toolResult, guardedResult));
     }
 
     /**
-     * Non-blocking counterpart of {@link #executeGuardrails(ToolKey, ToolExecutionRequest, ToolSpecification,
-     * ToolSource, GuardrailRequestParams, Function)}, with the same rules, for the asynchronous
-     * ({@code CompletableFuture}) and reactive ({@code Flow.Publisher}) AI service modes. The guardrails run with
-     * {@link #executeInputGuardrailsAsync(Object, GuardrailRequest)} and
-     * {@link #executeOutputGuardrailsAsync(Object, GuardrailRequest)}, so a guardrail that
+     * Non-blocking counterpart of {@link #executeGuardrails(ToolKey, ToolExecutionRequest, GuardrailRequestParams,
+     * Function)}, with the same rules, for the asynchronous ({@code CompletableFuture}) and reactive
+     * ({@code Flow.Publisher}) AI service modes. The guardrails run with
+     * {@link #executeInputGuardrailsAsync(ToolKey, ToolInputGuardrailRequest)} and
+     * {@link #executeOutputGuardrailsAsync(ToolKey, ToolOutputGuardrailRequest)}, so a guardrail that
      * overrides {@link Guardrail#validateAsync(GuardrailRequest)}
      * does not block the calling thread.
      * <p>
      *     Nothing is thrown from this method: a fatal guardrail failure, an exception thrown by a guardrail or by
      *     {@code tool} (including the {@link ToolArgumentsException} of an input
-     *     guardrail), and a failed future of {@code tool} all fail the returned future. Canceling the returned future
-     *     cancels the guardrails or the tool in flight.
+     *     guardrail), a failed future of {@code tool}, a {@code null} parameter and a key this service rejects all
+     *     fail the returned future. Canceling the returned future cancels the guardrails or the tool in flight.
      * </p>
      *
-     * @param key               The key {@link #bind(Class, AiServiceTool)} returned for the tool. Must not be null.
-     * @param request           The tool call of the LLM. Must not be null.
-     * @param toolSpecification The specification of the tool, for the guardrail requests; may be null.
-     * @param toolSource        Where the tool comes from, for the guardrail requests; {@code null} means
-     *                          {@link ToolSource#programmatic()}.
-     * @param requestParams     The parameters of the guardrail requests: those of the AI service invocation. Must not
-     *                          be null.
-     * @param tool              Starts the tool for the request it is given (the call, or the call as the input
-     *                          guardrails rewrote it) and returns the future of its result. Must not be null.
+     * @param key           The key {@link #bind(Class, AiServiceTool)} returned for the tool. It also gives the
+     *                      specification and the source of the tool to the guardrail requests. Must not be null.
+     * @param request       The tool call of the LLM. Must not be null.
+     * @param requestParams The parameters of the guardrail requests: those of the AI service invocation. Must not be
+     *                      null.
+     * @param tool          Starts the tool for the request it is given (the call, or the call as the input
+     *                      guardrails rewrote it) and returns the future of its result. Must not be null.
      * @return A future of the request as the input guardrails left it and of the result to send to the LLM.
-     * @since 1.25.0
      */
-    @Experimental
     default CompletableFuture<GuardedToolExecution> executeGuardrailsAsync(
             ToolKey key,
             ToolExecutionRequest request,
-            @Nullable ToolSpecification toolSpecification,
-            @Nullable ToolSource toolSource,
             GuardrailRequestParams requestParams,
             Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool) {
 
@@ -263,7 +325,7 @@ public non-sealed interface ToolGuardrailService
                     ensureNotNull(tool, "tool");
 
                     return hasGuardrails(key)
-                            ? guardAsync(key, request, toolSpecification, toolSource, requestParams, tool)
+                            ? guardAsync(key, request, requestParams, tool)
                             : executeWithoutGuardrailsAsync(request, tool);
                 },
                 "future of the tool guardrails");
@@ -272,10 +334,10 @@ public non-sealed interface ToolGuardrailService
     /**
      * The request of a call that a tool guardrail failure ended, as the guardrails left it, when the failure tells:
      * after a fatal input failure, the call with the arguments the failing guardrail validated (as the guardrails
-     * before it rewrote them). It lets a caller report a call that {@link #executeGuardrails(ToolKey,
-     * ToolExecutionRequest, ToolSpecification, ToolSource, GuardrailRequestParams, Function)} or
-     * {@link #executeGuardrailsAsync(ToolKey, ToolExecutionRequest, ToolSpecification, ToolSource,
-     * GuardrailRequestParams, Function)} ended with an exception without knowing the exceptions of the guardrails.
+     * before it rewrote them). It lets a caller report a call that
+     * {@link #executeGuardrails(ToolKey, ToolExecutionRequest, GuardrailRequestParams, Function)} or
+     * {@link #executeGuardrailsAsync(ToolKey, ToolExecutionRequest, GuardrailRequestParams, Function)} ended with an
+     * exception without knowing the exceptions of the guardrails.
      * <p>
      *     Empty for any other failure: a failure of the tool or of an output guardrail ends a call that the tool was
      *     started with, and the caller knows that request from its {@code tool} function.
@@ -285,9 +347,7 @@ public non-sealed interface ToolGuardrailService
      * @param failure The exception that ended the call, possibly wrapped in a
      *                {@link CompletionException}; may be null.
      * @return The request as the guardrails left it, if the failure tells.
-     * @since 1.25.0
      */
-    @Experimental
     default Optional<ToolExecutionRequest> rejectedRequest(ToolExecutionRequest request, @Nullable Throwable failure) {
         ensureNotNull(request, "request");
         return Optional.ofNullable(failure)
@@ -301,9 +361,9 @@ public non-sealed interface ToolGuardrailService
     /**
      * The stage whose guardrails ended a call with a fatal failure, as {@link #rejectedRequest(ToolExecutionRequest,
      * Throwable)} gives its request. It lets a caller tell what ended a call that
-     * {@link #executeGuardrails(ToolKey, ToolExecutionRequest, ToolSpecification, ToolSource, GuardrailRequestParams,
-     * Function)} or {@link #executeGuardrailsAsync(ToolKey, ToolExecutionRequest, ToolSpecification, ToolSource,
-     * GuardrailRequestParams, Function)} ended with an exception without knowing the exceptions of the guardrails, and
+     * {@link #executeGuardrails(ToolKey, ToolExecutionRequest, GuardrailRequestParams, Function)} or
+     * {@link #executeGuardrailsAsync(ToolKey, ToolExecutionRequest, GuardrailRequestParams, Function)} ended with an
+     * exception without knowing the exceptions of the guardrails, and
      * without inferring it from what it saw of the call: a failure of the call before the guardrails ran, such as a
      * callback that threw, is not one of a stage.
      * <p>
@@ -315,9 +375,7 @@ public non-sealed interface ToolGuardrailService
      * @param failure The exception that ended the call, possibly wrapped in a
      *                {@link CompletionException}; may be null.
      * @return The stage of the fatal failure, if the failure is one.
-     * @since 1.25.0
      */
-    @Experimental
     default Optional<ToolGuardrailStage> rejectedStage(ToolExecutionRequest request, @Nullable Throwable failure) {
         ensureNotNull(request, "request");
         return Optional.ofNullable(failure)
@@ -355,8 +413,6 @@ public non-sealed interface ToolGuardrailService
     private CompletableFuture<GuardedToolExecution> guardAsync(
             ToolKey key,
             ToolExecutionRequest request,
-            ToolSpecification toolSpecification,
-            ToolSource toolSource,
             GuardrailRequestParams requestParams,
             Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> tool) {
         var result = new CompletableFuture<GuardedToolExecution>();
@@ -373,8 +429,7 @@ public non-sealed interface ToolGuardrailService
                 ? startStage(
                         result,
                         inFlight,
-                        () -> executeInputGuardrailsAsync(
-                                key, inputRequest(request, toolSpecification, toolSource, requestParams)),
+                        () -> executeInputGuardrailsAsync(key, inputRequest(key, request, requestParams)),
                         "future of the tool input guardrails")
                 : CompletableFuture.completedFuture(ToolInputGuardrailResult.success());
 
@@ -384,14 +439,7 @@ public non-sealed interface ToolGuardrailService
                     return inputResult.isSuccess()
                             ? startStage(result, inFlight, () -> tool.apply(effectiveRequest), "future of the tool")
                                     .thenCompose(toolResult -> applyOutputGuardrailsAsync(
-                                                    result,
-                                                    inFlight,
-                                                    key,
-                                                    effectiveRequest,
-                                                    toolResult,
-                                                    toolSpecification,
-                                                    toolSource,
-                                                    requestParams)
+                                                    result, inFlight, key, effectiveRequest, toolResult, requestParams)
                                             .thenApply(guardedResult -> guardedExecution(
                                                     effectiveRequest,
                                                     guardedResult,
@@ -442,14 +490,12 @@ public non-sealed interface ToolGuardrailService
             ToolKey key,
             ToolExecutionRequest request,
             ToolExecutionResult toolResult,
-            ToolSpecification toolSpecification,
-            ToolSource toolSource,
             GuardrailRequestParams requestParams) {
 
         CompletableFuture<ToolExecutionResult> guarded;
 
         if (hasOutputGuardrails(key)) {
-            var guardrailRequest = outputRequest(request, toolResult, toolSpecification, toolSource, requestParams);
+            var guardrailRequest = outputRequest(key, request, toolResult, requestParams);
             guarded = startStage(
                             execution,
                             inFlight,
@@ -466,52 +512,42 @@ public non-sealed interface ToolGuardrailService
             ToolKey key,
             ToolExecutionRequest request,
             ToolExecutionResult toolResult,
-            ToolSpecification toolSpecification,
-            ToolSource toolSource,
             GuardrailRequestParams requestParams) {
-        return hasOutputGuardrails(key)
-                ? guardToolResult(key, request, toolResult, toolSpecification, toolSource, requestParams)
-                : toolResult;
+        return hasOutputGuardrails(key) ? guardToolResult(key, request, toolResult, requestParams) : toolResult;
     }
 
     private ToolExecutionResult guardToolResult(
             ToolKey key,
             ToolExecutionRequest request,
             ToolExecutionResult toolResult,
-            ToolSpecification toolSpecification,
-            ToolSource toolSource,
             GuardrailRequestParams requestParams) {
 
-        var guardrailRequest = outputRequest(request, toolResult, toolSpecification, toolSource, requestParams);
+        var guardrailRequest = outputRequest(key, request, toolResult, requestParams);
 
         return guardedResult(executeOutputGuardrails(key, guardrailRequest), guardrailRequest, toolResult);
     }
 
     private static ToolInputGuardrailRequest inputRequest(
-            ToolExecutionRequest request,
-            ToolSpecification toolSpecification,
-            ToolSource toolSource,
-            GuardrailRequestParams requestParams) {
+            ToolKey key, ToolExecutionRequest request, GuardrailRequestParams requestParams) {
 
         return ToolInputGuardrailRequest.builder()
                 .toolExecutionRequest(request)
-                .toolSpecification(toolSpecification)
-                .toolSource(toolSource)
+                .toolSpecification(key.toolSpecification())
+                .toolSource(key.toolSource())
                 .requestParams(requestParams)
                 .build();
     }
 
     private static ToolOutputGuardrailRequest outputRequest(
+            ToolKey key,
             ToolExecutionRequest request,
             ToolExecutionResult toolResult,
-            ToolSpecification toolSpecification,
-            ToolSource toolSource,
             GuardrailRequestParams requestParams) {
 
         return ToolOutputGuardrailRequest.builder()
                 .toolExecutionRequest(request)
-                .toolSpecification(toolSpecification)
-                .toolSource(toolSource)
+                .toolSpecification(key.toolSpecification())
+                .toolSource(key.toolSource())
                 .requestParams(requestParams)
                 .resultContents(toolResult.resultContents())
                 .isError(toolResult.isError())
@@ -601,38 +637,164 @@ public non-sealed interface ToolGuardrailService
 
     /**
      * Identifies a tool to the {@link ToolGuardrailService} that bound it (see {@link #bind(Class, AiServiceTool)}),
-     * as the key of the {@code execute*} and {@code has*} methods. It is only meaningful to that service: what else it
-     * holds is up to the implementation of the service.
+     * as the key of the {@code execute*} and {@code has*} methods. It carries the specification and the source of the
+     * tool, which the guardrail requests are built from. It is only meaningful to the service that bound it: what else
+     * it holds is up to the implementation of the service.
      *
      * @since 1.25.0
      */
     @Experimental
     interface ToolKey {
         /**
+         * The specification of the tool, as the LLM sees it.
+         *
+         * @return The specification, never {@code null}.
+         */
+        ToolSpecification toolSpecification();
+
+        /**
+         * Where the tool comes from.
+         *
+         * @return The source, never {@code null}.
+         */
+        ToolSource toolSource();
+
+        /**
          * The name of the tool, as the LLM sees it.
          *
          * @return The name of the tool.
          */
-        String toolName();
+        default String toolName() {
+            return toolSpecification().name();
+        }
     }
 
     /**
      * Builds a {@link ToolGuardrailService}. The guardrails and the guardrail classes it is given apply to every tool
      * and run first (see {@link ToolGuardrailService}); the configurations apply to the executors of every tool.
+     * Setting guardrails, or guardrail classes, replaces what was set before, and {@code null} clears them.
      *
      * @since 1.25.0
      */
     @Experimental
-    non-sealed interface Builder
-            extends GenericGuardrailService.Builder<
-                    ToolInputGuardrailRequest,
-                    ToolInputGuardrailResult,
-                    ToolOutputGuardrailRequest,
-                    ToolOutputGuardrailResult,
-                    ToolGuardrailService,
-                    ToolInputGuardrail,
-                    ToolOutputGuardrail,
-                    ToolInputGuardrailsConfig,
-                    ToolOutputGuardrailsConfig,
-                    Builder> {}
+    interface Builder {
+
+        /**
+         * Configures the input guardrails of every tool.
+         *
+         * @param config The configuration for the input guardrails. Must not be null.
+         * @return This builder.
+         * @throws IllegalArgumentException if {@code config} is null.
+         */
+        Builder inputGuardrailsConfig(ToolInputGuardrailsConfig config);
+
+        /**
+         * Configures the output guardrails of every tool.
+         *
+         * @param config The configuration for the output guardrails. Must not be null.
+         * @return This builder.
+         * @throws IllegalArgumentException if {@code config} is null.
+         */
+        Builder outputGuardrailsConfig(ToolOutputGuardrailsConfig config);
+
+        /**
+         * Sets the classes of the input guardrails that apply to every tool, replacing the ones set before.
+         *
+         * @param guardrailClasses The classes of the input guardrails. May be {@code null}.
+         * @param <I> The type of the input guardrails
+         * @return This builder.
+         */
+        <I extends ToolInputGuardrail> Builder inputGuardrailClasses(List<Class<? extends I>> guardrailClasses);
+
+        /**
+         * Sets the classes of the input guardrails that apply to every tool, replacing the ones set before.
+         *
+         * @param guardrailClasses The classes of the input guardrails. May be {@code null}.
+         * @param <I> The type of the input guardrails
+         * @return This builder.
+         */
+        @SuppressWarnings("unchecked")
+        default <I extends ToolInputGuardrail> Builder inputGuardrailClasses(Class<? extends I>... guardrailClasses) {
+            return Optional.ofNullable(guardrailClasses)
+                    .map(classes -> inputGuardrailClasses(List.of(classes)))
+                    .orElse(this);
+        }
+
+        /**
+         * Sets the classes of the output guardrails that apply to every tool, replacing the ones set before.
+         *
+         * @param guardrailClasses The classes of the output guardrails. May be {@code null}.
+         * @param <O> The type of the output guardrails
+         * @return This builder.
+         */
+        <O extends ToolOutputGuardrail> Builder outputGuardrailClasses(List<Class<? extends O>> guardrailClasses);
+
+        /**
+         * Sets the classes of the output guardrails that apply to every tool, replacing the ones set before.
+         *
+         * @param guardrailClasses The classes of the output guardrails. May be {@code null}.
+         * @param <O> The type of the output guardrails
+         * @return This builder.
+         */
+        @SuppressWarnings("unchecked")
+        default <O extends ToolOutputGuardrail> Builder outputGuardrailClasses(
+                Class<? extends O>... guardrailClasses) {
+            return Optional.ofNullable(guardrailClasses)
+                    .map(classes -> outputGuardrailClasses(List.of(classes)))
+                    .orElse(this);
+        }
+
+        /**
+         * Sets the input guardrails that apply to every tool, replacing the ones set before.
+         *
+         * @param guardrails The input guardrails. May be {@code null}.
+         * @param <I> The type of the input guardrails
+         * @return This builder.
+         */
+        <I extends ToolInputGuardrail> Builder inputGuardrails(List<I> guardrails);
+
+        /**
+         * Sets the input guardrails that apply to every tool, replacing the ones set before.
+         *
+         * @param guardrails The input guardrails. May be {@code null}.
+         * @param <I> The type of the input guardrails
+         * @return This builder.
+         */
+        @SuppressWarnings("unchecked")
+        default <I extends ToolInputGuardrail> Builder inputGuardrails(I... guardrails) {
+            return Optional.ofNullable(guardrails)
+                    .map(instances -> inputGuardrails(List.of(instances)))
+                    .orElse(this);
+        }
+
+        /**
+         * Sets the output guardrails that apply to every tool, replacing the ones set before.
+         *
+         * @param guardrails The output guardrails. May be {@code null}.
+         * @param <O> The type of the output guardrails
+         * @return This builder.
+         */
+        <O extends ToolOutputGuardrail> Builder outputGuardrails(List<O> guardrails);
+
+        /**
+         * Sets the output guardrails that apply to every tool, replacing the ones set before.
+         *
+         * @param guardrails The output guardrails. May be {@code null}.
+         * @param <O> The type of the output guardrails
+         * @return This builder.
+         */
+        @SuppressWarnings("unchecked")
+        default <O extends ToolOutputGuardrail> Builder outputGuardrails(O... guardrails) {
+            return Optional.ofNullable(guardrails)
+                    .map(instances -> outputGuardrails(List.of(instances)))
+                    .orElse(this);
+        }
+
+        /**
+         * Builds the service.
+         *
+         * @return The service, configured with the guardrails and the configurations the builder was given.
+         */
+        ToolGuardrailService build();
+    }
 }

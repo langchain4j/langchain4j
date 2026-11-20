@@ -1,16 +1,21 @@
 package dev.langchain4j.service.guardrail;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.Internal;
+import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailExecutor;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailResult;
+import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailExecutor;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import java.util.List;
 import java.util.Map;
-import dev.langchain4j.service.guardrail.spi.GuardrailServiceBuilderFactory;
-import dev.langchain4j.spi.classloading.ClassInstanceFactory;
-import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Responsible for managing and applying input and output guardrails to methods
@@ -21,48 +26,112 @@ import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
  * This class handles the initialization, configuration, and execution of input and output
  * guardrail logic for the methods of the associated AI service class, ensuring both input
  * and output constraints are applied automatically when methods are invoked.
- *
- * @deprecated Do not extend this class. To customize how guardrails are found and created, provide a
- * {@link ClassMetadataProviderFactory} (it also decides how the method passed at
- * invocation time maps to the method keys, see
- * {@link ClassMetadataProviderFactory#resolveMethodKey(Object)}) and a
- * {@link ClassInstanceFactory}, and use {@link GuardrailService#builder(Class)}.
- * Frameworks that need to replace the whole builder can still provide a
- * {@link GuardrailServiceBuilderFactory}.
  */
 @Internal
-@Deprecated(since = "1.25.0")
-public abstract non-sealed class AbstractGuardrailService
-        extends AbstractKeyedGuardrailService<
-                InputGuardrailRequest,
-                InputGuardrailResult,
-                OutputGuardrailRequest,
-                OutputGuardrailResult,
-                InputGuardrailExecutor,
-                OutputGuardrailExecutor>
-        implements GuardrailService {
+public abstract class AbstractGuardrailService implements GuardrailService {
+    private static final Object NULL_KEY = new Object();
 
-    /**
-     * Creates a service for the given AI service class, with the executors registered for each method key.
-     *
-     * @param aiServiceClass   The AI service class the guardrails apply to.
-     * @param inputGuardrails  The input executor of each method key.
-     * @param outputGuardrails The output executor of each method key.
-     */
+    private final Class<?> aiServiceClass;
+    private final Map<Object, InputGuardrailExecutor> inputGuardrails = new ConcurrentHashMap<>();
+    private final Map<Object, OutputGuardrailExecutor> outputGuardrails = new ConcurrentHashMap<>();
+
+    // Caches for whether or not a method has input or output guardrails
+    private final Map<Object, Boolean> inputGuardrailMethods = new ConcurrentHashMap<>();
+    private final Map<Object, Boolean> outputGuardrailMethods = new ConcurrentHashMap<>();
+
     protected AbstractGuardrailService(
             Class<?> aiServiceClass,
             Map<Object, InputGuardrailExecutor> inputGuardrails,
             Map<Object, OutputGuardrailExecutor> outputGuardrails) {
-        super(
-                aiServiceClass,
-                inputGuardrails,
-                outputGuardrails,
-                InputGuardrailResult::success,
-                OutputGuardrailResult::success);
+        this.aiServiceClass = ensureNotNull(aiServiceClass, "aiServiceClass");
+        Optional.ofNullable(inputGuardrails).ifPresent(this.inputGuardrails::putAll);
+        Optional.ofNullable(outputGuardrails).ifPresent(this.outputGuardrails::putAll);
     }
 
     @Override
     public Class<?> aiServiceClass() {
-        return targetClass();
+        return this.aiServiceClass;
+    }
+
+    @Override
+    public <MethodKey> InputGuardrailResult executeInputGuardrails(MethodKey method, InputGuardrailRequest request) {
+        return Optional.ofNullable(method)
+                .map(this.inputGuardrails::get)
+                .map(executor -> executor.execute(request))
+                .orElseGet(InputGuardrailResult::success);
+    }
+
+    @Override
+    public <MethodKey> CompletableFuture<InputGuardrailResult> executeInputGuardrailsAsync(
+            MethodKey method, InputGuardrailRequest request) {
+        return Optional.ofNullable(method)
+                .map(this.inputGuardrails::get)
+                .map(executor -> executor.executeAsync(request))
+                .orElseGet(() -> CompletableFuture.completedFuture(InputGuardrailResult.success()));
+    }
+
+    @Override
+    public <MethodKey> OutputGuardrailResult executeOutputGuardrails(MethodKey method, OutputGuardrailRequest request) {
+        return Optional.ofNullable(method)
+                .map(this.outputGuardrails::get)
+                .map(executor -> executor.execute(request))
+                .orElseGet(OutputGuardrailResult::success);
+    }
+
+    @Override
+    public <MethodKey> CompletableFuture<OutputGuardrailResult> executeOutputGuardrailsAsync(
+            MethodKey method, OutputGuardrailRequest request) {
+        return Optional.ofNullable(method)
+                .map(this.outputGuardrails::get)
+                .map(executor -> executor.executeAsync(request))
+                .orElseGet(() -> CompletableFuture.completedFuture(OutputGuardrailResult.success()));
+    }
+
+    @Override
+    public <MethodKey> boolean hasInputGuardrails(MethodKey method) {
+        return this.inputGuardrailMethods.computeIfAbsent(
+                checkMethodKey(method), m -> !getInputGuardrails(m).isEmpty());
+    }
+
+    @Override
+    public <MethodKey> boolean hasOutputGuardrails(MethodKey method) {
+        return this.outputGuardrailMethods.computeIfAbsent(
+                checkMethodKey(method), m -> !getOutputGuardrails(m).isEmpty());
+    }
+
+    private static <MethodKey> MethodKey checkMethodKey(MethodKey method) {
+        return (method != null) ? method : (MethodKey) NULL_KEY;
+    }
+
+    // These methods below really only exist for testing purposes
+    // That's why they are package-scoped
+    int getInputGuardrailMethodCount() {
+        return this.inputGuardrails.size();
+    }
+
+    int getOutputGuardrailMethodCount() {
+        return this.outputGuardrails.size();
+    }
+
+    <MethodKey> Optional<dev.langchain4j.guardrail.config.InputGuardrailsConfig> getInputConfig(MethodKey method) {
+        return Optional.ofNullable(this.inputGuardrails.get(method)).map(InputGuardrailExecutor::config);
+    }
+
+    <MethodKey> Optional<dev.langchain4j.guardrail.config.OutputGuardrailsConfig> getOutputConfig(MethodKey method) {
+        return Optional.ofNullable(this.outputGuardrails.get(method)).map(OutputGuardrailExecutor::config);
+    }
+
+    <MethodKey> List<InputGuardrail> getInputGuardrails(MethodKey method) {
+        return Optional.ofNullable(method)
+                .map(this.inputGuardrails::get)
+                .map(InputGuardrailExecutor::guardrails)
+                .orElseGet(List::of);
+    }
+
+    <MethodKey> List<OutputGuardrail> getOutputGuardrails(MethodKey method) {
+        return Optional.ofNullable(method)
+                .map(this.outputGuardrails::get)
+                .map(OutputGuardrailExecutor::guardrails)
+                .orElseGet(List::of);
     }
 }

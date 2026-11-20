@@ -274,12 +274,12 @@ class ToolGuardrailResolutionTest {
 
         Optional<ToolInputGuardrailExecutor> inputExecutor(String toolName) {
             var binding = binding(toolName);
-            return ((DefaultToolGuardrailService) binding.service()).inputExecutor(binding.key());
+            return ((DefaultToolKey) binding.key()).inputExecutor();
         }
 
         Optional<ToolOutputGuardrailExecutor> outputExecutor(String toolName) {
             var binding = binding(toolName);
-            return ((DefaultToolGuardrailService) binding.service()).outputExecutor(binding.key());
+            return ((DefaultToolKey) binding.key()).outputExecutor();
         }
 
         List<Class<?>> inputChain(String toolName) {
@@ -344,11 +344,11 @@ class ToolGuardrailResolutionTest {
         var classOnly = setup.binding("classOnly");
 
         assertThat(fetch)
-                .returns("fetch", binding -> binding.toolSpecification().name())
+                .returns("fetch", binding -> binding.key().toolName())
                 .returns(false, binding -> binding.service().hasInputGuardrails(binding.key()))
                 .returns(true, binding -> binding.service().hasOutputGuardrails(binding.key()));
         assertThat(classOnly)
-                .returns("classOnly", binding -> binding.toolSpecification().name())
+                .returns("classOnly", binding -> binding.key().toolName())
                 .returns(true, binding -> binding.service().hasInputGuardrails(binding.key()))
                 .returns(true, binding -> binding.service().hasOutputGuardrails(binding.key()));
     }
@@ -595,7 +595,7 @@ class ToolGuardrailResolutionTest {
 
         assertThat(setup.outputChain("fromMap")).containsExactly(OutMethod.class);
         assertThat(setup.inputChain("fromMap")).containsExactly(InMethod.class);
-        assertThat(setup.binding("fromMap").toolSource()).isEqualTo(ToolSource.programmatic());
+        assertThat(setup.binding("fromMap").key().toolSource()).isEqualTo(ToolSource.programmatic());
     }
 
     // --- executors ------------------------------------------------------------------------------
@@ -686,14 +686,22 @@ class ToolGuardrailResolutionTest {
                 .outputGuardrails(new OutGlobal())
                 .build();
 
-        ToolGuardrailService.ToolKey foreignKey = () -> "plain";
+        var foreignKey = new ToolGuardrailService.ToolKey() {
+            @Override
+            public ToolSpecification toolSpecification() {
+                return ToolSpecification.builder().name("plain").build();
+            }
+
+            @Override
+            public ToolSource toolSource() {
+                return ToolSource.programmatic();
+            }
+        };
 
         assertThatThrownBy(() -> service.hasOutputGuardrails(foreignKey)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> service.hasOutputGuardrails("not a key"))
-                .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> service.executeOutputGuardrails(foreignKey, outputRequest("plain", "result")))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThat(service.hasOutputGuardrails(null)).isFalse();
+        assertThatThrownBy(() -> service.hasOutputGuardrails(null)).isInstanceOf(IllegalArgumentException.class);
     }
 
     // --- tool source ----------------------------------------------------------------------------
@@ -702,7 +710,7 @@ class ToolGuardrailResolutionTest {
     void local_tools_have_a_local_source() throws Exception {
         var setup = setupWith(new Plain());
 
-        assertThat(setup.binding("plain").toolSource())
+        assertThat(setup.binding("plain").key().toolSource())
                 .isEqualTo(ToolSource.local(Plain.class.getDeclaredMethod("plain")));
     }
 
@@ -713,7 +721,7 @@ class ToolGuardrailResolutionTest {
                 .tools(Map.of(ToolSpecification.builder().name("mapped").build(), (ToolExecutor)
                         (request, memoryId) -> "ok"));
 
-        assertThat(setup.binding("mapped").toolSource()).isEqualTo(ToolSource.programmatic());
+        assertThat(setup.binding("mapped").key().toolSource()).isEqualTo(ToolSource.programmatic());
     }
 
     @Test
@@ -735,8 +743,8 @@ class ToolGuardrailResolutionTest {
                                 .toolExecutor((request, memoryId) -> "ok")
                                 .build()));
 
-        assertThat(setup.binding("mcpLike").toolSource()).isEqualTo(ToolSource.mcp("server-1"));
-        assertThat(setup.binding("noSource").toolSource()).isEqualTo(ToolSource.programmatic());
+        assertThat(setup.binding("mcpLike").key().toolSource()).isEqualTo(ToolSource.mcp("server-1"));
+        assertThat(setup.binding("noSource").key().toolSource()).isEqualTo(ToolSource.programmatic());
     }
 
     @Test
@@ -755,7 +763,7 @@ class ToolGuardrailResolutionTest {
                         .build());
         setup.guardrails().outputGuardrails(new OutGlobal());
 
-        assertThat(setup.binding("provided").toolSource()).isEqualTo(ToolSource.mcp("server-2"));
+        assertThat(setup.binding("provided").key().toolSource()).isEqualTo(ToolSource.mcp("server-2"));
         assertThat(setup.outputChain("provided")).containsExactly(OutGlobal.class, OutMethod.class);
     }
 
@@ -836,7 +844,7 @@ class ToolGuardrailResolutionTest {
         });
         setup.guardrails().outputGuardrails(new OutGlobal());
 
-        assertThat(setup.binding("dynamic").toolSource()).isEqualTo(ToolSource.mcp("server-3"));
+        assertThat(setup.binding("dynamic").key().toolSource()).isEqualTo(ToolSource.mcp("server-3"));
         assertThat(setup.outputChain("dynamic")).containsExactly(OutGlobal.class, OutMethod.class);
     }
 }

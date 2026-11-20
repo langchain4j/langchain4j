@@ -2,8 +2,6 @@ package dev.langchain4j.spi.classloading;
 
 import java.lang.annotation.Annotation;
 import java.util.Optional;
-import java.lang.reflect.Method;
-import org.jspecify.annotations.Nullable;
 
 /**
  * A factory interface for providing access to class metadata. Intended to be implemented by downstream frameworks.
@@ -13,11 +11,12 @@ import org.jspecify.annotations.Nullable;
  *     other frameworks (like Quarkus) which don't use reflection to provide class metadata.
  * </p>
  * <p>
- *     The method keys this factory returns from {@link #getNonStaticMethodsOnClass(Class)} identify methods wherever
- *     the caller needs to refer to a method of a class it scanned. Code that is handed a
- *     {@link Method} instead (for example the method being invoked) uses
- *     {@link #resolveMethodKey(Object)} to find the key that corresponds to it, which matters for a factory whose keys
- *     are not {@link Method}s.
+ *     It is asked about AI service classes and their methods, for the AI service guardrail annotations, and also about
+ *     tool classes, for the tool guardrail annotations ({@code ToolInputGuardrails} and {@code ToolOutputGuardrails}):
+ *     {@link #getAnnotation(Class, Class)} is called with the class of the object a {@code @Tool} method was found on
+ *     (or, for a tool that was not found on an object, the class that declares its method), and with each of its
+ *     superclasses and interfaces. A factory must return {@link Optional#empty()} for an
+ *     annotation or a class it has no metadata for, and must not throw.
  * </p>
  *
  * @param <MethodKey> The type of the method key, representing a unique identifier for methods. Can be whatever it needs to be.
@@ -52,32 +51,4 @@ public interface ClassMetadataProviderFactory<MethodKey> {
      * @return An iterable of method keys corresponding to the methods of the specified class.
      */
     Iterable<MethodKey> getNonStaticMethodsOnClass(Class<?> clazz);
-
-    /**
-     * Resolves the method key for a method that is identified in another way than by this factory's keys, usually by
-     * a {@link Method}.
-     * <p>
-     *     The keys returned by {@link #getNonStaticMethodsOnClass(Class)} are what this factory uses to identify
-     *     methods. A caller that only has the {@link Method} (for example, the method being invoked)
-     *     calls this method to find the corresponding key. A factory whose keys are not
-     *     {@code Method}s overrides it to translate one into the other.
-     * </p>
-     * <p>
-     *     Callers may cache the result, so the same method must always resolve to the same key.
-     * </p>
-     * <p>
-     *     It may also be called with one of this factory's own keys: return it unchanged then.
-     * </p>
-     * <p>
-     *     The default implementation returns {@code null}, so a caller falls back to the {@link Method} itself. A
-     *     factory whose keys are {@link Method}s, like the reflection based one, overrides it to return the method.
-     * </p>
-     *
-     * @param method What identifies the method, usually a {@link Method}. Never {@code null}.
-     * @return The key this factory uses for the method, or {@code null} if the method has none.
-     * @since 1.25.0
-     */
-    default @Nullable MethodKey resolveMethodKey(Object method) {
-        return null;
-    }
 }

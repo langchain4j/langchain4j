@@ -271,12 +271,7 @@ public final class ToolRound {
             execution = binding(call.name())
                     .map(binding -> binding.service()
                             .executeGuardrails(
-                                    binding.key(),
-                                    call,
-                                    binding.toolSpecification(),
-                                    binding.toolSource(),
-                                    guardrailRequestParams(),
-                                    recordingTool))
+                                    binding.key(), call, guardrailRequestParams(), recordingTool))
                     .orElseGet(() -> unguarded(call, recordingTool.apply(call)));
         } catch (ToolArgumentsException e) {
             // once the tool has started, its own error handling already ran
@@ -351,12 +346,7 @@ public final class ToolRound {
                     .map(binding -> startSafely(
                             () -> binding.service()
                                     .executeGuardrailsAsync(
-                                            binding.key(),
-                                            call,
-                                            binding.toolSpecification(),
-                                            binding.toolSource(),
-                                            guardrailRequestParams(),
-                                            recordingTool),
+                                            binding.key(), call, guardrailRequestParams(), recordingTool),
                             "future of the tool guardrails"))
                     .orElseGet(() -> recordingTool.apply(call).thenApply(result -> unguarded(call, result)));
             var guarded = execution;
@@ -371,14 +361,36 @@ public final class ToolRound {
         return track(call, execution);
     }
 
-    private static CompletableFuture<ToolExecutionResult> startOn(
+    /**
+     * Starts the tool on the executor. Canceling the returned future cancels the future of the tool. The cancellation
+     * is checked again when the task starts on the executor: a tool that waited in its queue while the returned
+     * future or the round was canceled does not start.
+     */
+    private CompletableFuture<ToolExecutionResult> startOn(
             Executor executor, Supplier<CompletableFuture<ToolExecutionResult>> tool) {
+        var result = new CompletableFuture<ToolExecutionResult>();
         try {
-            return CompletableFuture.supplyAsync(() -> startSafely(tool, "future of the tool"), executor)
-                    .thenCompose(Function.identity());
+            executor.execute(() -> {
+                // the task may have waited in the queue of the executor: a cancellation that came meanwhile, of the
+                // returned future or of the round, keeps the tool from starting
+                if (isCancelled()) {
+                    result.completeExceptionally(new CancellationException());
+                } else if (!result.isDone()) {
+                    var toolResult = startSafely(tool, "future of the tool");
+                    propagateCancellation(result, toolResult);
+                    toolResult.whenComplete((value, error) -> {
+                        if (error != null) {
+                            result.completeExceptionally(unwrapCompletionException(error));
+                        } else {
+                            result.complete(value);
+                        }
+                    });
+                }
+            });
         } catch (RuntimeException rejected) {
-            return CompletableFuture.failedFuture(rejected);
+            result.completeExceptionally(rejected);
         }
+        return result;
     }
 
     /**
