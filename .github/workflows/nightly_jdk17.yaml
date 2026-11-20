@@ -331,6 +331,8 @@ jobs:
           CI_DELAY_SECONDS_VERTEX_AI_ANTHROPIC: 12
           CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 12
           CI_DELAY_SECONDS_VOYAGE_AI: 22
+          # image generation is expensive: only the JDK 21 nightly runs these ITs
+          LC4J_SKIP_IMAGE_GENERATION_ITS: true
 
       - name: Clean Docker
         run: docker system prune -af || true
