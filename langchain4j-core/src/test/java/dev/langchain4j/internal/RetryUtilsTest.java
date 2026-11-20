@@ -1,5 +1,6 @@
 package dev.langchain4j.internal;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -7,7 +8,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static java.util.concurrent.TimeUnit.SECONDS;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.AuthenticationException;
@@ -18,6 +18,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class RetryUtilsTest {
 
@@ -210,6 +212,41 @@ class RetryUtilsTest {
         return RetryUtils.retryPolicyBuilder().delayMillis(1).jitterScale(0.0).build();
     }
 
+    @ParameterizedTest
+    @CsvSource({"true, false", "false, false", "true, true", "false, true"})
+    void withRetryAsync_fails_when_exception_mapper_throws(boolean alreadyFailed, boolean throwsError) {
+        RuntimeException attemptFailure = new RuntimeException("request failed");
+        Throwable mappingFailure =
+                throwsError ? new AssertionError("mapping failed") : new IllegalStateException("mapping failed");
+        CompletableFuture<String> attempt =
+                alreadyFailed ? CompletableFuture.failedFuture(attemptFailure) : new CompletableFuture<>();
+        AtomicInteger attempts = new AtomicInteger();
+        ExceptionMapper mapper = cause -> {
+            assertThat(cause).isSameAs(attemptFailure);
+            if (mappingFailure instanceof Error error) {
+                throw error;
+            }
+            throw (RuntimeException) mappingFailure;
+        };
+
+        CompletableFuture<String> result = fastPolicy()
+                .withRetryAsync(
+                        () -> {
+                            attempts.incrementAndGet();
+                            return attempt;
+                        },
+                        3,
+                        mapper);
+        if (!alreadyFailed) {
+            assertThat(result).isNotDone();
+            attempt.completeExceptionally(attemptFailure);
+        }
+
+        assertThat(result).isCompletedExceptionally();
+        assertThatThrownBy(() -> result.get(5, SECONDS)).hasCause(mappingFailure);
+        assertThat(attempts).hasValue(1);
+    }
+
     @Test
     void withRetryAsync_succeeds_on_the_first_attempt() throws Exception {
         AtomicInteger attempts = new AtomicInteger();
@@ -268,10 +305,13 @@ class RetryUtilsTest {
     void does_not_retry_an_unsupported_feature() {
         AtomicInteger attempts = new AtomicInteger();
 
-        assertThatThrownBy(() -> fastPolicy().withRetry(() -> {
-                    attempts.incrementAndGet();
-                    throw new UnsupportedFeatureException("'topK' is not supported");
-                }, 5))
+        assertThatThrownBy(() -> fastPolicy()
+                        .withRetry(
+                                () -> {
+                                    attempts.incrementAndGet();
+                                    throw new UnsupportedFeatureException("'topK' is not supported");
+                                },
+                                5))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class);
 
         // a provider does not begin to support a feature on a retry

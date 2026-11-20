@@ -241,6 +241,7 @@ public final class RetryUtils {
          * scheduled (via {@link CompletableFuture#delayedExecutor}), so <b>no thread is blocked</b> during the
          * backoff. A {@link CancellationException} is never retried, and cancelling the returned future cancels the
          * in-flight attempt and stops any further retries.
+         * If the exception mapper throws, the returned future fails with that error without retrying.
          *
          * @param action          supplies a fresh {@link CompletableFuture} for each attempt.
          * @param maxRetries      the maximum number of retries (the action can run up to {@code maxRetries + 1} times).
@@ -288,7 +289,13 @@ public final class RetryUtils {
                     result.completeExceptionally(cause);
                     return;
                 }
-                RuntimeException mapped = exceptionMapper.mapException(cause);
+                RuntimeException mapped;
+                try {
+                    mapped = exceptionMapper.mapException(cause);
+                } catch (Throwable mappingError) {
+                    result.completeExceptionally(mappingError);
+                    return;
+                }
                 if (mapped instanceof NonRetriableException || retry >= maxRetries || result.isDone()) {
                     result.completeExceptionally(mapped);
                     return;
