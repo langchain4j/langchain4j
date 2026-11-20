@@ -44,6 +44,7 @@ import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -469,6 +470,10 @@ class GoogleAiGeminiStreamingChatModelIT {
     }
 
     @Test
+    @DisabledIfEnvironmentVariable(
+            named = "LC4J_SKIP_IMAGE_GENERATION_ITS",
+            matches = "true",
+            disabledReason = "Image generation is expensive: CI runs it only in one nightly and when a Google module changes")
     void should_generate_image_streaming() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
