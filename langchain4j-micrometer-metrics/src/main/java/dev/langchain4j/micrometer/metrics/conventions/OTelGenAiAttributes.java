@@ -11,6 +11,20 @@ public enum OTelGenAiAttributes {
      */
     PROVIDER_NAME("gen_ai.provider.name"),
 
+    // Agent, workflow and tool
+    /**
+     * The human-readable name of the agent.
+     */
+    AGENT_NAME("gen_ai.agent.name"),
+    /**
+     * The name of the tool.
+     */
+    TOOL_NAME("gen_ai.tool.name"),
+    /**
+     * The type of the tool: function, extension or datastore.
+     */
+    TOOL_TYPE("gen_ai.tool.type"),
+
     // Token
     /**
      * The type of token that is counted: input, output, total.

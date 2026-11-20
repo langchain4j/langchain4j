@@ -7,15 +7,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class ComposedAgentListenerTest {
-
-    // The composed listeners are kept in a HashSet, which iterates small hash codes in ascending order. Giving the
-    // failing listener the lower one makes it run first, so the tests below can't pass by the listener under test
-    // happening to run before it.
-    private static final int FIRST = 0;
-    private static final int SECOND = 1;
 
     @Test
     void compose_without_existing_listener_returns_the_new_one() {
@@ -32,7 +27,7 @@ class ComposedAgentListenerTest {
         AgentListener composed = ComposedAgentListener.compose(first, second);
 
         assertThat(composed).isInstanceOf(ComposedAgentListener.class);
-        assertThat(((ComposedAgentListener) composed).listeners()).containsExactlyInAnyOrder(first, second);
+        assertThat(((ComposedAgentListener) composed).listeners()).containsExactly(first, second);
     }
 
     @Test
@@ -43,7 +38,7 @@ class ComposedAgentListenerTest {
         AgentListener composed = ComposedAgentListener.compose(first, second);
 
         assertThat(ComposedAgentListener.compose(composed, third)).isSameAs(composed);
-        assertThat(((ComposedAgentListener) composed).listeners()).containsExactlyInAnyOrder(first, second, third);
+        assertThat(((ComposedAgentListener) composed).listeners()).containsExactly(first, second, third);
     }
 
     @Test
@@ -96,21 +91,11 @@ class ComposedAgentListenerTest {
                     public void beforeAgentInvocation(AgentRequest agentRequest) {
                         throw failure;
                     }
-
-                    @Override
-                    public int hashCode() {
-                        return FIRST;
-                    }
                 },
                 new AgentListener() {
                     @Override
                     public void beforeAgentInvocation(AgentRequest agentRequest) {
                         requests.add(agentRequest);
-                    }
-
-                    @Override
-                    public int hashCode() {
-                        return SECOND;
                     }
                 });
         AgentRequest request = new AgentRequest(null, null, Map.of());
@@ -129,21 +114,11 @@ class ComposedAgentListenerTest {
                     public void onAgentInvocationError(AgentInvocationError agentInvocationError) {
                         throw failure;
                     }
-
-                    @Override
-                    public int hashCode() {
-                        return FIRST;
-                    }
                 },
                 new AgentListener() {
                     @Override
                     public void onAgentInvocationError(AgentInvocationError agentInvocationError) {
                         errors.add(agentInvocationError);
-                    }
-
-                    @Override
-                    public int hashCode() {
-                        return SECOND;
                     }
                 });
         AgentInvocationError error =
@@ -160,10 +135,7 @@ class ComposedAgentListenerTest {
         AgentListener composed = ComposedAgentListener.compose(skipFailure(first), skipFailure(second));
         AgentSkipped skip = new AgentSkipped(null, null, "activation condition is false: never");
 
-        assertThatThrownBy(() -> composed.onAgentSkipped(skip))
-                .isInstanceOf(IllegalStateException.class)
-                .satisfies(thrown -> assertThat(List.of(thrown, thrown.getSuppressed()[0]))
-                        .containsExactlyInAnyOrder(first, second));
+        assertThatThrownBy(() -> composed.onAgentSkipped(skip)).isSameAs(first).hasSuppressedException(second);
     }
 
     @Test
@@ -176,6 +148,84 @@ class ComposedAgentListenerTest {
         assertThatCode(() -> composed.onAgentSkipped(skip)).doesNotThrowAnyException();
         assertThat(firstSkips).containsExactly(skip);
         assertThat(secondSkips).containsExactly(skip);
+    }
+
+    @Test
+    void listeners_are_notified_in_the_order_they_were_registered() {
+        List<Integer> notified = new ArrayList<>();
+        AgentListener composed = null;
+        for (int i = 0; i <= LAST_POSITION; i++) {
+            composed = ComposedAgentListener.compose(composed, orderRecorder(notified, i));
+        }
+
+        composed.beforeAgentInvocation(new AgentRequest(null, null, Map.of()));
+
+        assertThat(notified)
+                .isEqualTo(IntStream.rangeClosed(0, LAST_POSITION).boxed().toList());
+    }
+
+    @Test
+    void inherited_listeners_are_notified_before_the_ones_of_the_subagent_in_the_order_they_were_registered() {
+        List<Integer> notified = new ArrayList<>();
+        AgentListener inherited =
+                ComposedAgentListener.compose(inheritedOrderRecorder(notified, 0), inheritedOrderRecorder(notified, 1));
+        AgentListener local = ComposedAgentListener.compose(orderRecorder(notified, 2), orderRecorder(notified, 3));
+
+        ComposedAgentListener.composeWithInherited(local, inherited)
+                .beforeAgentInvocation(new AgentRequest(null, null, Map.of()));
+
+        assertThat(notified).containsExactly(0, 1, 2, 3);
+    }
+
+    @Test
+    void a_listener_registered_twice_is_notified_once() {
+        List<Integer> notified = new ArrayList<>();
+        AgentListener listener = orderRecorder(notified, 0);
+        AgentListener composed = ComposedAgentListener.compose(listener, orderRecorder(notified, 1));
+        ComposedAgentListener.compose(composed, listener);
+
+        composed.beforeAgentInvocation(new AgentRequest(null, null, Map.of()));
+
+        assertThat(notified).containsExactly(0, 1);
+    }
+
+    /**
+     * The recorders have hash codes decreasing with their position, so that a set iterating by hash code would notify
+     * them in reverse.
+     */
+    private static final int LAST_POSITION = 19;
+
+    private static AgentListener orderRecorder(List<Integer> notified, int position) {
+        return new AgentListener() {
+            @Override
+            public void beforeAgentInvocation(AgentRequest agentRequest) {
+                notified.add(position);
+            }
+
+            @Override
+            public int hashCode() {
+                return LAST_POSITION - position;
+            }
+        };
+    }
+
+    private static AgentListener inheritedOrderRecorder(List<Integer> notified, int position) {
+        return new AgentListener() {
+            @Override
+            public void beforeAgentInvocation(AgentRequest agentRequest) {
+                notified.add(position);
+            }
+
+            @Override
+            public boolean inheritedBySubagents() {
+                return true;
+            }
+
+            @Override
+            public int hashCode() {
+                return LAST_POSITION - position;
+            }
+        };
     }
 
     private static AgentListener skipFailure(RuntimeException failure) {

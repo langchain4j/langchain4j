@@ -1250,6 +1250,12 @@ The monitor is automatically registered and can be retrieved at any time from th
 AgentMonitor monitor = styledWriter.agentMonitor();
 ```
 
+### Metrics
+
+To record the duration, the outcome, the model and tool calls and the tokens of each agent in a Micrometer
+`MeterRegistry`, register a `MicrometerMetricsAgentListener` from the `langchain4j-agentic-micrometer` module on the
+root agent, as described in [Agent metrics](/tutorials/observability#agent-metrics).
+
 ## Declarative API
 
 All the workflow patterns discussed so far can be defined using a declarative API, which allows you to define workflows in a more concise and readable way. The `langchain4j-agentic` module provides a set of annotations that can be used to define agents and their workflows in a more declarative style.
