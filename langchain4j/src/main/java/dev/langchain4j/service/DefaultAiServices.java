@@ -192,7 +192,11 @@ class DefaultAiServices<T> extends AiServices<T> {
     boolean hasBlockingMethod() {
         return Stream.of(context.aiServiceClass.getMethods())
                 .filter(AiServiceValidation::isImplementedByModel)
-                .anyMatch(method -> !isAsynchronousOrReactive(method.getGenericReturnType()));
+                .anyMatch(method -> {
+                    Type declaredReturnType =
+                            context.returnType != null ? context.returnType : method.getGenericReturnType();
+                    return !isAsynchronousOrReactive(declaredReturnType);
+                });
     }
 
     public T build() {
