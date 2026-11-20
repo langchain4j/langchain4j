@@ -1,5 +1,11 @@
 package dev.langchain4j.model.openai;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.spy;
+
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
@@ -9,16 +15,11 @@ import dev.langchain4j.http.client.sse.ServerSentEventParser;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
-import org.junit.jupiter.api.Test;
-
+import java.util.List;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.doThrow;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.Test;
 
 /**
  * Deterministic coverage of {@link OpenAiEmbeddingModel#doEmbedAsync}'s cancellation semantics: cancelling the
@@ -77,7 +78,8 @@ class OpenAiEmbeddingModelAsyncTest {
     @Test
     void multi_batch_failure_reports_the_real_error_not_a_masked_cancellation() throws Exception {
         RuntimeException realError = new RuntimeException("real batch error (e.g. rate limit)");
-        CompletableFuture<SuccessfulHttpResponse> batch0 = new CompletableFuture<>(); // never completes -> aborted sibling
+        CompletableFuture<SuccessfulHttpResponse> batch0 =
+                new CompletableFuture<>(); // never completes -> aborted sibling
         AtomicInteger call = new AtomicInteger();
         HttpClient client = new HttpClient() {
             @Override
@@ -112,6 +114,94 @@ class OpenAiEmbeddingModelAsyncTest {
     }
 
     @Test
+    void cancelling_the_transport_completes_a_single_batch_result() {
+        var transport = new CompletableFuture<SuccessfulHttpResponse>();
+        var future = embedWithBatchResponses(List.of(transport), "a");
+
+        transport.cancel(false);
+
+        assertThatThrownBy(() -> future.get(1, SECONDS)).isInstanceOf(CancellationException.class);
+    }
+
+    @Test
+    void a_successful_sibling_does_not_hide_transport_cancellation() {
+        var cancelled = new CompletableFuture<SuccessfulHttpResponse>();
+        var succeeded = new CompletableFuture<SuccessfulHttpResponse>();
+        var future = embedWithBatchResponses(List.of(cancelled, succeeded), "a", "b");
+
+        cancelled.cancel(false);
+        assertThat(future).isNotDone();
+        succeeded.complete(successfulEmbedding());
+
+        assertThatThrownBy(() -> future.get(1, SECONDS)).isInstanceOf(CancellationException.class);
+    }
+
+    @Test
+    void a_late_transport_cancellation_completes_after_a_successful_sibling() {
+        var succeeded = new CompletableFuture<SuccessfulHttpResponse>();
+        var cancelled = new CompletableFuture<SuccessfulHttpResponse>();
+        var future = embedWithBatchResponses(List.of(succeeded, cancelled), "a", "b");
+
+        succeeded.complete(successfulEmbedding());
+        assertThat(future).isNotDone();
+        cancelled.cancel(false);
+
+        assertThatThrownBy(() -> future.get(1, SECONDS)).isInstanceOf(CancellationException.class);
+    }
+
+    @Test
+    void an_ordinary_error_takes_precedence_over_an_earlier_transport_cancellation() {
+        var cancelled = new CompletableFuture<SuccessfulHttpResponse>();
+        var failed = new CompletableFuture<SuccessfulHttpResponse>();
+        var future = embedWithBatchResponses(List.of(cancelled, failed), "a", "b");
+
+        cancelled.cancel(false);
+        assertThat(future).isNotDone();
+        var failure = new RuntimeException("ordinary embedding error");
+        failed.completeExceptionally(failure);
+
+        assertThatThrownBy(() -> future.get(1, SECONDS)).hasCause(failure);
+    }
+
+    private static CompletableFuture<EmbeddingResponse> embedWithBatchResponses(
+            List<CompletableFuture<SuccessfulHttpResponse>> responses, String... inputs) {
+        var nextBatch = new AtomicInteger();
+        var transport = new HttpClient() {
+            @Override
+            public SuccessfulHttpResponse execute(HttpRequest request) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+                return responses.get(nextBatch.getAndIncrement());
+            }
+
+            @Override
+            public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+                throw new UnsupportedOperationException();
+            }
+        };
+
+        EmbeddingModel model = OpenAiEmbeddingModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(transport))
+                .modelName("text-embedding-3-small")
+                .maxSegmentsPerBatch(1)
+                .maxRetries(0)
+                .build();
+        var future = model.embedAsync(EmbeddingRequest.builder().inputs(inputs).build());
+        assertThat(nextBatch.get()).isEqualTo(responses.size());
+        return future;
+    }
+
+    private static SuccessfulHttpResponse successfulEmbedding() {
+        return SuccessfulHttpResponse.builder().statusCode(200).body("""
+            {"object":"list","data":[{"object":"embedding","embedding":[1.0],"index":0}],
+             "model":"text-embedding-3-small","usage":{"prompt_tokens":1,"total_tokens":1}}
+            """).build();
+    }
+
+    @Test
     void doEmbedAsync_reports_a_failure_while_preparing_the_request_through_the_future() {
         EmbeddingModel model = OpenAiEmbeddingModel.builder()
                 .baseUrl("http://localhost:1")
@@ -125,6 +215,10 @@ class OpenAiEmbeddingModelAsyncTest {
 
         CompletableFuture<EmbeddingResponse> future = model.doEmbedAsync(request);
 
-        assertThat(future).failsWithin(5, SECONDS).withThrowableThat().havingCause().isSameAs(failure);
+        assertThat(future)
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isSameAs(failure);
     }
 }
