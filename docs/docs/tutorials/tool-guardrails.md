@@ -44,8 +44,13 @@ Tool guardrails work the same way for every kind of tool:
 and in every mode of an AI Service: blocking, `CompletableFuture`, `TokenStream` and reactive
 (see [Non-blocking and Reactive](/tutorials/non-blocking)).
 
-The built-in tool search tool of a [`ToolSearchStrategy`](/tutorials/tools#tool-search) is the only exception: tool
-guardrails do not run for it. They run for the tools that it finds.
+Tool guardrails run for the tools that LangChain4j executes. They do not run for:
+
+- the built-in tool search tool of a [`ToolSearchStrategy`](/tutorials/tools#tool-search). They run for the tools
+  that it finds;
+- tools that the LLM provider runs on its own side (for example the web search and web fetch server tools of
+  Anthropic, the built-in web search of OpenAI, or Google Search grounding in Gemini). Their results reach the LLM
+  at the provider, before LangChain4j sees them.
 
 ## Tool Input Guardrails
 
@@ -133,7 +138,7 @@ public class InjectionOutputGuardrail implements ToolOutputGuardrail {
     public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
         return INJECTION.matcher(request.text()).find()
                 // the message does not quote the content: that would pass the injection to the LLM anyway
-                ? fatal("The tool result contains instructions and was blocked")
+                ? failure("The tool result contains instructions and was blocked. Do not retry.")
                 : success();
     }
 }
@@ -153,15 +158,19 @@ where `arguments()` are the arguments the tool was executed with, and adds:
 | Outcome                                       | Helper method                                          | Description                                                                                                                                                                                                                                                                                                                                                         |
 |:----------------------------------------------|:-------------------------------------------------------|:--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **_success_**                                 | `success()`                                            | - The result is valid.<br/> - The next guardrail in the chain is executed, then the LLM sees the result.                                                                                                                                                                                                                                                            |
-| **_success with rewritten text_**             | `successWith(String)`                                  | - Replaces the text contents of the result with the given text. Non-text contents and the `isError` flag **are kept**.<br/> - `null` means no rewrite (a plain success), and `successWith("")` gives an empty text.<br/> - Use it to redact or sanitize: a sanitized success stays a success, and a sanitized error result stays an error (see [Compensation](#compensation)).                                                                                  |
+| **_success with rewritten text_**             | `successWith(String)`                                  | - Replaces the text contents of the result with the given text. Non-text contents and the `isError` flag **are kept**.<br/> - `null` means no rewrite (a plain success). To remove the text, prefer a short placeholder (such as "The content was removed.") to an empty text, which some LLM providers reject.<br/> - Use it to redact or sanitize: a sanitized success stays a success, and a sanitized error result stays an error (see [Compensation](#compensation)).                                                                                  |
 | **_success with rewritten contents_**         | `successWith(List<Content>, boolean isError)`          | - Replaces **all** the contents of the result **and** its `isError` flag.<br/> - The only way to turn a result into an error result, or an error result into a success, without a failure. The list must not be empty.                                                                                                                                              |
 | **_failure_**                                 | `failure(String)` or `failure(String, Throwable)`      | - The result is replaced by an error result with the message. The LLM never sees the original result.<br/> - The remaining guardrails of the chain still run, to accumulate all the failures.<br/> - See [Failures](#failures-are-error-results-for-the-llm).                                                                                                          |
 | **_fatal_**                                   | `fatal(String)` or `fatal(String, Throwable)`          | - The remaining guardrails do not run, and the AI Service invocation is aborted with a `ToolOutputGuardrailException`.<br/> - See [Fatal failures](#fatal-failures).                                                                                                                                                                                               |
 
 ### Output guardrails also see error results
 
-A tool output guardrail runs on **every** result of a tool, including error results (`isError() == true`). The text
-of an error result is often attacker-controllable too: an MCP server can put remote content in the error it
+A tool output guardrail runs on **every** result of a tool that is sent to the LLM, including error results
+(`isError() == true`). An exception of the tool becomes such an error result when the
+[`ToolExecutionErrorHandler`](/tutorials/tools#error-handling) sends it to the LLM, which the default handler does in
+the blocking and `TokenStream` modes. In the `CompletableFuture` and `Flow.Publisher` modes, the default handler fails
+the invocation instead, so the output guardrails do not run for that exception. The text of an error result is often
+attacker-controllable too: an MCP server can put remote content in the error it
 returns, and the message of an exception can echo what the tool fetched. A guardrail that is not interested in
 errors opts out:
 
@@ -228,7 +237,8 @@ which aborts the invocation like a [fatal failure](#fatal-failures).
 
 A **non-fatal** failure (`failure(...)`) does not abort anything. It becomes an **error tool result**
 (`isError == true`) that is sent to the LLM like any other tool result, so the LLM can correct itself: pick other
-arguments, choose another tool, or give up.
+arguments, choose another tool, or give up. Many LLM providers have no error flag for tool results, so the message
+may be all that the LLM gets: write it so that it reads as a rejection and says what to do next.
 
 - The text of the error result is the failure message of the guardrail, **verbatim**. LangChain4j adds no prefix and
   no wrapper text, so the message is entirely under your control. If several guardrails of the chain fail, their
@@ -333,6 +343,9 @@ message of an AI Service method, `@ToolInputGuardrails` applies to the arguments
 an AI Service and a tool (see
 [AI services as tools](/tutorials/tools#ai-services-as-tools-for-other-ai-services)), each annotation keeps its own
 meaning.
+
+`@ToolInputGuardrails` and `@ToolOutputGuardrails` on an AI Service interface, or on its methods, do not guard the
+tools of that AI Service. Set those guardrails on the `AiServices` builder (see above), or on the tool classes.
 :::
 
 ### `AiServiceTool`
@@ -522,6 +535,7 @@ suppressed exception to the guardrail's exception (see
 - **Some texts that reach the LLM are not guarded.** Tool guardrails do not see:
   - the tool names, descriptions and parameter schemas that MCP servers send;
   - the output of the built-in [tool search](/tutorials/tools#tool-search) tool;
+  - the results of tools that the LLM provider runs on its own side (see [Why tool guardrails](#why-tool-guardrails));
   - the result for a tool name that the LLM made up (see
     [Handling Tool Name Errors](/tutorials/tools#handling-tool-name-errors));
   - the text that a `ToolArgumentsErrorHandler` produces when an input guardrail cannot parse the arguments (see
@@ -534,15 +548,15 @@ suppressed exception to the guardrail's exception (see
 
 ## Observability
 
-Every execution of a tool guardrail fires an event, which you can listen to with a listener, like for
-[AI Service guardrails](/tutorials/observability):
+Each tool guardrail that returns a result fires an event, which you can listen to with a listener, like for
+[AI Service guardrails](/tutorials/observability). A guardrail that throws fires no event.
 
 | Event                                                                                                                                                                                                  | Listener                                                                                                                                                                                                         |
 |:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [`ToolInputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/ToolInputGuardrailExecutedEvent.java)   | [`ToolInputGuardrailExecutedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/ToolInputGuardrailExecutedListener.java)   |
 | [`ToolOutputGuardrailExecutedEvent`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/event/ToolOutputGuardrailExecutedEvent.java) | [`ToolOutputGuardrailExecutedListener`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/observability/api/listener/ToolOutputGuardrailExecutedListener.java) |
 
-One event is fired for each guardrail that ran, with its request, its result and the duration. They are distinct from
+One event is fired for each guardrail that returned a result, with its request, its result and the duration. They are distinct from
 `InputGuardrailExecutedEvent` and `OutputGuardrailExecutedEvent`: a listener for AI Service guardrails is **not**
 notified of tool guardrails. See [Observability](/tutorials/observability) for how to register listeners.
 
@@ -570,18 +584,28 @@ Assistant assistant = AiServices.builder(Assistant.class)
 ## Non-blocking and reactive modes
 
 In the `CompletableFuture` and reactive modes, a tool guardrail must implement `validateAsync` like any
-other guardrail since 1.20 (see [Non-blocking and Reactive](/tutorials/non-blocking)). A guardrail that does no
-blocking work needs one line:
+other guardrail (see [Non-blocking and Reactive](/tutorials/non-blocking)). A guardrail that does no blocking work
+can call `validate(...)` directly. Like every asynchronous method, it reports a failure through the returned future
+instead of throwing:
 
 ```java
 @Override
 public CompletableFuture<ToolOutputGuardrailResult> validateAsync(ToolOutputGuardrailRequest request) {
-    return CompletableFuture.completedFuture(validate(request));
+    try {
+        return CompletableFuture.completedFuture(validate(request));
+    } catch (Throwable e) {
+        return CompletableFuture.failedFuture(e);
+    }
 }
 ```
 
-Without it, the invocation fails with an `AsyncNotSupportedException`, wrapped in a fatal
-`ToolInputGuardrailException` or `ToolOutputGuardrailException`. A `TokenStream` uses the blocking `validate`.
+`validateAsync` can be called on an I/O thread, for example the thread on which an MCP client completes a tool call.
+It must not block: a guardrail that has blocking work to do runs it on an executor of its own and returns the future
+of that work.
+
+A guardrail that does not implement `validateAsync` fails the invocation with an `AsyncNotSupportedException`,
+wrapped in a fatal `ToolInputGuardrailException` or `ToolOutputGuardrailException`. For an output guardrail, this
+happens when the tool has already run. A `TokenStream` uses the blocking `validate`.
 
 ## Unit Testing Tool Guardrails
 
@@ -611,19 +635,20 @@ class InjectionOutputGuardrailTest {
 
         ToolOutputGuardrailResult result = guardrail.validate(request);
 
-        assertThat(result.result()).isEqualTo(GuardrailResult.Result.FATAL);
-        assertThat(result.failureMessage()).isEqualTo("The tool result contains instructions and was blocked");
+        assertThat(result.result()).isEqualTo(GuardrailResult.Result.FAILURE);
+        assertThat(result.failureMessage())
+                .isEqualTo("The tool result contains instructions and was blocked. Do not retry.");
     }
 }
 ```
 
 The input request is built the same way, with `ToolInputGuardrailRequest.builder()` (without the result contents).
-To test the whole chain, run an AI Service with a scripted chat model and check what the tool received and what
-the LLM was sent.
+To test the whole chain, run an AI Service with a scripted chat model, such as `MockChatModel` from the
+`langchain4j-test` module, and check what the tool received and what the LLM was sent.
 
 ## Extension points
 
-Tool guardrails use the same extension points as [guardrails](/tutorials/guardrails#extension-points), and add the `Tool*` ones. This is the full table, shared by both pages:
+Tool guardrails use the same extension points as [guardrails](/tutorials/guardrails#extension-points), and add the `Tool*` ones:
 
 import ExtensionPoints from './_guardrails-extension-points.mdx';
 
@@ -636,8 +661,9 @@ The tool guardrails were originally developed in the
 ones in LangChain4j differ in these points:
 
 - The failure message is sent to the LLM **verbatim**, with no framework prefix.
-- Output guardrails also run when the **tool throws**: they see the error result, with `isError()` returning `true`.
-  The Quarkus extension skips its output guardrails when the tool throws.
+- Output guardrails also run on **error results**, for example when the tool throws and the error is sent to the LLM
+  (see [Output guardrails also see error results](#output-guardrails-also-see-error-results)). The Quarkus extension
+  skips its output guardrails when the tool throws.
 - The chain continues after a non-fatal failure, and the failures are aggregated.
 - The request types (`ToolInputGuardrailRequest`, `ToolOutputGuardrailRequest`) and `ToolSource` are in
   `langchain4j-core`, and a request has `toolSource()`.

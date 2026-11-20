@@ -365,6 +365,24 @@ Bot bot = AiServices.builder(Bot.class)
     .build();
 ```
 
+Tools given as a `Map` have the source `ToolSource.programmatic()`, so [tool guardrails](#guarding-mcp-tools) cannot
+tell that they come from an MCP server. To give them their MCP source, provide them as `AiServiceTool`s instead:
+
+```java
+List<AiServiceTool> tools = mcpClient.listTools().stream()
+        .map(tool -> AiServiceTool.builder()
+                .toolSpecification(tool)
+                .toolExecutor(new McpToolExecutor(mcpClient))
+                .toolSource(ToolSource.mcp(mcpClient.key()))
+                .build())
+        .toList();
+
+Bot bot = AiServices.builder(Bot.class)
+    .chatModel(model)
+    .tools(tools)
+    .build();
+```
+
 More information on tool support in LangChain4j can be found [here](/tutorials/tools).
 
 ### Guarding MCP tools
@@ -452,7 +470,8 @@ and a warning is logged once for that client.
 
 The source of the [resources as tools](#exposing-resources-automatically-via-synthetic-tools) (`list_resources` and
 `get_resource`, by default) holds the keys of all the clients of the call: one key with one client, several keys
-with several clients. With the check above, they are skipped only when all those servers are trusted. With a single
+with several clients. If one of those clients has no key, it holds no key at all, since these tools also reach that
+client. With the check above, they are skipped only when all those servers are trusted. With a single
 client, their source is the same as the source of the regular tools of that client, so to treat them differently,
 check their `toolName()`.
 
@@ -706,7 +725,7 @@ along the 'regular' tools that are supported by the backing MCP servers. One too
 a list of resources and the other for obtaining a particular resource. LangChain4j provides
 a default implementation named `DefaultMcpResourcesAsToolsPresenter` that adds these two tools:
 
-**_NOTE:_** `list_resources` and `get_resource` reach only the MCP clients passed to that `provideTools(...)` call (a snapshot taken when the call starts), and they are not emitted when there are none. They can be guarded like any other tool, see [Guarding MCP tools](#guarding-mcp-tools).
+**_NOTE:_** `list_resources` and `get_resource` reach the MCP clients the tools were provided for: all the clients of the provider, unless a subclass passes a subset to one of the protected `provideTools(...)` overloads. They are not emitted when there is no client. They can be guarded like any other tool, see [Guarding MCP tools](#guarding-mcp-tools).
 
 **_NOTE:_** The rest of this section describes `DefaultMcpResourcesAsToolsPresenter`. You may plug in your own implementation
 that behaves differently.
