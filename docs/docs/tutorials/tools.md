@@ -1059,6 +1059,17 @@ is called, without waiting for other tools or for the response streaming to comp
 We cannot execute it in the same thread because, at that point,
 we do not yet know how many tools the LLM will call.
 
+If the `Executor` rejects a tool call (it throws a `RejectedExecutionException`, for example because its queue
+is full or it has been shut down), the rejected tool call counts as a tool call that failed.
+The other tool calls of the same response still run, also the ones that the LLM requested after the rejected one.
+The AI Service waits for all of them, fires a `ToolExecutedEvent`
+(see [Observability](/tutorials/observability)) for each of them and for the rejected one,
+and then fails with the `RejectedExecutionException`.
+If a tool call that the LLM requested before the rejected one failed with an error that ends the call,
+the AI Service fails with that error instead.
+With [compensating tool actions](#compensating-tool-actions) enabled,
+the tool calls that succeeded, also the ones that ran after the rejected one, are rolled back before the AI Service fails.
+
 ### Accessing Executed Tools
 If you wish to access tools executed during the invocation of an AI Service,
 you can easily do so by wrapping the return type in the `Result` class:
@@ -1969,8 +1980,8 @@ credit the recipient's account first and then fail to withdraw from the sender's
 account due to insufficient funds, leaving the recipient with extra money.
 
 To handle this, you can enable **compensation on tool errors**. When enabled,
-if any tool execution fails, all previously successful tool calls that declare a
-compensating action are automatically undone in reverse order.
+if a tool call fails or the call to the AI Service is cancelled, all the tool calls of that AI Service call
+that succeeded and declare a compensating action are automatically undone in reverse order.
 
 #### Declaring Compensating Actions with `@CompensateFor`
 
@@ -2034,6 +2045,26 @@ class BankAccountService {
 }
 ```
 
+A compensating method usually returns `void`. It can also return the result of an asynchronous action:
+a `CompletableFuture`, a `CompletionStage`, or another asynchronous type that AI Services support
+for `@Tool` methods through an adapter (for example a Reactor `Mono`, with the `langchain4j-reactor` module).
+The rollback then waits until that result completes before it runs the next compensating action,
+and a result that completes with an error counts as a failed compensating action (see the notes below).
+
+Compensating actions do not run on the executor that runs the tools.
+When the AI Service method returns a `CompletableFuture` or a `Flow.Publisher`, they run on the thread that starts
+the rollback, for example the thread that delivers the response of the LLM, the thread that cancels the call,
+or the thread that finishes the last tool call.
+So a compensating action that blocks (for example on a call to a database) should do its work on its own executor
+and return a `CompletableFuture`.
+When the AI Service method returns a plain value or a `TokenStream`, the AI Service waits for each compensating
+action.
+LangChain4j does not run compensating actions with the context that the `captureContext()` method of an
+`ExecutorProvider` captures for the tools that run on the executor
+(see [Controlling the executor and propagating context](/tutorials/non-blocking#controlling-the-executor-and-propagating-context)).
+A compensating action has that context only when the thread it runs on already has it: the thread that starts the
+rollback, or the thread that completes the asynchronous result of the compensating action before it.
+
 #### Enabling Compensation
 
 Call `.compensateOnToolErrors(true)` when building the AI Service:
@@ -2048,15 +2079,74 @@ Assistant assistant = AiServices.builder(Assistant.class)
 
 With this configuration, if the LLM calls `credit("Dmytro", 100)` and then
 `withdraw("Mario", 100)` which fails, the framework will automatically call
-`uncredit("Dmytro", 100)` to undo the credit. Instead of throwing an exception,
-the framework sends informative result messages back to the LLM for each tool:
+`uncredit("Dmytro", 100)` to undo the credit. When the error of `withdraw` is sent to the LLM
+(the default when the AI Service method returns a plain value or a `TokenStream`, see below),
+the AI Service does not throw an exception: the framework sends informative result messages back to the LLM
+for each tool:
 rolled-back tools get a message like _"Tool 'credit' was executed successfully but
-was rolled back due to failure of tool 'withdraw'"_, and the failed tool gets its
+was rolled back because tool 'withdraw' failed"_, and the failed tool gets its
 normal error message. This keeps the `ChatMemory` consistent and lets the LLM
 decide what to do next — retry, inform the user, or take a different approach.
 
-Without `.compensateOnToolErrors(true)`, the error is sent back to the LLM as usual and no
-compensation occurs — even if `@CompensateFor` annotations are present.
+Whether a tool error is sent to the LLM or ends the call is decided by the error handlers
+(see [Error Handling](#error-handling)), and their defaults depend on the return type of the AI Service method:
+- for a plain value and `TokenStream`, an error thrown by a tool is sent to the LLM,
+  and an error in the tool arguments ends the call;
+- for `CompletableFuture` and `Flow.Publisher`, an error in the tool arguments is sent to the LLM,
+  and an error thrown by a tool ends the call, unless the exception implements `ToolErrorVisibleToLlm`
+  (see [Tool errors](/tutorials/non-blocking#tool-errors)).
+
+So in the example above, the error of `withdraw` is sent to the LLM when the method returns a plain value
+or a `TokenStream`, and it ends the call when the method returns a `CompletableFuture` or a `Flow.Publisher`.
+When a tool error ends the call, every successful tool call that has a compensating action is undone first,
+and then the AI Service fails with the tool error.
+The same happens when the LLM calls a tool that does not exist, which ends the call by default
+(see [Handling Tool Name Errors](#handling-tool-name-errors)), and when the executor set with
+`.executeToolsConcurrently(executor)` rejects a tool call.
+
+:::tip
+To let the LLM correct wrong tool arguments instead of ending the call, configure
+`.toolArgumentsErrorHandler(ToolArgumentsErrorHandler.sendExceptionMessageToLlm())`
+(see the warning in [Error Handling](#error-handling) about what this sends to the LLM).
+:::
+
+The rollback also happens when you cancel the call: when you cancel the returned `CompletableFuture`,
+cancel the subscription to the `Flow.Publisher`, or call `cancel()` on the `StreamingHandle` that a
+`TokenStream` callback receives in its context, for example in `onPartialResponseWithContext`
+(see [Streaming Cancellation](/tutorials/ai-services#streaming-cancellation)).
+This also applies to a "stop" button that cancels the call while the final answer is streaming:
+the tool calls that already ran are undone, even though only the answer was stopped.
+Tool calls that are already running are allowed to finish (for a `TokenStream`, all the tool calls of a response
+that is already being processed), and then every successful tool call that has a
+compensating action is undone. So the rollback can still be running after the cancellation has returned.
+For a `TokenStream`, the rollback runs on the thread that calls `cancel()` when no tool call is running
+and no response is being processed, so `cancel()` then returns only after the compensating actions have run.
+When tool calls are still running, it runs on the thread that finishes the last of them.
+When a response is being processed, it runs on the thread that processes it,
+once the results of its tool calls are saved in the `ChatMemory`.
+If the complete final answer of a `TokenStream` has already arrived and is being processed when you cancel,
+it is still delivered, and nothing is undone.
+If the rollback fails, the error is logged at WARN level (see also the notes below).
+To find out when a tool call has been rolled back,
+listen for the `ToolCompensatedEvent` (see [Observability](/tutorials/observability)):
+its `compensationError()` returns the error of the compensating action when the rollback failed, and `null` otherwise.
+For example, to find out about tool calls that could not be undone:
+
+```java
+Assistant assistant = AiServices.builder(Assistant.class)
+        .chatModel(model)
+        .tools(new BankAccountService())
+        .compensateOnToolErrors(true)
+        .registerListener((ToolCompensatedEventListener) event -> {
+            if (event.compensationError() != null) {
+                // the tool call event.request() could not be undone: its effects may still be in place
+            }
+        })
+        .build();
+```
+
+Without `.compensateOnToolErrors(true)`, nothing is rolled back, even if `@CompensateFor` annotations are
+present: tool errors are handled by the error handlers as usual, and a cancellation only stops the call.
 
 #### Validation
 
@@ -2073,8 +2163,19 @@ are silently ignored and no validation is performed.
 #### Notes and Limitations
 
 :::note
+Only a tool error or a cancellation starts the rollback. If the call fails for another reason after a tool call
+has succeeded (for example, the call to the LLM fails, or `maxToolCallingRoundTrips` is exceeded),
+nothing is undone.
+:::
+
+:::note
 Compensation is best-effort: if a compensating action itself throws an exception, it is
 logged at WARN level and the remaining compensating actions continue to execute.
+The result of that tool call in the `ChatMemory` then says that the rollback failed and that the effects of the
+tool call may still be in place, so the LLM does not tell the user that it was undone.
+When a tool error ends the call, the exception of the compensating action is also added as a suppressed exception
+to the tool error that the AI Service fails with.
+The `ToolCompensatedEvent` of that tool call returns the exception from `compensationError()`.
 :::
 
 :::note
