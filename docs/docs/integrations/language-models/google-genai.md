@@ -729,6 +729,8 @@ See [Google Gen AI Decision Models](/integrations/decision-models/google-genai) 
 
 ## Batch API
 
+> For an in-depth description of batching see the [batching tutorial](/tutorials/batch-processing).
+
 The Google Gen AI integration provides support for the Batch API, allowing you to run operations asynchronously in the background. The following batch models are supported:
 - `GoogleGenAiBatchChatModel`
 - `GoogleGenAiBatchEmbeddingModel`
