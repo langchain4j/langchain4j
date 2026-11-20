@@ -60,7 +60,7 @@ public non-sealed class OutputGuardrailExecutor
     public OutputGuardrailResult execute(OutputGuardrailRequest request) {
         OutputGuardrailResult result = null;
         var accumulatedRequest = request;
-        var tokenUsage = request.responseFromLLM().tokenUsage();
+        TokenUsage repromptTokenUsage = null;
         var attempt = 0;
         var maxAttempts = config().maxRetries();
 
@@ -71,7 +71,8 @@ public non-sealed class OutputGuardrailExecutor
         }
 
         while (attempt < maxAttempts) {
-            result = rewriteResult(request, accumulatedRequest, tokenUsage, executeGuardrails(accumulatedRequest));
+            result = rewriteResult(
+                    request, accumulatedRequest, repromptTokenUsage, executeGuardrails(accumulatedRequest));
 
             if (result.isSuccess()) {
                 return result;
@@ -91,7 +92,7 @@ public non-sealed class OutputGuardrailExecutor
                 result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
 
                 var exchange = accumulatedRequest.chatExecutor().exchange(chatMessages);
-                tokenUsage = TokenUsage.sum(tokenUsage, exchange.response().tokenUsage());
+                repromptTokenUsage = TokenUsage.sum(repromptTokenUsage, exchange.response().tokenUsage());
                 accumulatedRequest = OutputGuardrailRequest.builder()
                         .responseFromLLM(exchange.response())
                         .chatExecutor(accumulatedRequest.chatExecutor())
@@ -130,8 +131,7 @@ public non-sealed class OutputGuardrailExecutor
 
         CompletableFuture<OutputGuardrailResult> result = new CompletableFuture<>();
         CancellationChain chain = new CancellationChain(result);
-        var tokenUsage = request.responseFromLLM().tokenUsage();
-        attemptAsync(request, request, tokenUsage, 0, maxAttempts, chain).whenComplete((attemptResult, error) -> {
+        attemptAsync(request, request, null, 0, maxAttempts, chain).whenComplete((attemptResult, error) -> {
             if (error != null) {
                 result.completeExceptionally(unwrapCompletionException(error));
             } else {
@@ -144,13 +144,13 @@ public non-sealed class OutputGuardrailExecutor
     private CompletableFuture<OutputGuardrailResult> attemptAsync(
             OutputGuardrailRequest request,
             OutputGuardrailRequest accumulatedRequest,
-            TokenUsage tokenUsage,
+            TokenUsage repromptTokenUsage,
             int attempt,
             int maxAttempts,
             CancellationChain chain) {
 
         return executeGuardrailsAsync(accumulatedRequest, chain).thenCompose(rawResult -> {
-            var result = rewriteResult(request, accumulatedRequest, tokenUsage, rawResult);
+            var result = rewriteResult(request, accumulatedRequest, repromptTokenUsage, rawResult);
 
             if (result.isSuccess()) {
                 return CompletableFuture.completedFuture(result);
@@ -182,10 +182,10 @@ public non-sealed class OutputGuardrailExecutor
                                         .requestParams(accumulatedRequest.requestParams())
                                         .chatRequest(exchange.request())
                                         .build();
-                                var nextTokenUsage = TokenUsage.sum(
-                                        tokenUsage, exchange.response().tokenUsage());
+                                var nextRepromptTokenUsage = TokenUsage.sum(
+                                        repromptTokenUsage, exchange.response().tokenUsage());
                                 return attemptAsync(
-                                        request, nextRequest, nextTokenUsage, nextAttempt, maxAttempts, chain);
+                                        request, nextRequest, nextRepromptTokenUsage, nextAttempt, maxAttempts, chain);
                             });
                 });
             }
@@ -268,7 +268,7 @@ public non-sealed class OutputGuardrailExecutor
     private OutputGuardrailResult rewriteResult(
             OutputGuardrailRequest originalRequest,
             OutputGuardrailRequest validatedRequest,
-            TokenUsage tokenUsage,
+            TokenUsage repromptTokenUsage,
             OutputGuardrailResult result) {
         if (!result.isSuccess() || validatedRequest == originalRequest) {
             return result;
@@ -276,7 +276,8 @@ public non-sealed class OutputGuardrailExecutor
         ChatResponse validatedResponse = validatedRequest.responseFromLLM();
         return result.withValidatedResponse(validatedResponse.toBuilder()
                 .metadata(validatedResponse.metadata().toBuilder()
-                        .tokenUsage(tokenUsage)
+                        .tokenUsage(TokenUsage.sum(
+                                originalRequest.responseFromLLM().tokenUsage(), repromptTokenUsage))
                         .build())
                 .build());
     }
