@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.model.bedrock.AbstractBedrockChatModel.THINKING_SIGNATURE_KEY;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -35,6 +36,7 @@ class BedrockStreamingChatModelThinkingTest {
 
     private static final String THINKING = "The user is asking about Germany.";
     private static final String ANSWER = "Berlin";
+    private static final String SIGNATURE = "EoAECpABCBEYAipARsBWFsXRge7q";
 
     @Test
     void should_invoke_onPartialThinking_when_returnThinking_is_enabled() {
@@ -81,6 +83,27 @@ class BedrockStreamingChatModelThinkingTest {
         verify(handler, never()).onPartialThinking(any(), any());
     }
 
+    @Test
+    void should_keep_the_signature_of_a_reasoning_block_that_has_no_text() {
+        // given a stream whose reasoning block carries only a signature and no text: this is what Claude models with
+        // adaptive thinking return by default
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
+                .client(mockStreamingClient(signatureOnlyReasoningAndAnswerEvents()))
+                .modelId("test-model")
+                .returnThinking(true)
+                .build();
+
+        TestStreamingChatResponseHandler handler = spy(new TestStreamingChatResponseHandler());
+        model.chat("What is the capital of Germany?", handler);
+
+        // then the signature is stored, so that it can be sent back in a follow-up request
+        AiMessage aiMessage = handler.get().aiMessage();
+        assertThat(aiMessage.text()).isEqualTo(ANSWER);
+        assertThat(aiMessage.thinking()).isNull();
+        assertThat(aiMessage.attribute(THINKING_SIGNATURE_KEY, String.class)).isEqualTo(SIGNATURE);
+        verify(handler, never()).onPartialThinking(any(), any());
+    }
+
     private static StreamingChatModel streamingChatModel(Boolean returnThinking) {
         BedrockStreamingChatModel.Builder builder = BedrockStreamingChatModel.builder()
                 .client(mockStreamingClient(thinkingAndAnswerEvents()))
@@ -112,6 +135,30 @@ class BedrockStreamingChatModelThinkingTest {
                                 .text(THINKING)
                                 .build()))
                         .build(),
+                ContentBlockDeltaEvent.builder()
+                        .delta(ContentBlockDelta.fromText(ANSWER))
+                        .build(),
+                ContentBlockStopEvent.builder().build(),
+                MessageStopEvent.builder().stopReason(StopReason.END_TURN).build(),
+                ConverseStreamMetadataEvent.builder()
+                        .usage(TokenUsage.builder()
+                                .inputTokens(10)
+                                .outputTokens(20)
+                                .totalTokens(30)
+                                .build())
+                        .metrics(ConverseStreamMetrics.builder().latencyMs(1L).build())
+                        .build());
+    }
+
+    private static List<ConverseStreamOutput> signatureOnlyReasoningAndAnswerEvents() {
+        return List.of(
+                MessageStartEvent.builder().role(ConversationRole.ASSISTANT).build(),
+                ContentBlockDeltaEvent.builder()
+                        .delta(ContentBlockDelta.fromReasoningContent(ReasoningContentBlockDelta.builder()
+                                .signature(SIGNATURE)
+                                .build()))
+                        .build(),
+                ContentBlockStopEvent.builder().build(),
                 ContentBlockDeltaEvent.builder()
                         .delta(ContentBlockDelta.fromText(ANSWER))
                         .build(),

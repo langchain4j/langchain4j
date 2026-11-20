@@ -108,7 +108,7 @@ class ConverseResponseFromStreamBuilder {
         converseResponseBuilder.additionalModelResponseFields(messageStopEvent.additionalModelResponseFields());
         if (nonNull(this.messageBuilder)) {
             ArrayList<ContentBlock> contents = new ArrayList<>();
-            if (returnThinking && !thinkingBuilder.isEmpty()) {
+            if (returnThinking && (!thinkingBuilder.isEmpty() || !thinkingSignatureBuilder.isEmpty())) {
                 ReasoningContentBlock reasoningContent = ReasoningContentBlock.builder()
                         .reasoningText(ReasoningTextBlock.builder()
                                 .text(thinkingBuilder.toString())
