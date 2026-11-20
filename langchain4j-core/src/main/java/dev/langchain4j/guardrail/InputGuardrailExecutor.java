@@ -2,11 +2,8 @@ package dev.langchain4j.guardrail;
 
 import static dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent.InputGuardrailExecutedEventBuilder;
 
-import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
-
 import dev.langchain4j.guardrail.InputGuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
-import dev.langchain4j.internal.CancellationChain;
 import dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.spi.guardrail.InputGuardrailExecutorBuilderFactory;
 import java.util.List;
@@ -77,24 +74,13 @@ public non-sealed class InputGuardrailExecutor
 
     @Override
     public CompletableFuture<InputGuardrailResult> executeAsync(InputGuardrailRequest request) {
-        CompletableFuture<InputGuardrailResult> result = new CompletableFuture<>();
-        CancellationChain chain = new CancellationChain(result);
-        executeGuardrailsAsync(request, chain)
-                .thenApply(guardrailResult -> {
-                    if (!guardrailResult.isSuccess()) {
-                        throw new InputGuardrailException(
-                                guardrailResult.toString(), guardrailResult.getFirstFailureException());
-                    }
-                    return guardrailResult;
-                })
-                .whenComplete((guardrailResult, error) -> {
-                    if (error != null) {
-                        result.completeExceptionally(unwrapCompletionException(error));
-                    } else {
-                        result.complete(guardrailResult);
-                    }
-                });
-        return result;
+        return executeGuardrailsAsyncAndFinish(request, guardrailResult -> {
+            if (!guardrailResult.isSuccess()) {
+                throw new InputGuardrailException(
+                        guardrailResult.toString(), guardrailResult.getFirstFailureException());
+            }
+            return guardrailResult;
+        });
     }
 
     /**

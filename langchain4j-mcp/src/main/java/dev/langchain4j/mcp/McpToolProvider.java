@@ -2,25 +2,30 @@ package dev.langchain4j.mcp;
 
 import static dev.langchain4j.agent.tool.SearchBehavior.ALWAYS_VISIBLE;
 import static dev.langchain4j.internal.Utils.copy;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.merge;
 import static java.util.Arrays.asList;
 
+import dev.langchain4j.agent.tool.ToolSource;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.mcp.resourcesastools.McpResourcesAsToolsPresenter;
 import dev.langchain4j.service.IllegalConfigurationException;
+import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.ToolExecutor;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiFunction;
@@ -28,13 +33,33 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import dev.langchain4j.guardrail.ToolInputGuardrail;
+import dev.langchain4j.guardrail.ToolOutputGuardrail;
+import dev.langchain4j.mcp.client.DefaultMcpClient;
 
 /**
  * A tool provider backed by one or more MCP clients.
+ * <p>
+ * Every tool emitted by this provider carries a {@link ToolSource.Mcp} source with the
+ * {@link McpClient#key() key} of the client it belongs to. The source of a client whose key is {@code null} or blank
+ * has no server keys, and a warning is logged once for that client.
+ * <p>
+ * When a {@link McpResourcesAsToolsPresenter} is configured, the provider also emits the synthetic
+ * {@code list_resources} and {@code get_resource} tools. Their source holds the keys of all the clients the
+ * tools were provided for, and their executors only query those clients. {@link #provideTools(ToolProviderRequest)}
+ * provides tools for every client of this provider. A subclass can pass a subset of the clients to one of the
+ * protected {@code provideTools} overloads; if that subset is empty, the synthetic resource tools are not emitted.
+ * <p>
+ * Note that {@link DefaultMcpClient} defaults its key to a random UUID; set an
+ * explicit key via {@link DefaultMcpClient.Builder#key(String)} if tool guardrails
+ * inspect {@link ToolSource.Mcp#serverKeys()} or {@link ToolSource.Mcp#involves(String)}.
  */
 public class McpToolProvider implements ToolProvider {
 
     private static final Logger log = LoggerFactory.getLogger(McpToolProvider.class);
+
+    private final Set<McpClient> keylessClientsReported =
+            Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
     private static final Map<String, Object> SEARCH_BEHAVIOR_ALWAYS_VISIBLE =
             Map.of(ToolSpecification.METADATA_SEARCH_BEHAVIOR, ALWAYS_VISIBLE);
 
@@ -166,9 +191,18 @@ public class McpToolProvider implements ToolProvider {
             ToolProviderRequest request,
             BiPredicate<McpClient, ToolSpecification> mcpToolsFilter,
             List<McpClient> consideredMcpClients) {
+
+        // a null client fails like a client that cannot list its tools (see failIfOneServerFails)
+        List<McpClient> clientsSnapshot =
+                consideredMcpClients.stream().filter(Objects::nonNull).toList();
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
+        List<String> resourcesServerKeys = new ArrayList<>();
+
         for (McpClient mcpClient : consideredMcpClients) {
             try {
+                List<String> clientServerKeys = serverKeys(mcpClient);
+                resourcesServerKeys.addAll(clientServerKeys);
+                ToolSource clientToolSource = ToolSource.mcp(clientServerKeys);
                 for (ToolSpecification originalSpec : mcpClient.listTools()) {
                     if (mcpToolsFilter.test(mcpClient, originalSpec)) {
                         BiFunction<McpClient, ToolSpecification, String> nameMapper = toolNameMapper.get();
@@ -192,7 +226,11 @@ public class McpToolProvider implements ToolProvider {
                         // lock down the created McpToolExecutor to the original 'real' tool name, not the mapped one
                         ToolExecutor defaultToolExecutor =
                                 new McpToolExecutor(mcpClient, originalSpec.name(), returnToolResultAttributes);
-                        builder.add(newSpec, toolWrapper.apply(defaultToolExecutor));
+                        builder.add(AiServiceTool.builder()
+                                .toolSpecification(newSpec)
+                                .toolExecutor(toolWrapper.apply(defaultToolExecutor))
+                                .toolSource(clientToolSource)
+                                .build());
                     }
                 }
             } catch (IllegalConfigurationException e) {
@@ -205,24 +243,52 @@ public class McpToolProvider implements ToolProvider {
                 }
             }
         }
-        if (resourcesAsToolsPresenter != null) {
-            List<McpClient> mcpClientsUnmodifiable = Collections.unmodifiableList(mcpClients);
+        if ((resourcesAsToolsPresenter != null) && !clientsSnapshot.isEmpty()) {
+            ToolSource resourcesToolSource = ToolSource.mcp(resourcesServerKeys);
             ToolSpecification listResourcesToolSpec = resourcesAsToolsPresenter.createListResourcesSpecification();
             if (alwaysVisibleToolNames.contains(listResourcesToolSpec.name())) {
                 listResourcesToolSpec = addSearchBehaviorMetadata(listResourcesToolSpec);
             }
-            builder.add(
-                    listResourcesToolSpec,
-                    toolWrapper.apply(resourcesAsToolsPresenter.createListResourcesExecutor(mcpClientsUnmodifiable)));
+            builder.add(AiServiceTool.builder()
+                    .toolSpecification(listResourcesToolSpec)
+                    .toolExecutor(
+                            toolWrapper.apply(resourcesAsToolsPresenter.createListResourcesExecutor(clientsSnapshot)))
+                    .toolSource(resourcesToolSource)
+                    .build());
             ToolSpecification getResourceToolSpec = resourcesAsToolsPresenter.createGetResourceSpecification();
             if (alwaysVisibleToolNames.contains(getResourceToolSpec.name())) {
                 getResourceToolSpec = addSearchBehaviorMetadata(getResourceToolSpec);
             }
-            builder.add(
-                    getResourceToolSpec,
-                    toolWrapper.apply(resourcesAsToolsPresenter.createGetResourceExecutor(mcpClientsUnmodifiable)));
+            builder.add(AiServiceTool.builder()
+                    .toolSpecification(getResourceToolSpec)
+                    .toolExecutor(
+                            toolWrapper.apply(resourcesAsToolsPresenter.createGetResourceExecutor(clientsSnapshot)))
+                    .toolSource(resourcesToolSource)
+                    .build());
         }
         return builder.build();
+    }
+
+    /**
+     * The server keys of the {@link ToolSource} of the tools of a client: its key, or none when it has no key.
+     */
+    private List<String> serverKeys(McpClient mcpClient) {
+        String key = mcpClient.key();
+        List<String> serverKeys = List.of();
+
+        if (isNullOrBlank(key)) {
+            if (keylessClientsReported.add(mcpClient)) {
+                log.warn(
+                        "MCP client {} has a null or blank key(): tool guardrails see its tools as an MCP source "
+                                + "without server keys, so a guardrail cannot route on this server. Set a key on the "
+                                + "client to route on it",
+                        mcpClient.getClass().getName());
+            }
+        } else {
+            serverKeys = List.of(key);
+        }
+
+        return serverKeys;
     }
 
     private static ToolSpecification addSearchBehaviorMetadata(ToolSpecification toolSpecification) {
@@ -304,6 +370,13 @@ public class McpToolProvider implements ToolProvider {
 
         /**
          * Provide a wrapper around the {@link ToolExecutor} that can be used to implement tracing for example.
+         * <p>
+         * For validating or rewriting tool inputs and outputs (such as prompt-injection checks), prefer
+         * {@link ToolInputGuardrail} and {@link ToolOutputGuardrail}
+         * configured on the AI Service builder. Tool guardrails run outside the tool executor of every tool, so they
+         * also run outside this wrapper: the wrapper receives the input after tool input guardrails have validated or
+         * rewritten it, and tool output guardrails receive the output returned by the wrapper. For MCP tools, the
+         * guardrails see a {@link ToolSource.Mcp} source with the client's {@link McpClient#key() key}.
          */
         public McpToolProvider.Builder toolWrapper(Function<ToolExecutor, ToolExecutor> toolWrapper) {
             this.toolWrapper = toolWrapper;

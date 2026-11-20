@@ -1,6 +1,7 @@
 package dev.langchain4j.internal;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -8,6 +9,23 @@ import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 
 class CompletableFutureUtilsTest {
+
+    @Test
+    void propagate_cancellation_cancels_the_target_only_when_the_source_is_canceled() {
+        var canceledSource = new CompletableFuture<String>();
+        var completedSource = new CompletableFuture<String>();
+        var firstTarget = new CompletableFuture<String>();
+        var secondTarget = new CompletableFuture<String>();
+
+        propagateCancellation(canceledSource, firstTarget);
+        propagateCancellation(completedSource, secondTarget);
+        propagateCancellation(null, secondTarget);
+        canceledSource.cancel(true);
+        completedSource.complete("done");
+
+        assertThat(firstTarget).isCancelled();
+        assertThat(secondTarget).isNotDone();
+    }
 
     @Test
     void failOnThrow_should_return_the_future_of_the_operation() {

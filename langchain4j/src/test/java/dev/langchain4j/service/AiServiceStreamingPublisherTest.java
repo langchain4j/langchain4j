@@ -56,6 +56,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BooleanSupplier;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class AiServiceStreamingPublisherTest {
@@ -1244,14 +1246,16 @@ class AiServiceStreamingPublisherTest {
         // shared compensable-tools accumulator on different threads. Aligning the tool's return with the cancel via
         // a barrier maximises the overlap; the compensating action must never run twice for one tool (no double
         // refund) and the accumulator access must not throw. Credit always succeeds and withdraw always fails, so
-        // each iteration rolls credit back exactly once: by the round completion or by the cancellation, whichever
-        // claims the round first.
+        // each iteration that ran credit rolls it back exactly once: by the round completion or by the cancellation,
+        // whichever claims the round first. No tool starts once the invocation is cancelled, so when the cancel
+        // comes before credit has begun on its executor thread, credit never runs and there is nothing to roll back.
+        List<AtomicInteger> creditCounts = new ArrayList<>();
         List<AtomicInteger> uncreditCounts = new ArrayList<>();
         for (int i = 0; i < 60; i++) {
             AtomicInteger creditCount = new AtomicInteger();
             AtomicInteger uncreditCount = new AtomicInteger();
+            creditCounts.add(creditCount);
             uncreditCounts.add(uncreditCount);
-            CountDownLatch uncredited = new CountDownLatch(1);
             CyclicBarrier barrier = new CyclicBarrier(2);
 
             class RacyTools {
@@ -1265,7 +1269,6 @@ class AiServiceStreamingPublisherTest {
                 @CompensateFor("credit")
                 void uncredit(String city) {
                     uncreditCount.incrementAndGet();
-                    uncredited.countDown();
                 }
 
                 // fails, so the round-completion path also compensates 'credit' - racing the cancel path on the
@@ -1322,16 +1325,30 @@ class AiServiceStreamingPublisherTest {
             canceller.start();
             canceller.join(2000);
 
-            assertThat(uncredited.await(5, TimeUnit.SECONDS))
-                    .as("iteration %d: the compensable tool is rolled back", i)
-                    .isTrue();
-            assertThat(creditCount).as("iteration %d", i).hasValue(1);
+            awaitUntil(() -> uncreditCount.get() == creditCount.get());
+            assertThat(creditCount).as("iteration %d: credit runs at most once", i).hasValueLessThanOrEqualTo(1);
         }
-        // checked once all iterations ran, so that a second rollback that comes late is seen too
+        // checked once all iterations ran, so that a rollback, or a second one, that comes late is seen too
+        awaitUntil(() -> IntStream.range(0, creditCounts.size())
+                .allMatch(i -> uncreditCounts.get(i).get() == creditCounts.get(i).get()));
         for (int i = 0; i < uncreditCounts.size(); i++) {
             assertThat(uncreditCounts.get(i))
-                    .as("iteration %d: a compensable tool must be rolled back exactly once (no double refund)", i)
-                    .hasValue(1);
+                    .as("iteration %d: a compensable tool that ran must be rolled back exactly once", i)
+                    .hasValue(creditCounts.get(i).get());
+        }
+        assertThat(creditCounts)
+                .as("the race is exercised: credit runs, and so is rolled back, in some iterations")
+                .anySatisfy(creditCount -> assertThat(creditCount).hasValue(1));
+    }
+
+    /**
+     * Waits up to 5 seconds for {@code condition} to hold, so that the assertions that follow see work that completes
+     * on other threads.
+     */
+    private static void awaitUntil(BooleanSupplier condition) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+        while (!condition.getAsBoolean() && (System.nanoTime() < deadline)) {
+            Thread.sleep(5);
         }
     }
 

@@ -1,64 +1,31 @@
 package dev.langchain4j.service.tool;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-
-import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.ToolArgumentsParser;
+import java.util.Map;
 
 /**
  * Utility class for {@link ToolExecutionRequest}.
+ *
+ * @deprecated Use {@link ToolArgumentsParser} instead. This class only delegates to it.
  */
 @Internal
+@Deprecated(since = "1.25.0")
 public class ToolExecutionRequestUtil {
 
-    private static final Pattern TRAILING_COMMA_PATTERN = Pattern.compile(",(\\s*[}\\]])");
-    private static final Pattern LEADING_TRAILING_QUOTE_PATTERN = Pattern.compile("^\"|\"$");
-    private static final Pattern ESCAPED_QUOTE_PATTERN = Pattern.compile("\\\\\"");
-
     private ToolExecutionRequestUtil() {}
-
-    private static final Type MAP_TYPE = new ParameterizedType() {
-
-        @Override
-        public Type[] getActualTypeArguments() {
-            return new Type[] {String.class, Object.class};
-        }
-
-        @Override
-        public Type getRawType() {
-            return Map.class;
-        }
-
-        @Override
-        public Type getOwnerType() {
-            return null;
-        }
-    };
 
     /**
      * Convert arguments to map.
      *
      * @param arguments json string
      * @return map
+     * @deprecated Use {@link ToolArgumentsParser#argumentsAsMap(String)} instead.
      */
+    @Deprecated(since = "1.25.0")
     public static Map<String, Object> argumentsAsMap(String arguments) {
-        if (isNullOrBlank(arguments)) {
-            return Map.of();
-        }
-
-        try {
-            return Json.fromJson(arguments, MAP_TYPE);
-        } catch (Exception ignored) {
-            String normalizedArguments = removeTrailingComma(normalizeJsonString(arguments));
-            return Json.fromJson(normalizedArguments, MAP_TYPE);
-        }
+        return ToolArgumentsParser.argumentsAsMap(arguments);
     }
 
     /**
@@ -68,11 +35,7 @@ public class ToolExecutionRequestUtil {
      * @return the corrected JSON string
      */
     static String removeTrailingComma(String json) {
-        if (isNullOrEmpty(json)) {
-            return json;
-        }
-        Matcher matcher = TRAILING_COMMA_PATTERN.matcher(json);
-        return matcher.replaceAll("$1");
+        return ToolArgumentsParser.removeTrailingComma(json);
     }
 
     /**
@@ -82,14 +45,6 @@ public class ToolExecutionRequestUtil {
      * @return the normalized JSON string
      */
     static String normalizeJsonString(String arguments) {
-        if (isNullOrEmpty(arguments)) {
-            return arguments;
-        }
-
-        Matcher leadingTrailingMatcher = LEADING_TRAILING_QUOTE_PATTERN.matcher(arguments);
-        String normalizedJson = leadingTrailingMatcher.replaceAll("");
-
-        Matcher escapedQuoteMatcher = ESCAPED_QUOTE_PATTERN.matcher(normalizedJson);
-        return escapedQuoteMatcher.replaceAll("\"");
+        return ToolArgumentsParser.normalizeJsonString(arguments);
     }
 }

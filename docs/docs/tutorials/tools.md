@@ -1130,6 +1130,8 @@ Attributes can be read from the `ToolExecution` (see [Accessing Executed Tools](
 They are also propagated into `ToolExecutionResultMessage.attributes()`,
 so they are stored in the [`ChatMemory`](/tutorials/chat-memory) together with the message.
 
+A [tool output guardrail](/tutorials/tool-guardrails#tool-output-guardrails) that rewrites the result of a tool keeps the attributes, and drops the raw `ToolExecution.resultObject()`, which belongs to the original result.
+
 :::note
 If you use a `ChatMemoryStore` that persists messages, they are serialized to JSON.
 Make sure that all attribute values can be serialized to JSON and are useful once deserialized:
@@ -1140,6 +1142,25 @@ comes back as a `Map` and can no longer be cast to its original type.
 Attributes are also stored for every message, so avoid putting large values there
 if the conversation is persisted.
 :::
+
+### Guarding Tools
+
+[Tool guardrails](/tutorials/tool-guardrails) validate or rewrite the arguments of a tool call before the tool runs
+(`ToolInputGuardrail`), and the result of a tool before the LLM sees it (`ToolOutputGuardrail`). They protect
+against [indirect prompt injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/) through tool results,
+and they apply to `@Tool` methods, programmatic tools, `ToolProvider` tools and [MCP](/tutorials/mcp#guarding-mcp-tools)
+tools alike:
+
+```java
+class WebTools {
+
+    @Tool(name = "fetch_page", value = "Fetches a web page")
+    @ToolOutputGuardrails(InjectionOutputGuardrail.class)
+    String fetchPage(@P(name = "url", value = "The URL of the page") String url) {
+        return "<html>...</html>"; // fetch the page here
+    }
+}
+```
 
 ### Specifying Tools Programmatically
 
@@ -1202,6 +1223,23 @@ Assistant assistant = AiServices.builder(Assistant.class)
     .tools(List.of(tool))
     .build();
 ```
+
+To guard a programmatic tool, set its [tool guardrails](/tutorials/tool-guardrails#aiservicetool) on the
+`AiServiceTool` builder:
+
+```java
+AiServiceTool tool = AiServiceTool.builder()
+        .toolSpecification(toolSpecification)
+        .toolExecutor(toolExecutor)
+        .toolOutputGuardrails(new InjectionOutputGuardrail())
+        .build();
+```
+
+The [`ToolSource`](/tutorials/tool-guardrails#telling-the-tools-apart-toolsource) of a programmatic tool is
+`ToolSource.programmatic()` by default, the same for all of them, so a global guardrail tells programmatic tools
+apart by `toolName()`. A `ToolSource` can only be `ToolSource.local(...)`, `ToolSource.mcp(...)` or
+`ToolSource.programmatic()`: when a programmatic tool runs a local method or calls an MCP server, you can set the
+matching source with `toolSource(...)` on the `AiServiceTool` builder.
 
 #### Configuring Immediate Return for Programmatic Tools
 
@@ -1506,7 +1544,7 @@ tool, whatever the return type of the AI Service method. No final `AiMessage` is
 again. The stored result is sent to the LLM on later calls that use the same memory, so it counts towards the tokens
 of those calls, and an immediate return does not keep sensitive data away from the LLM.
 
-Output guardrails do not run on an immediate return, because the LLM has not produced a final answer to check.
+Output guardrails (`@OutputGuardrails`) do not run on an immediate return, because the LLM has not produced a final answer to check. [Tool guardrails](/tutorials/tool-guardrails) do run: the guarded result is what the `Result` holds, and a call that a tool input or output guardrail rejects does not return immediately (the LLM gets the failure message instead).
 
 #### Non-`Result` AI Service method Return Types
 
@@ -1519,6 +1557,12 @@ chat method calls may or may not succeed when there are immediate tool calls bas
 * If there is one and only one non-null tool execution result, and the result can be resolved to the return type, then the request will succeed and return that tool result.
 * If there are multiple non-null tool execution results, the request will fail with a `IllegalConfigurationException` exception.
 * If there is one tool execution result and it cannot be resolved to the return type, the request will fail with a `IllegalConfigurationException` exception.
+
+The tool execution result in these rules is the Java object that a `@Tool` method returned
+(`ToolExecution.resultObject()`), not the text the LLM would see. A programmatic `ToolExecutor` or an MCP tool usually
+has no such object, so its result counts as `null`. The same goes for a result that a
+[tool output guardrail](/tutorials/tool-guardrails#tool-output-guardrails) rewrote: the rewrite drops the object, so
+the AI Service returns `null`. Return a `Result` to get the text or contents of such a result.
 
 #### Immediate-return rule with multiple tool calls in a single response
 
@@ -2101,8 +2145,9 @@ or a `TokenStream`, and it ends the call when the method returns a `CompletableF
 When a tool error ends the call, every successful tool call that has a compensating action is undone first,
 and then the AI Service fails with the tool error.
 The same happens when the LLM calls a tool that does not exist, which ends the call by default
-(see [Handling Tool Name Errors](#handling-tool-name-errors)), and when the executor set with
-`.executeToolsConcurrently(executor)` rejects a tool call.
+(see [Handling Tool Name Errors](#handling-tool-name-errors)), when the executor set with
+`.executeToolsConcurrently(executor)` rejects a tool call, and when a tool guardrail fails the call with `fatal(..)`
+(see [Compensation and tool guardrails](#compensation-and-tool-guardrails)).
 
 :::tip
 To let the LLM correct wrong tool arguments instead of ending the call, configure
@@ -2147,6 +2192,29 @@ Assistant assistant = AiServices.builder(Assistant.class)
 
 Without `.compensateOnToolErrors(true)`, nothing is rolled back, even if `@CompensateFor` annotations are
 present: tool errors are handled by the error handlers as usual, and a cancellation only stops the call.
+
+#### Compensation and tool guardrails
+
+[Tool guardrails](/tutorials/tool-guardrails) follow the same rule as tool errors: **an error result that the LLM
+sees means a failed step**, whatever produced it.
+
+- A tool **input** guardrail that rejects a call (`failure(..)`) is a failed step. The rejected tool never ran, so
+  it is not rolled back, but the other compensable tools are.
+- A tool **output** guardrail that turns a successful result into an error result (`failure(..)`, or a rewrite
+  with `isError == true`) is a failed step too. The tool did run, so it is rolled back **together with** the
+  other compensable tools, with its original result (the one before the guardrail).
+- A rewrite that keeps `isError == false`, such as `successWith(String)`, sanitizes the result **without** any
+  rollback.
+- A **fatal** rejection (`fatal(..)`) ends the call like a tool error that ends the call: the compensable tools are
+  undone first, with the rules above, and then the AI Service fails with the guardrail's exception.
+
+A failure rolls back every compensable tool of the **whole invocation**, not only the ones of the current
+tool-calling round, and, with [cross-agent compensation](/tutorials/agents#cross-agent-compensation), also the
+compensable tools that other agents ran earlier. The LLM sees the message of the guardrail verbatim for the rejected
+tool, and the usual rolled-back text for the others. The events carry the `CompensationReason` constants
+`TOOL_INPUT_GUARDRAIL_FAILED` and `TOOL_OUTPUT_GUARDRAIL_FAILED`. A guardrail on a read-only tool that only wants to
+sanitize should use `successWith(..)`, which does not roll back. The table of all the cases is in
+[Tool Guardrails](/tutorials/tool-guardrails#compensation).
 
 #### Validation
 

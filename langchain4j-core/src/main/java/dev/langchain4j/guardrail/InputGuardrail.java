@@ -15,6 +15,10 @@ import dev.langchain4j.guardrail.InputGuardrailResult.Failure;
  * <p>
  *     A failed guardrail will stop further processing of any other input guardrails.
  * </p>
+ * <p>
+ *     This guardrail checks the user message. To check the arguments of a tool call before the tool is executed,
+ *     see {@link ToolInputGuardrail}.
+ * </p>
  */
 public interface InputGuardrail extends Guardrail<InputGuardrailRequest, InputGuardrailResult> {
     /**

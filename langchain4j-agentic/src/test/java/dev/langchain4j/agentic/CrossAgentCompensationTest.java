@@ -14,6 +14,9 @@ import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.ChatModelSupplier;
 import dev.langchain4j.agentic.declarative.SequenceAgent;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.guardrail.ToolOutputGuardrail;
+import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -203,6 +206,48 @@ public class CrossAgentCompensationTest {
         int uncreditIdx = compensationLog.indexOf("uncredit:100");
         int undebitIdx = compensationLog.indexOf("undebit:100");
         assertThat(undebitIdx).isLessThan(uncreditIdx);
+    }
+
+    @Test
+    void should_compensate_the_whole_hierarchy_including_the_tool_whose_output_a_guardrail_rejected() {
+        compensationLog.clear();
+        CreditService creditService = new CreditService();
+        DebitService debitService = new DebitService();
+
+        var creditAgent = AgenticServices.agentBuilder(CreditAgentService.class)
+                .chatModel(modelThatCallsTool("credit", "{\"amount\": 100}"))
+                .tools(creditService)
+                .name("creditAgent")
+                .build();
+
+        // the debit tool runs, then the output guardrail turns its successful result into an error result
+        var debitAgent = AgenticServices.agentBuilder(DebitAgentService.class)
+                .chatModel(modelThatCallsTool("debit", "{\"amount\": 100}"))
+                .tools(debitService)
+                .toolOutputGuardrails((ToolOutputGuardrail)
+                        request -> ToolOutputGuardrailResult.successWith(List.of(TextContent.from("blocked")), true))
+                .name("debitAgent")
+                .build();
+
+        interface TestAgent {
+            String run(@V("request") String request);
+        }
+
+        TestAgent sequenceAgent = AgenticServices.<TestAgent>sequenceBuilder(TestAgent.class)
+                .subAgents(creditAgent, debitAgent)
+                .compensateOnError(true)
+                .name("sequenceAgent")
+                .build();
+
+        // the rejected result is an error result the LLM answers on, so the invocation itself does not fail
+        sequenceAgent.run("test");
+
+        assertThat(creditService.credited).isTrue();
+        assertThat(debitService.debited).isTrue();
+        // the tool of the rejected result ran, so it is rolled back with the tools other agents ran before it
+        assertThat(debitService.compensated).isTrue();
+        assertThat(creditService.compensated).isTrue();
+        assertThat(compensationLog).contains("undebit:100", "uncredit:100");
     }
 
     @Test

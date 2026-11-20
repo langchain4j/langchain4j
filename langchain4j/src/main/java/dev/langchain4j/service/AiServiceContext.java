@@ -2,6 +2,7 @@ package dev.langchain4j.service;
 
 import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.Internal;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
@@ -13,6 +14,7 @@ import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.service.guardrail.GuardrailService;
+import dev.langchain4j.service.guardrail.ToolGuardrailService;
 import dev.langchain4j.service.memory.ChatMemoryService;
 import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.spi.services.AiServiceContextFactory;
@@ -42,6 +44,15 @@ public class AiServiceContext {
     public final GuardrailService.Builder guardrailServiceBuilder;
     private final AtomicReference<GuardrailService> guardrailService = new AtomicReference<>();
 
+    /**
+     * Configures the tool guardrails that apply to every tool of the AI service.
+     *
+     * @since 1.25.0
+     */
+    public final ToolGuardrailService.Builder toolGuardrailServiceBuilder;
+
+    private final AtomicReference<ToolGuardrailService> toolGuardrailService = new AtomicReference<>();
+
     public ModerationModel moderationModel;
 
     public RetrievalAugmentor retrievalAugmentor;
@@ -66,6 +77,7 @@ public class AiServiceContext {
     protected AiServiceContext(Class<?> aiServiceClass) {
         this.aiServiceClass = aiServiceClass;
         this.guardrailServiceBuilder = GuardrailService.builder(aiServiceClass);
+        this.toolGuardrailServiceBuilder = ToolGuardrailService.builder(aiServiceClass);
     }
 
     private static class FactoryHolder {
@@ -97,5 +109,16 @@ public class AiServiceContext {
     public GuardrailService guardrailService() {
         return this.guardrailService.updateAndGet(
                 service -> (service != null) ? service : guardrailServiceBuilder.build());
+    }
+
+    /**
+     * The service that executes the tool guardrails, built from {@link #toolGuardrailServiceBuilder} on first use.
+     *
+     * @since 1.25.0
+     */
+    @Experimental
+    public ToolGuardrailService toolGuardrailService() {
+        return this.toolGuardrailService.updateAndGet(
+                service -> (service != null) ? service : toolGuardrailServiceBuilder.build());
     }
 }

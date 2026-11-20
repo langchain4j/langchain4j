@@ -15,9 +15,11 @@ import java.util.stream.Collectors;
  *
  * @see InputGuardrailResult
  * @see OutputGuardrailResult
+ * @see ToolInputGuardrailResult
+ * @see ToolOutputGuardrailResult
  */
 public sealed interface GuardrailResult<GR extends GuardrailResult<GR>>
-        permits InputGuardrailResult, OutputGuardrailResult {
+        permits InputGuardrailResult, OutputGuardrailResult, ToolInputGuardrailResult, ToolOutputGuardrailResult {
     /**
      * The possible results of a guardrails validation.
      */
@@ -43,7 +45,11 @@ public sealed interface GuardrailResult<GR extends GuardrailResult<GR>>
     /**
      * The message and the cause of the failure of a single validation.
      */
-    sealed interface Failure permits InputGuardrailResult.Failure, OutputGuardrailResult.Failure {
+    sealed interface Failure
+            permits InputGuardrailResult.Failure,
+                    OutputGuardrailResult.Failure,
+                    ToolInputGuardrailResult.Failure,
+                    ToolOutputGuardrailResult.Failure {
         /**
          * Build a failure from a specific {@link Guardrail} class
          */

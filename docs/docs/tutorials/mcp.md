@@ -367,6 +367,95 @@ Bot bot = AiServices.builder(Bot.class)
 
 More information on tool support in LangChain4j can be found [here](/tutorials/tools).
 
+### Guarding MCP tools
+
+The text that an MCP server returns, including the text of an error result (`isError: true`), reaches the LLM, and it
+may carry [indirect prompt injection](https://genai.owasp.org/llmrisk/llm01-prompt-injection/). Use
+[tool guardrails](/tutorials/tool-guardrails) to check it. They run for MCP tools like for any other tool, so
+there is no need to wrap the `ToolExecutor` of MCP tools to validate them. A `toolWrapper` set on the `McpToolProvider`
+builder runs inside the guardrails: the input guardrails run before it, and the output guardrails after it.
+
+Set the guardrails on the `AiServices` builder. They apply to every tool, so they tell the tools apart by the
+[`ToolSource`](/tutorials/tool-guardrails#telling-the-tools-apart-toolsource) of the request. For an MCP tool, the
+`McpToolProvider` sets it to a `ToolSource.Mcp` whose `serverKeys()` holds the `key` of the `McpClient` of the tool.
+
+For a security check, check every tool by default, and skip only the MCP servers that you list as trusted. A
+guardrail that checks only the servers it knows about would silently skip a server that you add later, or a client
+without a stable key (see the warning below):
+
+```java
+public class UntrustedContentOutputGuardrail implements ToolOutputGuardrail {
+
+    // the MCP servers you trust, by the key of their McpClient
+    private static final Set<String> TRUSTED_SERVERS = Set.of("internal-docs");
+
+    private static final Pattern INJECTION = Pattern.compile(
+            "ignore (all )?(previous|prior) instructions", Pattern.CASE_INSENSITIVE);
+
+    @Override
+    public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
+        if (request.toolSource() instanceof ToolSource.Mcp mcp
+                && !mcp.serverKeys().isEmpty()
+                && TRUSTED_SERVERS.containsAll(mcp.serverKeys())) {
+            return success(); // every server of this tool is trusted
+        }
+
+        // the text is untrusted, also when request.isError() is true
+        return looksLikeAnInjection(request.text())
+                ? failure("The result of this tool was blocked. Do not call it again with the same arguments.")
+                : success();
+    }
+
+    private static boolean looksLikeAnInjection(String text) {
+        return INJECTION.matcher(text).find(); // a simple example: use the checks that fit your application
+    }
+}
+```
+
+`serverKeys()` holds only the keys that are known: a client without a key adds none. So a trust decision must check
+that there is at least one key and that **all** of them are trusted.
+
+Give each client a key, and set the guardrail on the AI Service:
+
+```java
+McpClient githubClient = DefaultMcpClient.builder()
+        .key("github") // set a key: see the warning below
+        .transport(githubTransport)
+        .build();
+
+McpClient docsClient = DefaultMcpClient.builder()
+        .key("internal-docs")
+        .transport(docsTransport)
+        .build();
+
+McpToolProvider toolProvider = McpToolProvider.builder()
+        .mcpClients(githubClient, docsClient)
+        .build();
+
+Bot bot = AiServices.builder(Bot.class)
+        .chatModel(model)
+        .toolProvider(toolProvider)
+        .toolOutputGuardrails(new UntrustedContentOutputGuardrail())
+        .build();
+```
+
+The results of the `github` tools are checked, and the results of the `internal-docs` tools are not.
+
+:::warning
+A `DefaultMcpClient` uses a **random UUID** as its key when you do not set one with
+`DefaultMcpClient.builder().key(...)`, and that key changes at every start. It is never in your list of trusted
+servers, so the tools of that client are checked, but a guardrail cannot recognize the server by it. **Set a stable
+`key(...)` on every client that a guardrail must recognize.** The tools of a client whose key is `null` or blank get
+a `ToolSource.Mcp` with no `serverKeys()`: `involves(...)` is `false` for them, the check above does not skip them,
+and a warning is logged once for that client.
+:::
+
+The source of the [resources as tools](#exposing-resources-automatically-via-synthetic-tools) (`list_resources` and
+`get_resource`, by default) holds the keys of all the clients of the call: one key with one client, several keys
+with several clients. With the check above, they are skipped only when all those servers are trusted. With a single
+client, their source is the same as the source of the regular tools of that client, so to treat them differently,
+check their `toolName()`.
+
 ### MCP Tool Name Mapping
 
 If you use multiple MCP servers, and they expose tools with clashing names (or you simply want to
@@ -616,6 +705,8 @@ the MCP tool provider will automatically add two synthetic tools to the result o
 along the 'regular' tools that are supported by the backing MCP servers. One tool should serve for obtaining
 a list of resources and the other for obtaining a particular resource. LangChain4j provides
 a default implementation named `DefaultMcpResourcesAsToolsPresenter` that adds these two tools:
+
+**_NOTE:_** `list_resources` and `get_resource` reach only the MCP clients passed to that `provideTools(...)` call (a snapshot taken when the call starts), and they are not emitted when there are none. They can be guarded like any other tool, see [Guarding MCP tools](#guarding-mcp-tools).
 
 **_NOTE:_** The rest of this section describes `DefaultMcpResourcesAsToolsPresenter`. You may plug in your own implementation
 that behaves differently.

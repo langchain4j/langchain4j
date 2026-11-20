@@ -1,6 +1,6 @@
 package dev.langchain4j.test.service;
 
-import static dev.langchain4j.service.tool.ToolExecutionRequestUtil.argumentsAsMap;
+import static dev.langchain4j.internal.ToolArgumentsParser.argumentsAsMap;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNegative;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;

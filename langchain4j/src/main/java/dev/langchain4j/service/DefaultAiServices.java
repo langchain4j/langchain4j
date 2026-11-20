@@ -197,6 +197,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     public T build() {
         validate();
+        context.toolService.toolGuardrailService(context.toolGuardrailService());
         ToolErrorHandlingNotice.logOnceIfNeeded(context, this::hasBlockingMethod);
 
         context.streamingBufferSize = ensureGreaterThanZero(
@@ -664,7 +665,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                                         context.toolService.createContext(
                                                                                 guardedInput.invocationContext(),
                                                                                 guardedInput.userMessage(),
-                                                                                assembledMessages);
+                                                                                assembledMessages,
+                                                                                commonGuardrailParam);
                                                                 var streamingEventStreamParameters =
                                                                         AiServiceTokenStreamParameters.builder()
                                                                                 .messages(assembledMessages)
@@ -796,8 +798,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         CompletableFuture<Moderation> moderationFuture =
                                 triggerModerationIfNeeded(method, messages, invocationContext);
 
-                        ToolServiceContext toolServiceContext =
-                                context.toolService.createContext(invocationContext, userMessage, messages);
+                        ToolServiceContext toolServiceContext = context.toolService.createContext(
+                                invocationContext, userMessage, messages, commonGuardrailParam);
 
                         if (streaming) {
                             var tokenStreamParameters = AiServiceTokenStreamParameters.builder()
@@ -987,8 +989,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return;
                         }
 
-                        ToolServiceContext toolServiceContext =
-                                context.toolService.createContext(invocationContext, userMessage, messages);
+                        ToolServiceContext toolServiceContext = context.toolService.createContext(
+                                invocationContext, userMessage, messages, commonGuardrailParam);
                         ChatRequestParameters parameters =
                                 chatRequestParameters(method, args, toolServiceContext, responseFormat);
                         ChatRequest chatRequest = transformChatRequest(

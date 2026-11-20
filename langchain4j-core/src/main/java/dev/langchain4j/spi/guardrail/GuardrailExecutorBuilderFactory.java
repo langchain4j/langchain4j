@@ -27,7 +27,10 @@ public sealed interface GuardrailExecutorBuilderFactory<
                 G extends Guardrail<P, R>,
                 E extends GuardrailExecutedEvent<P, R, G>,
                 B extends GuardrailExecutorBuilder<C, R, P, G, E, B>>
-        permits InputGuardrailExecutorBuilderFactory, OutputGuardrailExecutorBuilderFactory {
+        permits InputGuardrailExecutorBuilderFactory,
+                OutputGuardrailExecutorBuilderFactory,
+                ToolInputGuardrailExecutorBuilderFactory,
+                ToolOutputGuardrailExecutorBuilderFactory {
 
     /**
      * Retrieves a builder for creating instances of {@link GuardrailExecutor}.

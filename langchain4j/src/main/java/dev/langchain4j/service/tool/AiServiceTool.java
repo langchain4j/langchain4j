@@ -1,12 +1,19 @@
 package dev.langchain4j.service.tool;
 
-import dev.langchain4j.agent.tool.ReturnBehavior;
-import dev.langchain4j.agent.tool.ToolSpecification;
-
-import java.util.Objects;
-
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.Experimental;
+import dev.langchain4j.agent.tool.ReturnBehavior;
+import dev.langchain4j.agent.tool.ToolSource;
+import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.guardrail.ToolInputGuardrail;
+import dev.langchain4j.guardrail.ToolOutputGuardrail;
+import java.util.List;
+import java.util.Objects;
+import dev.langchain4j.service.AiServices;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Represents a tool managed by an AI Service, combining:
@@ -23,11 +30,17 @@ public class AiServiceTool {
     private final ToolSpecification toolSpecification;
     private final ToolExecutor toolExecutor;
     private final ReturnBehavior returnBehavior;
+    private final ToolSource toolSource;
+    private final List<ToolInputGuardrail> toolInputGuardrails;
+    private final List<ToolOutputGuardrail> toolOutputGuardrails;
 
     private AiServiceTool(Builder builder) {
         this.toolSpecification = ensureNotNull(builder.toolSpecification, "toolSpecification");
         this.toolExecutor = ensureNotNull(builder.toolExecutor, "toolExecutor");
         this.returnBehavior = getOrDefault(builder.returnBehavior, ReturnBehavior.TO_LLM);
+        this.toolSource = getOrDefault(builder.toolSource, ToolSource.programmatic());
+        this.toolInputGuardrails = copy(builder.toolInputGuardrails);
+        this.toolOutputGuardrails = copy(builder.toolOutputGuardrails);
     }
 
     public String name() {
@@ -50,6 +63,44 @@ public class AiServiceTool {
     }
 
     /**
+     * Returns where this tool comes from. It is trusted information, set by the framework or by the application,
+     * and exposed to tool guardrails. Defaults to {@link ToolSource#programmatic()}.
+     *
+     * @return where this tool comes from
+     * @since 1.25.0
+     */
+    @Experimental
+    public ToolSource toolSource() {
+        return toolSource;
+    }
+
+    /**
+     * Returns the {@link ToolInputGuardrail}s of this tool. They run after the guardrails set on the
+     * {@link AiServices} builder, after the guardrails of the class annotation and
+     * after the ones of the method annotation, if any.
+     *
+     * @return the tool input guardrails of this tool, empty if it has none
+     * @since 1.25.0
+     */
+    @Experimental
+    public List<ToolInputGuardrail> toolInputGuardrails() {
+        return toolInputGuardrails;
+    }
+
+    /**
+     * Returns the {@link ToolOutputGuardrail}s of this tool. They run after the guardrails set on the
+     * {@link AiServices} builder, after the guardrails of the class annotation and
+     * after the ones of the method annotation, if any.
+     *
+     * @return the tool output guardrails of this tool, empty if it has none
+     * @since 1.25.0
+     */
+    @Experimental
+    public List<ToolOutputGuardrail> toolOutputGuardrails() {
+        return toolOutputGuardrails;
+    }
+
+    /**
      * @deprecated use {@link #returnBehavior()} instead
      */
     @Deprecated(since = "1.14.0")
@@ -63,28 +114,37 @@ public class AiServiceTool {
         AiServiceTool that = (AiServiceTool) o;
         return Objects.equals(toolSpecification, that.toolSpecification)
                 && Objects.equals(toolExecutor, that.toolExecutor)
-                && returnBehavior == that.returnBehavior;
+                && returnBehavior == that.returnBehavior
+                && Objects.equals(toolSource, that.toolSource)
+                && Objects.equals(toolInputGuardrails, that.toolInputGuardrails)
+                && Objects.equals(toolOutputGuardrails, that.toolOutputGuardrails);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(toolSpecification, toolExecutor, returnBehavior);
+        return Objects.hash(
+                toolSpecification, toolExecutor, returnBehavior, toolSource, toolInputGuardrails, toolOutputGuardrails);
     }
 
     @Override
     public String toString() {
-        return "AiServiceTool{" +
-                "toolSpecification=" + toolSpecification +
-                ", toolExecutor=" + toolExecutor +
-                ", returnBehavior=" + returnBehavior +
-                '}';
+        return "AiServiceTool{" + "toolSpecification="
+                + toolSpecification + ", toolExecutor="
+                + toolExecutor + ", returnBehavior="
+                + returnBehavior + ", toolSource="
+                + toolSource + ", toolInputGuardrails="
+                + toolInputGuardrails + ", toolOutputGuardrails="
+                + toolOutputGuardrails + '}';
     }
 
     public Builder toBuilder() {
         return builder()
                 .toolSpecification(toolSpecification)
                 .toolExecutor(toolExecutor)
-                .returnBehavior(returnBehavior);
+                .returnBehavior(returnBehavior)
+                .toolSource(toolSource)
+                .toolInputGuardrails(toolInputGuardrails)
+                .toolOutputGuardrails(toolOutputGuardrails);
     }
 
     public static Builder builder() {
@@ -96,6 +156,9 @@ public class AiServiceTool {
         private ToolSpecification toolSpecification;
         private ToolExecutor toolExecutor;
         private ReturnBehavior returnBehavior;
+        private ToolSource toolSource;
+        private List<ToolInputGuardrail> toolInputGuardrails;
+        private List<ToolOutputGuardrail> toolOutputGuardrails;
 
         public Builder toolSpecification(ToolSpecification toolSpecification) {
             this.toolSpecification = toolSpecification;
@@ -113,6 +176,76 @@ public class AiServiceTool {
         public Builder returnBehavior(ReturnBehavior returnBehavior) {
             this.returnBehavior = returnBehavior;
             return this;
+        }
+
+        /**
+         * Sets where this tool comes from. It is exposed to tool guardrails as trusted information, so it must be set
+         * by the application, never derived from remote data. Defaults to {@link ToolSource#programmatic()}.
+         *
+         * @param toolSource where this tool comes from; {@code null} means {@link ToolSource#programmatic()}
+         * @return this builder
+         * @since 1.25.0
+         */
+        @Experimental
+        public Builder toolSource(@Nullable ToolSource toolSource) {
+            this.toolSource = toolSource;
+            return this;
+        }
+
+        /**
+         * Sets the {@link ToolInputGuardrail}s of this tool, which run in the order given, after the guardrails set
+         * on the {@link AiServices} builder, after the ones of the class
+         * annotation and after the ones of the method annotation, if any. {@code null} means none.
+         *
+         * @param toolInputGuardrails the tool input guardrails of this tool, or {@code null} for none
+         * @return this builder
+         * @since 1.25.0
+         */
+        @Experimental
+        public Builder toolInputGuardrails(@Nullable List<? extends ToolInputGuardrail> toolInputGuardrails) {
+            this.toolInputGuardrails = (toolInputGuardrails != null) ? List.copyOf(toolInputGuardrails) : null;
+            return this;
+        }
+
+        /**
+         * Sets the {@link ToolInputGuardrail}s of this tool.
+         *
+         * @see #toolInputGuardrails(List)
+         * @param toolInputGuardrails the tool input guardrails of this tool
+         * @return this builder
+         * @since 1.25.0
+         */
+        @Experimental
+        public Builder toolInputGuardrails(ToolInputGuardrail... toolInputGuardrails) {
+            return toolInputGuardrails((toolInputGuardrails != null) ? List.of(toolInputGuardrails) : null);
+        }
+
+        /**
+         * Sets the {@link ToolOutputGuardrail}s of this tool, which run in the order given, after the guardrails set
+         * on the {@link AiServices} builder, after the ones of the class
+         * annotation and after the ones of the method annotation, if any. {@code null} means none.
+         *
+         * @param toolOutputGuardrails the tool output guardrails of this tool, or {@code null} for none
+         * @return this builder
+         * @since 1.25.0
+         */
+        @Experimental
+        public Builder toolOutputGuardrails(@Nullable List<? extends ToolOutputGuardrail> toolOutputGuardrails) {
+            this.toolOutputGuardrails = (toolOutputGuardrails != null) ? List.copyOf(toolOutputGuardrails) : null;
+            return this;
+        }
+
+        /**
+         * Sets the {@link ToolOutputGuardrail}s of this tool.
+         *
+         * @see #toolOutputGuardrails(List)
+         * @param toolOutputGuardrails the tool output guardrails of this tool
+         * @return this builder
+         * @since 1.25.0
+         */
+        @Experimental
+        public Builder toolOutputGuardrails(ToolOutputGuardrail... toolOutputGuardrails) {
+            return toolOutputGuardrails((toolOutputGuardrails != null) ? List.of(toolOutputGuardrails) : null);
         }
 
         /**

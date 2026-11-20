@@ -271,7 +271,7 @@ public class AiServiceTokenStream implements TokenStream {
                 errorHandler,
                 initTemporaryMemory(context, messages),
                 null,
-                toolServiceContext,
+                toolServiceContext(runContext),
                 context.toolService.maxToolCallingRoundTrips(),
                 toolArgumentsErrorHandler,
                 toolExecutionErrorHandler,
@@ -290,7 +290,25 @@ public class AiServiceTokenStream implements TokenStream {
                 .request(chatRequest)
                 .build());
 
-        CurrentInvocation.runWith(runContext, () -> context.streamingChatModel.chat(chatRequest, HandlerWithoutInvocation.wrap(handler)));
+        CurrentInvocation.runWith(
+                runContext, () -> context.streamingChatModel.chat(chatRequest, HandlerWithoutInvocation.wrap(handler)));
+    }
+
+    /**
+     * The tool context of a run: a run started again has its own invocation context, which the parameters of its tool
+     * guardrails must carry too.
+     */
+    private ToolServiceContext toolServiceContext(InvocationContext runContext) {
+        return (toolServiceContext != null) && (runContext != invocationContext)
+                ? toolServiceContext
+                        .guardrailRequestParams()
+                        .map(params -> toolServiceContext.toBuilder()
+                                .guardrailRequestParams(params.toBuilder()
+                                        .invocationContext(runContext)
+                                        .build())
+                                .build())
+                        .orElse(toolServiceContext)
+                : toolServiceContext;
     }
 
     private GuardrailRequestParams guardrailParams(InvocationContext runContext) {

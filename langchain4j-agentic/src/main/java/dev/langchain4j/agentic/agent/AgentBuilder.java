@@ -10,6 +10,7 @@ import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.beforeA
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.Arrays.asList;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -32,8 +33,12 @@ import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.ToolInputGuardrail;
+import dev.langchain4j.guardrail.ToolOutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
+import dev.langchain4j.guardrail.config.ToolOutputGuardrailsConfig;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
@@ -49,6 +54,8 @@ import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.guardrail.InputGuardrails;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
+import dev.langchain4j.service.guardrail.ToolInputGuardrails;
+import dev.langchain4j.service.guardrail.ToolOutputGuardrails;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
@@ -68,6 +75,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+import dev.langchain4j.service.tool.AiServiceTool;
 
 public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
@@ -123,6 +131,12 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
     private Class<? extends OutputGuardrail>[] outputGuardrailClasses;
     private InputGuardrail[] inputGuardrails;
     private OutputGuardrail[] outputGuardrails;
+    private ToolInputGuardrailsConfig toolInputGuardrailsConfig;
+    private ToolOutputGuardrailsConfig toolOutputGuardrailsConfig;
+    private Class<? extends ToolInputGuardrail>[] toolInputGuardrailClasses;
+    private Class<? extends ToolOutputGuardrail>[] toolOutputGuardrailClasses;
+    private ToolInputGuardrail[] toolInputGuardrails;
+    private ToolOutputGuardrail[] toolOutputGuardrails;
 
     private Object[] objectsWithTools;
     private Map<ToolSpecification, ToolExecutor> toolsMap;
@@ -349,6 +363,24 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
         }
         if (outputGuardrails != null) {
             aiServices.outputGuardrails(outputGuardrails);
+        }
+        if (toolInputGuardrailsConfig != null) {
+            aiServices.toolInputGuardrailsConfig(toolInputGuardrailsConfig);
+        }
+        if (toolOutputGuardrailsConfig != null) {
+            aiServices.toolOutputGuardrailsConfig(toolOutputGuardrailsConfig);
+        }
+        if (toolInputGuardrailClasses != null) {
+            aiServices.toolInputGuardrailClasses(toolInputGuardrailClasses);
+        }
+        if (toolOutputGuardrailClasses != null) {
+            aiServices.toolOutputGuardrailClasses(toolOutputGuardrailClasses);
+        }
+        if (toolInputGuardrails != null) {
+            aiServices.toolInputGuardrails(toolInputGuardrails);
+        }
+        if (toolOutputGuardrails != null) {
+            aiServices.toolOutputGuardrails(toolOutputGuardrails);
         }
     }
 
@@ -674,6 +706,109 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
      */
     public <O extends OutputGuardrail> B outputGuardrails(O... outputGuardrails) {
         this.outputGuardrails = outputGuardrails;
+        return (B) this;
+    }
+
+    /**
+     * Sets the configuration of the tool input guardrail executors of the agent. It applies to every tool.
+     *
+     * @param toolInputGuardrailsConfig the tool input guardrails configuration
+     * @return {@code this}
+     * @since 1.25.0
+     */
+    @Experimental
+    public B toolInputGuardrailsConfig(ToolInputGuardrailsConfig toolInputGuardrailsConfig) {
+        this.toolInputGuardrailsConfig = toolInputGuardrailsConfig;
+        return (B) this;
+    }
+
+    /**
+     * Sets the configuration of the tool output guardrail executors of the agent. It applies to every tool.
+     *
+     * @param toolOutputGuardrailsConfig the tool output guardrails configuration
+     * @return {@code this}
+     * @since 1.25.0
+     */
+    @Experimental
+    public B toolOutputGuardrailsConfig(ToolOutputGuardrailsConfig toolOutputGuardrailsConfig) {
+        this.toolOutputGuardrailsConfig = toolOutputGuardrailsConfig;
+        return (B) this;
+    }
+
+    /**
+     * Sets the {@link ToolInputGuardrail} classes to be instantiated and applied to every tool of the agent.
+     * These guardrails apply to every tool of the agent and run first, followed by the guardrails of the class
+     * annotation, the method annotation and the {@link AiServiceTool}
+     * of each tool. Unlike {@link InputGuardrails} and {@link OutputGuardrails}, they do not replace the ones declared
+     * with the {@link ToolInputGuardrails} and {@link ToolOutputGuardrails} annotations. A guardrail that must not
+     * apply to some tools can skip them by checking {@code toolName()} or {@code toolSource()} of its request.
+     *
+     * @param toolInputGuardrailClasses the tool input guardrail classes
+     * @param <I> the guardrail type
+     * @return {@code this}
+     * @since 1.25.0
+     */
+    @Experimental
+    public <I extends ToolInputGuardrail> B toolInputGuardrailClasses(Class<? extends I>... toolInputGuardrailClasses) {
+        this.toolInputGuardrailClasses = toolInputGuardrailClasses;
+        return (B) this;
+    }
+
+    /**
+     * Sets the {@link ToolInputGuardrail} instances applied to every tool of the agent.
+     * These guardrails apply to every tool of the agent and run first, followed by the guardrails of the class
+     * annotation, the method annotation and the {@link AiServiceTool}
+     * of each tool. Unlike {@link InputGuardrails} and {@link OutputGuardrails}, they do not replace the ones declared
+     * with the {@link ToolInputGuardrails} and {@link ToolOutputGuardrails} annotations. A guardrail that must not
+     * apply to some tools can skip them by checking {@code toolName()} or {@code toolSource()} of its request.
+     *
+     * @param toolInputGuardrails the tool input guardrails
+     * @param <I> the guardrail type
+     * @return {@code this}
+     * @since 1.25.0
+     */
+    @Experimental
+    public <I extends ToolInputGuardrail> B toolInputGuardrails(I... toolInputGuardrails) {
+        this.toolInputGuardrails = toolInputGuardrails;
+        return (B) this;
+    }
+
+    /**
+     * Sets the {@link ToolOutputGuardrail} classes to be instantiated and applied to every tool of the agent.
+     * These guardrails apply to every tool of the agent and run first, followed by the guardrails of the class
+     * annotation, the method annotation and the {@link AiServiceTool}
+     * of each tool. Unlike {@link InputGuardrails} and {@link OutputGuardrails}, they do not replace the ones declared
+     * with the {@link ToolInputGuardrails} and {@link ToolOutputGuardrails} annotations. A guardrail that must not
+     * apply to some tools can skip them by checking {@code toolName()} or {@code toolSource()} of its request.
+     *
+     * @param toolOutputGuardrailClasses the tool output guardrail classes
+     * @param <O> the guardrail type
+     * @return {@code this}
+     * @since 1.25.0
+     */
+    @Experimental
+    public <O extends ToolOutputGuardrail> B toolOutputGuardrailClasses(
+            Class<? extends O>... toolOutputGuardrailClasses) {
+        this.toolOutputGuardrailClasses = toolOutputGuardrailClasses;
+        return (B) this;
+    }
+
+    /**
+     * Sets the {@link ToolOutputGuardrail} instances applied to every tool of the agent.
+     * These guardrails apply to every tool of the agent and run first, followed by the guardrails of the class
+     * annotation, the method annotation and the {@link AiServiceTool}
+     * of each tool. Unlike {@link InputGuardrails} and {@link OutputGuardrails}, they do not replace the ones declared
+     * with the {@link ToolInputGuardrails} and {@link ToolOutputGuardrails} annotations. A guardrail that must not
+     * apply to some tools can skip them by checking {@code toolName()} or {@code toolSource()} of its request.
+     *
+     * @param toolOutputGuardrails the tool output guardrails
+     * @param <O> the guardrail type
+     * @return {@code this}
+     * @since 1.25.0
+     */
+    @Experimental
+    public <O extends ToolOutputGuardrail> B toolOutputGuardrails(O... toolOutputGuardrails) {
+        this.toolOutputGuardrails = toolOutputGuardrails;
         return (B) this;
     }
 
