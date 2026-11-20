@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -12,14 +13,26 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
+import dev.langchain4j.test.mock.MockChatModel;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class AiServicesTest {
 
@@ -210,11 +223,12 @@ class AiServicesTest {
         chef.answer("How long should I grill chicken?");
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(
-                        systemMessage("You are a professional chef. Keep your answer to one sentence."),
-                        userMessage("How long should I grill chicken?"))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("You are a professional chef. Keep your answer to one sentence."),
+                                userMessage("How long should I grill chicken?"))
+                        .build());
     }
 
     @Test
@@ -232,11 +246,12 @@ class AiServicesTest {
         chef.answer("How long should I grill chicken?");
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(
-                        systemMessage("You are a professional chef. Method: answer."),
-                        userMessage("How long should I grill chicken?"))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("You are a professional chef. Method: answer."),
+                                userMessage("How long should I grill chicken?"))
+                        .build());
     }
 
     @Test
@@ -254,11 +269,10 @@ class AiServicesTest {
         assistant.chat("What is 2 + 2?");
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(
-                        systemMessage("You are a helpful assistant."),
-                        userMessage("What is 2 + 2?"))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(systemMessage("You are a helpful assistant."), userMessage("What is 2 + 2?"))
+                        .build());
     }
 
     @Test
@@ -277,11 +291,12 @@ class AiServicesTest {
         assistant.chat("What is 2 + 2?");
 
         // then
-        verify(chatModel).chat(ChatRequest.builder()
-                .messages(
-                        systemMessage("You are a helpful assistant. Always be concise."),
-                        userMessage("What is 2 + 2?"))
-                .build());
+        verify(chatModel)
+                .chat(ChatRequest.builder()
+                        .messages(
+                                systemMessage("You are a helpful assistant. Always be concise."),
+                                userMessage("What is 2 + 2?"))
+                        .build());
     }
 
     interface ChatResponseAssistant {
@@ -304,14 +319,16 @@ class AiServicesTest {
 
         // then
         assertThat(chatResponse.aiMessage().text()).isEqualTo("Hi");
-        verify(chatModel).chat(ChatRequest.builder().messages(userMessage("Hello")).build());
+        verify(chatModel)
+                .chat(ChatRequest.builder().messages(userMessage("Hello")).build());
     }
 
     @Test
     void should_not_send_json_schema_when_return_type_is_ChatResponse() {
 
         // given
-        ChatModel chatModel = spy(MockChatModel.thatResponds("Hi").withSupportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA));
+        ChatModel chatModel =
+                spy(MockChatModel.thatResponds("Hi").withSupportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA));
 
         ChatResponseAssistant assistant = AiServices.builder(ChatResponseAssistant.class)
                 .chatModel(chatModel)
@@ -322,6 +339,106 @@ class AiServicesTest {
 
         // then
         assertThat(chatResponse.aiMessage().text()).isEqualTo("Hi");
-        verify(chatModel).chat(ChatRequest.builder().messages(userMessage("Hello")).build());
+        verify(chatModel)
+                .chat(ChatRequest.builder().messages(userMessage("Hello")).build());
+    }
+
+    interface StreamingAssistantWithMemoryAccess extends ChatMemoryAccess {
+
+        TokenStream chat(@MemoryId String memoryId, @UserMessage String message);
+
+        Flow.Publisher<String> chatReactive(@MemoryId String memoryId, @UserMessage String message);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void should_keep_using_same_chat_memory_when_evicted_during_streaming_invocation(boolean reactive)
+            throws Exception {
+        AtomicInteger providerCalls = new AtomicInteger();
+        AtomicReference<ChatMemory> firstMemory = new AtomicReference<>();
+        AtomicReference<StreamingAssistantWithMemoryAccess> assistantRef = new AtomicReference<>();
+
+        ToolExecutionRequest toolRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("evictMemory")
+                .arguments("{}")
+                .build();
+        StreamingChatModelMock streamingChatModel =
+                new StreamingChatModelMock(List.of(AiMessage.from(toolRequest), AiMessage.from("final answer")));
+
+        class EvictingTool {
+
+            @Tool
+            String evictMemory() {
+                assertThat(assistantRef.get().evictChatMemory("user-1")).isTrue();
+                return "evicted";
+            }
+        }
+
+        StreamingAssistantWithMemoryAccess assistant = AiServices.builder(StreamingAssistantWithMemoryAccess.class)
+                .streamingChatModel(streamingChatModel)
+                .chatMemoryProvider(memoryId -> {
+                    ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+                    if (providerCalls.incrementAndGet() == 1) {
+                        firstMemory.set(memory);
+                    }
+                    return memory;
+                })
+                .tools(new EvictingTool())
+                .build();
+        assistantRef.set(assistant);
+
+        CompletableFuture<String> answer = new CompletableFuture<>();
+        if (reactive) {
+            StringBuilder text = new StringBuilder();
+            assistant.chatReactive("user-1", "Hello").subscribe(new Flow.Subscriber<>() {
+
+                @Override
+                public void onSubscribe(Flow.Subscription subscription) {
+                    subscription.request(Long.MAX_VALUE);
+                }
+
+                @Override
+                public void onNext(String item) {
+                    text.append(item);
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    answer.completeExceptionally(throwable);
+                }
+
+                @Override
+                public void onComplete() {
+                    answer.complete(text.toString());
+                }
+            });
+        } else {
+            assistant
+                    .chat("user-1", "Hello")
+                    .onPartialResponse(token -> {})
+                    .onCompleteResponse(
+                            response -> answer.complete(response.aiMessage().text()))
+                    .onError(answer::completeExceptionally)
+                    .start();
+        }
+
+        assertThat(answer.get(10, SECONDS)).isEqualTo("final answer");
+        assertThat(providerCalls).hasValue(1);
+        assertThat(assistant.getChatMemory("user-1")).isNull();
+        assertThat(streamingChatModel.requests()).hasSize(2);
+        assertThat(streamingChatModel.requests().get(1).messages())
+                .hasSize(3)
+                .satisfiesExactly(
+                        msg -> assertThat(msg).isEqualTo(userMessage("Hello")),
+                        msg -> assertThat(msg).isEqualTo(AiMessage.from(toolRequest)),
+                        msg -> assertThat(msg).isInstanceOf(ToolExecutionResultMessage.class));
+        assertThat(firstMemory.get().messages())
+                .hasSize(4)
+                .satisfiesExactly(
+                        msg -> assertThat(msg).isEqualTo(userMessage("Hello")),
+                        msg -> assertThat(msg).isEqualTo(AiMessage.from(toolRequest)),
+                        msg -> assertThat(msg).isInstanceOf(ToolExecutionResultMessage.class),
+                        msg -> assertThat(msg).isEqualTo(AiMessage.from("final answer")));
     }
 }
