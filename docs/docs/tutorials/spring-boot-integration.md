@@ -572,7 +572,7 @@ For more details about the `langchain4j-observation` library, please check the [
 
 ## Testing
 
-- [An example of integration testing for a Customer Support Agent](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentIT.java)
+- [Testing](/tutorials/testing): how to test AI Services, also in a Spring Boot test
 
 ## Supported versions
 
