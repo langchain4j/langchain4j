@@ -4,7 +4,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -16,7 +16,7 @@ public class ComposedAgentListener implements AgentListener {
     private final Set<AgentListener> listeners;
 
     private ComposedAgentListener(List<AgentListener> listeners) {
-        this.listeners = new HashSet<>(listeners);
+        this.listeners = new LinkedHashSet<>(listeners);
     }
 
     public ComposedAgentListener(AgentListener... listeners) {
@@ -106,11 +106,10 @@ public class ComposedAgentListener implements AgentListener {
     }
 
     /**
-     * Notifies every composed listener, even when one of them throws: a failing listener must not keep the others,
-     * which may depend on the notification (e.g. to propagate a context), from being notified. Since the listeners are
-     * kept in a {@link HashSet}, their order is not deterministic, so without this a listener that throws would skip a
-     * different set of listeners from one run to the next. The first failure is rethrown once all the listeners have
-     * been notified, with any further ones added to it as suppressed exceptions.
+     * Notifies every composed listener, in the order they were registered, even when one of them throws: a failing
+     * listener must not keep the others, which may depend on the notification (e.g. to propagate a context), from being
+     * notified. The first failure is rethrown once all the listeners have been notified, with any further ones added to
+     * it as suppressed exceptions.
      */
     private void notifyEach(Consumer<AgentListener> notification) {
         RuntimeException failure = null;
