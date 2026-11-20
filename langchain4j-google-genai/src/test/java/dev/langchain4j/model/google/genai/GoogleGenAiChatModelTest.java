@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.google.genai.AsyncModels;
@@ -33,6 +34,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import dev.langchain4j.data.message.CustomMessage;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -535,5 +537,39 @@ class GoogleGenAiChatModelTest {
                                 .build())
                         .build()))
                 .build();
+    }
+
+    @Test
+    void doChatAsync_reports_an_unsupported_message_through_the_future_without_calling_the_api() throws Exception {
+        Client client = mock(Client.class);
+        Client.Async async = mock(Client.Async.class);
+        AsyncModels asyncModels = mock(AsyncModels.class);
+
+        Field asyncField = Client.class.getDeclaredField("async");
+        asyncField.setAccessible(true);
+        asyncField.set(client, async);
+
+        Field asyncModelsField = Client.Async.class.getDeclaredField("models");
+        asyncModelsField.setAccessible(true);
+        asyncModelsField.set(async, asyncModels);
+
+        GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
+                .client(client)
+                .modelName("gemini-3.1-flash-lite")
+                .build();
+        ChatRequest request = ChatRequest.builder()
+                .messages(CustomMessage.from(Map.of("key", "value")))
+                .parameters(model.defaultRequestParameters())
+                .build();
+
+        CompletableFuture<ChatResponse> future = model.doChatAsync(request);
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(10))
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .withMessageContaining("Unknown message type");
+        verifyNoInteractions(asyncModels);
     }
 }

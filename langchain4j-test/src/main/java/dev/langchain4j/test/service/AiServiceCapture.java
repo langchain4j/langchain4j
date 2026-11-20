@@ -114,9 +114,10 @@ import java.util.concurrent.Flow;
  * {@link InvocationContext#parentInvocationId()}).
  * <p>
  * Pay attention to what the invocation captured rather than to the side effects of your own handlers: for a
- * {@code TokenStream}, the invocation finishes before the {@code onCompleteResponse} handler you gave it has run, so
- * when {@code capture(...)} returns, that handler may still be running. {@link AiServiceInvocation#outputText()} has
- * the final text in any case.
+ * {@code TokenStream}, the invocation finishes before the {@code onCompleteResponse} or {@code onError} handler you
+ * gave it has run, so when {@code capture(...)} returns or throws, that handler may still be running.
+ * {@link AiServiceInvocation#outputText()} has the final text and {@link AiServiceInvocation#error()} the error in any
+ * case.
  *
  * <h2>Threads</h2>
  * An invocation is captured when it starts on the thread that runs the lambda, or when it is started while a

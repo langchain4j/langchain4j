@@ -13,6 +13,8 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.doThrow;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -68,5 +70,25 @@ class CohereScoringModelAsyncTest {
             // cancelling the returned future aborts the in-flight HTTP call
             assertThat(clientDisconnected.get(5, SECONDS)).isTrue();
         }
+    }
+
+    @Test
+    void doScoreAsync_reports_a_failure_while_preparing_the_request_through_the_future() {
+        ScoringModel model = CohereScoringModel.builder()
+                .baseUrl("http://localhost:1")
+                .apiKey("test-key")
+                .modelName("rerank-english-v3.0")
+                .maxRetries(0)
+                .build();
+        ScoringRequest request = spy(ScoringRequest.builder()
+                .documents(List.of("labrador retriever"))
+                .query("tell me about dogs")
+                .build());
+        IllegalStateException failure = new IllegalStateException("cannot read the documents");
+        doThrow(failure).when(request).documents();
+
+        CompletableFuture<ScoringResponse> future = model.doScoreAsync(request);
+
+        assertThat(future).failsWithin(5, SECONDS).withThrowableThat().havingCause().isSameAs(failure);
     }
 }

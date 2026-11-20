@@ -47,6 +47,8 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.guardrail.InputGuardrails;
+import dev.langchain4j.service.guardrail.OutputGuardrails;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
@@ -597,6 +599,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the configuration for input guardrails applied before sending requests to the model.
+     * It applies to every method of the agent.
      *
      * @param inputGuardrailsConfig the input guardrails configuration
      * @return {@code this}
@@ -608,6 +611,7 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the configuration for output guardrails applied after receiving responses from the model.
+     * It takes precedence over the configuration of any {@link OutputGuardrails} annotation on the agent.
      *
      * @param outputGuardrailsConfig the output guardrails configuration
      * @return {@code this}
@@ -619,6 +623,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the input guardrail classes to be instantiated and applied before each request.
+     * Guardrails set this way replace the ones declared in {@link InputGuardrails} annotations on the agent,
+     * see there for the exact rules.
      *
      * @param inputGuardrailClasses the input guardrail classes
      * @param <I> the guardrail type
@@ -631,6 +637,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the output guardrail classes to be instantiated and applied after each response.
+     * Guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations on the agent,
+     * see there for the exact rules.
      *
      * @param outputGuardrailClasses the output guardrail classes
      * @param <O> the guardrail type
@@ -643,6 +651,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the input guardrail instances applied before each request.
+     * Guardrails set this way replace the ones declared in {@link InputGuardrails} annotations on the agent,
+     * see there for the exact rules.
      *
      * @param inputGuardrails the input guardrails
      * @param <I> the guardrail type
@@ -655,6 +665,8 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the output guardrail instances applied after each response.
+     * Guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations on the agent,
+     * see there for the exact rules.
      *
      * @param outputGuardrails the output guardrails
      * @param <O> the guardrail type

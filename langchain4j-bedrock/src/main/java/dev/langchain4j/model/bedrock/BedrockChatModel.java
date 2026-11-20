@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
@@ -70,17 +71,19 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
 
     @Override
     public CompletableFuture<ChatResponse> doChatAsync(ChatRequest request) {
-        validate(request.parameters());
+        return failOnThrow(() -> {
+            validate(request.parameters());
 
-        ConverseRequest converseRequest = buildConverseRequest(request);
+            ConverseRequest converseRequest = buildConverseRequest(request);
 
-        CompletableFuture<ConverseResponse> future = withRetryMappingExceptionsAsync(
-                () -> asyncClient().converse(converseRequest), maxRetries, BedrockExceptionMapper.INSTANCE);
+            CompletableFuture<ConverseResponse> future = withRetryMappingExceptionsAsync(
+                    () -> asyncClient().converse(converseRequest), maxRetries, BedrockExceptionMapper.INSTANCE);
 
-        CompletableFuture<ChatResponse> result = future.thenApply(response -> toChatResponse(converseRequest, response));
+            CompletableFuture<ChatResponse> result = future.thenApply(response -> toChatResponse(converseRequest, response));
 
-        propagateCancellation(result, future);
-        return result;
+            propagateCancellation(result, future);
+            return result;
+        });
     }
 
     private ChatResponse toChatResponse(ConverseRequest converseRequest, ConverseResponse converseResponse) {

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.InternalFlowUtils.failPublisherOnThrow;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -106,10 +107,12 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
     @Override
     public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
-        validate(chatRequest.parameters());
-        OpenAiResponsesChatRequestParameters parameters =
-                (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
-        return client.streamingChatPublisher(chatRequest, parameters);
+        return failPublisherOnThrow(() -> {
+            validate(chatRequest.parameters());
+            OpenAiResponsesChatRequestParameters parameters =
+                    (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
+            return client.streamingChatPublisher(chatRequest, parameters);
+        });
     }
 
     private static void validate(final ChatRequestParameters parameters) {

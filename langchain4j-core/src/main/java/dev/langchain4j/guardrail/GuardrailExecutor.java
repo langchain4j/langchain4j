@@ -51,6 +51,9 @@ public sealed interface GuardrailExecutor<
      * Non-blocking counterpart of {@link #execute(GuardrailRequest)} for the asynchronous and reactive AI Service
      * modes. Runs the guardrails — including, for output guardrails, any reprompt round-trips to the model — without
      * blocking the calling thread.
+     * <p>
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param request The {@link GuardrailRequest} to validate
      * @return A {@link CompletableFuture} that completes with the {@link GuardrailResult} of the validation

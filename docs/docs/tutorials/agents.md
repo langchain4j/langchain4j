@@ -947,6 +947,8 @@ UntypedAgent transferWorkflow = AgenticServices.sequenceBuilder()
 
 If `notificationAgent` throws an exception, the tools invoked by `creditAgent` and `debitAgent` that have `@CompensateFor` methods will be compensated in reverse chronological order (last executed first).
 
+A failing tool also starts the compensation, as soon as it fails: whether its error is sent to the LLM, or it fails the agent (for example with `ToolExecutionErrorHandler.failInvocation()`). This happens before the [error handler](#error-handling) of the agentic system decides how to go on, so the tools stay rolled back even if the error handler recovers with `ErrorRecoveryResult.retry()` or `ErrorRecoveryResult.result(...)`. When the error is sent to the LLM, no error handler runs: the agent and the agentic system go on, also to a successful end, with those tools rolled back. For example, if a tool of an agent fails, its error is sent to the LLM, and the LLM then calls that tool again with success, the tool calls with a `@CompensateFor` method that all agents (including this one) made before the failure are undone right away, and the workflow goes on. A retried agent runs again, but the agents that ran before it are not run again, so their tools are not called again.
+
 Tools without a `@CompensateFor` annotation are simply skipped during compensation.
 
 Compensating actions are defined on tool classes using `@CompensateFor`, the same annotation used for per-agent tool compensation:
@@ -1157,7 +1159,7 @@ so it will reveal the nested sequence of agents invocations necessary to generat
 
 ```
 AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finishTime=2026-03-18T17:27:38.683498783, duration=10584 ms, tokens=0, inputs={topic=dragons and wiz..., style=comedy}, output=In a realm wher...}
-|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.23.0287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.24.0287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
 |=> AgentInvocation{agent=reviewLoop, startTime=2026-03-18T17:27:31.035952285, finishTime=2026-03-18T17:27:38.683438433, duration=7647 ms, tokens=0, inputs={score=0.8, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
     |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-03-18T17:27:31.036155107, finishTime=2026-03-18T17:27:31.671478699, duration=635 ms, tokens=152, inputs={style=comedy, story=In a realm wher...}, output=0.2}
     |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-03-18T17:27:31.671711250, finishTime=2026-03-18T17:27:38.182881941, duration=6511 ms, tokens=491, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
@@ -1456,12 +1458,13 @@ EveningPlannerAgent eveningPlannerAgent = AgenticServices
         .createAgenticSystem(EveningPlannerAgent.class, BASE_MODEL, configurator);
 ```
 
-The resolver is called once for each agent of the system when it is built, and the objects it returns are shared by all the invocations of the agent. An instance helper takes the same parameters as the static form: values read from the `AgenticScope`, the parameters provided by the framework, like `@LoopCounter` or the `ErrorContext`, and the ones resolved through a `SupplierParameterResolver`. The rules are the following:
+The resolver is called once for each agent that the system builds, and the objects it returns are shared by all the invocations of the agent. An instance helper takes the same parameters as the static form: values read from the `AgenticScope`, the parameters provided by the framework, like `@LoopCounter` or the `ErrorContext`, and the ones resolved through a `SupplierParameterResolver`. The rules are the following:
 
 - for one annotation an agent has one helper: a static method of the agent type together with an instance method of a helper object, or two helper objects with the same annotation, is a configuration error, except for the annotations allowed several times on an agent, like `@ActivationCondition` with a value on a conditional agent;
 - a non-static helper declared by the agent type itself, like a `default` method of the interface, needs a helper object that is an instance of its declaring type, otherwise creating the agentic system fails instead of ignoring the method;
 - an instance helper cannot be `private` or `final`, because the proxy a container puts in front of its bean cannot override it, and the method would run on the proxy, without the injected fields; a final method of a final class, as in a Kotlin class by default, is fine, since no proxy can subclass such a class;
 - an agent passed as an instance to a workflow builder, a [non-AI agent](#non-ai-agents) or a [human-in-the-loop](#human-in-the-loop) object, is its own helper object: its `@ActivationCondition` and `@AgentListenerSupplier` can be instance methods, and the parameters of its agent method can be resolved through a `SupplierParameterResolver`;
+- in a declarative system, the `subAgentResolver` of the `AgentConfigurator` can provide a subagent itself: it is called with each type listed among the `subAgents`, and returns the subagent to use, or `null` to let the system build it from that type. When it returns an instance of a non-AI agent or of a human-in-the-loop object, the helper objects of the subagent are that instance followed by the ones that the `helperObjectsResolver` returns for the listed type. An object returned by both resolvers, like the bean of a container, counts once, while another instance of the same class is a second helper object, whose helpers conflict with the ones of the first. When it returns an agent that is already built, for example with `AgenticServices.agentBuilder(...)`, the `helperObjectsResolver` is not called for it, since its helpers were set by whoever built it;
 - in plain LangChain4j the helper objects are mainly a tool for integrations: the Quarkus extension lets an agent be a bean class whose instance helpers are invoked on the bean, see its documentation.
 
 An `AgentConfigurator` can also change the agents of the system while they are created, after their declarative configuration has been applied. Its `configurator` is called for each AI agent, each decision agent and each agent orchestrating subagents, which is a workflow, a supervisor or a planner agent. These three kinds of agents have different builders, so the creation context it receives provides the builder through one of three methods, and the other two return `null`: `agentBuilder()` for an AI agent, `decisionAgentBuilder()` for a decision agent and `agenticService()` for an agent orchestrating subagents. A configurator has to check which one it received before using it. For instance, a [listener](#observability) is notified of the events of the agent it is registered on, and not of the ones of the agents containing it, so this is how a listener that has to follow the model calls of every supervisor of the system is registered on them:
@@ -1727,7 +1730,7 @@ AgentInvocation{agentName='withdraw', arguments={user=Mario, amount=115.0}}
 
 AgentInvocation{agentName='credit', arguments={user=Georgios, amount=115.0}}
 
-AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.23.0 USD. The conversion rate was 1.15 EUR to USD.}}
+AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.24.0 USD. The conversion rate was 1.15 EUR to USD.}}
 ```
 
 The last invocation is a special one that signals the supervisor believes the task has been completed, and returns as a response a summary of all the operations performed.
@@ -4338,6 +4341,44 @@ public interface DeclarativeA2AWithCustomizer {
     }
 }
 ```
+
+### Authenticating agent card discovery
+
+If the remote agent protects its Agent Card endpoint, use `agentCardHeaders` to supply discovery request headers:
+
+```java
+UntypedAgent creativeWriter = AgenticServices.a2aBuilder(A2A_SERVER_URL)
+        .agentCardHeaders(() -> Map.of("Authorization", "Bearer " + tokenProvider.currentToken()))
+        .inputKeys("topic")
+        .outputKey("story")
+        .build();
+```
+
+For declarative agents, annotate a static method returning `Map<String, String>` with `@A2AAgentCardHeaders`:
+
+```java
+public interface ProtectedA2AAgent {
+
+    @A2AClientAgent(a2aServerUrl = "http://localhost:8080", outputKey = "story")
+    String generateStory(@V("topic") String topic);
+
+    @A2AAgentCardHeaders
+    static Map<String, String> cardHeaders(TokenProvider tokenProvider) {
+        return Map.of("Authorization", "Bearer " + tokenProvider.currentToken());
+    }
+}
+```
+
+`TokenProvider` is an application type provided by a registered `SupplierParameterResolver`; a method with no
+parameters needs no resolver. The method can also be an instance method on a [helper object](#helper-objects).
+Exactly one helper may supply card headers. Resolved parameters are captured when the agent is built, while
+the method itself runs when the card is first needed and again when a failed fetch is retried. Supply a token
+provider rather than a token string if credentials need refreshing between fetch attempts.
+
+Both the programmatic supplier and the annotated method normally run on a LangChain4j executor thread, within
+the agent's resolution timeout. A successful card is cached; this does not refresh credentials on every agent
+invocation. A `null` supplier, or a supplier/method returning `null` or an empty map, adds no headers. These headers
+apply only to card discovery; configure authentication for A2A messages separately through `clientCustomizer`.
 
 ### Streaming A2A Client Listener
 

@@ -8,7 +8,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
@@ -249,7 +248,7 @@ public final class RetryUtils {
          *                        what the returned future fails with.
          * @param <T>             the result type.
          * @return a future completing with the first successful attempt, or failing with the mapped exception of the
-         *         last attempt, or with the rejection if the configured executor rejects a retry.
+         *         last attempt.
          * @since 1.20.0
          */
         public <T> CompletableFuture<T> withRetryAsync(
@@ -270,12 +269,7 @@ public final class RetryUtils {
                 return;
             }
 
-            CompletableFuture<T> attempt;
-            try {
-                attempt = action.get();
-            } catch (Throwable t) {
-                attempt = CompletableFuture.failedFuture(t);
-            }
+            CompletableFuture<T> attempt = CompletableFutureUtils.failOnThrow(action);
 
             CompletableFutureUtils.propagateCancellation(result, attempt);
 
@@ -298,19 +292,27 @@ public final class RetryUtils {
                         "A retriable exception occurred. Remaining retries: %s of %s"
                                 .formatted(maxRetries - retry, maxRetries),
                         mapped);
-                Executor executor = DefaultExecutorProvider.getDefaultExecutor();
-                Executor delayed =
-                        CompletableFuture.delayedExecutor(jitterDelayMillis(retry), TimeUnit.MILLISECONDS, command -> {
-                            try {
-                                executor.execute(command);
-                            } catch (RejectedExecutionException e) {
-                                // Keep user completion callbacks off the shared CompletableFuture timer.
-                                CompletableFuture.runAsync(() -> result.completeExceptionally(e));
-                            }
-                        });
+                Executor delayed = CompletableFuture.delayedExecutor(
+                        jitterDelayMillis(retry), TimeUnit.MILLISECONDS, failingOnRejection(result));
                 delayed.execute(() -> attemptAsync(action, maxRetries, exceptionMapper, retry + 1, result));
             });
         }
+    }
+
+    /**
+     * The default executor, but a task it rejects fails {@code result}: a delayed executor of
+     * {@link CompletableFuture} drops what its executor throws, so the retry would never complete it.
+     */
+    private static Executor failingOnRejection(CompletableFuture<?> result) {
+        return task -> {
+            try {
+                DefaultExecutorProvider.getDefaultExecutor().execute(task);
+            } catch (Throwable error) {
+                Exceptions.restoreInterruptIfInterrupted(error);
+                // Keep caller completion callbacks off the shared delay scheduler.
+                CompletableFuture.runAsync(() -> result.completeExceptionally(error));
+            }
+        };
     }
 
     /**

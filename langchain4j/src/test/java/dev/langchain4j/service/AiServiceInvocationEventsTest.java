@@ -1,10 +1,15 @@
 package dev.langchain4j.service;
 
+import static dev.langchain4j.service.StreamingTestModels.streamingOnCallingThread;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doCallRealMethod;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
@@ -25,13 +30,15 @@ import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.model.chat.StreamingChatModel;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.moderation.Moderation;
-import dev.langchain4j.model.moderation.mock.ModerationModelMock;
+import dev.langchain4j.test.mock.MockModerationModel;
 import dev.langchain4j.observability.api.event.AiServiceCancelledEvent;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
@@ -69,6 +76,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -82,6 +90,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 class AiServiceInvocationEventsTest {
@@ -124,7 +133,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_whether_tool_execution_failed() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("succeed", "fail")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("succeed", "fail")).thenRepeats())
                 .tools(new Tools())
                 .registerListeners(listeners())
                 .build();
@@ -143,7 +152,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_retrieved_content() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .contentRetriever(query -> List.of(Content.from("source")))
                 .registerListeners(listeners())
                 .build();
@@ -161,7 +170,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_that_nothing_was_retrieved() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .contentRetriever(query -> List.of())
                 .registerListeners(listeners())
                 .build();
@@ -176,7 +185,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_retrieved_content_of_async_invocation() throws Exception {
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .retrievalAugmentor(offloading(query -> List.of(Content.from("source"))))
                 .registerListeners(listeners())
                 .build();
@@ -191,7 +200,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_error_event_when_token_stream_ignores_errors() throws Exception {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("boom"))
+                .streamingChatModel(MockStreamingChatModel.thatFails(new RuntimeException("boom")))
                 .registerListeners(listeners())
                 .build();
 
@@ -206,7 +215,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_cancelled_event_when_token_stream_is_cancelled() throws Exception {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a", "b", "c"))
+                .streamingChatModel(MockStreamingChatModel.thatStreams("a", "b", "c"))
                 .registerListeners(listeners())
                 .build();
 
@@ -224,10 +233,10 @@ class AiServiceInvocationEventsTest {
     void should_fire_cancelled_event_when_future_is_cancelled() throws Exception {
         CountDownLatch release = new CountDownLatch(1);
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatResponds(request -> {
+                .chatModel(MockChatModel.thatResponds(request -> {
                     await(release);
                     return AiMessage.from("answer");
-                }))
+                }).thenRepeats())
                 .registerListeners(listeners())
                 .build();
 
@@ -241,7 +250,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_cancelled_event_when_subscription_is_cancelled() throws Exception {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a", "b", "c"))
+                .streamingChatModel(MockStreamingChatModel.thatStreams("a", "b", "c"))
                 .registerListeners(listeners())
                 .build();
 
@@ -273,7 +282,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_not_fire_cancelled_event_when_subscription_is_cancelled_after_completion() throws Exception {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("a"))
                 .registerListeners(listeners())
                 .build();
         CompletableFuture<Flow.Subscription> subscription = new CompletableFuture<>();
@@ -304,7 +313,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_error_event_when_async_retrieval_fails() throws Exception {
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .retrievalAugmentor(offloading(query -> {
                     throw new IllegalStateException("retrieval failed");
                 }))
@@ -323,7 +332,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_error_event_when_reactive_retrieval_fails() throws Exception {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("a"))
                 .retrievalAugmentor(offloading(query -> {
                     throw new IllegalStateException("retrieval failed");
                 }))
@@ -361,7 +370,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_one_response_received_event_per_request_when_output_guardrail_reprompts() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(AiMessage.from("bad"), AiMessage.from("good")))
+                .chatModel(MockChatModel.thatResponds(AiMessage.from("bad"), AiMessage.from("good")))
                 .outputGuardrails(repromptingOnce())
                 .registerListeners(listeners())
                 .build();
@@ -375,7 +384,7 @@ class AiServiceInvocationEventsTest {
     void should_fire_one_response_received_event_per_request_when_output_guardrail_reprompts_async()
             throws Exception {
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(AiMessage.from("bad"), AiMessage.from("good")))
+                .chatModel(MockChatModel.thatResponds(AiMessage.from("bad"), AiMessage.from("good")))
                 .outputGuardrails(repromptingOnce())
                 .registerListeners(listeners())
                 .build();
@@ -390,7 +399,7 @@ class AiServiceInvocationEventsTest {
             throws Exception {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(
-                        StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("bad"), AiMessage.from("good")))
+                        MockStreamingChatModel.thatResponds(AiMessage.from("bad"), AiMessage.from("good")))
                 .outputGuardrails(repromptingOnce())
                 .registerListeners(listeners())
                 .build();
@@ -408,11 +417,64 @@ class AiServiceInvocationEventsTest {
     }
 
     @Test
+    void should_report_a_reprompt_that_fails_synchronously_to_the_token_stream_once() throws Exception {
+        RuntimeException failure = new IllegalStateException("reprompt failed");
+        MockStreamingChatModel model = spy(MockStreamingChatModel.thatResponds(AiMessage.from("bad")));
+        doCallRealMethod()
+                .doThrow(failure)
+                .when(model)
+                .doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+
+        assertRepromptFailureIsReportedOnce(model, failure);
+    }
+
+    @Test
+    void should_report_a_reprompt_that_fails_through_on_error_to_the_token_stream_once() throws Exception {
+        RuntimeException failure = new IllegalStateException("reprompt failed");
+        MockStreamingChatModel model = spy(MockStreamingChatModel.thatResponds(AiMessage.from("bad")));
+        doCallRealMethod()
+                .doAnswer(invocation -> {
+                    invocation.getArgument(1, StreamingChatResponseHandler.class).onError(failure);
+                    return null;
+                })
+                .when(model)
+                .doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+
+        assertRepromptFailureIsReportedOnce(model, failure);
+    }
+
+    private void assertRepromptFailureIsReportedOnce(MockStreamingChatModel model, RuntimeException failure)
+            throws Exception {
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(model)
+                .outputGuardrails(repromptingOnce())
+                .registerListeners(listeners())
+                .build();
+        List<Throwable> errors = new CopyOnWriteArrayList<>();
+        CompletableFuture<Throwable> firstError = new CompletableFuture<>();
+
+        assistant
+                .chat("Hello")
+                .onCompleteResponse(response -> {})
+                .onError(error -> {
+                    errors.add(error);
+                    firstError.complete(error);
+                })
+                .start();
+
+        // the model streams on its own thread, and the error event is fired before onError is called
+        assertThat(firstError).succeedsWithin(5, SECONDS);
+        assertSingleTerminalEvent(AiServiceErrorEvent.class);
+        assertThat(errors).hasSize(1);
+        assertThat(Stream.iterate(errors.get(0), Objects::nonNull, Throwable::getCause)).contains(failure);
+    }
+
+    @Test
     void should_fire_one_response_received_event_per_request_when_output_guardrail_reprompts_reactive_invocation()
             throws Exception {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
                 .streamingChatModel(
-                        StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("bad"), AiMessage.from("good")))
+                        MockStreamingChatModel.thatResponds(AiMessage.from("bad"), AiMessage.from("good")))
                 .outputGuardrails(repromptingOnce())
                 .registerListeners(listeners())
                 .build();
@@ -426,7 +488,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_a_failed_tool_execution_when_the_model_calls_an_unknown_tool() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("unknown")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("unknown")).thenRepeats())
                 .tools(new Tools())
                 .registerListeners(listeners())
                 .build();
@@ -439,7 +501,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_a_failed_tool_execution_when_the_model_calls_an_unknown_tool_in_a_reactive_invocation() {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                .streamingChatModel(MockStreamingChatModel.thatResponds(
                         AiMessage.from(ToolExecutionRequest.builder()
                                 .id("1")
                                 .name("unknown")
@@ -458,7 +520,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_the_error_flag_returned_by_the_hallucinated_tool_name_strategy() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("unknown")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("unknown")).thenRepeats())
                 .tools(new Tools())
                 .hallucinatedToolNameStrategy(request -> ToolExecutionResultMessage.builder()
                         .id(request.id())
@@ -477,7 +539,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_a_failed_tool_execution_when_the_arguments_error_handler_fails_the_invocation() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(request -> {
+                .chatModel(MockChatModel.thatResponds(request -> {
                     List<ChatMessage> messages = request.messages();
                     if (messages.get(messages.size() - 1) instanceof ToolExecutionResultMessage) {
                         return AiMessage.from("answer");
@@ -487,7 +549,7 @@ class AiServiceInvocationEventsTest {
                             .name("echo")
                             .arguments("{ not json")
                             .build());
-                }))
+                }).thenRepeats())
                 .tools(new Tools())
                 .registerListeners(listeners())
                 .build();
@@ -505,7 +567,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_every_tool_execution_when_concurrent_tools_fail_a_reactive_invocation() {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                .streamingChatModel(MockStreamingChatModel.thatResponds(
                         AiMessage.from(List.of(
                                 ToolExecutionRequest.builder()
                                         .id("1")
@@ -536,7 +598,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_the_tools_that_ran_before_a_sequential_tool_failed_the_invocation() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("succeed", "fail")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("succeed", "fail")).thenRepeats())
                 .tools(new Tools())
                 .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
                 .registerListeners(listeners())
@@ -550,7 +612,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_the_tools_that_ran_when_a_concurrent_tool_failed_the_invocation() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("succeed", "fail")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("succeed", "fail")).thenRepeats())
                 .tools(new Tools())
                 .executeToolsConcurrently()
                 .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
@@ -566,7 +628,7 @@ class AiServiceInvocationEventsTest {
     void should_report_the_tools_that_ran_before_a_sequential_tool_failed_a_token_stream() {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(
-                        StreamingChatModelMock.thatAlwaysStreams(callingTools("succeed", "fail"), AiMessage.from("answer")))
+                        MockStreamingChatModel.thatResponds(callingTools("succeed", "fail"), AiMessage.from("answer")))
                 .tools(new Tools())
                 .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
                 .registerListeners(listeners())
@@ -581,7 +643,7 @@ class AiServiceInvocationEventsTest {
     void should_report_the_tools_that_ran_when_a_concurrent_tool_failed_a_token_stream() {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(
-                        StreamingChatModelMock.thatAlwaysStreams(callingTools("succeed", "fail"), AiMessage.from("answer")))
+                        MockStreamingChatModel.thatResponds(callingTools("succeed", "fail"), AiMessage.from("answer")))
                 .tools(new Tools())
                 .executeToolsConcurrently()
                 .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
@@ -596,7 +658,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_each_start_of_a_token_stream_as_a_separate_invocation() throws Exception {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("Hel", "lo"))
+                .streamingChatModel(MockStreamingChatModel.thatStreams("Hel", "lo").thenRepeats())
                 .registerListeners(listeners())
                 .build();
         CountDownLatch completedTwice = new CountDownLatch(2);
@@ -635,10 +697,10 @@ class AiServiceInvocationEventsTest {
             }
         };
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatResponds(request -> {
+                .chatModel(MockChatModel.thatResponds(request -> {
                     await(release);
                     return AiMessage.from("answer");
-                }))
+                }).thenRepeats())
                 .registerListeners(listeners())
                 .build();
 
@@ -656,10 +718,10 @@ class AiServiceInvocationEventsTest {
         CountDownLatch release = new CountDownLatch(1);
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
                 // the model answers only after chat(...) returned, so the guardrail never runs on the test thread
-                .chatModel(ChatModelMock.thatResponds(request -> {
+                .chatModel(MockChatModel.thatResponds(request -> {
                     await(chatReturned);
                     return AiMessage.from("answer");
-                }))
+                }).thenRepeats())
                 .outputGuardrails(new OutputGuardrail() {
                     @Override
                     public CompletableFuture<OutputGuardrailResult> validateAsync(OutputGuardrailRequest request) {
@@ -683,7 +745,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_not_fire_cancelled_event_when_subscriber_cancels_after_completed_event_was_fired() throws Exception {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a", "b", "c"))
+                .streamingChatModel(MockStreamingChatModel.thatStreams("a", "b", "c"))
                 .registerListeners(listeners())
                 .build();
         AtomicReference<Flow.Subscription> subscription = new AtomicReference<>();
@@ -715,7 +777,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_one_terminal_event_when_token_stream_is_cancelled_between_tool_rounds() throws Exception {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                .streamingChatModel(MockStreamingChatModel.thatResponds(
                         AiMessage.from(
                                 "Checking",
                                 List.of(ToolExecutionRequest.builder()
@@ -783,7 +845,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_started_event_before_reactive_subscriber_can_cancel() throws Exception {
         ReactiveEventsAssistant assistant = AiServices.builder(ReactiveEventsAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("a"))
                 .registerListeners(listeners())
                 .build();
         List<Class<?>> eventsBeforeOnSubscribe = new CopyOnWriteArrayList<>();
@@ -813,7 +875,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_error_event_when_input_guardrail_of_async_invocation_fails() throws Exception {
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .inputGuardrails(blockingGuardrail())
                 .registerListeners(listeners())
                 .build();
@@ -830,7 +892,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_error_event_when_input_guardrail_of_reactive_invocation_fails() throws Exception {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("a"))
                 .inputGuardrails(blockingGuardrail())
                 .registerListeners(listeners())
                 .build();
@@ -861,7 +923,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_retrieved_content_of_token_stream() throws Exception {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("a"))
                 .contentRetriever(query -> List.of(Content.from("source")))
                 .registerListeners(listeners())
                 .build();
@@ -875,7 +937,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_retrieved_content_of_reactive_invocation() throws Exception {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("a"))
                 .retrievalAugmentor(offloading(query -> List.of(Content.from("source"))))
                 .registerListeners(listeners())
                 .build();
@@ -904,9 +966,9 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_error_event_when_model_throws_an_error() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(request -> {
+                .chatModel(MockChatModel.thatResponds(request -> {
                     throw new AssertionError("unexpected request");
-                }))
+                }).thenRepeats())
                 .registerListeners(listeners())
                 .build();
 
@@ -922,14 +984,16 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_error_event_when_streaming_model_throws_from_chat() {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("cannot connect")
-                        .throwingFromChat())
+                .streamingChatModel(throwingFromChat(new RuntimeException("cannot connect")))
                 .registerListeners(listeners())
                 .build();
-        TokenStream tokenStream = assistant.chat("Hello").onError(error -> {});
+        List<Throwable> errors = new CopyOnWriteArrayList<>();
+        TokenStream tokenStream = assistant.chat("Hello").onError(errors::add);
 
-        assertThatThrownBy(tokenStream::start).hasMessage("cannot connect");
+        // the streaming model reports the exception to the handler instead of throwing it from chat()
+        tokenStream.start();
 
+        assertThat(errors).singleElement().satisfies(error -> assertThat(error).hasMessage("cannot connect"));
         assertThat(events(AiServiceErrorEvent.class))
                 .singleElement()
                 .satisfies(event -> assertThat(event.error()).hasMessage("cannot connect"));
@@ -938,7 +1002,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_error_event_when_chat_request_transformer_of_token_stream_fails() throws Exception {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("a"))
                 .chatRequestTransformer(chatRequest -> {
                     throw new IllegalStateException("transformer failed");
                 })
@@ -957,7 +1021,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_error_event_when_retrieved_contents_handler_of_token_stream_fails() throws Exception {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("a"))
                 .contentRetriever(query -> List.of(Content.from("source")))
                 .registerListeners(listeners())
                 .build();
@@ -980,7 +1044,7 @@ class AiServiceInvocationEventsTest {
     void should_end_token_stream_invocation_with_error_event_on_configuration_error_and_start_a_new_one_when_started_again()
             throws Exception {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("a"))
                 .registerListeners(listeners())
                 .build();
         TokenStream tokenStream = assistant.chat("Hello").onPartialResponse(token -> {});
@@ -1018,7 +1082,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_error_event_when_chat_memory_of_async_invocation_fails() throws Exception {
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .chatMemory(failingChatMemory())
                 .registerListeners(listeners())
                 .build();
@@ -1035,7 +1099,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_error_event_when_chat_memory_of_reactive_invocation_fails() throws Exception {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("a"))
                 .chatMemory(failingChatMemory())
                 .registerListeners(listeners())
                 .build();
@@ -1051,7 +1115,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_error_event_when_tool_provider_of_async_invocation_fails() throws Exception {
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .toolProvider(request -> {
                     throw new IllegalStateException("tool provider failed");
                 })
@@ -1070,7 +1134,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_error_event_when_creating_the_stream_of_reactive_invocation_fails() throws Exception {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("a"))
                 .toolProvider(request -> {
                     throw new IllegalStateException("tool provider failed");
                 })
@@ -1088,7 +1152,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_give_each_concurrent_subscription_of_reactive_invocation_its_own_invocation() throws Exception {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("a").thenRepeats())
                 .registerListeners(listeners())
                 .build();
 
@@ -1099,7 +1163,7 @@ class AiServiceInvocationEventsTest {
     void should_give_each_concurrent_subscription_of_reactive_events_invocation_its_own_invocation()
             throws Exception {
         ReactiveEventsAssistant assistant = AiServices.builder(ReactiveEventsAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("a").thenRepeats())
                 .registerListeners(listeners())
                 .build();
 
@@ -1176,7 +1240,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_give_each_subscription_of_reactive_invocation_its_own_invocation_id() throws Exception {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(new StreamingChatModelMock(List.of(AiMessage.from("one"), AiMessage.from("two"))))
+                .streamingChatModel(MockStreamingChatModel.thatResponds(List.of(AiMessage.from("one"), AiMessage.from("two"))))
                 .registerListeners(listeners())
                 .build();
         Flow.Publisher<String> publisher = assistant.chat("Hello");
@@ -1198,7 +1262,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_not_fire_cancelled_event_when_subscriber_cancels_on_final_response() throws Exception {
         ReactiveEventsAssistant assistant = AiServices.builder(ReactiveEventsAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("a"))
                 .registerListeners(listeners())
                 .build();
         CountDownLatch cancelled = new CountDownLatch(1);
@@ -1235,7 +1299,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_not_fire_cancelled_event_when_token_stream_is_cancelled_after_completion() throws Exception {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("a"))
                 .registerListeners(listeners())
                 .build();
         CompletableFuture<StreamingHandle> handle = new CompletableFuture<>();
@@ -1254,7 +1318,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_a_failed_tool_execution_when_the_error_handler_fails_the_invocation() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("fail")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("fail")).thenRepeats())
                 .tools(new Tools())
                 .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
                 .registerListeners(listeners())
@@ -1268,7 +1332,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_a_failed_tool_execution_when_the_error_handler_fails_an_async_invocation() {
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("fail")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("fail")).thenRepeats())
                 .tools(new Tools())
                 .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
                 .registerListeners(listeners())
@@ -1282,7 +1346,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_a_failed_tool_execution_when_the_error_handler_fails_a_token_stream() throws Exception {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                .streamingChatModel(MockStreamingChatModel.thatResponds(
                         AiMessage.from(ToolExecutionRequest.builder()
                                 .id("1")
                                 .name("fail")
@@ -1308,7 +1372,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_a_failed_tool_execution_when_the_error_handler_fails_a_reactive_invocation() {
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                .streamingChatModel(MockStreamingChatModel.thatResponds(
                         AiMessage.from(ToolExecutionRequest.builder()
                                 .id("1")
                                 .name("fail")
@@ -1328,7 +1392,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_start_a_token_stream_twice_when_its_context_has_no_user_message() throws Exception {
         AiServiceContext context = AiServiceContext.create(StreamingAssistant.class);
-        context.streamingChatModel = StreamingChatModelMock.thatAlwaysStreams("a");
+        context.streamingChatModel = MockStreamingChatModel.thatResponds("a").thenRepeats();
         listeners().forEach(context.eventListenerRegistrar::register);
         // built like an integration that does not pass the original user message in the invocation context
         TokenStream tokenStream = new AiServiceTokenStream(AiServiceTokenStreamParameters.builder()
@@ -1362,7 +1426,7 @@ class AiServiceInvocationEventsTest {
     void should_report_output_guardrail_events_of_a_restarted_token_stream_with_its_own_invocation_id()
             throws Exception {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("good"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("good").thenRepeats())
                 .outputGuardrails(repromptingOnce())
                 .registerListeners(listeners())
                 .registerListener(listener(OutputGuardrailExecutedEvent.class))
@@ -1393,7 +1457,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_error_event_when_the_reactive_stream_fails_on_its_own() throws Exception {
         ReactiveEventsAssistant assistant = AiServices.builder(ReactiveEventsAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("a", "b", "c", "d", "e", "f", "g", "h"))
+                .streamingChatModel(MockStreamingChatModel.thatStreams("a", "b", "c", "d", "e", "f", "g", "h"))
                 .streamingBufferSize(2)
                 .registerListeners(listeners())
                 .registerListener((AiServiceInvocationSummaryListener) events::add)
@@ -1431,7 +1495,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_fire_error_event_when_async_invocation_fails_with_a_cancellation_exception() throws Exception {
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(new ChatModelMock(new CancellationException("the model call was cancelled")))
+                .chatModel(MockChatModel.thatFails(new CancellationException("the model call was cancelled")))
                 .registerListeners(listeners())
                 .build();
 
@@ -1445,7 +1509,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_every_tool_of_a_concurrent_round_of_a_token_stream_when_a_tool_throws_an_error() {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                .streamingChatModel(MockStreamingChatModel.thatResponds(
                         callingTools("succeed", "explode"), AiMessage.from("answer")))
                 .tools(Map.of(
                         ToolSpecification.builder().name("succeed").build(),
@@ -1474,7 +1538,7 @@ class AiServiceInvocationEventsTest {
     void should_report_a_failed_tool_execution_of_a_token_stream_with_the_default_error_handler() {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(
-                        StreamingChatModelMock.thatAlwaysStreams(callingTools("fail"), AiMessage.from("answer")))
+                        MockStreamingChatModel.thatResponds(callingTools("fail"), AiMessage.from("answer")))
                 .tools(new Tools())
                 .registerListeners(listeners())
                 .build();
@@ -1488,7 +1552,7 @@ class AiServiceInvocationEventsTest {
     void should_rethrow_virtual_machine_error_of_a_concurrent_tool_untouched() {
         StackOverflowError overflow = new StackOverflowError("too deep");
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(
+                .chatModel(MockChatModel.thatResponds(
                         callingTools("succeed", "overflow"), AiMessage.from("answer")))
                 .tools(succeedingAndThrowingTools("overflow", overflow))
                 .executeToolsConcurrently()
@@ -1504,7 +1568,7 @@ class AiServiceInvocationEventsTest {
     void should_rethrow_virtual_machine_error_of_a_concurrent_tool_of_a_token_stream_untouched() {
         StackOverflowError overflow = new StackOverflowError("too deep");
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                .streamingChatModel(MockStreamingChatModel.thatResponds(
                         callingTools("succeed", "overflow"), AiMessage.from("answer")))
                 .tools(succeedingAndThrowingTools("overflow", overflow))
                 .executeToolsConcurrently()
@@ -1523,7 +1587,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_every_tool_of_a_sequential_round_when_a_tool_throws_an_error() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(
+                .chatModel(MockChatModel.thatResponds(
                         callingTools("succeed", "explode"), AiMessage.from("answer")))
                 .tools(succeedingAndThrowingTools("explode", new AssertionError("boom")))
                 .registerListeners(listeners())
@@ -1541,7 +1605,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_report_every_tool_of_a_sequential_round_of_a_token_stream_when_a_tool_throws_an_error() {
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                .streamingChatModel(MockStreamingChatModel.thatResponds(
                         callingTools("succeed", "explode"), AiMessage.from("answer")))
                 .tools(succeedingAndThrowingTools("explode", new AssertionError("boom")))
                 .registerListeners(listeners())
@@ -1562,9 +1626,9 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_rethrow_virtual_machine_error_without_firing_an_error_event() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(request -> {
+                .chatModel(MockChatModel.thatResponds(request -> {
                     throw new StackOverflowError("too deep");
-                }))
+                }).thenRepeats())
                 .registerListeners(listeners())
                 .build();
 
@@ -1579,7 +1643,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_tool() {
         Assistant inner = innerAssistant();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("askInner")).thenRepeats())
                 .tools(new InnerTool(inner))
                 .registerListeners(listeners())
                 .build();
@@ -1598,7 +1662,7 @@ class AiServiceInvocationEventsTest {
         Assistant inner = innerAssistant();
         ToolSpecification askInner = ToolSpecification.builder().name("askInner").build();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("askInner")).thenRepeats())
                 .tools(Map.of(askInner, (ToolExecutor) (request, memoryId) -> inner.chat("inner question")))
                 .registerListeners(listeners())
                 .build();
@@ -1612,7 +1676,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_concurrently_executed_tool() {
         Assistant inner = innerAssistant();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner", "succeed")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("askInner", "succeed")).thenRepeats())
                 .tools(new InnerTool(inner), new Tools())
                 .executeToolsConcurrently()
                 .registerListeners(listeners())
@@ -1627,7 +1691,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_tool_of_async_invocation() throws Exception {
         Assistant inner = innerAssistant();
         AsyncAssistant outer = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("askInner")).thenRepeats())
                 .tools(new InnerTool(inner))
                 .registerListeners(listeners())
                 .build();
@@ -1641,7 +1705,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_tool_of_token_stream() throws Exception {
         Assistant inner = innerAssistant();
         StreamingAssistant outer = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                .streamingChatModel(MockStreamingChatModel.thatResponds(
                         callingTools("askInner"), AiMessage.from("answer")))
                 .tools(new InnerTool(inner))
                 .registerListeners(listeners())
@@ -1656,7 +1720,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_tool_of_reactive_invocation() throws Exception {
         Assistant inner = innerAssistant();
         ReactiveAssistant outer = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                .streamingChatModel(MockStreamingChatModel.thatResponds(
                         callingTools("askInner"), AiMessage.from("answer")))
                 .tools(new InnerTool(inner))
                 .registerListeners(listeners())
@@ -1670,15 +1734,15 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_record_parent_invocation_of_every_mode_of_ai_service_called_by_tool() {
         AsyncAssistant asyncInner = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("inner answer"))
+                .chatModel(MockChatModel.thatResponds("inner answer").thenRepeats())
                 .registerListeners(listeners())
                 .build();
         StreamingAssistant streamingInner = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("inner answer"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("inner answer").thenRepeats())
                 .registerListeners(listeners())
                 .build();
         ReactiveAssistant reactiveInner = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("inner answer"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("inner answer").thenRepeats())
                 .registerListeners(listeners())
                 .build();
         ToolSpecification askInner = ToolSpecification.builder().name("askInner").build();
@@ -1701,7 +1765,7 @@ class AiServiceInvocationEventsTest {
             return "inner answers";
         };
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("askInner")).thenRepeats())
                 .tools(Map.of(askInner, askingEveryInner))
                 .registerListeners(listeners())
                 .build();
@@ -1721,7 +1785,7 @@ class AiServiceInvocationEventsTest {
                             () -> inner.chat("inner question"), ownExecutor)
                     .join();
             Assistant outer = AiServices.builder(Assistant.class)
-                    .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner")))
+                    .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("askInner")).thenRepeats())
                     .tools(Map.of(askInner, askingInnerOnOwnThread))
                     .registerListeners(listeners())
                     .build();
@@ -1739,7 +1803,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_input_guardrail() {
         Assistant inner = innerAssistant();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .inputGuardrails(new InputGuardrail() {
                     @Override
                     public InputGuardrailResult validate(UserMessage userMessage) {
@@ -1759,7 +1823,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_output_guardrail() {
         Assistant inner = innerAssistant();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .outputGuardrails(new OutputGuardrail() {
                     @Override
                     public OutputGuardrailResult validate(AiMessage responseFromLLM) {
@@ -1779,7 +1843,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_output_guardrail_of_token_stream() throws Exception {
         Assistant inner = innerAssistant();
         StreamingAssistant outer = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("answer"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("answer"))
                 .outputGuardrails(new OutputGuardrail() {
                     @Override
                     public OutputGuardrailResult validate(AiMessage responseFromLLM) {
@@ -1818,7 +1882,7 @@ class AiServiceInvocationEventsTest {
             }
         };
         AsyncAssistant outer = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .inputGuardrails(completingOnAnotherThread, callingInner)
                 .registerListeners(listeners())
                 .build();
@@ -1832,7 +1896,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_content_retriever() {
         Assistant inner = innerAssistant();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .contentRetriever(query -> List.of(Content.from(inner.chat("rewrite the query"))))
                 .registerListeners(listeners())
                 .build();
@@ -1846,7 +1910,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_offloaded_content_retriever() throws Exception {
         Assistant inner = innerAssistant();
         AsyncAssistant outer = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .retrievalAugmentor(offloading(query -> List.of(Content.from(inner.chat("rewrite the query")))))
                 .registerListeners(listeners())
                 .build();
@@ -1865,7 +1929,7 @@ class AiServiceInvocationEventsTest {
             return List.of(askingInner, askingInner);
         };
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .queryRouter(routingWithInner)
                         .build())
@@ -1881,12 +1945,12 @@ class AiServiceInvocationEventsTest {
     void should_record_direct_parent_invocation_of_ai_services_nested_twice() {
         Assistant inner = innerAssistant();
         Assistant middle = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("askInner")).thenRepeats())
                 .tools(new InnerTool(inner))
                 .registerListeners(listeners())
                 .build();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("askInner")).thenRepeats())
                 .tools(new InnerTool(middle))
                 .registerListeners(listeners())
                 .build();
@@ -1912,7 +1976,7 @@ class AiServiceInvocationEventsTest {
             return List.of(retriever);
         };
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         // two queries, so that they are routed on the executor of the retrieval augmentor
                         .queryTransformer(query -> List.of(query, Query.from("second query", query.metadata())))
@@ -1956,7 +2020,7 @@ class AiServiceInvocationEventsTest {
             }
         };
         AsyncAssistant outer = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .queryTransformer(completingOnAnotherThread)
                         .contentRetriever(asyncRetriever)
@@ -1989,7 +2053,7 @@ class AiServiceInvocationEventsTest {
             }
         };
         AsyncAssistant outer = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .retrievalAugmentor(augmentor)
                 .registerListeners(listeners())
                 .build();
@@ -2003,7 +2067,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_chat_request_transformer() {
         Assistant inner = innerAssistant();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("succeed")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("succeed")).thenRepeats())
                 .tools(new Tools())
                 .chatRequestTransformer(request -> {
                     inner.chat("transform the request");
@@ -2022,7 +2086,7 @@ class AiServiceInvocationEventsTest {
             throws Exception {
         Assistant inner = innerAssistant();
         AsyncAssistant outer = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .chatRequestTransformer(request -> {
                     inner.chat("transform the request");
                     return request;
@@ -2040,7 +2104,7 @@ class AiServiceInvocationEventsTest {
             throws Exception {
         Assistant inner = innerAssistant();
         StreamingAssistant outer = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("answer"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("answer"))
                 .chatRequestTransformer(request -> {
                     inner.chat("transform the request");
                     return request;
@@ -2058,7 +2122,7 @@ class AiServiceInvocationEventsTest {
             throws Exception {
         Assistant inner = innerAssistant();
         ReactiveAssistant outer = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("answer"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("answer"))
                 .chatRequestTransformer(request -> {
                     inner.chat("transform the request");
                     return request;
@@ -2075,7 +2139,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_compensating_tool() {
         Assistant inner = innerAssistant();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("book", "fail")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("book", "fail")).thenRepeats())
                 .tools(new CompensatingWithInner(inner), new Tools())
                 .compensateOnToolErrors(true)
                 .registerListeners(listeners())
@@ -2090,7 +2154,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_compensating_tool_taking_tool_execution() {
         Assistant inner = innerAssistant();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("book", "fail")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("book", "fail")).thenRepeats())
                 .tools(new CompensatingWithInnerFromToolExecution(inner), new Tools())
                 .compensateOnToolErrors(true)
                 .registerListeners(listeners())
@@ -2105,7 +2169,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_tool_execution_error_handler() {
         Assistant inner = innerAssistant();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("fail")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("fail")).thenRepeats())
                 .tools(new Tools())
                 .toolExecutionErrorHandler(
                         (error, errorContext) -> ToolErrorHandlerResult.text(inner.chat("explain the error")))
@@ -2122,7 +2186,7 @@ class AiServiceInvocationEventsTest {
             throws Exception {
         Assistant inner = innerAssistant();
         AsyncAssistant outer = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("fail")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("fail")).thenRepeats())
                 .tools(new Tools())
                 .toolExecutionErrorHandler(
                         (error, errorContext) -> ToolErrorHandlerResult.text(inner.chat("explain the error")))
@@ -2138,7 +2202,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_hallucinated_tool_name_strategy() {
         Assistant inner = innerAssistant();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("unknownTool")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("unknownTool")).thenRepeats())
                 .tools(new Tools())
                 .hallucinatedToolNameStrategy(
                         request -> ToolExecutionResultMessage.from(request, inner.chat("which tool was meant?")))
@@ -2155,7 +2219,7 @@ class AiServiceInvocationEventsTest {
             throws Exception {
         Assistant inner = innerAssistant();
         AsyncAssistant outer = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("unknownTool")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("unknownTool")).thenRepeats())
                 .tools(new Tools())
                 .hallucinatedToolNameStrategy(
                         request -> ToolExecutionResultMessage.from(request, inner.chat("which tool was meant?")))
@@ -2171,7 +2235,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_tool_provider() {
         Assistant inner = innerAssistant();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .toolProvider(request -> {
                     inner.chat("which tools are needed?");
                     return ToolProviderResult.builder().build();
@@ -2204,7 +2268,7 @@ class AiServiceInvocationEventsTest {
             }
         };
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("succeed")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("succeed")).thenRepeats())
                 .tools(new Tools())
                 .toolProvider(dynamicToolProvider)
                 .registerListeners(listeners())
@@ -2220,7 +2284,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_system_message_provider() {
         Assistant inner = innerAssistant();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .systemMessageProvider(memoryId -> inner.chat("write a system message"))
                 .registerListeners(listeners())
                 .build();
@@ -2234,8 +2298,8 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_moderation_model() {
         Assistant inner = innerAssistant();
         ModeratedAssistant outer = AiServices.builder(ModeratedAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
-                .moderationModel(ModerationModelMock.thatModerates(request -> {
+                .chatModel(MockChatModel.thatResponds("answer"))
+                .moderationModel(MockModerationModel.thatModerates(request -> {
                     inner.chat("is this harmful?");
                     return Moderation.notFlagged();
                 }))
@@ -2251,7 +2315,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_system_message_transformer() {
         Assistant inner = innerAssistant();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .systemMessageTransformer(systemMessage -> inner.chat("rewrite the system message"))
                 .registerListeners(listeners())
                 .build();
@@ -2265,7 +2329,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_user_message_provider() {
         Assistant inner = innerAssistant();
         AssistantWithoutArguments outer = AiServices.builder(AssistantWithoutArguments.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .userMessageProvider(memoryId -> inner.chat("write a user message"))
                 .registerListeners(listeners())
                 .build();
@@ -2279,7 +2343,7 @@ class AiServiceInvocationEventsTest {
     void should_record_parent_invocation_of_ai_service_called_by_chat_memory_provider() {
         Assistant inner = innerAssistant();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .chatMemoryProvider(memoryId -> {
                     inner.chat("create a chat memory");
                     return MessageWindowChatMemory.withMaxMessages(10);
@@ -2297,7 +2361,7 @@ class AiServiceInvocationEventsTest {
         Assistant inner = innerAssistant();
         AtomicInteger innerCalls = new AtomicInteger();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer").thenRepeats())
                 .chatMemory(MessageWindowChatMemory.builder()
                         .maxMessages(10)
                         .chatMemoryStore(new InMemoryChatMemoryStore() {
@@ -2337,7 +2401,7 @@ class AiServiceInvocationEventsTest {
                 })
                 .build();
         AssistantWithChatMemoryAccess outer = AiServices.builder(AssistantWithChatMemoryAccess.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .chatMemoryProvider(memoryId -> chatMemory)
                 .registerListeners(listeners())
                 .build();
@@ -2355,7 +2419,7 @@ class AiServiceInvocationEventsTest {
     void should_access_chat_memory_inside_the_invocation() {
         InvocationRecordingChatMemoryStore store = new InvocationRecordingChatMemoryStore();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("succeed")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("succeed")).thenRepeats())
                 .tools(new Tools())
                 .contentRetriever(query -> List.of(Content.from("source")))
                 .chatMemory(MessageWindowChatMemory.builder()
@@ -2374,7 +2438,7 @@ class AiServiceInvocationEventsTest {
     void should_access_chat_memory_inside_the_async_invocation() throws Exception {
         InvocationRecordingChatMemoryStore store = new InvocationRecordingChatMemoryStore();
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("succeed")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("succeed")).thenRepeats())
                 .tools(new Tools())
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .contentRetriever(query -> List.of(Content.from("source")))
@@ -2397,7 +2461,7 @@ class AiServiceInvocationEventsTest {
         InvocationRecordingChatMemoryStore store = new InvocationRecordingChatMemoryStore();
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(
-                        StreamingChatModelMock.thatAlwaysStreams(callingTools("succeed"), AiMessage.from("answer")))
+                        MockStreamingChatModel.thatResponds(callingTools("succeed"), AiMessage.from("answer")))
                 .tools(new Tools())
                 .chatMemory(MessageWindowChatMemory.builder()
                         .maxMessages(10)
@@ -2416,7 +2480,7 @@ class AiServiceInvocationEventsTest {
         InvocationRecordingChatMemoryStore store = new InvocationRecordingChatMemoryStore();
         ReactiveEventsAssistant assistant = AiServices.builder(ReactiveEventsAssistant.class)
                 .streamingChatModel(
-                        StreamingChatModelMock.thatAlwaysStreams(callingTools("succeed"), AiMessage.from("answer")))
+                        MockStreamingChatModel.thatResponds(callingTools("succeed"), AiMessage.from("answer")))
                 .tools(new Tools())
                 .retrievalAugmentor(DefaultRetrievalAugmentor.builder()
                         .contentRetriever(query -> List.of(Content.from("source")))
@@ -2438,7 +2502,7 @@ class AiServiceInvocationEventsTest {
     void should_access_chat_memory_inside_the_invocation_when_output_guardrail_reprompts() {
         InvocationRecordingChatMemoryStore store = new InvocationRecordingChatMemoryStore();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(AiMessage.from("bad"), AiMessage.from("good")))
+                .chatModel(MockChatModel.thatResponds(AiMessage.from("bad"), AiMessage.from("good")))
                 .outputGuardrails(repromptingOnce())
                 .chatMemory(MessageWindowChatMemory.builder()
                         .maxMessages(10)
@@ -2456,7 +2520,7 @@ class AiServiceInvocationEventsTest {
     void should_access_chat_memory_inside_the_async_invocation_when_output_guardrail_reprompts() throws Exception {
         InvocationRecordingChatMemoryStore store = new InvocationRecordingChatMemoryStore();
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds(AiMessage.from("bad"), AiMessage.from("good")))
+                .chatModel(MockChatModel.thatResponds(AiMessage.from("bad"), AiMessage.from("good")))
                 .outputGuardrails(repromptingOnce())
                 .chatMemory(MessageWindowChatMemory.builder()
                         .maxMessages(10)
@@ -2474,7 +2538,7 @@ class AiServiceInvocationEventsTest {
     void should_access_chat_memory_inside_the_invocation_when_output_guardrail_removes_violating_message() {
         InvocationRecordingChatMemoryStore store = new InvocationRecordingChatMemoryStore();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("bad"))
+                .chatModel(MockChatModel.thatResponds("bad"))
                 .outputGuardrails(removingViolatingMessage())
                 .chatMemory(MessageWindowChatMemory.builder()
                         .maxMessages(10)
@@ -2492,7 +2556,7 @@ class AiServiceInvocationEventsTest {
     void should_access_chat_memory_inside_the_async_invocation_when_output_guardrail_removes_violating_message() {
         InvocationRecordingChatMemoryStore store = new InvocationRecordingChatMemoryStore();
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("bad"))
+                .chatModel(MockChatModel.thatResponds("bad"))
                 .outputGuardrails(removingViolatingMessage())
                 .chatMemory(MessageWindowChatMemory.builder()
                         .maxMessages(10)
@@ -2529,7 +2593,7 @@ class AiServiceInvocationEventsTest {
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         List<ChatMemory> seenByGuardrails = new CopyOnWriteArrayList<>();
         AssistantWithChatMemoryAccess assistant = AiServices.builder(AssistantWithChatMemoryAccess.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .inputGuardrails(recordingChatMemory(seenByGuardrails))
                 .outputGuardrails(recordingChatMemoryOfOutput(seenByGuardrails))
                 .chatMemoryProvider(memoryId -> chatMemory)
@@ -2546,7 +2610,7 @@ class AiServiceInvocationEventsTest {
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         List<ChatMemory> seenByGuardrails = new CopyOnWriteArrayList<>();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .inputGuardrails(recordingChatMemory(seenByGuardrails))
                 .outputGuardrails(recordingChatMemoryOfOutput(seenByGuardrails))
                 .chatMemory(chatMemory)
@@ -2563,7 +2627,7 @@ class AiServiceInvocationEventsTest {
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         List<ChatMemory> seenByGuardrails = new CopyOnWriteArrayList<>();
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .inputGuardrails(recordingChatMemory(seenByGuardrails))
                 .outputGuardrails(recordingChatMemoryOfOutput(seenByGuardrails))
                 .chatMemory(chatMemory)
@@ -2580,7 +2644,7 @@ class AiServiceInvocationEventsTest {
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         List<ChatMemory> seenByGuardrails = new CopyOnWriteArrayList<>();
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("answer")))
+                .streamingChatModel(MockStreamingChatModel.thatResponds(AiMessage.from("answer")))
                 .inputGuardrails(recordingChatMemory(seenByGuardrails))
                 .outputGuardrails(recordingChatMemoryOfOutput(seenByGuardrails))
                 .chatMemory(chatMemory)
@@ -2597,7 +2661,7 @@ class AiServiceInvocationEventsTest {
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
         List<ChatMemory> seenByGuardrails = new CopyOnWriteArrayList<>();
         ReactiveEventsAssistant assistant = AiServices.builder(ReactiveEventsAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from("answer")))
+                .streamingChatModel(MockStreamingChatModel.thatResponds(AiMessage.from("answer")))
                 .inputGuardrails(recordingChatMemory(seenByGuardrails))
                 .outputGuardrails(recordingChatMemoryOfOutput(seenByGuardrails))
                 .chatMemory(chatMemory)
@@ -2655,12 +2719,12 @@ class AiServiceInvocationEventsTest {
             }
         };
         Assistant calledByTool = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("inner answer"))
+                .chatModel(MockChatModel.thatResponds("inner answer"))
                 .registerListeners(listeners())
                 .registerListener(callingInner)
                 .build();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("askInner")).thenRepeats())
                 .tools(new InnerTool(calledByTool))
                 .registerListeners(listeners())
                 .build();
@@ -2691,7 +2755,7 @@ class AiServiceInvocationEventsTest {
             }
         };
         Assistant failingBeforeModelCall = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("inner answer"))
+                .chatModel(MockChatModel.thatResponds("inner answer"))
                 .systemMessageProvider(memoryId -> {
                     throw new IllegalStateException("no system message");
                 })
@@ -2700,7 +2764,7 @@ class AiServiceInvocationEventsTest {
                 .build();
         ToolSpecification askInner = ToolSpecification.builder().name("askInner").build();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askInner")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("askInner")).thenRepeats())
                 .tools(Map.of(askInner, (ToolExecutor) (request, memoryId) -> {
                     try {
                         return failingBeforeModelCall.chat("inner question");
@@ -2725,25 +2789,28 @@ class AiServiceInvocationEventsTest {
     void should_not_record_parent_of_ai_service_called_by_error_handler_of_token_stream_started_by_tool() {
         Assistant calledByHandler = innerAssistant();
         StreamingAssistant calledByTool = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysThrowsExceptionWithMessage("model failed"))
+                // the error arrives on the calling thread, inside the invocation, as with a model that fails before
+                // it streams: the handler must still run outside the invocation
+                .streamingChatModel(
+                        streamingOnCallingThread(MockStreamingChatModel.thatFails(new RuntimeException("model failed"))))
                 .registerListeners(listeners())
                 .build();
         List<String> handlersInsideInvocation = new CopyOnWriteArrayList<>();
         ToolSpecification askStreaming =
                 ToolSpecification.builder().name("askStreaming").build();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askStreaming")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("askStreaming")).thenRepeats())
                 .tools(Map.of(askStreaming, (ToolExecutor) (request, memoryId) -> {
-                    AtomicReference<String> answer = new AtomicReference<>();
+                    CompletableFuture<String> answer = new CompletableFuture<>();
                     calledByTool
                             .chat("inner question")
                             .onPartialResponse(token -> {})
                             .onError(error -> {
                                 recordIfInsideInvocation("onError", handlersInsideInvocation);
-                                answer.set(calledByHandler.chat("about " + error.getMessage()));
+                                answer.complete(calledByHandler.chat("about " + error.getMessage()));
                             })
                             .start();
-                    return answer.get();
+                    return answer.orTimeout(5, SECONDS).join();
                 }))
                 .registerListeners(listeners())
                 .build();
@@ -2763,14 +2830,14 @@ class AiServiceInvocationEventsTest {
     void should_not_record_parent_of_ai_service_called_by_subscriber_of_reactive_invocation_started_by_tool() {
         Assistant calledBySubscriber = innerAssistant();
         ReactiveAssistant calledByTool = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("inner answer"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("inner answer"))
                 .registerListeners(listeners())
                 .build();
         List<String> handlersInsideInvocation = new CopyOnWriteArrayList<>();
         ToolSpecification askReactive =
                 ToolSpecification.builder().name("askReactive").build();
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("askReactive")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("askReactive")).thenRepeats())
                 .tools(Map.of(askReactive, (ToolExecutor) (request, memoryId) -> {
                     CompletableFuture<String> done = new CompletableFuture<>();
                     calledByTool.chat("inner question").subscribe(new Flow.Subscriber<>() {
@@ -2816,7 +2883,7 @@ class AiServiceInvocationEventsTest {
     void should_not_record_parent_of_ai_service_called_by_token_stream_handler() throws Exception {
         Assistant inner = innerAssistant();
         StreamingAssistant outer = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("answer"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("answer").thenRepeats())
                 .registerListeners(listeners())
                 .build();
         CompletableFuture<String> done = new CompletableFuture<>();
@@ -2837,9 +2904,9 @@ class AiServiceInvocationEventsTest {
         // the model streams before chat(...) returns, so the handlers run on the thread of the model call
         Assistant inner = innerAssistant();
         StreamingAssistant outer = AiServices.builder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams(
+                .streamingChatModel(streamingOnCallingThread(MockStreamingChatModel.thatResponds(
                                 callingTools("book"), AiMessage.from("booked"))
-                        .streamingOnCallingThread())
+                        .thenRepeats()))
                 .tools(new NoOpBookingTool())
                 .registerListeners(listeners())
                 .build();
@@ -2860,7 +2927,7 @@ class AiServiceInvocationEventsTest {
         Assistant inner = innerAssistant();
         CountDownLatch chained = new CountDownLatch(1);
         AsyncAssistant outer = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .retrievalAugmentor(offloading(query -> {
                     await(chained);
                     return List.of(Content.from("source"));
@@ -2881,7 +2948,7 @@ class AiServiceInvocationEventsTest {
     void should_not_record_parent_of_ai_service_called_by_reactive_subscriber() throws Exception {
         Assistant inner = innerAssistant();
         ReactiveAssistant outer = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("answer"))
+                .streamingChatModel(MockStreamingChatModel.thatResponds("answer").thenRepeats())
                 .registerListeners(listeners())
                 .build();
         CompletableFuture<Void> done = new CompletableFuture<>();
@@ -2930,7 +2997,7 @@ class AiServiceInvocationEventsTest {
             }
         };
         Assistant outer = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("succeed")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("succeed")).thenRepeats())
                 .tools(new Tools())
                 .registerListeners(listeners())
                 .registerListener(callingInner)
@@ -2946,7 +3013,7 @@ class AiServiceInvocationEventsTest {
         List<String> handlersInsideInvocation = new CopyOnWriteArrayList<>();
         StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
                 .streamingChatModel(
-                        StreamingChatModelMock.thatAlwaysStreams(callingTools("succeed"), AiMessage.from("answer")))
+                        MockStreamingChatModel.thatResponds(callingTools("succeed"), AiMessage.from("answer")))
                 .tools(new Tools())
                 .build();
         CompletableFuture<Void> done = new CompletableFuture<>();
@@ -2974,7 +3041,7 @@ class AiServiceInvocationEventsTest {
     void should_complete_a_returned_future_outside_of_the_invocation() throws Exception {
         CountDownLatch chained = new CountDownLatch(1);
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("answer"))
+                .chatModel(MockChatModel.thatResponds("answer"))
                 .retrievalAugmentor(offloading(query -> {
                     await(chained);
                     return List.of(Content.from("source"));
@@ -2994,7 +3061,7 @@ class AiServiceInvocationEventsTest {
         List<String> callbacksInsideInvocation = new CopyOnWriteArrayList<>();
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
                 .streamingChatModel(
-                        StreamingChatModelMock.thatAlwaysStreams(callingTools("succeed"), AiMessage.from("answer")))
+                        MockStreamingChatModel.thatResponds(callingTools("succeed"), AiMessage.from("answer")))
                 .tools(new Tools())
                 .build();
         CompletableFuture<Void> done = new CompletableFuture<>();
@@ -3031,7 +3098,7 @@ class AiServiceInvocationEventsTest {
     @Test
     void should_restore_no_current_invocation_after_the_invocation() {
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("succeed")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("succeed")).thenRepeats())
                 .tools(new Tools())
                 .outputGuardrails(new OutputGuardrail() {
                     @Override
@@ -3049,7 +3116,7 @@ class AiServiceInvocationEventsTest {
 
     private Assistant innerAssistant() {
         return AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("inner answer"))
+                .chatModel(MockChatModel.thatResponds("inner answer").thenRepeats())
                 .registerListeners(listeners())
                 .build();
     }
@@ -3293,7 +3360,7 @@ class AiServiceInvocationEventsTest {
     void should_compensate_the_round_when_the_hallucinated_tool_name_strategy_returns_an_error() {
         BookingTools tools = new BookingTools();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("book", "unknown")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("book", "unknown")).thenRepeats())
                 .tools(tools)
                 .compensateOnToolErrors(true)
                 .hallucinatedToolNameStrategy(request -> ToolExecutionResultMessage.builder()
@@ -3316,7 +3383,7 @@ class AiServiceInvocationEventsTest {
             throws Exception {
         BookingTools tools = new BookingTools();
         Assistant assistant = AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatResponds(callToolsThenAnswer("book", "unknown")))
+                .chatModel(MockChatModel.thatResponds(callToolsThenAnswer("book", "unknown")).thenRepeats())
                 .tools(tools)
                 .compensateOnToolErrors(true)
                 .registerListeners(listeners())
@@ -3329,6 +3396,8 @@ class AiServiceInvocationEventsTest {
                         + "hallucinatedToolNameStrategy on the AiService");
 
         assertSingleTerminalEvent(AiServiceErrorEvent.class);
+        // the booking made before the unknown tool call is rolled back before the invocation fails
+        assertThat(tools.cancelled).hasValue(1);
     }
 
     static class BookingTools {
@@ -3450,5 +3519,12 @@ class AiServiceInvocationEventsTest {
                         || event instanceof AiServiceErrorEvent
                         || event instanceof AiServiceCancelledEvent)
                 .toList();
+    }
+
+
+    private static StreamingChatModel throwingFromChat(RuntimeException exception) {
+        MockStreamingChatModel throwing = spy(MockStreamingChatModel.thatResponds("unused")); // throws from chat(...)
+        doThrow(exception).when(throwing).doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        return throwing;
     }
 }

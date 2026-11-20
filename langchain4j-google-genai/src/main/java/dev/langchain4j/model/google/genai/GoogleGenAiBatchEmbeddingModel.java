@@ -3,6 +3,7 @@ package dev.langchain4j.model.google.genai;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.google.genai.GoogleGenAiClientFactory.DEFAULT_TIMEOUT;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
@@ -39,6 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Provides an interface for interacting with the Google GenAI Batch API for Embedding models.
@@ -68,9 +70,10 @@ public final class GoogleGenAiBatchEmbeddingModel implements BatchEmbeddingModel
                         builder.googleCredentials,
                         builder.projectId,
                         builder.location,
-                        builder.timeout,
+                        getOrDefault(builder.timeout, DEFAULT_TIMEOUT),
                         builder.customHeaders,
-                        builder.apiEndpoint);
+                        builder.apiEndpoint,
+                        builder.apiVersion);
     }
 
     public static Builder builder() {
@@ -139,11 +142,10 @@ public final class GoogleGenAiBatchEmbeddingModel implements BatchEmbeddingModel
                 .displayName(displayName)
                 .build();
 
-        BatchJob batchJob =
-                withRetryMappingExceptions(
-                        () -> client.batches.createEmbeddings(modelName, src, config),
-                        maxRetries,
-                        GoogleGenAiExceptionMapper.INSTANCE);
+        BatchJob batchJob = withRetryMappingExceptions(
+                () -> client.batches.createEmbeddings(modelName, src, config),
+                maxRetries,
+                GoogleGenAiExceptionMapper.INSTANCE);
         return processResponse(batchJob);
     }
 
@@ -163,11 +165,10 @@ public final class GoogleGenAiBatchEmbeddingModel implements BatchEmbeddingModel
                 .displayName(displayName)
                 .build();
 
-        BatchJob batchJob =
-                withRetryMappingExceptions(
-                        () -> client.batches.createEmbeddings(modelName, src, config),
-                        maxRetries,
-                        GoogleGenAiExceptionMapper.INSTANCE);
+        BatchJob batchJob = withRetryMappingExceptions(
+                () -> client.batches.createEmbeddings(modelName, src, config),
+                maxRetries,
+                GoogleGenAiExceptionMapper.INSTANCE);
         return processResponse(batchJob);
     }
 
@@ -233,6 +234,7 @@ public final class GoogleGenAiBatchEmbeddingModel implements BatchEmbeddingModel
         private TaskTypeEnum taskType;
         private String titleMetadataKey;
         private String apiEndpoint;
+        private @Nullable String apiVersion;
         private Map<String, String> customHeaders;
 
         public Builder client(Client client) {
@@ -270,6 +272,17 @@ public final class GoogleGenAiBatchEmbeddingModel implements BatchEmbeddingModel
             return this;
         }
 
+        /**
+         * Sets the timeout of each HTTP request to the Google GenAI API.
+         * It limits each request (submitting, retrieving, listing or cancelling a batch),
+         * not how long a batch job runs.
+         * A request that times out is retried (see {@link #maxRetries(Integer)}), and each retry gets the full timeout.
+         * Defaults to 20 minutes.
+         * Ignored when {@link #client(Client)} is set.
+         *
+         * @param timeout the timeout
+         * @return {@code this}
+         */
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -292,6 +305,17 @@ public final class GoogleGenAiBatchEmbeddingModel implements BatchEmbeddingModel
 
         public Builder apiEndpoint(String apiEndpoint) {
             this.apiEndpoint = apiEndpoint;
+            return this;
+        }
+
+        /**
+         * The version of the API to call, for example {@code v1beta} or {@code v1}. When not set ({@code null}), the
+         * version set in the {@code GOOGLE_GENAI_API_VERSION} environment variable is used, otherwise {@code v1beta}
+         * on the Gemini Developer API and the default of the Google GenAI SDK on Vertex AI. Ignored when a client is
+         * set with {@code client(...)}.
+         */
+        public Builder apiVersion(@Nullable String apiVersion) {
+            this.apiVersion = apiVersion;
             return this;
         }
 

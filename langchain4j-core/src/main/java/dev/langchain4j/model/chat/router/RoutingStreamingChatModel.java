@@ -1,11 +1,14 @@
 package dev.langchain4j.model.chat.router;
 
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
+import static dev.langchain4j.internal.InternalFlowUtils.failPublisherOnThrow;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.HandlerWithoutInvocation;
+import dev.langchain4j.internal.StreamingChatHandlerGuard;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -29,8 +32,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.Flow.Subscriber;
 import java.util.concurrent.Flow.Subscription;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The streaming counterpart of {@link RoutingChatModel}: a {@link StreamingChatModel} that sends each request to one
@@ -59,8 +60,6 @@ import org.slf4j.LoggerFactory;
 @Experimental
 public class RoutingStreamingChatModel implements StreamingChatModel {
 
-    private static final Logger log = LoggerFactory.getLogger(RoutingStreamingChatModel.class);
-
     private final RouteSelector<StreamingChatModel> selector;
 
     protected RoutingStreamingChatModel(Builder builder) {
@@ -73,36 +72,29 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
 
     @Override
     public void chat(ChatRequest request, ChatRequestOptions options, StreamingChatResponseHandler handler) {
-        ensureNotNull(request, "request");
         ensureNotNull(handler, "handler");
-        UUID invocationId = CurrentInvocation.invocationId(options);
+        UUID invocationId;
         String routeName;
         try {
+            ensureNotNull(request, "request");
+            invocationId = CurrentInvocation.invocationId(options);
             routeName = CurrentInvocation.callWithIdOrWithout(invocationId, () -> selector.select(request, options));
-        } catch (Exception e) {
-            onError(handler, e);
+        } catch (Throwable e) {
+            restoreInterruptIfInterrupted(e);
+            handler.onError(e);
             return;
         }
-        try {
-            String selectedRoute = routeName;
-            CurrentInvocation.runWithIdOrWithout(
-                    invocationId,
-                    () -> selector.model(selectedRoute)
-                            .chat(
-                                    request,
-                                    RouteSelector.withRoute(options, selectedRoute, invocationId),
-                                    HandlerWithoutInvocation.wrap(new RouteRecordingHandler(handler, selectedRoute))));
-        } catch (Exception e) {
-            onError(handler, e);
-        }
-    }
-
-    private static void onError(StreamingChatResponseHandler handler, Throwable error) {
-        try {
-            handler.onError(error);
-        } catch (Exception e) {
-            log.warn("Exception while calling onError() of the streaming response handler", e);
-        }
+        StreamingChatHandlerGuard guard = new StreamingChatHandlerGuard(handler);
+        RouteRecordingHandler routeHandler = new RouteRecordingHandler(handler, guard, routeName);
+        guard.run(
+                () -> CurrentInvocation.runWithIdOrWithout(
+                        invocationId,
+                        () -> selector.model(routeName)
+                                .chat(
+                                        request,
+                                        RouteSelector.withRoute(options, routeName, invocationId),
+                                        HandlerWithoutInvocation.wrap(routeHandler))),
+                routeHandler);
     }
 
     @Override
@@ -112,30 +104,34 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
 
     @Override
     public Publisher<ChatModelStreamingEvent> chat(ChatRequest request) {
-        ensureNotNull(request, "request");
-        UUID invocationId = CurrentInvocation.invocationId();
-        return downstream -> {
-            DeferredSubscription subscription = new DeferredSubscription(downstream);
-            downstream.onSubscribe(subscription);
-            CompletableFuture<String> route = CurrentInvocation.callWithIdOrWithout(
-                    invocationId, () -> selector.selectAsync(request, ChatRequestOptions.EMPTY));
-            subscription.setRouting(route);
-            route.whenComplete((routeName, routingError) -> {
-                if (subscription.isCancelled()) {
-                    return;
-                }
-                if (routingError != null) {
-                    downstream.onError(unwrapCompletionException(routingError));
-                    return;
-                }
-                try {
-                    CurrentInvocation.callWithIdOrWithout(invocationId, () -> selector.model(routeName).chat(request))
-                            .subscribe(new RouteRecordingSubscriber(downstream, subscription, routeName));
-                } catch (Throwable error) {
-                    downstream.onError(error);
-                }
-            });
-        };
+        return failPublisherOnThrow(() -> {
+            ensureNotNull(request, "request");
+            UUID invocationId = CurrentInvocation.invocationId();
+            return downstream -> {
+                DeferredSubscription subscription = new DeferredSubscription(downstream);
+                downstream.onSubscribe(subscription);
+                CompletableFuture<String> route = CurrentInvocation.callWithIdOrWithout(
+                        invocationId, () -> selector.selectAsync(request, ChatRequestOptions.EMPTY));
+                subscription.setRouting(route);
+                route.whenComplete((routeName, routingError) -> {
+                    if (subscription.isCancelled()) {
+                        return;
+                    }
+                    if (routingError != null) {
+                        downstream.onError(unwrapCompletionException(routingError));
+                        return;
+                    }
+                    try {
+                        CurrentInvocation.callWithIdOrWithout(
+                                        invocationId, () -> selector.model(routeName).chat(request))
+                                .subscribe(new RouteRecordingSubscriber(downstream, subscription, routeName));
+                    } catch (Throwable error) {
+                        restoreInterruptIfInterrupted(error);
+                        downstream.onError(error);
+                    }
+                });
+            };
+        });
     }
 
     private static final class RouteRecordingSubscriber implements Subscriber<ChatModelStreamingEvent> {
@@ -305,10 +301,13 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
     private static final class RouteRecordingHandler implements StreamingChatResponseHandler {
 
         private final StreamingChatResponseHandler delegate;
+        private final StreamingChatHandlerGuard guard;
         private final String routeName;
 
-        private RouteRecordingHandler(StreamingChatResponseHandler delegate, String routeName) {
+        private RouteRecordingHandler(
+                StreamingChatResponseHandler delegate, StreamingChatHandlerGuard guard, String routeName) {
             this.delegate = delegate;
+            this.guard = guard;
             this.routeName = routeName;
         }
 
@@ -354,12 +353,12 @@ public class RoutingStreamingChatModel implements StreamingChatModel {
 
         @Override
         public void onCompleteResponse(ChatResponse completeResponse) {
-            delegate.onCompleteResponse(RouteSelector.withRoute(completeResponse, routeName));
+            guard.onCompleteResponse(RouteSelector.withRoute(completeResponse, routeName));
         }
 
         @Override
         public void onError(Throwable error) {
-            delegate.onError(error);
+            guard.onError(error);
         }
     }
 

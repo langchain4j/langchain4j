@@ -17,7 +17,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import java.util.List;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,12 +31,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 class ConversationalChainTest {
 
     private ChatMemory chatMemory;
-    private ChatModelMock chatModel;
+    private MockChatModel chatModel;
 
     @BeforeEach
     void setUp() {
         chatMemory = spy(MessageWindowChatMemory.withMaxMessages(10));
-        chatModel = ChatModelMock.thatAlwaysResponds("AI response");
+        chatModel = MockChatModel.thatResponds("AI response").thenRepeats();
     }
 
     @Test
@@ -46,7 +46,7 @@ class ConversationalChainTest {
         ChatMemory chatMemory = spy(MessageWindowChatMemory.withMaxMessages(10));
 
         String aiMessage = "Hi there";
-        ChatModelMock model = ChatModelMock.thatAlwaysResponds(aiMessage);
+        MockChatModel model = MockChatModel.thatResponds(aiMessage);
 
         ConversationalChain chain = ConversationalChain.builder()
                 .chatModel(model)
@@ -66,7 +66,7 @@ class ConversationalChainTest {
         verify(chatMemory).add(AiMessage.from(aiMessage));
         verifyNoMoreInteractions(chatMemory);
 
-        assertThat(model.userMessageText()).isEqualTo(userMessage);
+        assertThat(userMessageText(model)).isEqualTo(userMessage);
     }
 
     @ParameterizedTest
@@ -229,5 +229,10 @@ class ConversationalChainTest {
         assertThat(response).isEqualTo("AI response");
         assertThat(memoryWithSystem.messages()).hasSize(3); // system + user + ai
         assertThat(memoryWithSystem.messages().get(0)).isInstanceOf(SystemMessage.class);
+    }
+
+    private static String userMessageText(MockChatModel model) {
+        assertThat(model.request().messages()).hasSize(1);
+        return ((UserMessage) model.request().messages().get(0)).singleText();
     }
 }

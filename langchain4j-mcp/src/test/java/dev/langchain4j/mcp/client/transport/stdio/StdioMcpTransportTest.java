@@ -28,6 +28,14 @@ import org.junit.jupiter.params.provider.ValueSource;
 class StdioMcpTransportTest {
 
     @Test
+    void should_describe_command_without_its_arguments() {
+        String description =
+                StdioMcpTransport.describe(List.of("npx", "-y", "some-mcp-server", "--api-key", "secret-api-key"));
+
+        assertThat(description).isEqualTo("npx (with 4 arguments)").doesNotContain("secret-api-key");
+    }
+
+    @Test
     void should_inherit_working_directory_by_default() throws Exception {
         ExecutorService executorService = Executors.newCachedThreadPool();
         try (StdioMcpTransport transport =

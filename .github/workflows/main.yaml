@@ -288,6 +288,7 @@ jobs:
             -Dgib.disable=false -Dgib.referenceBranch=__branch_before \
             -Djunit.jupiter.extensions.autodetection.enabled=true \
             -DskipAzureAiSearchITs -DskipJlamaITs -DskipLocalAiITs -DskipMilvusITs -DskipOllamaITs -DskipOracleITs -DskipVespaITs \
+            --fail-at-end \
             -DembeddingsSkipCache \
             -Dtinylog.writer.level=info 2>&1 | tee maven-output.log
         env:
@@ -441,6 +442,15 @@ jobs:
               | head -50
             echo '```'
           } >> $GITHUB_STEP_SUMMARY
+
+  # Artifacts are not masked like job logs and summaries, and anyone can download those of a public repository
+  artifact_upload_check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Check that no workflow uploads artifacts
+        run: python3 .github/scripts/check-artifact-uploads.py
 
   spotless:
     runs-on: ubuntu-latest

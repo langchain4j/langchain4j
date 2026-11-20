@@ -18,7 +18,159 @@
         // add "dependencies" label to PRs
         "dependencies"
     ],
+    "timezone": "Europe/Berlin",
+    // most bad or hijacked releases are found and pulled within a few days, and Milvus pushes its images days before
+    // a release is final; security fixes from GitHub's vulnerability alerts do not wait (vulnerabilityAlerts has no
+    // minimumReleaseAge by default)
+    "minimumReleaseAge": "7 days",
     "packageRules": [
+        {
+            // the JDK versions in the workflows and the dev container features come without a release timestamp, so
+            // their release age cannot be checked; without this, their updates would wait for a click on the dashboard
+            "matchPackageNames": ["java-jdk", "ghcr.io/devcontainers/features/*"],
+            "minimumReleaseAgeBehaviour": "timestamp-optional"
+        },
+        {
+            // each workflow job pins its JDK major on purpose (the 17, 21 and 25 builds)
+            "matchPackageNames": ["java-jdk"],
+            "matchUpdateTypes": ["major"],
+            "enabled": false
+        },
+        {
+            // prPriority sets the order in which Renovate opens PRs while the PR limits (10 open, 2 per hour) hold
+            // updates back; higher goes first, the default is 0. Tier 1 (4): core, main module, shared libraries and
+            // HTTP clients. Tier 2 (2): the most used integrations. Tier 3 (0): all other modules. Test dependencies
+            // are one step below the production ones of their tier, build tooling is with the tier 3 tests.
+            "matchDepTypes": ["test"],
+            "prPriority": -1
+        },
+        {
+            "matchFileNames": [
+                "langchain4j-parent/pom.xml", "langchain4j-core/pom.xml", "langchain4j/pom.xml",
+                "langchain4j-http-client/pom.xml", "http-clients/*/pom.xml"
+            ],
+            "prPriority": 4
+        },
+        {
+            "matchFileNames": [
+                "langchain4j-parent/pom.xml", "langchain4j-core/pom.xml", "langchain4j/pom.xml",
+                "langchain4j-http-client/pom.xml", "http-clients/*/pom.xml"
+            ],
+            "matchDepTypes": ["test"],
+            "prPriority": 3
+        },
+        {
+            // test libraries that the parent manages without the test scope
+            "matchFileNames": ["langchain4j-parent/pom.xml"],
+            "matchPackageNames": [
+                "org.junit:*", "org.testcontainers:*", "org.mockito:*", "org.assertj:*", "org.awaitility:*",
+                "ch.qos.logback:*", "org.tinylog:*", "org.apache.logging.log4j:*"
+            ],
+            "prPriority": 3
+        },
+        {
+            "matchFileNames": [
+                "document-parsers/langchain4j-document-parser-apache-tika/pom.xml", "embeddings/*/pom.xml",
+                "langchain4j-agentic/pom.xml", "langchain4j-anthropic/pom.xml", "langchain4j-azure-ai-search/pom.xml",
+                "langchain4j-azure-open-ai/pom.xml", "langchain4j-bedrock/pom.xml", "langchain4j-elasticsearch/pom.xml",
+                "langchain4j-google-ai-gemini/pom.xml", "langchain4j-google-genai/pom.xml", "langchain4j-mcp/pom.xml",
+                "langchain4j-milvus/pom.xml", "langchain4j-mistral-ai/pom.xml", "langchain4j-ollama/pom.xml",
+                "langchain4j-open-ai/pom.xml", "langchain4j-open-ai-official/pom.xml", "langchain4j-skills/pom.xml",
+                "langchain4j-vertex-ai-gemini/pom.xml"
+            ],
+            "prPriority": 2
+        },
+        {
+            "matchFileNames": [
+                "document-parsers/langchain4j-document-parser-apache-tika/pom.xml", "embeddings/*/pom.xml",
+                "langchain4j-agentic/pom.xml", "langchain4j-anthropic/pom.xml", "langchain4j-azure-ai-search/pom.xml",
+                "langchain4j-azure-open-ai/pom.xml", "langchain4j-bedrock/pom.xml", "langchain4j-elasticsearch/pom.xml",
+                "langchain4j-google-ai-gemini/pom.xml", "langchain4j-google-genai/pom.xml", "langchain4j-mcp/pom.xml",
+                "langchain4j-milvus/pom.xml", "langchain4j-mistral-ai/pom.xml", "langchain4j-ollama/pom.xml",
+                "langchain4j-open-ai/pom.xml", "langchain4j-open-ai-official/pom.xml", "langchain4j-skills/pom.xml",
+                "langchain4j-vertex-ai-gemini/pom.xml"
+            ],
+            "matchDepTypes": ["test"],
+            "prPriority": 1
+        },
+        {
+            // build tooling: Maven plugins (also those in the tier 1 files), GitHub Actions, the Maven wrapper,
+            // the docs site, the dev container, the Milvus test image, the integration tests and the internal tools
+            "matchDepTypes": ["build"],
+            "prPriority": -1
+        },
+        {
+            "matchManagers": ["!maven"],
+            "prPriority": -1
+        },
+        {
+            "matchFileNames": ["integration-tests/**", "internal/**"],
+            "prPriority": -1
+        },
+        {
+            // majors usually need migration work: they stay last, as by default, so they do not take all the PR slots
+            "matchUpdateTypes": ["major"],
+            "prPriority": -2
+        },
+        {
+            // Weekly PRs, opened early on Monday so that their CI is done before the Monday review: Maven plugins and
+            // the Maven wrapper in one group, the test dependencies in another, and the AWS and Azure SDKs, which
+            // release almost daily. Majors stay separate. The other updates always fill the PR limits, so these PRs
+            // do not wait for them, and their branches are not updated during the week. The plugins of the
+            // integration-test projects stay with the BOM of their framework, which shares their version.
+            "matchDepTypes": ["build"],
+            "matchFileNames": ["!integration-tests/**"],
+            "matchUpdateTypes": ["minor", "patch"],
+            "groupName": "Maven plugins and wrapper",
+            "schedule": ["* 0-4 * * 1"],
+            "updateNotScheduled": false,
+            "prConcurrentLimit": 0,
+            "prHourlyLimit": 0
+        },
+        {
+            "matchManagers": ["maven-wrapper"],
+            "matchUpdateTypes": ["minor", "patch"],
+            "groupName": "Maven plugins and wrapper",
+            "schedule": ["* 0-4 * * 1"],
+            "updateNotScheduled": false,
+            "prConcurrentLimit": 0,
+            "prHourlyLimit": 0
+        },
+        {
+            // the test group takes the test priority of tier 1
+            "matchDepTypes": ["test"],
+            "matchUpdateTypes": ["minor", "patch"],
+            "groupName": "test dependencies",
+            "prPriority": 3,
+            "schedule": ["* 0-4 * * 1"],
+            "updateNotScheduled": false,
+            "prConcurrentLimit": 0,
+            "prHourlyLimit": 0
+        },
+        {
+            // with the JUnit API that the test retry extension builds against, so that JUnit stays in one PR
+            "matchFileNames": ["langchain4j-parent/pom.xml", "internal/langchain4j-internal-test-retry/pom.xml"],
+            "matchPackageNames": [
+                "org.junit:*", "org.junit.jupiter:*", "org.testcontainers:*", "org.mockito:*", "org.assertj:*",
+                "org.awaitility:*", "ch.qos.logback:*", "org.tinylog:*", "org.apache.logging.log4j:*"
+            ],
+            "matchUpdateTypes": ["minor", "patch"],
+            "groupName": "test dependencies",
+            "prPriority": 3,
+            "schedule": ["* 0-4 * * 1"],
+            "updateNotScheduled": false,
+            "prConcurrentLimit": 0,
+            "prHourlyLimit": 0
+        },
+        {
+            // the whole SDK monorepo groups, so that each group has one schedule
+            "matchPackageNames": ["software.amazon.awssdk:*", "com.azure:*"],
+            "matchUpdateTypes": ["minor", "patch"],
+            "schedule": ["* 0-4 * * 1"],
+            "updateNotScheduled": false,
+            "prConcurrentLimit": 0,
+            "prHourlyLimit": 0
+        },
         {
             // Jackson parses untrusted JSON, so its updates must be the first to get a free PR slot
             "matchPackageNames": [
@@ -66,29 +218,6 @@
             "groupName": "onnxruntime"
         },
         {
-            // the Azure SDK is still on Netty 4.1; Netty 4.2 in these modules would mix two Netty lines on the classpath
-            "matchFileNames": [
-                "code-execution-engines/langchain4j-code-execution-engine-azure-acads/pom.xml",
-                "document-loaders/langchain4j-document-loader-azure-storage-blob/pom.xml",
-                "langchain4j-azure-cosmos-nosql/pom.xml",
-                "langchain4j-azure-open-ai/pom.xml"
-            ],
-            "matchPackageNames": ["io.netty:*"],
-            "allowedVersions": "(,4.2)"
-        },
-        {
-            // the Azure SDK is still on Reactor Core 3.7 and Reactor Netty 1.2 (Reactor Netty 1.3 needs Netty 4.2);
-            // lift these two caps and the Netty one above when azure-sdk-bom brings azure-core 1.61+ (Reactor Core 3.8)
-            "matchFileNames": ["langchain4j-azure-cosmos-nosql/pom.xml"],
-            "matchPackageNames": ["io.projectreactor:reactor-core"],
-            "allowedVersions": "(,3.8)"
-        },
-        {
-            "matchFileNames": ["langchain4j-azure-cosmos-nosql/pom.xml"],
-            "matchPackageNames": ["io.projectreactor.netty:*"],
-            "allowedVersions": "(,1.3)"
-        },
-        {
             // the module is built on the JDK 25 build of the 0.4 line: 0.5.0+ removed classes it uses (LastRunMetrics),
             // and the successor of GPULlama3.java is jitLLM (langchain4j-jitllm)
             "matchPackageNames": ["io.github.beehive-lab:gpu-llama3"],
@@ -108,17 +237,23 @@
             "enabled": false
         },
         {
+            // 1.9.0+ is built with Kotlin 2 and needs kotlin-stdlib 2.x, but langchain4j-kotlin stays on Kotlin 1.9
+            // (kotlin.version) so that projects on Kotlin 1.9 can use it; lift this cap when it moves to Kotlin 2
+            "matchPackageNames": ["org.jetbrains.kotlinx:kotlinx-coroutines-*"],
+            "allowedVersions": "(,1.9)"
+        },
+        {
+            // for the same reason, Kotlin code is compiled with language and API version 1.9; the compiler deprecates
+            // it in 2.2.0 (a warning, which -Werror turns into an error) and drops it in 2.4.0; lift with the cap above
+            "matchPackageNames": ["org.jetbrains.kotlin:kotlin-maven-plugin"],
+            "allowedVersions": "(,2.2)"
+        },
+        {
             // the Milvus tests pin one image per server major version; a new major gets its own entry instead
             "matchDatasources": ["docker"],
             "matchPackageNames": ["milvusdb/milvus"],
             "matchUpdateTypes": ["major"],
             "enabled": false
-        },
-        {
-            // Milvus pushes a new image days before its release is final, and may push it again in between
-            "matchDatasources": ["docker"],
-            "matchPackageNames": ["milvusdb/milvus"],
-            "minimumReleaseAge": "3 days"
         }
     ],
     "customManagers": [

@@ -11,6 +11,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.chat.Capability.RESPONSE_FORMAT_JSON_SCHEMA;
+import static dev.langchain4j.model.google.genai.GoogleGenAiClientFactory.DEFAULT_TIMEOUT;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
@@ -49,6 +50,7 @@ import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,9 +120,10 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                         builder.googleCredentials,
                         builder.projectId,
                         builder.location,
-                        builder.timeout,
+                        getOrDefault(builder.timeout, DEFAULT_TIMEOUT),
                         builder.customHeaders,
-                        builder.apiEndpoint);
+                        builder.apiEndpoint,
+                        builder.apiVersion);
 
         ChatRequestParameters commonParameters =
                 getOrDefault(builder.defaultRequestParameters, DefaultChatRequestParameters.EMPTY);
@@ -187,7 +190,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                     "Request:\n- model: {}\n- messages: {}\n- config: {}",
                     chatRequest.modelName(),
                     chatRequest.messages(),
-                    config);
+                    GoogleGenAiConfigBuilder.withMaskedHttpHeaders(config));
         }
 
         MappingTrackingStreamingChatResponseHandler trackingHandler =
@@ -415,6 +418,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         private String vertexSearchDatastore;
         private Map<String, String> labels;
         private String apiEndpoint;
+        private @Nullable String apiVersion;
         private Map<String, String> customHeaders;
         private String cachedContent;
         private Boolean logRequests;
@@ -431,6 +435,11 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
          * Use this when you need full control over client configuration.
          * When set, {@link #apiKey(String)}, {@link #googleCredentials(GoogleCredentials)},
          * {@link #projectId(String)}, {@link #location(String)}, and {@link #timeout(Duration)} are ignored.
+         * <p>
+         * A {@code Client} that you build uses the default API version of the Google GenAI SDK ({@code v1} on the
+         * Gemini Developer API), while the client that this builder creates uses {@link #apiVersion(String)}
+         * ({@code v1beta} by default). Some features and model aliases are available on {@code v1beta} only: set
+         * {@code HttpOptions.builder().apiVersion("v1beta")} on your client to use them.
          *
          * @param client the pre-configured client
          * @return {@code this}
@@ -509,9 +518,15 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         }
 
         /**
-         * Sets the HTTP request timeout for calls to the Google GenAI API.
+         * Sets the timeout of each HTTP request to the Google GenAI API.
+         * It limits the whole request, including the complete stream:
+         * a response that is still streaming when the timeout is reached fails.
+         * With automatic continuation (see {@link #automaticContinuation(Boolean)}), a long response can take
+         * several requests, each with its own timeout.
+         * Defaults to 20 minutes.
+         * Ignored when {@link #client(Client)} is set.
          *
-         * @param timeout the request timeout
+         * @param timeout the timeout
          * @return {@code this}
          */
         public Builder timeout(Duration timeout) {
@@ -599,7 +614,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
         /**
          * The thinking level to use. This is the recommended parameter for Gemini 3.x models.
-         * Allowed values are {@code "MINIMAL"}, {@code "LOW"}, {@code "MEDIUM"}, {@code "HIGH"}.
+         * Allowed values are {@code "MINIMAL"}, {@code "LOW"}, {@code "MEDIUM"}, {@code "HIGH"}, {@code "XHIGH"}.
          * Note that this cannot be used together with {@link #thinkingBudget(Integer)}.
          */
         public Builder thinkingLevel(String thinkingLevel) {
@@ -869,6 +884,17 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
          */
         public Builder apiEndpoint(String apiEndpoint) {
             this.apiEndpoint = apiEndpoint;
+            return this;
+        }
+
+        /**
+         * The version of the API to call, for example {@code v1beta} or {@code v1}. When not set ({@code null}), the
+         * version set in the {@code GOOGLE_GENAI_API_VERSION} environment variable is used, otherwise {@code v1beta}
+         * on the Gemini Developer API and the default of the Google GenAI SDK on Vertex AI. Ignored when a client is
+         * set with {@code client(...)}.
+         */
+        public Builder apiVersion(@Nullable String apiVersion) {
+            this.apiVersion = apiVersion;
             return this;
         }
 

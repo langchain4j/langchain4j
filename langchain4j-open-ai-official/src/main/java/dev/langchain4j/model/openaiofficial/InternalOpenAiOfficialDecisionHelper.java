@@ -144,10 +144,10 @@ class InternalOpenAiOfficialDecisionHelper {
         Transcript transcript = DecisionModelInputUtils.transcript(messages, "The OpenAI Decisions API");
         List<DecisionInputPart> parts = new ArrayList<>();
         parts.add(textPart("messages: " + Json.toJson(transcript.messages())));
-        for (int i = 0; i < transcript.images().size(); i++) {
-            parts.add(textPart("[image " + (i + 1) + "]:"));
-            parts.add(toInputPart(transcript.images().get(i)));
-        }
+        transcript.media().forEach((marker, content) -> {
+            parts.add(textPart(marker + ":"));
+            parts.add(toInputPart(content));
+        });
         return parts;
     }
 
@@ -166,10 +166,12 @@ class InternalOpenAiOfficialDecisionHelper {
                     DecisionInputText.builder().text(text.text()).build());
         }
         if (content instanceof ImageContent image) {
-            return DecisionInputPart.ofInputImage(DecisionInputImage.builder()
-                    .imageUrl(toImageUrl(image.image()))
-                    .detail(toDetail(image.detailLevel()))
-                    .build());
+            DecisionInputImage.Builder inputImage = DecisionInputImage.builder().imageUrl(toImageUrl(image.image()));
+            // without a chosen detail level, OpenAI's default applies
+            if (image.detailLevelSpecified()) {
+                inputImage.detail(toDetail(image.detailLevel()));
+            }
+            return DecisionInputPart.ofInputImage(inputImage.build());
         }
         throw new UnsupportedFeatureException(
                 "The OpenAI Decisions API supports only text and image input, but the input contains "

@@ -1,6 +1,7 @@
 package dev.langchain4j.model.mistralai.common;
 
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_LARGE_LATEST;
+import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMALL_LATEST;
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.OPEN_MISTRAL_7B;
 
 import dev.langchain4j.model.chat.ChatModel;
@@ -18,14 +19,24 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
 
     static final ChatModel MISTRAL_CHAT_MODEL = MistralAiChatModel.builder()
             .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-            .modelName(MISTRAL_LARGE_LATEST)
+            .modelName(MISTRAL_SMALL_LATEST)
             // Without a cap, some tool-calling prompts send the model into a repetition loop that runs
             // until it errors out, burning thousands of output tokens. 2000 is far above what any
             // passing test needs.
             .maxTokens(2000)
             .temperature(0.0)
-            .topP(1.0) // Mistral rejects temperature 0 (greedy sampling) on mistral-large-latest unless top_p is 1
             .strictJsonSchema(true)
+            .logRequests(false) // images are huge in logs
+            .logResponses(true)
+            .build();
+
+    // mistral-small-latest does not recognise the dice in the image tests
+    static final ChatModel MISTRAL_LARGE_CHAT_MODEL = MistralAiChatModel.builder()
+            .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
+            .modelName(MISTRAL_LARGE_LATEST)
+            .maxTokens(2000)
+            .temperature(0.0)
+            .topP(1.0) // Mistral rejects temperature 0 (greedy sampling) on mistral-large-latest unless top_p is 1
             .logRequests(false) // images are huge in logs
             .logResponses(true)
             .build();
@@ -33,6 +44,11 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
     @Override
     protected List<ChatModel> models() {
         return List.of(MISTRAL_CHAT_MODEL);
+    }
+
+    @Override
+    protected List<ChatModel> modelsSupportingImageInputs() {
+        return List.of(MISTRAL_LARGE_CHAT_MODEL);
     }
 
     @Override
@@ -53,7 +69,7 @@ class MistralAiChatModelIT extends AbstractChatModelIT {
     @Override
     protected String customModelName() {
         // Must differ from the model above, and must be a name Mistral echoes back unchanged:
-        // retired ids such as mistral-medium-2508 are silently served by their successor.
+        // a retired id is either rejected or served by its successor, which reports its own name.
         return "ministral-8b-latest";
     }
 

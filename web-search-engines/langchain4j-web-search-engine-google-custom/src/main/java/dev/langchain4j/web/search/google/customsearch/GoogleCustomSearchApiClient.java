@@ -3,10 +3,14 @@ package dev.langchain4j.web.search.google.customsearch;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestInitializer;
+import com.google.api.client.http.HttpResponseException;
+import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.customsearch.v1.CustomSearchAPI;
 import com.google.api.services.customsearch.v1.CustomSearchAPIRequest;
 import com.google.api.services.customsearch.v1.model.Search;
+import dev.langchain4j.exception.HttpException;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,12 +19,14 @@ import java.security.GeneralSecurityException;
 import java.time.Duration;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 
 class GoogleCustomSearchApiClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GoogleCustomSearchApiClient.class);
     private static final Integer MAXIMUM_VALUE_NUM = 10;
+    private static final String API_KEY_HEADER = "x-goog-api-key";
 
     private final CustomSearchAPIRequest<Search> customSearchRequest;
     private final boolean logResponses;
@@ -31,7 +37,8 @@ class GoogleCustomSearchApiClient {
                                 Duration timeout,
                                 Integer maxRetries,
                                 boolean logRequests,
-                                boolean logResponses) {
+                                boolean logResponses,
+                                @Nullable HttpTransport httpTransport) {
 
         try {
             ensureNotBlank(apiKey, "%s", "Google Custom Search API Key must be defined. " +
@@ -41,9 +48,11 @@ class GoogleCustomSearchApiClient {
 
             this.logResponses = logResponses;
 
-            CustomSearchAPI.Builder customSearchAPIBuilder = new CustomSearchAPI.Builder(GoogleNetHttpTransport.newTrustedTransport(), new GsonFactory(), new HttpRequestInitializer() {
+            HttpTransport transport = httpTransport != null ? httpTransport : GoogleNetHttpTransport.newTrustedTransport();
+            CustomSearchAPI.Builder customSearchAPIBuilder = new CustomSearchAPI.Builder(transport, new GsonFactory(), new HttpRequestInitializer() {
                 @Override
                 public void initialize(HttpRequest httpRequest) {
+                    httpRequest.getHeaders().set(API_KEY_HEADER, apiKey);
                     httpRequest.setConnectTimeout(Math.toIntExact(timeout.toMillis()));
                     httpRequest.setReadTimeout(Math.toIntExact(timeout.toMillis()));
                     httpRequest.setWriteTimeout(Math.toIntExact(timeout.toMillis()));
@@ -60,9 +69,9 @@ class GoogleCustomSearchApiClient {
             CustomSearchAPI customSearchAPI = customSearchAPIBuilder.build();
 
             if (siteRestrict) {
-                customSearchRequest = customSearchAPI.cse().siterestrict().list().setKey(apiKey).setCx(csi);
+                customSearchRequest = customSearchAPI.cse().siterestrict().list().setCx(csi);
             } else {
-                customSearchRequest = customSearchAPI.cse().list().setKey(apiKey).setCx(csi);
+                customSearchRequest = customSearchAPI.cse().list().setCx(csi);
             }
         } catch (IOException e) {
             LOGGER.error("Error occurred while creating Google Custom Search API client", e);
@@ -159,9 +168,23 @@ class GoogleCustomSearchApiClient {
                 logResponse(searchPerformed);
             }
             return searchPerformed;
+        } catch (HttpResponseException e) {
+            throw toHttpException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * The message of the Google exception contains the request URL, so only the status code and the error
+     * returned by the API are kept, and the Google exception is not chained as the cause.
+     */
+    private static HttpException toHttpException(HttpResponseException e) {
+        if (isNotNullOrBlank(e.getContent())) {
+            return new HttpException(e.getStatusCode(), e.getContent());
+        }
+        String statusMessage = e.getStatusMessage();
+        return new HttpException(e.getStatusCode(), e.getStatusCode() + (statusMessage != null ? " " + statusMessage : ""));
     }
 
     private static void logResponse(Search search) {
@@ -194,6 +217,7 @@ class GoogleCustomSearchApiClient {
         private Integer maxRetries;
         private boolean logRequests;
         private boolean logResponses;
+        private HttpTransport httpTransport;
 
         GoogleCustomSearchApiClientBuilder() {
         }
@@ -233,8 +257,13 @@ class GoogleCustomSearchApiClient {
             return this;
         }
 
+        GoogleCustomSearchApiClientBuilder httpTransport(HttpTransport httpTransport) {
+            this.httpTransport = httpTransport;
+            return this;
+        }
+
         public GoogleCustomSearchApiClient build() {
-            return new GoogleCustomSearchApiClient(this.apiKey, this.csi, this.siteRestrict, this.timeout, this.maxRetries, this.logRequests, this.logResponses);
+            return new GoogleCustomSearchApiClient(this.apiKey, this.csi, this.siteRestrict, this.timeout, this.maxRetries, this.logRequests, this.logResponses, this.httpTransport);
         }
 
         public String toString() {

@@ -17,6 +17,10 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
+import static dev.langchain4j.internal.InternalFlowUtils.failedPublisher;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -77,22 +81,25 @@ public class LoggingHttpClient implements HttpClient {
 
     @Override
     public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
-
-        if (logRequests) {
-            HttpRequestLogger.log(log, request);
-        }
-
-        CompletableFuture<SuccessfulHttpResponse> future =
-                delegateHttpClient.executeAsync(request);
-
-        if (!logResponses) {
-            return future;
-        }
-
-        return future.whenComplete((response, throwable) -> {
-            if (response != null) {
-                HttpResponseLogger.log(log, response);
+        return failOnThrow(() -> {
+            if (logRequests) {
+                HttpRequestLogger.log(log, request);
             }
+
+            CompletableFuture<SuccessfulHttpResponse> future = failOnThrow(
+                    delegateHttpClient, "executeAsync(HttpRequest)", () -> delegateHttpClient.executeAsync(request));
+
+            if (!logResponses) {
+                return future;
+            }
+
+            CompletableFuture<SuccessfulHttpResponse> logged = future.whenComplete((response, throwable) -> {
+                if (response != null) {
+                    HttpResponseLogger.log(log, response);
+                }
+            });
+            propagateCancellation(logged, future);
+            return logged;
         });
     }
 
@@ -206,7 +213,17 @@ public class LoggingHttpClient implements HttpClient {
     @Override
     public Flow.Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
 
-        Flow.Publisher<HttpStreamingEvent> upstream = delegateHttpClient.stream(request, parser);
+        Flow.Publisher<HttpStreamingEvent> upstream;
+        try {
+            upstream = delegateHttpClient.stream(request, parser);
+            if (upstream == null) {
+                throw new IllegalStateException(
+                        delegateHttpClient.getClass().getName() + ".stream(HttpRequest, ServerSentEventParser) returned null");
+            }
+        } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
+            return failedPublisher(error);
+        }
 
         return new Flow.Publisher<HttpStreamingEvent>() {
 

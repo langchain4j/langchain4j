@@ -19,7 +19,7 @@ Add one dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jackson3</artifactId>
-    <version>1.23.0-beta33</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 
@@ -170,7 +170,7 @@ Whether it can actually leave depends on which modules you use:
 | Provider modules — OpenAI, Anthropic, Mistral, Ollama, Gemini, and the rest | Yes |
 | Embedding stores, web search, code execution | Yes |
 | `langchain4j-agentic` | Yes |
-| `langchain4j-mcp` | Yes, since 1.23.0 |
+| `langchain4j-mcp` | Yes, since 1.24.0 |
 | `langchain4j-watsonx` | Yes, since 1.24.0-beta34, if you also swap the watsonx.ai SDK's JSON binding: exclude `com.ibm.watsonx:watsonx-ai-jackson2` and add `com.ibm.watsonx:watsonx-ai-jackson3` (see [watsonx.ai](/integrations/language-models/watsonx#jackson-3)) |
 | `langchain4j-mcp-docker` | No — docker-java, which it uses to talk to Docker, depends on Jackson 2 |
 | `langchain4j-guardrails` | No - `JsonExtractorOutputGuardrail` parses with a plain Jackson 2 `ObjectMapper` on purpose, so that a guardrail stays as strict as it was |
@@ -184,7 +184,7 @@ dependency you declare, not only the first:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.23.0</version>
+    <version>1.24.0</version>
     <exclusions>
         <exclusion>
             <groupId>com.fasterxml.jackson.core</groupId>

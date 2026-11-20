@@ -2,21 +2,27 @@ package dev.langchain4j.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.entry;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
+import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class DecisionModelInputUtilsTest {
@@ -286,5 +292,67 @@ class DecisionModelInputUtilsTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("The conversation has nothing to send: AiMessages without text and tool execution "
                         + "requests are skipped");
+    }
+
+    @Test
+    void transcript_should_refer_to_every_kind_of_media_by_its_kind_and_position() {
+
+        ImageContent photo = ImageContent.from("aW1hZ2U=", "image/png");
+        AudioContent voiceMessage = AudioContent.from("YXVkaW8=", "audio/mp3");
+        PdfFileContent receipt = PdfFileContent.from("cGRm", "application/pdf");
+        VideoContent recording = VideoContent.from("dmlkZW8=", "video/mp4");
+        AudioContent secondVoiceMessage = AudioContent.from("YXVkaW8y", "audio/mp3");
+
+        DecisionModelInputUtils.Transcript transcript = DecisionModelInputUtils.transcript(
+                List.of(
+                        UserMessage.from(TextContent.from("See attached."), photo, voiceMessage, receipt),
+                        ToolExecutionResultMessage.builder()
+                                .id("1")
+                                .toolName("camera")
+                                .contents(photo, recording)
+                                .build(),
+                        UserMessage.from(secondVoiceMessage)),
+                "The test model",
+                Set.of(ContentType.IMAGE, ContentType.AUDIO, ContentType.VIDEO, ContentType.PDF));
+
+        assertThat(transcript.messages())
+                .containsExactly(
+                        Map.of("role", "user", "text", "See attached.\n[image 1]\n[audio 1]\n[pdf 1]"),
+                        Map.of("role", "tool", "tool_call_id", "1", "name", "camera", "text", "[image 2]\n[video 1]"),
+                        Map.of("role", "user", "text", "[audio 2]"));
+        assertThat(transcript.media())
+                .containsExactly(
+                        entry("[image 1]", photo),
+                        entry("[audio 1]", voiceMessage),
+                        entry("[pdf 1]", receipt),
+                        entry("[image 2]", photo),
+                        entry("[video 1]", recording),
+                        entry("[audio 2]", secondVoiceMessage));
+        assertThat(transcript.images()).containsExactly(photo, photo);
+    }
+
+    @Test
+    void transcript_should_reject_kinds_of_media_that_are_not_supported() {
+
+        List<ChatMessage> withPdf =
+                List.of(UserMessage.from(TextContent.from("Invoice:"), PdfFileContent.from("cGRm", "application/pdf")));
+
+        assertThatThrownBy(() -> DecisionModelInputUtils.transcript(withPdf, "The test model"))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("The test model supports only text and images in a conversation, but it contains PDF");
+        assertThatThrownBy(() -> DecisionModelInputUtils.transcript(
+                        withPdf, "The test model", Set.of(ContentType.IMAGE, ContentType.AUDIO)))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage(
+                        "The test model supports only text, images and audio in a conversation, but it contains PDF");
+        assertThatThrownBy(() -> DecisionModelInputUtils.transcript(withPdf, "The test model", Set.of()))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("The test model supports only text in a conversation, but it contains PDF");
+
+        Content notAnImage = () -> ContentType.IMAGE;
+        List<ChatMessage> withCustomContent = List.of(UserMessage.from(notAnImage));
+        assertThatThrownBy(() -> DecisionModelInputUtils.transcript(withCustomContent, "The test model"))
+                .isInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage("The test model supports only text and images in a conversation, but it contains IMAGE");
     }
 }
