@@ -1,5 +1,6 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
@@ -93,7 +94,7 @@ public class OllamaDecisionModel implements DecisionModel {
 
     @Override
     public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
-        try {
+        return failOnThrow(() -> {
             OllamaDecisionRequest ollamaRequest = OllamaDecisionMapper.toOllamaRequest(request, keepAlive);
             CompletableFuture<OllamaDecisionResponse> responseFuture =
                     withRetryMappingExceptionsAsync(() -> client.decideAsync(ollamaRequest), maxRetries);
@@ -101,9 +102,7 @@ public class OllamaDecisionModel implements DecisionModel {
                     responseFuture.thenApply(response -> OllamaDecisionMapper.toDecisionResponse(response, request));
             propagateCancellation(result, responseFuture);
             return result;
-        } catch (RuntimeException e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        });
     }
 
     @Override

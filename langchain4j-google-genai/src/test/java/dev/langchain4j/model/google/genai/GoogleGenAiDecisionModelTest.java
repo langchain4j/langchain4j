@@ -3,6 +3,8 @@ package dev.langchain4j.model.google.genai;
 import static dev.langchain4j.internal.Json.fromJson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -341,6 +343,23 @@ class GoogleGenAiDecisionModelTest {
                 .failsWithin(Duration.ZERO)
                 .withThrowableOfType(ExecutionException.class)
                 .withCauseExactlyInstanceOf(IllegalArgumentException.class);
+        assertThat(recordedRequests).isEmpty();
+    }
+
+    @Test
+    void do_decide_async_should_return_a_failed_future_when_preparing_the_request_throws_an_error() {
+        NoClassDefFoundError error = new NoClassDefFoundError("com/example/Missing");
+        DecisionRequestParameters parameters = mock(DecisionRequestParameters.class);
+        when(parameters.modelName()).thenThrow(error);
+        DecisionRequest request =
+                SAMPLE_REQUEST.toBuilder().parameters(parameters).build();
+
+        CompletableFuture<DecisionResponse> future = model().doDecideAsync(request);
+
+        assertThat(future)
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCause(error);
         assertThat(recordedRequests).isEmpty();
     }
 

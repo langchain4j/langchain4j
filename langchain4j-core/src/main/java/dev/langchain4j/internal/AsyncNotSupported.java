@@ -57,16 +57,6 @@ public final class AsyncNotSupported {
      *         {@link AsyncNotSupportedException} carrying the given message.
      */
     public static <T> Flow.Publisher<T> failingPublisher(String message) {
-        AsyncNotSupportedException error = new AsyncNotSupportedException(message);
-        return subscriber -> {
-            subscriber.onSubscribe(new Flow.Subscription() {
-                @Override
-                public void request(long n) {}
-
-                @Override
-                public void cancel() {}
-            });
-            subscriber.onError(error);
-        };
+        return InternalFlowUtils.failedPublisher(new AsyncNotSupportedException(message));
     }
 }

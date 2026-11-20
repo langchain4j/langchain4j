@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -69,8 +70,10 @@ public class McpToolExecutor implements ToolExecutor {
     @Override
     public CompletableFuture<ToolExecutionResult> executeAsync(
             ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
-        CompletableFuture<ToolExecutionResult> resultFuture =
-                mcpClient.executeToolAsync(sanitizeToolName(executionRequest), invocationContext);
+        CompletableFuture<ToolExecutionResult> resultFuture = failOnThrow(
+                mcpClient,
+                "executeToolAsync(ToolExecutionRequest, InvocationContext)",
+                () -> mcpClient.executeToolAsync(sanitizeToolName(executionRequest), invocationContext));
         if (returnToolResultAttributes) {
             return resultFuture;
         }

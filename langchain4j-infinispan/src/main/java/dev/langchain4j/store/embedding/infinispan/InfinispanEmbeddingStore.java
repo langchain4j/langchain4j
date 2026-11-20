@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
@@ -90,7 +91,7 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
         // Registers the schema on the client
         ProtoStreamMarshaller marshaller = new ProtoStreamMarshaller();
         SerializationContext serializationContext = marshaller.getSerializationContext();
-        String schemaContent = schema.toString();
+        String schemaContent = schema.getContent();
         FileDescriptorSource fileDescriptorSource =
                 FileDescriptorSource.fromString(storeConfiguration.fileName(), schemaContent);
         serializationContext.registerProtoFiles(fileDescriptorSource);
@@ -188,6 +189,24 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     @Override
     public EmbeddingSearchResult<TextSegment> search(EmbeddingSearchRequest request) {
+        Query<Object[]> query = buildVectorQuery(request);
+        List<Object[]> hits = query.list();
+        return toSearchResult(hits, request.minScore());
+    }
+
+    @Override
+    public CompletableFuture<EmbeddingSearchResult<TextSegment>> searchAsync(EmbeddingSearchRequest request) {
+        try {
+            Query<Object[]> query = buildVectorQuery(request);
+            return query.executeAsync()
+                    .thenApply(queryResult -> toSearchResult(queryResult.list(), request.minScore()))
+                    .toCompletableFuture();
+        } catch (Throwable t) {
+            return CompletableFuture.failedFuture(t);
+        }
+    }
+
+    private Query<Object[]> buildVectorQuery(EmbeddingSearchRequest request) {
         InfinispanMetadataFilterMapper.FilterResult filteringQuery =
                 new InfinispanMetadataFilterMapper().map(request.filter());
         String joinPart = "";
@@ -206,14 +225,15 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
                 + storeConfiguration.distance()
                 + filteringPart;
 
-        Query<Object[]> query = remoteCache.query(vectorQuery);
-        List<Object[]> hits = query.maxResults(request.maxResults()).list();
+        return remoteCache.<Object[]>query(vectorQuery).maxResults(request.maxResults());
+    }
 
+    private EmbeddingSearchResult<TextSegment> toSearchResult(List<Object[]> hits, double minScore) {
         List<EmbeddingMatch<TextSegment>> matches = hits.stream()
                 .map(obj -> {
                     LangChainInfinispanItem item = (LangChainInfinispanItem) obj[0];
                     Float score = (Float) obj[1];
-                    if (score.doubleValue() < request.minScore()) {
+                    if (score.doubleValue() < minScore) {
                         return null;
                     }
 

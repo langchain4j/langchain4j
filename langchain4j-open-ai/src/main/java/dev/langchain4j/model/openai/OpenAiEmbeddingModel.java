@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
@@ -214,67 +215,72 @@ public class OpenAiEmbeddingModel extends DimensionAwareEmbeddingModel {
      */
     @Override
     public CompletableFuture<EmbeddingResponse> doEmbedAsync(EmbeddingRequest request) {
+        return failOnThrow(() -> {
+            EmbeddingRequestParameters parameters = request.parameters();
 
-        EmbeddingRequestParameters parameters = request.parameters();
+            List<String> texts =
+                    request.inputs().stream().map(EmbeddingInput::text).toList();
+            List<List<String>> textBatches = partition(texts, maxSegmentsPerBatch);
 
-        List<String> texts = request.inputs().stream().map(EmbeddingInput::text).toList();
-        List<List<String>> textBatches = partition(texts, maxSegmentsPerBatch);
+            List<CompletableFuture<EmbeddedBatch>> batchFutures = textBatches.stream()
+                    .map(batch -> embedTextsAsync(batch, parameters))
+                    .toList();
 
-        List<CompletableFuture<EmbeddedBatch>> batchFutures = textBatches.stream()
-                .map(batch -> embedTextsAsync(batch, parameters))
-                .toList();
-
-        CompletableFuture<EmbeddingResponse> result = new CompletableFuture<>();
-        AtomicReference<Throwable> firstError = new AtomicReference<>();
-        // Observe real batch errors before the aggregate can report a sibling's cancellation.
-        List<CompletableFuture<EmbeddedBatch>> observedBatches = batchFutures.stream()
-                .map(batchFuture -> batchFuture.whenComplete((response, error) -> {
-                    if (error != null) {
-                        Throwable cause = unwrapCompletionException(error);
-                        if (!(cause instanceof CancellationException) && firstError.compareAndSet(null, cause)) {
-                            result.completeExceptionally(cause);
-                            batchFutures.forEach(sibling -> sibling.cancel(true));
+            CompletableFuture<EmbeddingResponse> result = new CompletableFuture<>();
+            AtomicReference<Throwable> firstError = new AtomicReference<>();
+            // Observe real batch errors before the aggregate can report a sibling's cancellation.
+            List<CompletableFuture<EmbeddedBatch>> observedBatches = batchFutures.stream()
+                    .map(batchFuture -> batchFuture.whenComplete((response, error) -> {
+                        if (error != null) {
+                            Throwable cause = unwrapCompletionException(error);
+                            if (!(cause instanceof CancellationException) && firstError.compareAndSet(null, cause)) {
+                                result.completeExceptionally(cause);
+                                batchFutures.forEach(sibling -> sibling.cancel(true));
+                            }
                         }
-                    }
-                }))
-                .toList();
+                    }))
+                    .toList();
 
-        CompletableFuture.allOf(observedBatches.toArray(new CompletableFuture[0]))
-                .thenApply(ignored -> {
-                    List<EmbeddedBatch> responses =
-                            batchFutures.stream().map(CompletableFuture::join).toList();
-                    List<Embedding> embeddings = responses.stream()
-                            .flatMap(batch -> batch.embeddings().stream())
-                            .toList();
-                    TokenUsage tokenUsage = responses.stream()
-                            .map(EmbeddedBatch::tokenUsage)
-                            .filter(Objects::nonNull)
-                            .reduce(TokenUsage::add)
-                            .orElse(null);
-                    String responseModelName = responses.stream()
-                            .map(EmbeddedBatch::modelName)
-                            .filter(Objects::nonNull)
-                            .findFirst()
-                            .orElse(null);
-                    return EmbeddingResponse.builder()
-                            .embeddings(embeddings)
-                            .metadata(EmbeddingResponseMetadata.builder()
-                                    .modelName(getOrDefault(
-                                            responseModelName, getOrDefault(parameters.modelName(), modelName)))
-                                    .tokenUsage(tokenUsage)
-                                    .build())
-                            .build();
-                })
-                .whenComplete((response, error) -> {
-                    if (error == null) {
-                        result.complete(response);
-                    } else {
-                        result.completeExceptionally(unwrapCompletionException(error));
-                    }
-                });
+            CompletableFuture<EmbeddingResponse> aggregate = CompletableFuture.allOf(
+                            observedBatches.toArray(new CompletableFuture[0]))
+                    .thenApply(ignored -> {
+                        List<EmbeddedBatch> responses = batchFutures.stream()
+                                .map(CompletableFuture::join)
+                                .toList();
+                        List<Embedding> embeddings = responses.stream()
+                                .flatMap(batch -> batch.embeddings().stream())
+                                .toList();
+                        TokenUsage tokenUsage = responses.stream()
+                                .map(EmbeddedBatch::tokenUsage)
+                                .filter(Objects::nonNull)
+                                .reduce(TokenUsage::add)
+                                .orElse(null);
+                        String responseModelName = responses.stream()
+                                .map(EmbeddedBatch::modelName)
+                                .filter(Objects::nonNull)
+                                .findFirst()
+                                .orElse(null);
+                        return EmbeddingResponse.builder()
+                                .embeddings(embeddings)
+                                .metadata(EmbeddingResponseMetadata.builder()
+                                        .modelName(getOrDefault(
+                                                responseModelName, getOrDefault(parameters.modelName(), modelName)))
+                                        .tokenUsage(tokenUsage)
+                                        .build())
+                                .build();
+                    });
 
-        batchFutures.forEach(batchFuture -> propagateCancellation(result, batchFuture));
-        return result;
+            aggregate.whenComplete((response, error) -> {
+                if (error == null) {
+                    result.complete(response);
+                } else {
+                    result.completeExceptionally(unwrapCompletionException(error));
+                }
+            });
+
+            batchFutures.forEach(batchFuture -> propagateCancellation(result, batchFuture));
+            return result;
+        });
     }
 
     private CompletableFuture<EmbeddedBatch> embedTextsAsync(

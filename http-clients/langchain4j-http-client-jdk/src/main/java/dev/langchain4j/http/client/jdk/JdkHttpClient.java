@@ -1,8 +1,11 @@
 package dev.langchain4j.http.client.jdk;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
+import static dev.langchain4j.internal.InternalFlowUtils.failPublisherOnThrow;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -125,6 +128,10 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
 
     @Override
     public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+        return failOnThrow(() -> doExecuteAsync(request));
+    }
+
+    private CompletableFuture<SuccessfulHttpResponse> doExecuteAsync(HttpRequest request) {
         java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
 
         CompletableFuture<HttpResponse<byte[]>> sendFuture = delegate.sendAsync(jdkRequest, BodyHandlers.ofByteArray());
@@ -152,9 +159,17 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
 
     @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
-        java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
+        CompletableFuture<HttpResponse<InputStream>> responseFuture;
+        try {
+            java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
+            responseFuture = delegate.sendAsync(jdkRequest, BodyHandlers.ofInputStream());
+        } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
+            listener.onError(error); // not ignoringExceptions: what onError throws on the calling thread propagates
+            return;
+        }
 
-        delegate.sendAsync(jdkRequest, BodyHandlers.ofInputStream())
+        responseFuture
                 .thenAccept(jdkResponse -> {
                     if (!isSuccessful(jdkResponse)) {
                         HttpException exception = new HttpException(jdkResponse.statusCode(), readBody(jdkResponse));
@@ -184,10 +199,13 @@ public class JdkHttpClient implements HttpClient, AutoCloseable {
 
     @Override
     public Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
-        if (streamingBackpressure) {
-            return new BackpressuredHttpStreamingEventPublisher(delegate, toJdkRequest(request), parser);
-        }
-        return new HttpStreamingEventPublisher(delegate, toJdkRequest(request), parser, streamingBufferSize);
+        return failPublisherOnThrow(() -> {
+            java.net.http.HttpRequest jdkRequest = toJdkRequest(request);
+            if (streamingBackpressure) {
+                return new BackpressuredHttpStreamingEventPublisher(delegate, jdkRequest, parser);
+            }
+            return new HttpStreamingEventPublisher(delegate, jdkRequest, parser, streamingBufferSize);
+        });
     }
 
     java.net.http.HttpRequest toJdkRequest(HttpRequest request) {

@@ -303,6 +303,8 @@ Output guardrails can have the following outcomes. There are helper methods on t
 | **_fatal with retry_**     | `retry(String)` or `retry(String, Throwable)`                       | - Similar to **_fatal_** except the LLM is called again with the same prompt and chat history as the original call.<br/> - If the failure persists after a [configurable number of retries](#configuration) then execution is halted with an `OutputGuardrailException` thrown to the caller.<br/> - If the guardrail passes after a retry, the entire chain of guardrails are re-executed from the beginning.                                                                                                                                                                                                        |
 | **_fatal with reprompt_**  | `reprompt(String, String)` or `reprompt(String, Throwable, String)` | - Similar to **_fatal with retry_** except the LLM is called again with a new prompt supplied by the guardrail.<br/> - In this situation, the guardrail supplies an additional message to append to the previous user message, then sends a new request to the LLM with the new user message and original chat history.<br/> - If the failure persists after a [configurable number of retries](#configuration) then execution is halted with an `OutputGuardrailException` thrown to the caller.<br/> - If the guardrail passes after a reprompt, the entire chain of guardrails are re-executed from the beginning. |
 
+When the AI Service method returns a `TokenStream`, the `OutputGuardrailException` is not thrown from `TokenStream.start()`: it is passed to the `onError` callback of the `TokenStream`.
+
 A retry or reprompt resends the conversation of the original call (the system message, the user message, any tool calls and results, and the rejected response), whether or not the AI Service has a [chat memory](/tutorials/chat-memory). Without one, the conversation is kept for the duration of the call only.
 
 ### Declaring Output Guardrails
@@ -465,6 +467,8 @@ public interface StreamingAssistant {
 In this scenario, the output guardrails will be executed once the entire stream is complete, or more specifically, when `TokenStream.onCompleteResponse` is called. `onPartialResponse` will be buffered and replayed once the guardrails succeed.
 
 In the situation where a **_retry_** or **_reprompt_** in the chain eventually succeeds, then the entire chain is re-executed _synchronously_. Each guardrail will be re-executed one after the other in the original order. Once the chain completes the result is passed into `TokenStream.onCompleteResponse`.
+
+If the output guardrails fail, the `OutputGuardrailException` is passed to `TokenStream.onError`. It is not thrown from `TokenStream.start()`, also when the model streams on the thread that calls `start()`.
 
 ### Out-of-the-box Output Guardrails
 

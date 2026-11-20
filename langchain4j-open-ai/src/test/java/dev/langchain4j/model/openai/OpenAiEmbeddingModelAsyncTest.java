@@ -3,6 +3,8 @@ package dev.langchain4j.model.openai;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
@@ -194,8 +196,29 @@ class OpenAiEmbeddingModelAsyncTest {
 
     private static SuccessfulHttpResponse successfulEmbedding() {
         return SuccessfulHttpResponse.builder().statusCode(200).body("""
-                        {"object":"list","data":[{"object":"embedding","embedding":[1.0],"index":0}],
-                         "model":"text-embedding-3-small","usage":{"prompt_tokens":1,"total_tokens":1}}
-                        """).build();
+            {"object":"list","data":[{"object":"embedding","embedding":[1.0],"index":0}],
+             "model":"text-embedding-3-small","usage":{"prompt_tokens":1,"total_tokens":1}}
+            """).build();
+    }
+
+    @Test
+    void doEmbedAsync_reports_a_failure_while_preparing_the_request_through_the_future() {
+        EmbeddingModel model = OpenAiEmbeddingModel.builder()
+                .baseUrl("http://localhost:1")
+                .apiKey("test-key")
+                .modelName("text-embedding-3-small")
+                .maxRetries(0)
+                .build();
+        EmbeddingRequest request = spy(EmbeddingRequest.builder().input("hello").build());
+        IllegalStateException failure = new IllegalStateException("cannot read the inputs");
+        doThrow(failure).when(request).inputs();
+
+        CompletableFuture<EmbeddingResponse> future = model.doEmbedAsync(request);
+
+        assertThat(future)
+                .failsWithin(5, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isSameAs(failure);
     }
 }

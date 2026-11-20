@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -53,6 +54,50 @@ class BedrockStreamingChatModelPublisherTest {
     @AfterEach
     void tearDown() {
         scheduler.shutdownNow();
+    }
+
+    @Test
+    void publisher_hook_should_signal_an_unsupported_parameter_instead_of_throwing() {
+        // the hook never throws: an invalid request reaches onError after onSubscribe, and nothing is sent
+        BedrockRuntimeAsyncClient asyncClient = mock(BedrockRuntimeAsyncClient.class);
+        BedrockStreamingChatModel model = BedrockStreamingChatModel.builder()
+                .modelId("us.amazon.nova-lite-v1:0")
+                .client(asyncClient)
+                .build();
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .parameters(BedrockChatRequestParameters.builder()
+                        .modelName("us.amazon.nova-lite-v1:0")
+                        .topK(3)
+                        .build())
+                .build();
+
+        List<String> signals = new CopyOnWriteArrayList<>();
+        model.doChat(request).subscribe(new Flow.Subscriber<>() {
+
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                signals.add("onSubscribe");
+            }
+
+            @Override
+            public void onNext(ChatModelStreamingEvent event) {
+                signals.add("onNext");
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                signals.add("onError: " + error.getClass().getSimpleName());
+            }
+
+            @Override
+            public void onComplete() {
+                signals.add("onComplete");
+            }
+        });
+
+        verifyNoInteractions(asyncClient);
+        assertThat(signals).containsExactly("onSubscribe", "onError: UnsupportedFeatureException");
     }
 
     @Test

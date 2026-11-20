@@ -7,9 +7,10 @@ import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.TokenStream;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,24 +22,28 @@ public abstract class BaseGuardrailTests {
     }
 
     static String execute(Supplier<TokenStream> aiServiceInvocation) throws InterruptedException {
-        var latch = new CountDownLatch(1);
-        var value = new AtomicReference<String>();
+        var result = new CompletableFuture<String>();
 
         aiServiceInvocation
                 .get()
-                .onError(t -> {
-                    throw new RuntimeException(t);
-                })
+                .onError(result::completeExceptionally)
                 .onPartialResponse(token -> {})
-                .onCompleteResponse(response -> {
-                    value.set(response.aiMessage().text());
-                    latch.countDown();
-                })
+                .onCompleteResponse(response -> result.complete(response.aiMessage().text()))
                 .start();
 
-        latch.await(10, TimeUnit.SECONDS);
-
-        return value.get();
+        try {
+            return result.get(10, TimeUnit.SECONDS);
+        } catch (ExecutionException e) {
+            if (e.getCause() instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            if (e.getCause() instanceof Error error) {
+                throw error;
+            }
+            throw new RuntimeException(e.getCause());
+        } catch (TimeoutException e) {
+            throw new AssertionError("The AI Service did not complete within 10 seconds", e);
+        }
     }
 
     static <T> T createAiService(Class<T> clazz, Function<AiServices<T>, AiServices<T>> builderCustomizer) {
