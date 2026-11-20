@@ -26,7 +26,8 @@
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
         <quarkus.platform.version>3.40.1.2</quarkus.platform.version>
-        <!-- This module is not released: the Quarkus plugin no longer accepts the epoch seconds set in langchain4j-parent, and there is nothing to reproduce -->
+        <!-- the build goal of quarkus-maven-plugin 3.40 rejects the epoch seconds set in langchain4j-parent (SRCFG00039 for
+             quarkus.package.output-timestamp); this module is never released, so it needs no reproducible timestamp -->
         <project.build.outputTimestamp/>
     </properties>
 
@@ -64,7 +65,7 @@
 
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit5</artifactId>
+            <artifactId>quarkus-junit</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
