@@ -271,10 +271,20 @@ public class ChatModelMock implements ChatModel {
         return requests.stream().map(ChatRequest::messages).toList();
     }
 
+    /**
+     * @deprecated use {@link MockChatModel#requests()} instead, which returns a copy. Removed together with this class,
+     * in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public List<ChatRequest> requests() {
         return requests;
     }
 
+    /**
+     * @deprecated use {@link MockChatModel#request()} instead. Removed together with this class, in 1.26.0 at the
+     * earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ChatRequest request() {
         if (requests.size() == 1) {
             return requests.get(0);

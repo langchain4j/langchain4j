@@ -42,6 +42,11 @@ public class ModerationModelMock implements ModerationModel {
         return ModerationResponse.builder().moderation(moderation).build();
     }
 
+    /**
+     * @deprecated use {@link MockModerationModel#requests()} instead, which returns a copy. Removed together with this
+     * class, in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public List<ModerationRequest> requests() {
         return requests;
     }
