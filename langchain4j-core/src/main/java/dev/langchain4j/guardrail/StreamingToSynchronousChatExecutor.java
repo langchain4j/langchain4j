@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.logIgnoredError;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Internal;
@@ -15,6 +16,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +66,8 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
         private static final Logger LOG = LoggerFactory.getLogger(StreamingToSyncResponseHandler.class);
         private final Consumer<Throwable> errorHandler;
         private final CountDownLatch latch = new CountDownLatch(1);
-        private AtomicReference<ChatResponse> response = new AtomicReference<>();
+        // the first complete response or error is the outcome of the request, as for the asynchronous execution
+        private final AtomicReference<Outcome> outcome = new AtomicReference<>();
 
         StreamingToSyncResponseHandler(Consumer<Throwable> errorHandler) {
             this.errorHandler = errorHandler;
@@ -72,7 +75,7 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
 
         @Override
         public void onCompleteResponse(ChatResponse completeResponse) {
-            response.set(completeResponse);
+            outcome.compareAndSet(null, new Outcome(completeResponse, null));
             this.latch.countDown();
         }
 
@@ -87,21 +90,41 @@ final class StreamingToSynchronousChatExecutor extends AbstractChatExecutor {
 
         ChatResponse getResponse() {
             waitForCompletion();
-            return this.response.get();
+            Outcome result = this.outcome.get();
+            Throwable failure = result.error();
+            if (failure == null) {
+                return result.response();
+            }
+            // like the asynchronous execution, whose future fails after the error handler was called
+            if (failure instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            if (failure instanceof Error e) {
+                throw e;
+            }
+            throw new RuntimeException(failure);
         }
 
         @Override
         public void onError(Throwable error) {
-            if (errorHandler != null) {
-                try {
-                    errorHandler.accept(error);
-                } catch (Exception e) {
-                    LOG.error("While handling the following error...", error);
-                    LOG.error("...the following error happened", e);
+            try {
+                if (errorHandler != null) {
+                    try {
+                        errorHandler.accept(error);
+                    } catch (Exception e) {
+                        LOG.error("While handling the following error...", error);
+                        LOG.error("...the following error happened", e);
+                    }
                 }
-            } else {
-                LOG.warn("Ignored error", error);
+            } finally {
+                boolean first = outcome.compareAndSet(null, new Outcome(null, error));
+                if (!first && errorHandler == null) {
+                    logIgnoredError(error); // nobody else sees this error: the request already has its outcome
+                }
+                this.latch.countDown();
             }
         }
+
+        private record Outcome(@Nullable ChatResponse response, @Nullable Throwable error) {}
     }
 }

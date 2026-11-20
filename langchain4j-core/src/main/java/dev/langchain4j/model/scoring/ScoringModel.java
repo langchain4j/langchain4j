@@ -20,10 +20,12 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureEq;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 import static dev.langchain4j.model.scoring.ScoringModelListenerUtils.onError;
 import static dev.langchain4j.model.scoring.ScoringModelListenerUtils.onRequest;
@@ -157,53 +159,41 @@ public interface ScoringModel {
      * as a separate call; without it, the RAG call fails with an {@code UnsupportedFeatureException}. When the returned future is cancelled, the listeners are notified of neither a response nor an
      * error.
      *
-     * @param request the documents to score, the query, and the per-call parameters.
+     * @param request the documents to score, the query, and the per-call parameters; must not be {@code null},
+     *                otherwise the returned future fails with an {@link IllegalArgumentException}.
      * @return a {@link CompletableFuture} of the scores, in the order of {@link ScoringRequest#documents()}.
      * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<ScoringResponse> scoreAsync(ScoringRequest request) {
-        ScoringRequest finalRequest;
-        List<ScoringModelListener> listeners;
-        ModelProvider provider;
-        Map<Object, Object> attributes;
-        UUID invocationId = CurrentInvocation.invocationId();
-        try {
-            finalRequest = withDefaultParameters(request);
-            listeners = ObservabilityListeners.scoring(listeners());
-            provider = provider();
-            attributes = new ConcurrentHashMap<>();
+        return failOnThrow(() -> {
+            UUID invocationId = CurrentInvocation.invocationId();
+            ensureNotNull(request, "request");
+            ScoringRequest finalRequest = withDefaultParameters(request);
+            List<ScoringModelListener> listeners = ObservabilityListeners.scoring(listeners());
+            ModelProvider provider = provider();
+            Map<Object, Object> attributes = new ConcurrentHashMap<>();
             onRequest(finalRequest, provider, attributes, invocationId, listeners);
-        } catch (Exception error) {
-            return CompletableFuture.failedFuture(error);
-        }
 
-        CompletableFuture<ScoringResponse> source;
-        try {
-            source = doScoreAsync(finalRequest);
-            if (source == null) {
-                throw new IllegalStateException(getClass().getName() + ".doScoreAsync(ScoringRequest) returned null");
+            CompletableFuture<ScoringResponse> source =
+                    failOnThrow(this, "doScoreAsync(ScoringRequest)", () -> doScoreAsync(finalRequest));
+            if (isNullOrEmpty(listeners)) {
+                return source;
             }
-        } catch (Exception error) {
-            onError(error, finalRequest, provider, attributes, invocationId, listeners);
-            return CompletableFuture.failedFuture(error);
-        }
-        if (isNullOrEmpty(listeners)) {
-            return source;
-        }
 
-        CompletableFuture<ScoringResponse> result = source.whenComplete((response, error) -> {
-            if (error != null) {
-                Throwable cause = unwrapCompletionException(error);
-                if (!(cause instanceof CancellationException)) {
-                    onError(cause, finalRequest, provider, attributes, invocationId, listeners);
+            CompletableFuture<ScoringResponse> result = source.whenComplete((response, error) -> {
+                if (error != null) {
+                    Throwable cause = unwrapCompletionException(error);
+                    if (!(cause instanceof CancellationException)) {
+                        onError(cause, finalRequest, provider, attributes, invocationId, listeners);
+                    }
+                } else {
+                    onResponse(response, finalRequest, provider, attributes, invocationId, listeners);
                 }
-            } else {
-                onResponse(response, finalRequest, provider, attributes, invocationId, listeners);
-            }
+            });
+            propagateCancellation(result, source);
+            return result;
         });
-        propagateCancellation(result, source);
-        return result;
     }
 
     /**
@@ -212,9 +202,13 @@ public interface ScoringModel {
      * A model backed by remote HTTP I/O opts in by overriding this with a genuinely async call (no thread parked),
      * and should abort its in-flight call when the returned future is cancelled (best-effort). A model that has not
      * opted in fails loudly on the async path rather than silently blocking a carrier thread.
+     * <p>
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid request or
+     * an error while preparing it, completes the returned future exceptionally.
      *
      * @param request the (already defaults-applied) request to score.
-     * @return a {@link CompletableFuture} of the scores, in the order of {@link ScoringRequest#documents()}.
+     * @return a {@link CompletableFuture} of the scores, in the order of {@link ScoringRequest#documents()}, never
+     * {@code null}.
      * @since 1.20.0
      */
     @Experimental

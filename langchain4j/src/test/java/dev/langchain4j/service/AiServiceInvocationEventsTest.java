@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.spy;
 
@@ -75,6 +76,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -88,6 +90,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 class AiServiceInvocationEventsTest {
@@ -411,6 +414,59 @@ class AiServiceInvocationEventsTest {
         assertThat(answer.get(5, SECONDS)).isEqualTo("good");
         assertSingleTerminalEvent(AiServiceCompletedEvent.class);
         assertRequestsAndResponsesArePaired();
+    }
+
+    @Test
+    void should_report_a_reprompt_that_fails_synchronously_to_the_token_stream_once() throws Exception {
+        RuntimeException failure = new IllegalStateException("reprompt failed");
+        MockStreamingChatModel model = spy(MockStreamingChatModel.thatResponds(AiMessage.from("bad")));
+        doCallRealMethod()
+                .doThrow(failure)
+                .when(model)
+                .doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+
+        assertRepromptFailureIsReportedOnce(model, failure);
+    }
+
+    @Test
+    void should_report_a_reprompt_that_fails_through_on_error_to_the_token_stream_once() throws Exception {
+        RuntimeException failure = new IllegalStateException("reprompt failed");
+        MockStreamingChatModel model = spy(MockStreamingChatModel.thatResponds(AiMessage.from("bad")));
+        doCallRealMethod()
+                .doAnswer(invocation -> {
+                    invocation.getArgument(1, StreamingChatResponseHandler.class).onError(failure);
+                    return null;
+                })
+                .when(model)
+                .doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+
+        assertRepromptFailureIsReportedOnce(model, failure);
+    }
+
+    private void assertRepromptFailureIsReportedOnce(MockStreamingChatModel model, RuntimeException failure)
+            throws Exception {
+        StreamingAssistant assistant = AiServices.builder(StreamingAssistant.class)
+                .streamingChatModel(model)
+                .outputGuardrails(repromptingOnce())
+                .registerListeners(listeners())
+                .build();
+        List<Throwable> errors = new CopyOnWriteArrayList<>();
+        CompletableFuture<Throwable> firstError = new CompletableFuture<>();
+
+        assistant
+                .chat("Hello")
+                .onCompleteResponse(response -> {})
+                .onError(error -> {
+                    errors.add(error);
+                    firstError.complete(error);
+                })
+                .start();
+
+        // the model streams on its own thread, and the error event is fired before onError is called
+        assertThat(firstError).succeedsWithin(5, SECONDS);
+        assertSingleTerminalEvent(AiServiceErrorEvent.class);
+        assertThat(errors).hasSize(1);
+        assertThat(Stream.iterate(errors.get(0), Objects::nonNull, Throwable::getCause)).contains(failure);
     }
 
     @Test
@@ -931,10 +987,13 @@ class AiServiceInvocationEventsTest {
                 .streamingChatModel(throwingFromChat(new RuntimeException("cannot connect")))
                 .registerListeners(listeners())
                 .build();
-        TokenStream tokenStream = assistant.chat("Hello").onError(error -> {});
+        List<Throwable> errors = new CopyOnWriteArrayList<>();
+        TokenStream tokenStream = assistant.chat("Hello").onError(errors::add);
 
-        assertThatThrownBy(tokenStream::start).hasMessage("cannot connect");
+        // the streaming model reports the exception to the handler instead of throwing it from chat()
+        tokenStream.start();
 
+        assertThat(errors).singleElement().satisfies(error -> assertThat(error).hasMessage("cannot connect"));
         assertThat(events(AiServiceErrorEvent.class))
                 .singleElement()
                 .satisfies(event -> assertThat(event.error()).hasMessage("cannot connect"));

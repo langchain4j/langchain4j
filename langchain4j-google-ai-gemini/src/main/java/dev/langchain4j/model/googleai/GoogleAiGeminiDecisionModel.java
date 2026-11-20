@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
@@ -122,7 +123,7 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
 
     @Override
     public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
-        try {
+        return failOnThrow(() -> {
             GeminiDecisionRequest geminiRequest = GeminiDecisionMapper.toGeminiRequest(request);
             CompletableFuture<Reply> replyFuture =
                     withRetryMappingExceptionsAsync(() -> decideAsync(geminiRequest), maxRetries);
@@ -130,9 +131,7 @@ public class GoogleAiGeminiDecisionModel implements DecisionModel {
                     replyFuture.thenApply(reply -> reply.toDecisionResponse(request));
             propagateCancellation(result, replyFuture);
             return result;
-        } catch (RuntimeException e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        });
     }
 
     private CompletableFuture<Reply> decideAsync(GeminiDecisionRequest request) {

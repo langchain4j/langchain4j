@@ -1,5 +1,7 @@
 package dev.langchain4j.store.memory.chat;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
+
 import dev.langchain4j.data.message.ChatMessage;
 
 import java.util.ArrayList;
@@ -39,18 +41,22 @@ public class InMemoryChatMemoryStore implements ChatMemoryStore {
 
     @Override
     public CompletableFuture<List<ChatMessage>> getMessagesAsync(Object memoryId) {
-        return CompletableFuture.completedFuture(getMessages(memoryId));
+        return failOnThrow(() -> CompletableFuture.completedFuture(getMessages(memoryId)));
     }
 
     @Override
     public CompletableFuture<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
-        updateMessages(memoryId, messages);
-        return CompletableFuture.completedFuture(null);
+        return failOnThrow(() -> {
+            updateMessages(memoryId, messages);
+            return CompletableFuture.completedFuture(null);
+        });
     }
 
     @Override
     public CompletableFuture<Void> deleteMessagesAsync(Object memoryId) {
-        deleteMessages(memoryId);
-        return CompletableFuture.completedFuture(null);
+        return failOnThrow(() -> {
+            deleteMessages(memoryId);
+            return CompletableFuture.completedFuture(null);
+        });
     }
 }

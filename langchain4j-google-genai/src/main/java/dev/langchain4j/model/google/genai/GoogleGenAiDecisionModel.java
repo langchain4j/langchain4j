@@ -1,5 +1,6 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
@@ -148,7 +149,7 @@ public class GoogleGenAiDecisionModel implements DecisionModel {
 
     @Override
     public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
-        try {
+        return failOnThrow(() -> GoogleGenAiExceptionMapper.DECISION_INSTANCE.withExceptionMapper(() -> {
             CreateDecisionRequest createRequest = toCreateDecisionRequest(request);
             if (logRequests) {
                 log.info("Decision request: {}", createRequest);
@@ -165,9 +166,7 @@ public class GoogleGenAiDecisionModel implements DecisionModel {
             });
             propagateCancellation(result, replyFuture);
             return result;
-        } catch (RuntimeException e) {
-            return CompletableFuture.failedFuture(GoogleGenAiExceptionMapper.DECISION_INSTANCE.mapException(e));
-        }
+        }));
     }
 
     private CompletableFuture<Reply> decideAsync(CreateDecisionRequest createRequest) {
