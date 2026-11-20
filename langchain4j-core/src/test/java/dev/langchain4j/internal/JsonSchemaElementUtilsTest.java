@@ -28,6 +28,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 class JsonSchemaElementUtilsTest {
 
@@ -236,6 +238,32 @@ class JsonSchemaElementUtilsTest {
                    "additionalProperties": false
                 }
                 """);
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+            value = {
+                "false, true, true",
+                "false, false, false",
+                "false, null, null",
+                "true, true, false",
+                "true, false, false",
+                "true, null, false"
+            },
+            nullValues = "null")
+    void should_preserve_additional_properties_unless_strict(
+            boolean strict, Boolean additionalProperties, Boolean expected) {
+        JsonObjectSchema schema = JsonObjectSchema.builder()
+                .additionalProperties(additionalProperties)
+                .build();
+
+        Map<String, Object> map = toMap(schema, strict);
+
+        if (expected == null) {
+            assertThat(map).doesNotContainKey("additionalProperties");
+        } else {
+            assertThat(map).containsEntry("additionalProperties", expected);
+        }
     }
 
     @Test

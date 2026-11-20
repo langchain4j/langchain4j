@@ -442,6 +442,8 @@ public class JsonSchemaElementUtils {
 
             if (strict) {
                 map.put("additionalProperties", false);
+            } else if (jsonObjectSchema.additionalProperties() != null) {
+                map.put("additionalProperties", jsonObjectSchema.additionalProperties());
             }
 
             if (!jsonObjectSchema.definitions().isEmpty()) {
