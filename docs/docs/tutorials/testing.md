@@ -5,7 +5,7 @@ sidebar_position: 34
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-# Testing and Evaluation
+# Testing
 
 An application built on a large language model (LLM) is harder to test than ordinary code:
 
@@ -21,11 +21,21 @@ This page shows how to test such an application with JUnit and AssertJ, using th
   which sources it retrieved, how often it called the model and how it ended.
 - [Judging answers with a model](#judging-answers-with-a-model): check what cannot be checked exactly, such as "says
   that the booking cannot be found", with a model as the judge.
-- [Dealing with non-determinism](#dealing-with-non-determinism): evaluate how often an answer is good over many runs,
-  and keep the results comparable.
+- [Dealing with non-determinism](#dealing-with-non-determinism): make tests with a real model reliable, with repeated
+  runs, pass rates and pinned model versions.
 
 Start with checks that do not need a model to judge the answer, such as which tool was executed: they are cheap and
 exact. Use a judge only for what they cannot check.
+
+:::info Testing or evaluation?
+Testing and evaluation answer different questions:
+
+- **Testing** checks that your code works: while you develop and on every build, mostly with mocks and a few cases you
+  write, with a pass or fail result. Most tests are fast and cheap, and testing is useful from the first day of a
+  project. This page is about testing.
+- **Evaluation** measures how good the answers of your application are: with the real model, on many realistic inputs,
+  often from real use, with scores that you compare over time. See [Evaluation](/tutorials/evaluation).
+:::
 
 :::note
 `langchain4j-test` is experimental: its API may change in future releases.
@@ -686,14 +696,3 @@ add a [`ChatModelListener`](/tutorials/observability#chat-model-observability) t
 `langchain4j-test` also has assertions for [guardrails](/tutorials/guardrails): see
 [Unit Testing Input Guardrails](/tutorials/guardrails#unit-testing-input-guardrails) and
 [Unit Testing Output Guardrails](/tutorials/guardrails#unit-testing-output-guardrails).
-
-## Recommended reading
-
-- [Your AI Product Needs Evals](https://hamel.dev/blog/posts/evals/)
-- [Creating a LLM-as-a-Judge That Drives Business Results](https://hamel.dev/blog/posts/llm-judge/)
-- [A Practical Guide to RAG Pipeline Evaluation (Part 1: Retrieval)](https://medium.com/relari/a-practical-guide-to-rag-pipeline-evaluation-part-1-27a472b09893)
-- [A Practical Guide to RAG Pipeline Evaluation (Part 2: Generation)](https://medium.com/relari/a-practical-guide-to-rag-evaluation-part-2-generation-c79b1bde0f5d)
-- [How important is a Golden Dataset for LLM evaluation?](https://medium.com/relari/how-important-is-a-golden-dataset-for-llm-pipeline-evaluation-4ef6deb14dc5)
-- [Case Study: Reference-free vs Reference-based evaluation of RAG pipeline](https://medium.com/relari/case-study-reference-free-vs-reference-based-evaluation-of-rag-pipeline-9a49ef49866c)
-- [How to evaluate complex GenAI Apps: a granular approach](https://medium.com/relari/how-to-evaluate-complex-genai-apps-a-granular-approach-0ab929d5b3e2)
-- [Generate Synthetic Data to Test LLM Applications](https://medium.com/relari/generate-synthetic-data-to-test-llm-applications-4bffeb51b80e)

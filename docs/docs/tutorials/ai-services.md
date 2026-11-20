@@ -1111,7 +1111,7 @@ or, in the long run, even fine-tune a small specialized model for each specific 
 
 ## Testing
 
-- [Testing and Evaluation](/tutorials/testing-and-evaluation): how to test AI Services, with model mocks, checks of what they did and model judges
+- [Testing](/tutorials/testing): how to test AI Services, with model mocks, checks of what they did and model judges
 
 
 ## Related Tutorials

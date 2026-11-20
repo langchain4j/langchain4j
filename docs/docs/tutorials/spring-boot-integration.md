@@ -572,7 +572,7 @@ For more details about the `langchain4j-observation` library, please check the [
 
 ## Testing
 
-- [Testing and Evaluation](/tutorials/testing-and-evaluation): how to test AI Services, also in a Spring Boot test
+- [Testing](/tutorials/testing): how to test AI Services, also in a Spring Boot test
 
 ## Supported versions
 
