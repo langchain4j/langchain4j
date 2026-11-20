@@ -491,7 +491,7 @@ class OpenAiResponsesClient {
         String requestBody = CODEC.toJson(payload);
 
         HttpRequest.Builder requestBuilder = HttpRequest.builder()
-                .url(baseUrl + "/responses")
+                .url(baseUrl, "responses")
                 .method(HttpMethod.POST)
                 .addHeader("Content-Type", "application/json")
                 .addHeader("Accept", stream ? "text/event-stream" : "application/json");
