@@ -12,6 +12,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.ASSISTANT;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.SYSTEM;
 import static dev.langchain4j.model.anthropic.internal.api.AnthropicRole.USER;
+import static dev.langchain4j.model.anthropic.internal.client.Json.fromJson;
 import static dev.langchain4j.model.anthropic.internal.client.Json.toJson;
 import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static dev.langchain4j.model.output.FinishReason.OTHER;
@@ -83,6 +84,9 @@ public class AnthropicMapper {
     public static final String SERVER_TOOL_RESULTS_KEY =
             "server_tool_results"; // do not change, will break backward compatibility!
     public static final String CACHE_CONTROL = "cache_control";
+    /** Ordered JSON-compatible assistant blocks for replay, present when returnThinking is enabled.
+     * Text and tool requests remain available through the ordinary AiMessage fields. */
+    public static final String CONTINUATION_CONTENT_KEY = "anthropic_continuation_content";
 
     private static boolean isMarkedForCaching(Map<String, Object> attributes) {
         return attributes != null && "ephemeral".equals(attributes.get(CACHE_CONTROL));
@@ -102,10 +106,7 @@ public class AnthropicMapper {
     }
 
     public static List<AnthropicMessage> toAnthropicMessages(
-            List<ChatMessage> messages,
-            boolean sendThinking,
-            boolean midConversationSystemMessages,
-            String cacheTtl) {
+            List<ChatMessage> messages, boolean sendThinking, boolean midConversationSystemMessages, String cacheTtl) {
 
         List<AnthropicMessage> anthropicMessages = new ArrayList<>();
         List<AnthropicMessageContent> toolContents = new ArrayList<>();
@@ -199,14 +200,15 @@ public class AnthropicMapper {
 
             if (content instanceof TextContent textContent) {
                 if (applyCache) {
-                    anthropicContents.add(
-                            new AnthropicTextContent(textContent.text(), AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl)));
+                    anthropicContents.add(new AnthropicTextContent(
+                            textContent.text(), AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl)));
                 } else {
                     anthropicContents.add(new AnthropicTextContent(textContent.text()));
                 }
             } else if (content instanceof ImageContent imageContent) {
                 Image image = imageContent.image();
-                AnthropicCacheControl cacheControl = applyCache ? AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl) : null;
+                AnthropicCacheControl cacheControl =
+                        applyCache ? AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl) : null;
                 if (image.url() != null) {
                     anthropicContents.add(
                             AnthropicImageContent.fromUrl(image.url().toString(), cacheControl));
@@ -218,7 +220,8 @@ public class AnthropicMapper {
                 }
             } else if (content instanceof PdfFileContent pdfFileContent) {
                 PdfFile pdfFile = pdfFileContent.pdfFile();
-                AnthropicCacheControl cacheControl = applyCache ? AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl) : null;
+                AnthropicCacheControl cacheControl =
+                        applyCache ? AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl) : null;
                 if (pdfFile.url() != null) {
                     anthropicContents.add(
                             AnthropicPdfContent.fromUrl(pdfFile.url().toString(), cacheControl));
@@ -235,6 +238,10 @@ public class AnthropicMapper {
 
     private static List<AnthropicMessageContent> toAnthropicMessageContents(
             AiMessage message, boolean sendThinking, String cacheTtl) {
+        if (sendThinking) {
+            List<AnthropicMessageContent> retained = continuationContents(message, cacheTtl);
+            if (retained != null) return retained;
+        }
         List<AnthropicMessageContent> contents = new ArrayList<>();
 
         if (sendThinking) {
@@ -260,7 +267,8 @@ public class AnthropicMapper {
             boolean applyCache = shouldCache && !hasToolExecutionRequests;
             contents.add(
                     applyCache
-                            ? new AnthropicTextContent(message.text(), AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl))
+                            ? new AnthropicTextContent(
+                                    message.text(), AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl))
                             : new AnthropicTextContent(message.text()));
         }
 
@@ -353,6 +361,8 @@ public class AnthropicMapper {
         String thinking = null;
         Map<String, Object> attributes = new HashMap<>();
         if (returnThinking) {
+            List<Map<String, Object>> continuation = continuationContent(contents);
+            if (continuation != null) attributes.put(CONTINUATION_CONTENT_KEY, continuation);
             thinking = contents.stream()
                     .filter(content -> "thinking".equals(content.type))
                     .map(content -> content.thinking)
@@ -404,6 +414,77 @@ public class AnthropicMapper {
                 .toolExecutionRequests(toolExecutionRequests)
                 .attributes(attributes)
                 .build();
+    }
+
+    /** Captures supported blocks without joining signatures or changing their relative positions. */
+    @SuppressWarnings("unchecked")
+    public static List<Map<String, Object>> continuationContent(List<AnthropicContent> contents) {
+        if (contents.stream().noneMatch(c -> "thinking".equals(c.type) || "redacted_thinking".equals(c.type))) {
+            return null;
+        }
+        if (contents.stream()
+                .anyMatch(c -> c.type == null
+                        || !List.of("text", "tool_use", "thinking", "redacted_thinking")
+                                .contains(c.type))) {
+            return null;
+        }
+        return (List<Map<String, Object>>) (List<?>) fromJson(toJson(contents), List.class);
+    }
+
+    private static List<AnthropicMessageContent> continuationContents(AiMessage message, String cacheTtl) {
+        Object raw = message.attributes().get(CONTINUATION_CONTENT_KEY);
+        if (!(raw instanceof List<?> blocks) || blocks.isEmpty()) return null;
+        List<AnthropicMessageContent> contents = new ArrayList<>();
+        List<String> texts = new ArrayList<>();
+        List<ToolExecutionRequest> calls = new ArrayList<>();
+        for (Object value : blocks) {
+            if (!(value instanceof Map<?, ?> block) || !(block.get("type") instanceof String type)) return null;
+            switch (type) {
+                case "thinking" -> {
+                    if (!(block.get("thinking") instanceof String thinking)
+                            || !(block.get("signature") instanceof String signature)) return null;
+                    contents.add(new AnthropicThinkingContent(thinking, signature));
+                }
+                case "redacted_thinking" -> {
+                    if (!(block.get("data") instanceof String data)) return null;
+                    contents.add(new AnthropicRedactedThinkingContent(data));
+                }
+                case "text" -> {
+                    if (!(block.get("text") instanceof String text)) return null;
+                    texts.add(text);
+                    contents.add(new AnthropicTextContent(text));
+                }
+                case "tool_use" -> {
+                    if (!(block.get("id") instanceof String id)
+                            || !(block.get("name") instanceof String name)
+                            || !(block.get("input") instanceof Map<?, ?>)) return null;
+                    String input = toJson(block.get("input"));
+                    calls.add(ToolExecutionRequest.builder()
+                            .id(id)
+                            .name(name)
+                            .arguments(input)
+                            .build());
+                    contents.add(new AnthropicToolUseContent(id, name, input));
+                }
+                default -> {
+                    return null;
+                }
+            }
+        }
+        // A caller editing the ordinary fields must not silently get the old response back.
+        String text = String.join("\n", texts);
+        if (!getOrDefault(message.text(), "").equals(text)
+                || !message.toolExecutionRequests().equals(calls)) return null;
+        if (isMarkedForCaching(message.attributes())) {
+            for (int i = contents.size() - 1; i >= 0; i--) {
+                AnthropicMessageContent content = contents.get(i);
+                if (content instanceof AnthropicTextContent || content instanceof AnthropicToolUseContent) {
+                    content.cacheControl = AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl);
+                    break;
+                }
+            }
+        }
+        return contents;
     }
 
     private static boolean isServerToolResultType(String type) {

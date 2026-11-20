@@ -749,6 +749,21 @@ It is controlled by the following parameters:
 - `sendThinking`: controls whether to send thinking and signatures stored in `AiMessage` to the LLM in follow-up requests.
 Enabled by default.
 
+With `returnThinking(true)`, responses containing thinking also retain their ordered
+`thinking`, `redacted_thinking`, `text`, and `tool_use` blocks in the JSON-compatible
+`anthropic_continuation_content` message attribute. Keep that attribute with the
+message when persisting chat memory: replay uses it to preserve individual signatures,
+empty thinking text, and block positions, including on final answers. This applies
+to synchronous, streaming, and batch responses. Legacy thinking attributes remain
+available for existing consumers. Responses with other block types use the existing
+mapping path.
+
+Replay uses the retained blocks only while the message's text and tool requests
+still match them. Editing those fields, removing the attribute, or setting
+`sendThinking(false)` uses the ordinary mapping path. Changing an earlier message,
+system prompt, or tool definition can still invalidate later thinking signatures;
+preserving response blocks does not make such history edits safe for replay.
+
 In order to configure `effort` parameter, set `customParameters` when building the model:
 ```java
 ChatModel model = AnthropicChatModel.builder()

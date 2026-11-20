@@ -285,6 +285,8 @@ class AnthropicBatchChatModelTest {
         AiMessage aiMessage = response.results().get(0).response().aiMessage();
         assertThat(aiMessage.text()).isEqualTo("Paris");
         assertThat(aiMessage.thinking()).isEqualTo("Paris is the capital.");
+        assertThat(aiMessage.attributes())
+                .containsKey(dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.CONTINUATION_CONTENT_KEY);
     }
 
     @Test
