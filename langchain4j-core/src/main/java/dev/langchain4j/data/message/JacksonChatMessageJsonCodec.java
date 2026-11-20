@@ -41,7 +41,7 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
                 .addMixIn(UserMessage.class, UserMessageMixin.class)
                 .addMixIn(UserMessage.Builder.class, ChatMessageBuilderMixin.class)
                 .addMixIn(AiMessage.class, AiMessageMixin.class)
-                .addMixIn(AiMessage.Builder.class, ChatMessageBuilderMixin.class)
+                .addMixIn(AiMessage.Builder.class, AiMessageBuilderMixin.class)
                 .addMixIn(ToolExecutionRequest.class, ToolExecutionRequestMixin.class)
                 .addMixIn(ToolExecutionResultMessage.class, ToolExecutionResultMessageMixin.class)
                 .addMixIn(ToolExecutionResultMessage.Builder.class, ChatMessageBuilderMixin.class)
@@ -133,6 +133,13 @@ public class JacksonChatMessageJsonCodec implements ChatMessageJsonCodec {
     @JsonInclude(NON_NULL)
     @JsonDeserialize(builder = AiMessage.Builder.class)
     private abstract static class AiMessageMixin {}
+
+    @JsonIgnoreProperties("type")
+    private abstract static class AiMessageBuilderMixin {
+
+        @JsonDeserialize(using = AiMessageAttributesDeserializer.class)
+        abstract AiMessage.Builder attributes(Map<String, Object> attributes);
+    }
 
     @JsonInclude(NON_NULL)
     @JsonDeserialize(builder = ToolExecutionRequest.Builder.class)
