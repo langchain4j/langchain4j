@@ -11,11 +11,12 @@ import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailExecutor;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 /**
  * Responsible for managing and applying input and output guardrails to methods
@@ -26,26 +27,44 @@ import java.util.concurrent.ConcurrentHashMap;
  * This class handles the initialization, configuration, and execution of input and output
  * guardrail logic for the methods of the associated AI service class, ensuring both input
  * and output constraints are applied automatically when methods are invoked.
+ * <p>
+ *     The executors are registered under the method keys of the
+ *     {@link dev.langchain4j.spi.classloading.ClassMetadataProviderFactory ClassMetadataProviderFactory} that scanned
+ *     the AI service class. A method may be identified by one of those keys, or by its {@link Method}, which the
+ *     service translates into the key with
+ *     {@link dev.langchain4j.spi.classloading.ClassMetadataProviderFactory#resolveMethodKey(Method)}. The translation
+ *     applies to every lookup, blocking and non-blocking alike.
+ * </p>
  */
 @Internal
 public abstract class AbstractGuardrailService implements GuardrailService {
-    private static final Object NULL_KEY = new Object();
-
     private final Class<?> aiServiceClass;
-    private final Map<Object, InputGuardrailExecutor> inputGuardrails = new ConcurrentHashMap<>();
-    private final Map<Object, OutputGuardrailExecutor> outputGuardrails = new ConcurrentHashMap<>();
-
-    // Caches for whether or not a method has input or output guardrails
-    private final Map<Object, Boolean> inputGuardrailMethods = new ConcurrentHashMap<>();
-    private final Map<Object, Boolean> outputGuardrailMethods = new ConcurrentHashMap<>();
+    private final KeyedGuardrailExecutors<InputGuardrailRequest, InputGuardrailResult, InputGuardrailExecutor>
+            inputGuardrails;
+    private final KeyedGuardrailExecutors<OutputGuardrailRequest, OutputGuardrailResult, OutputGuardrailExecutor>
+            outputGuardrails;
 
     protected AbstractGuardrailService(
             Class<?> aiServiceClass,
             Map<Object, InputGuardrailExecutor> inputGuardrails,
             Map<Object, OutputGuardrailExecutor> outputGuardrails) {
+        this(aiServiceClass, inputGuardrails, outputGuardrails, method -> Optional.empty());
+    }
+
+    /**
+     * @param methodKeyResolver finds the key a {@link Method} is registered under, when the method is not registered
+     *                          as is. It is never called with {@code null}, and is called once per method.
+     */
+    AbstractGuardrailService(
+            Class<?> aiServiceClass,
+            Map<Object, InputGuardrailExecutor> inputGuardrails,
+            Map<Object, OutputGuardrailExecutor> outputGuardrails,
+            Function<Method, Optional<?>> methodKeyResolver) {
         this.aiServiceClass = ensureNotNull(aiServiceClass, "aiServiceClass");
-        Optional.ofNullable(inputGuardrails).ifPresent(this.inputGuardrails::putAll);
-        Optional.ofNullable(outputGuardrails).ifPresent(this.outputGuardrails::putAll);
+        this.inputGuardrails =
+                new KeyedGuardrailExecutors<>(inputGuardrails, InputGuardrailResult::success, methodKeyResolver);
+        this.outputGuardrails =
+                new KeyedGuardrailExecutors<>(outputGuardrails, OutputGuardrailResult::success, methodKeyResolver);
     }
 
     @Override
@@ -55,82 +74,64 @@ public abstract class AbstractGuardrailService implements GuardrailService {
 
     @Override
     public <MethodKey> InputGuardrailResult executeInputGuardrails(MethodKey method, InputGuardrailRequest request) {
-        return Optional.ofNullable(method)
-                .map(this.inputGuardrails::get)
-                .map(executor -> executor.execute(request))
-                .orElseGet(InputGuardrailResult::success);
+        return this.inputGuardrails.execute(method, request);
     }
 
     @Override
     public <MethodKey> CompletableFuture<InputGuardrailResult> executeInputGuardrailsAsync(
             MethodKey method, InputGuardrailRequest request) {
-        return Optional.ofNullable(method)
-                .map(this.inputGuardrails::get)
-                .map(executor -> executor.executeAsync(request))
-                .orElseGet(() -> CompletableFuture.completedFuture(InputGuardrailResult.success()));
+        return this.inputGuardrails.executeAsync(method, request);
     }
 
     @Override
     public <MethodKey> OutputGuardrailResult executeOutputGuardrails(MethodKey method, OutputGuardrailRequest request) {
-        return Optional.ofNullable(method)
-                .map(this.outputGuardrails::get)
-                .map(executor -> executor.execute(request))
-                .orElseGet(OutputGuardrailResult::success);
+        return this.outputGuardrails.execute(method, request);
     }
 
     @Override
     public <MethodKey> CompletableFuture<OutputGuardrailResult> executeOutputGuardrailsAsync(
             MethodKey method, OutputGuardrailRequest request) {
-        return Optional.ofNullable(method)
-                .map(this.outputGuardrails::get)
-                .map(executor -> executor.executeAsync(request))
-                .orElseGet(() -> CompletableFuture.completedFuture(OutputGuardrailResult.success()));
+        return this.outputGuardrails.executeAsync(method, request);
     }
 
     @Override
     public <MethodKey> boolean hasInputGuardrails(MethodKey method) {
-        return this.inputGuardrailMethods.computeIfAbsent(
-                checkMethodKey(method), m -> !getInputGuardrails(m).isEmpty());
+        return this.inputGuardrails.hasGuardrails(method);
     }
 
     @Override
     public <MethodKey> boolean hasOutputGuardrails(MethodKey method) {
-        return this.outputGuardrailMethods.computeIfAbsent(
-                checkMethodKey(method), m -> !getOutputGuardrails(m).isEmpty());
-    }
-
-    private static <MethodKey> MethodKey checkMethodKey(MethodKey method) {
-        return (method != null) ? method : (MethodKey) NULL_KEY;
+        return this.outputGuardrails.hasGuardrails(method);
     }
 
     // These methods below really only exist for testing purposes
     // That's why they are package-scoped
     int getInputGuardrailMethodCount() {
-        return this.inputGuardrails.size();
+        return this.inputGuardrails.registeredCount();
     }
 
     int getOutputGuardrailMethodCount() {
-        return this.outputGuardrails.size();
+        return this.outputGuardrails.registeredCount();
     }
 
     <MethodKey> Optional<dev.langchain4j.guardrail.config.InputGuardrailsConfig> getInputConfig(MethodKey method) {
-        return Optional.ofNullable(this.inputGuardrails.get(method)).map(InputGuardrailExecutor::config);
+        return this.inputGuardrails.executor(method).map(InputGuardrailExecutor::config);
     }
 
     <MethodKey> Optional<dev.langchain4j.guardrail.config.OutputGuardrailsConfig> getOutputConfig(MethodKey method) {
-        return Optional.ofNullable(this.outputGuardrails.get(method)).map(OutputGuardrailExecutor::config);
+        return this.outputGuardrails.executor(method).map(OutputGuardrailExecutor::config);
     }
 
     <MethodKey> List<InputGuardrail> getInputGuardrails(MethodKey method) {
-        return Optional.ofNullable(method)
-                .map(this.inputGuardrails::get)
+        return this.inputGuardrails
+                .executor(method)
                 .map(InputGuardrailExecutor::guardrails)
                 .orElseGet(List::of);
     }
 
     <MethodKey> List<OutputGuardrail> getOutputGuardrails(MethodKey method) {
-        return Optional.ofNullable(method)
-                .map(this.outputGuardrails::get)
+        return this.outputGuardrails
+                .executor(method)
                 .map(OutputGuardrailExecutor::guardrails)
                 .orElseGet(List::of);
     }
