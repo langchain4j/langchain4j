@@ -25,7 +25,6 @@ import dev.langchain4j.model.openai.internal.chat.ToolCall;
 import dev.langchain4j.model.openai.internal.completion.CompletionChoice;
 import dev.langchain4j.model.openai.internal.completion.CompletionResponse;
 import dev.langchain4j.model.openai.internal.shared.Usage;
-import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.util.ArrayList;
 import java.util.List;
@@ -61,7 +60,7 @@ public class OpenAiStreamingResponseBuilder {
     private final AtomicReference<String> serviceTier = new AtomicReference<>();
     private final AtomicReference<String> systemFingerprint = new AtomicReference<>();
     private final AtomicReference<TokenUsage> tokenUsage = new AtomicReference<>();
-    private final AtomicReference<FinishReason> finishReason = new AtomicReference<>();
+    private final AtomicReference<String> rawFinishReason = new AtomicReference<>();
     private final AtomicReference<SuccessfulHttpResponse> rawHttpResponse = new AtomicReference<>();
     private final Queue<ServerSentEvent> rawServerSentEvents = new ConcurrentLinkedQueue<>();
     private final List<LogProb> logProbs = new CopyOnWriteArrayList<>();
@@ -147,7 +146,7 @@ public class OpenAiStreamingResponseBuilder {
 
         String finishReason = chatCompletionChoice.finishReason();
         if (finishReason != null) {
-            this.finishReason.set(finishReasonFrom(finishReason));
+            this.rawFinishReason.set(finishReason);
         }
 
         LogProbs logProbs = chatCompletionChoice.logprobs();
@@ -247,7 +246,7 @@ public class OpenAiStreamingResponseBuilder {
 
         String finishReason = completionChoice.finishReason();
         if (finishReason != null) {
-            this.finishReason.set(finishReasonFrom(finishReason));
+            this.rawFinishReason.set(finishReason);
         }
 
         String token = completionChoice.text();
@@ -315,11 +314,13 @@ public class OpenAiStreamingResponseBuilder {
     }
 
     private OpenAiChatResponseMetadata buildMetadata() {
+        String finishReason = rawFinishReason.get();
         return OpenAiChatResponseMetadata.builder()
                 .id(id.get())
                 .modelName(model.get())
                 .tokenUsage(tokenUsage.get())
-                .finishReason(finishReason.get())
+                .finishReason(finishReasonFrom(finishReason))
+                .rawFinishReason(finishReason)
                 .created(created.get())
                 .serviceTier(serviceTier.get())
                 .systemFingerprint(systemFingerprint.get())
