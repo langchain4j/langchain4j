@@ -253,15 +253,15 @@ class MetadataTest implements WithAssertions {
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageStartingWith("The metadata key 'key' has the value")
                 .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. "
-                        + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
-                        + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
+                        + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, "
+                        + "class java.lang.Integer, class java.lang.Long, class java.lang.Float, class java.lang.Double]");
 
         assertThatThrownBy(() -> Metadata.from(map))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageStartingWith("The metadata key 'key' has the value")
                 .hasMessageEndingWith("which is of the unsupported type 'java.lang.Object'. "
-                        + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, int, class java.lang.Integer, "
-                        + "long, class java.lang.Long, float, class java.lang.Float, double, class java.lang.Double]");
+                        + "Currently, the supported types are: [class java.lang.String, class java.util.UUID, "
+                        + "class java.lang.Integer, class java.lang.Long, class java.lang.Float, class java.lang.Double]");
     }
 
     @Test
