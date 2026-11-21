@@ -179,6 +179,9 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     .build();
 ```
 
+By default, the Google Gen AI SDK sends up to five concurrent `GoogleGenAiChatModel.chatAsync(...)` requests to the same host per model instance.
+Additional requests wait in the SDK's queue. The configured `timeout` starts when the SDK dispatches a request, so the time until its future completes can exceed that timeout.
+
 ### Advanced: customizing the `GenerateContentConfig`
 
 The builder methods cover the most common options. To set an option of the underlying Google Gen AI Java SDK
