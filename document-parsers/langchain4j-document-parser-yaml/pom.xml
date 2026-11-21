@@ -13,7 +13,7 @@
     <name>LangChain4j :: Document Parser :: YAML</name>
 
     <properties>
-        <snakeyaml.version>2.5</snakeyaml.version>
+        <snakeyaml.version>2.7</snakeyaml.version>
     </properties>
 
     <dependencies>
