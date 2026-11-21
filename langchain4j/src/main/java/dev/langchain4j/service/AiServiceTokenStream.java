@@ -55,6 +55,7 @@ public class AiServiceTokenStream implements TokenStream {
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
     private final InvocationContext invocationContext;
+    private final ChatMemory chatMemory;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
     private final AtomicBoolean startedBefore = new AtomicBoolean();
@@ -99,13 +100,15 @@ public class AiServiceTokenStream implements TokenStream {
         this.toolServiceContext = parameters.toolServiceContext();
         this.toolArgumentsErrorHandler = parameters.toolArgumentsErrorHandler();
         this.toolExecutionErrorHandler = parameters.toolExecutionErrorHandler();
-        this.toolExecutor = CapturedContextSupport.restoringIn(parameters.toolExecutor(), parameters.invocationContext());
+        this.toolExecutor =
+                CapturedContextSupport.restoringIn(parameters.toolExecutor(), parameters.invocationContext());
         this.completeResponseProcessingExecutor = CapturedContextSupport.restoringIn(
                 parameters.completeResponseProcessingExecutor(), parameters.invocationContext());
         this.retrievedContents = copy(parameters.retrievedContents());
         this.context = ensureNotNull(parameters.context(), "context");
         ensureNotNull(this.context.streamingChatModel, "streamingChatModel");
         this.invocationContext = parameters.invocationContext();
+        this.chatMemory = parameters.chatMemory();
         this.commonGuardrailParams = parameters.commonGuardrailParams();
         this.methodKey = parameters.methodKey();
     }
@@ -269,7 +272,7 @@ public class AiServiceTokenStream implements TokenStream {
                 intermediateResponseHandler,
                 completeResponseHandler,
                 errorHandler,
-                initTemporaryMemory(context, messages),
+                resolveMemory(runContext),
                 null,
                 toolServiceContext,
                 context.toolService.maxToolCallingRoundTrips(),
@@ -290,7 +293,8 @@ public class AiServiceTokenStream implements TokenStream {
                 .request(chatRequest)
                 .build());
 
-        CurrentInvocation.runWith(runContext, () -> context.streamingChatModel.chat(chatRequest, HandlerWithoutInvocation.wrap(handler)));
+        CurrentInvocation.runWith(
+                runContext, () -> context.streamingChatModel.chat(chatRequest, HandlerWithoutInvocation.wrap(handler)));
     }
 
     private GuardrailRequestParams guardrailParams(InvocationContext runContext) {
@@ -361,13 +365,19 @@ public class AiServiceTokenStream implements TokenStream {
         }
     }
 
-    private ChatMemory initTemporaryMemory(AiServiceContext context, List<ChatMessage> messagesToSend) {
-        var chatMemory = MessageWindowChatMemory.withMaxMessages(Integer.MAX_VALUE);
-
+    private ChatMemory resolveMemory(InvocationContext runContext) {
         if (!context.hasChatMemory()) {
-            chatMemory.add(messagesToSend);
+            return initTemporaryMemory(messages);
         }
+        if (chatMemory != null && runContext == invocationContext) {
+            return chatMemory;
+        }
+        return context.chatMemoryService.getOrCreateInvocationChatMemory(runContext);
+    }
 
-        return chatMemory;
+    private ChatMemory initTemporaryMemory(List<ChatMessage> messagesToSend) {
+        var temporaryMemory = MessageWindowChatMemory.withMaxMessages(Integer.MAX_VALUE);
+        temporaryMemory.add(messagesToSend);
+        return temporaryMemory;
     }
 }
