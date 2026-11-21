@@ -288,109 +288,172 @@ final class PartsAndContentsMapper {
             GeminiContent systemInstruction,
             boolean sendThinking,
             boolean mediaResolutionPerPartEnabled) {
-        return messages.stream()
-                .map(msg -> {
-                    switch (msg.type()) {
-                        case SYSTEM:
-                            SystemMessage systemMessage = (SystemMessage) msg;
+        List<GeminiContent> contents = new ArrayList<>();
+        for (int messageIndex = 0; messageIndex < messages.size(); messageIndex++) {
+            ChatMessage msg = messages.get(messageIndex);
+            GeminiContent content = toGeminiContent(
+                    msg, messages, messageIndex, systemInstruction, sendThinking, mediaResolutionPerPartEnabled);
+            if (content != null) {
+                contents.add(content);
+            }
+        }
+        return contents;
+    }
 
-                            if (systemInstruction != null) {
-                                systemInstruction.addPart(GeminiContent.GeminiPart.builder()
-                                        .text(systemMessage.text())
-                                        .build());
-                                return null;
-                            }
+    private static GeminiContent toGeminiContent(
+            ChatMessage msg,
+            List<ChatMessage> messages,
+            int messageIndex,
+            GeminiContent systemInstruction,
+            boolean sendThinking,
+            boolean mediaResolutionPerPartEnabled) {
+        switch (msg.type()) {
+            case SYSTEM:
+                SystemMessage systemMessage = (SystemMessage) msg;
 
-                            if (isNotNullOrEmpty(systemMessage.text())) {
-                                return new GeminiContent(
-                                        List.of(GeminiContent.GeminiPart.builder()
-                                                .text(systemMessage.text())
-                                                .build()),
-                                        GeminiRole.MODEL.toString());
-                            }
+                if (systemInstruction != null) {
+                    systemInstruction.addPart(GeminiContent.GeminiPart.builder()
+                            .text(systemMessage.text())
+                            .build());
+                    return null;
+                }
 
-                            return null;
-                        case AI:
-                            AiMessage aiMessage = (AiMessage) msg;
+                if (isNotNullOrEmpty(systemMessage.text())) {
+                    return new GeminiContent(
+                            List.of(GeminiContent.GeminiPart.builder()
+                                    .text(systemMessage.text())
+                                    .build()),
+                            GeminiRole.MODEL.toString());
+                }
 
-                            List<GeminiContent.GeminiPart> parts = new ArrayList<>();
+                return null;
+            case AI:
+                AiMessage aiMessage = (AiMessage) msg;
 
-                            if (sendThinking && isNotNullOrEmpty(aiMessage.thinking())) {
-                                parts.add(GeminiContent.GeminiPart.builder()
-                                        .text(aiMessage.thinking())
-                                        .thought(true)
-                                        .build());
-                            }
+                List<GeminiContent.GeminiPart> parts = new ArrayList<>();
 
-                            if (isNotNullOrEmpty(aiMessage.text())) {
-                                parts.add(GeminiContent.GeminiPart.builder()
-                                        .text(aiMessage.text())
-                                        .build());
-                            }
+                if (sendThinking && isNotNullOrEmpty(aiMessage.thinking())) {
+                    parts.add(GeminiContent.GeminiPart.builder()
+                            .text(aiMessage.thinking())
+                            .thought(true)
+                            .build());
+                }
 
-                            if (aiMessage.hasToolExecutionRequests()) {
-                                String thoughtSignature = null;
-                                if (sendThinking) {
-                                    thoughtSignature = aiMessage.attribute(THINKING_SIGNATURE_KEY, String.class);
-                                }
-                                parts.addAll(toGeminiParts(aiMessage.toolExecutionRequests(), thoughtSignature));
-                            }
+                if (isNotNullOrEmpty(aiMessage.text())) {
+                    parts.add(GeminiContent.GeminiPart.builder()
+                            .text(aiMessage.text())
+                            .build());
+                }
 
-                            return new GeminiContent(parts, GeminiRole.MODEL.toString());
-
-                        case USER:
-                            UserMessage userMessage = (UserMessage) msg;
-
-                            return new GeminiContent(
-                                    userMessage.contents().stream()
-                                            .map(content -> fromContentToGPart(content, mediaResolutionPerPartEnabled))
-                                            .collect(Collectors.toList()),
-                                    GeminiRole.USER.toString());
-                        case TOOL_EXECUTION_RESULT:
-                            ToolExecutionResultMessage toolResultMessage = (ToolExecutionResultMessage) msg;
-
-                            if (!toolResultMessage.hasSingleText()) {
-                                List<GeminiContent.GeminiPart> toolParts = new ArrayList<>();
-                                Map<String, String> responseMap = new HashMap<>();
-                                for (dev.langchain4j.data.message.Content content : toolResultMessage.contents()) {
-                                    if (content instanceof TextContent textContent) {
-                                        responseMap.put("response", textContent.text());
-                                    } else if (content instanceof ImageContent imageContent) {
-                                        toolParts.add(fromContentToGPart(imageContent, mediaResolutionPerPartEnabled));
-                                    } else {
-                                        throw new UnsupportedFeatureException(
-                                                "Google AI Gemini does not support content type '" + content.type()
-                                                        + "' in tool results.");
-                                    }
-                                }
-                                if (responseMap.isEmpty()) {
-                                    responseMap.put("response", "");
-                                }
-                                toolParts.add(
-                                        0,
-                                        GeminiContent.GeminiPart.builder()
-                                                .functionResponse(new GeminiFunctionResponse(
-                                                        toolResultMessage.id(),
-                                                        toolResultMessage.toolName(),
-                                                        responseMap))
-                                                .build());
-                                return new GeminiContent(toolParts, GeminiRole.USER.toString());
-                            }
-
-                            return new GeminiContent(
-                                    List.of(GeminiContent.GeminiPart.builder()
-                                            .functionResponse(new GeminiFunctionResponse(
-                                                    toolResultMessage.id(),
-                                                    toolResultMessage.toolName(),
-                                                    Map.of("response", toolResultMessage.text())))
-                                            .build()),
-                                    GeminiRole.USER.toString());
-                        default:
-                            return null;
+                if (aiMessage.hasToolExecutionRequests()) {
+                    String thoughtSignature = null;
+                    if (sendThinking) {
+                        thoughtSignature = aiMessage.attribute(THINKING_SIGNATURE_KEY, String.class);
                     }
-                })
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
+                    parts.addAll(toGeminiParts(aiMessage.toolExecutionRequests(), thoughtSignature));
+                }
+
+                return new GeminiContent(parts, GeminiRole.MODEL.toString());
+
+            case USER:
+                UserMessage userMessage = (UserMessage) msg;
+
+                return new GeminiContent(
+                        userMessage.contents().stream()
+                                .map(content -> fromContentToGPart(content, mediaResolutionPerPartEnabled))
+                                .collect(Collectors.toList()),
+                        GeminiRole.USER.toString());
+            case TOOL_EXECUTION_RESULT:
+                ToolExecutionResultMessage toolResultMessage = (ToolExecutionResultMessage) msg;
+                String functionName = resolveFunctionResponseName(messages, messageIndex, toolResultMessage);
+
+                if (!toolResultMessage.hasSingleText()) {
+                    List<GeminiContent.GeminiPart> toolParts = new ArrayList<>();
+                    Map<String, String> responseMap = new HashMap<>();
+                    for (dev.langchain4j.data.message.Content content : toolResultMessage.contents()) {
+                        if (content instanceof TextContent textContent) {
+                            responseMap.put("response", textContent.text());
+                        } else if (content instanceof ImageContent imageContent) {
+                            toolParts.add(fromContentToGPart(imageContent, mediaResolutionPerPartEnabled));
+                        } else {
+                            throw new UnsupportedFeatureException("Google AI Gemini does not support content type '"
+                                    + content.type() + "' in tool results.");
+                        }
+                    }
+                    if (responseMap.isEmpty()) {
+                        responseMap.put("response", "");
+                    }
+                    toolParts.add(
+                            0,
+                            GeminiContent.GeminiPart.builder()
+                                    .functionResponse(new GeminiFunctionResponse(
+                                            toolResultMessage.id(), functionName, responseMap))
+                                    .build());
+                    return new GeminiContent(toolParts, GeminiRole.USER.toString());
+                }
+
+                return new GeminiContent(
+                        List.of(GeminiContent.GeminiPart.builder()
+                                .functionResponse(new GeminiFunctionResponse(
+                                        toolResultMessage.id(),
+                                        functionName,
+                                        Map.of("response", toolResultMessage.text())))
+                                .build()),
+                        GeminiRole.USER.toString());
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Gemini requires {@code functionResponse.name} to be non-empty. Prefer the name on the tool result
+     * message; when it is blank (e.g. only tool call id was stored), recover the name from the nearest
+     * preceding {@link AiMessage} tool execution requests by id, then by order.
+     */
+    static String resolveFunctionResponseName(
+            List<ChatMessage> messages, int toolResultIndex, ToolExecutionResultMessage toolResultMessage) {
+        if (!isNullOrBlank(toolResultMessage.toolName())) {
+            return toolResultMessage.toolName();
+        }
+
+        int aiMessageIndex = findPrecedingAiMessageIndexWithToolRequests(messages, toolResultIndex);
+        if (aiMessageIndex < 0) {
+            return toolResultMessage.toolName();
+        }
+
+        AiMessage precedingAiMessage = (AiMessage) messages.get(aiMessageIndex);
+        List<ToolExecutionRequest> requests = precedingAiMessage.toolExecutionRequests();
+
+        if (!isNullOrBlank(toolResultMessage.id())) {
+            for (ToolExecutionRequest request : requests) {
+                if (toolResultMessage.id().equals(request.id()) && !isNullOrBlank(request.name())) {
+                    return request.name();
+                }
+            }
+        }
+
+        int toolResultOffset = 0;
+        for (int i = aiMessageIndex + 1; i < toolResultIndex; i++) {
+            if (messages.get(i) instanceof ToolExecutionResultMessage) {
+                toolResultOffset++;
+            }
+        }
+        if (toolResultOffset < requests.size()
+                && !isNullOrBlank(requests.get(toolResultOffset).name())) {
+            return requests.get(toolResultOffset).name();
+        }
+
+        return toolResultMessage.toolName();
+    }
+
+    private static int findPrecedingAiMessageIndexWithToolRequests(List<ChatMessage> messages, int fromIndex) {
+        for (int i = fromIndex - 1; i >= 0; i--) {
+            ChatMessage message = messages.get(i);
+            if (message instanceof AiMessage aiMessage && aiMessage.hasToolExecutionRequests()) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     /**
