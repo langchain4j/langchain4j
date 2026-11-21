@@ -8,6 +8,18 @@
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.model.embedding.EmbeddingModel",
           "justification": "The Hibernate ORM EmbeddingStore API has utility methods for filling embedding vector fields of entities and needs the EmbeddingModel to generate the embedding vector"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method jakarta.persistence.criteria.Expression<java.lang.Double> dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore<E>::score(dev.langchain4j.store.embedding.hibernate.DistanceFunction, jakarta.persistence.criteria.Expression<java.lang.Double>, jakarta.persistence.criteria.CriteriaBuilder)",
+          "justification": "Calculate score on JVM instead of on the database"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method jakarta.persistence.criteria.Predicate dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore<E>::distanceFilter(dev.langchain4j.store.embedding.hibernate.DistanceFunction, jakarta.persistence.criteria.Expression<java.lang.Double>, jakarta.persistence.criteria.Expression<java.lang.Double>, jakarta.persistence.criteria.CriteriaBuilder)",
+          "justification": "Remove the possibility to override the distance filter producer"
         }
       ]
     }

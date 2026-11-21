@@ -2,6 +2,9 @@ package dev.langchain4j.agentic;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.agentic.decision.DecisionAgents.CategoryRouter;
 import dev.langchain4j.agentic.decision.DecisionAgents.RequestCategory;
@@ -11,9 +14,11 @@ import dev.langchain4j.agentic.scope.DefaultAgenticScope;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope.AgentMessage;
 import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.FieldsInput;
 import dev.langchain4j.model.decision.response.ChoiceAnswer;
@@ -24,6 +29,7 @@ import dev.langchain4j.service.V;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
@@ -60,9 +66,9 @@ class ConcurrentAgentResponsesTest {
             IntStream.rangeClosed(1, QUESTIONS.size()).mapToObj(i -> new TokenUsage(10 * i, i)).toList();
 
     /** Waits until all the model calls of the items are in flight, so that the invocations really overlap. */
-    private static ChatModelMock modelAnsweringAllAtOnce(int parties) {
+    private static MockChatModel modelAnsweringAllAtOnce(int parties) {
         CyclicBarrier allCallsInFlight = new CyclicBarrier(parties);
-        return ChatModelMock.thatResponds(chatRequest -> {
+        return reportingTokenUsages(MockChatModel.thatResponds(chatRequest -> {
                     String question = ((dev.langchain4j.data.message.UserMessage) chatRequest
                                     .messages()
                                     .get(chatRequest.messages().size() - 1))
@@ -71,12 +77,12 @@ class ConcurrentAgentResponsesTest {
                     await(allCallsInFlight);
                     return AiMessage.from("Answer to " + question);
                 })
-                .withTokenUsages(TOKEN_USAGES.subList(0, parties).toArray(TokenUsage[]::new));
+                .thenRepeats());
     }
 
-    private static DecisionModelMock modelDecidingAllAtOnce(int parties) {
+    private static MockDecisionModel modelDecidingAllAtOnce(int parties) {
         CyclicBarrier allCallsInFlight = new CyclicBarrier(parties);
-        return new DecisionModelMock(request -> {
+        return MockDecisionModel.thatAnswers(request -> {
             String question =
                     ((FieldsInput) request.input()).fields().get("request").toString();
             await(allCallsInFlight);
@@ -97,19 +103,19 @@ class ConcurrentAgentResponsesTest {
                             .probabilities(probabilities)
                             .options(options)
                             .build());
-        });
+        }).thenRepeats();
     }
 
     /** Numbers its answers, so that two overlapping invocations with the same input get different responses. */
-    private static ChatModelMock modelNumberingItsAnswers(int parties) {
+    private static MockChatModel modelNumberingItsAnswers(int parties) {
         CyclicBarrier allCallsInFlight = new CyclicBarrier(parties);
         AtomicInteger calls = new AtomicInteger();
-        return ChatModelMock.thatResponds(chatRequest -> {
+        return reportingTokenUsages(MockChatModel.thatResponds(chatRequest -> {
                     int call = calls.incrementAndGet();
                     await(allCallsInFlight);
                     return AiMessage.from("Answer #" + call);
                 })
-                .withTokenUsages(TOKEN_USAGES.subList(0, parties).toArray(TokenUsage[]::new));
+                .thenRepeats());
     }
 
     private static double probabilityOf(String question) {
@@ -284,7 +290,7 @@ class ConcurrentAgentResponsesTest {
     void streaming_agent_reports_no_chat_response_rather_than_the_one_of_its_previous_invocation() {
         List<AgentResponse> responses = new CopyOnWriteArrayList<>();
         StreamingAssistant assistant = AgenticServices.agentBuilder(StreamingAssistant.class)
-                .streamingChatModel(StreamingChatModelMock.thatAlwaysStreams("It ", "is ", "noon"))
+                .streamingChatModel(MockStreamingChatModel.thatStreams("It ", "is ", "noon").thenRepeats())
                 .listener(collecting(responses))
                 .build();
         UntypedAgent loop = AgenticServices.loopBuilder()
@@ -298,5 +304,28 @@ class ConcurrentAgentResponsesTest {
         assertThat(responses).hasSize(2);
         assertThat(responses).extracting(AgentResponse::chatRequest).containsOnlyNulls();
         assertThat(responses).extracting(AgentResponse::chatResponse).containsOnlyNulls();
+    }
+
+    /** Each response of the model reports the next of the {@link #TOKEN_USAGES}, in the order the responses complete. */
+    @SuppressWarnings("unchecked")
+    private static MockChatModel reportingTokenUsages(MockChatModel model) {
+        AtomicInteger next = new AtomicInteger();
+        MockChatModel reporting = spy(model);
+        doAnswer(invocation -> withTokenUsage((ChatResponse) invocation.callRealMethod(), next))
+                .when(reporting)
+                .doChat(any(ChatRequest.class));
+        doAnswer(invocation -> ((CompletableFuture<ChatResponse>) invocation.callRealMethod())
+                        .thenApply(response -> withTokenUsage(response, next)))
+                .when(reporting)
+                .doChatAsync(any(ChatRequest.class));
+        return reporting;
+    }
+
+    private static ChatResponse withTokenUsage(ChatResponse response, AtomicInteger next) {
+        return ChatResponse.builder()
+                .aiMessage(response.aiMessage())
+                .finishReason(response.finishReason())
+                .tokenUsage(TOKEN_USAGES.get(next.getAndIncrement()))
+                .build();
     }
 }

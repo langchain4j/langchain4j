@@ -9,6 +9,7 @@ import com.openai.models.decisions.DecisionChoiceOption;
 import com.openai.models.decisions.DecisionChoiceValue;
 import com.openai.models.decisions.DecisionCreateParams;
 import com.openai.models.decisions.DecisionInputImage;
+import com.openai.models.decisions.DecisionInputItem;
 import com.openai.models.decisions.DecisionInputMessage;
 import com.openai.models.decisions.DecisionInputPart;
 import com.openai.models.decisions.DecisionInputText;
@@ -65,8 +66,7 @@ class InternalOpenAiOfficialDecisionHelper {
         request.questions().forEach((name, question) -> addQuestion(params, name, question));
         if (request.parameters() instanceof OpenAiOfficialDecisionRequestParameters parameters) {
             if (parameters.promptCacheKey() != null) {
-                // the SDK has no typed setter for it yet
-                params.putAdditionalBodyProperty("prompt_cache_key", JsonValue.from(parameters.promptCacheKey()));
+                params.promptCacheKey(parameters.promptCacheKey());
             }
             parameters.customParameters().forEach((name, value) -> addCustomParameter(params, name, value));
         }
@@ -77,19 +77,20 @@ class InternalOpenAiOfficialDecisionHelper {
         if (input instanceof TextInput text) {
             params.input(text.text());
         } else if (input instanceof FieldsInput fields) {
-            params.inputOfDecisionInputMessages(List.of(userMessage(toLabeledParts(fields.fields()))));
+            params.inputOfDecisionInputItems(List.of(userMessage(toLabeledParts(fields.fields()))));
         } else if (input instanceof ContentsInput contents) {
-            params.inputOfDecisionInputMessages(List.of(userMessage(toInputParts(contents.contents()))));
+            params.inputOfDecisionInputItems(List.of(userMessage(toInputParts(contents.contents()))));
         } else if (input instanceof MessagesInput messages) {
-            params.inputOfDecisionInputMessages(List.of(userMessage(toTranscriptParts(messages.messages()))));
+            params.inputOfDecisionInputItems(List.of(userMessage(toTranscriptParts(messages.messages()))));
         } else {
             throw new UnsupportedFeatureException(
                     "The OpenAI Decisions API does not support " + input.getClass().getName() + " as input");
         }
     }
 
-    private static DecisionInputMessage userMessage(List<DecisionInputPart> parts) {
-        return DecisionInputMessage.builder().contentOfParts(parts).build();
+    private static DecisionInputItem userMessage(List<DecisionInputPart> parts) {
+        return DecisionInputItem.ofDecisionInputMessage(DecisionInputMessage.ofUser(
+                DecisionInputMessage.User.builder().contentOfParts(parts).build()));
     }
 
     /**
@@ -126,6 +127,7 @@ class InternalOpenAiOfficialDecisionHelper {
             case "model" -> params.model(jsonField(value));
             case "input" -> params.input(jsonField(value));
             case "questions" -> params.questions(jsonField(value));
+            case "prompt_cache_key" -> params.promptCacheKey(jsonField(value));
             default -> params.putAdditionalBodyProperty(name, JsonValue.from(value));
         }
     }
@@ -142,10 +144,10 @@ class InternalOpenAiOfficialDecisionHelper {
         Transcript transcript = DecisionModelInputUtils.transcript(messages, "The OpenAI Decisions API");
         List<DecisionInputPart> parts = new ArrayList<>();
         parts.add(textPart("messages: " + Json.toJson(transcript.messages())));
-        for (int i = 0; i < transcript.images().size(); i++) {
-            parts.add(textPart("[image " + (i + 1) + "]:"));
-            parts.add(toInputPart(transcript.images().get(i)));
-        }
+        transcript.media().forEach((marker, content) -> {
+            parts.add(textPart(marker + ":"));
+            parts.add(toInputPart(content));
+        });
         return parts;
     }
 
@@ -164,10 +166,12 @@ class InternalOpenAiOfficialDecisionHelper {
                     DecisionInputText.builder().text(text.text()).build());
         }
         if (content instanceof ImageContent image) {
-            return DecisionInputPart.ofInputImage(DecisionInputImage.builder()
-                    .imageUrl(toImageUrl(image.image()))
-                    .detail(toDetail(image.detailLevel()))
-                    .build());
+            DecisionInputImage.Builder inputImage = DecisionInputImage.builder().imageUrl(toImageUrl(image.image()));
+            // without a chosen detail level, OpenAI's default applies
+            if (image.detailLevelSpecified()) {
+                inputImage.detail(toDetail(image.detailLevel()));
+            }
+            return DecisionInputPart.ofInputImage(inputImage.build());
         }
         throw new UnsupportedFeatureException(
                 "The OpenAI Decisions API supports only text and image input, but the input contains "

@@ -3,6 +3,7 @@ package dev.langchain4j.rag.content.retriever;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverErrorContext;
 import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverListener;
 import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverRequestContext;
@@ -22,7 +23,7 @@ class ContentRetrieverListenerUtils {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        listeners.forEach(listener -> {
+        CurrentInvocation.runWithout(() -> listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
             } catch (Exception e) {
@@ -31,14 +32,14 @@ class ContentRetrieverListenerUtils {
                                 + "This exception has been ignored.",
                         e);
             }
-        });
+        }));
     }
 
     static void onResponse(ContentRetrieverResponseContext responseContext, List<ContentRetrieverListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        listeners.forEach(listener -> {
+        CurrentInvocation.runWithout(() -> listeners.forEach(listener -> {
             try {
                 listener.onResponse(responseContext);
             } catch (Exception e) {
@@ -47,14 +48,14 @@ class ContentRetrieverListenerUtils {
                                 + "This exception has been ignored.",
                         e);
             }
-        });
+        }));
     }
 
     static void onError(ContentRetrieverErrorContext errorContext, List<ContentRetrieverListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        listeners.forEach(listener -> {
+        CurrentInvocation.runWithout(() -> listeners.forEach(listener -> {
             try {
                 listener.onError(errorContext);
             } catch (Exception e) {
@@ -63,6 +64,6 @@ class ContentRetrieverListenerUtils {
                                 + "This exception has been ignored.",
                         e);
             }
-        });
+        }));
     }
 }

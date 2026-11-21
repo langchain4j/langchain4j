@@ -7,6 +7,7 @@ import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.Content;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.HarmCategory;
+import com.google.genai.types.HttpOptions;
 import com.google.genai.types.Part;
 import com.google.genai.types.PrebuiltVoiceConfig;
 import com.google.genai.types.SafetySetting;
@@ -146,6 +147,12 @@ class GoogleGenAiConfigBuilderTest {
 
         assertThat(config.thinkingConfig().get().thinkingLevel().get().toString())
                 .contains("MEDIUM");
+
+        GenerateContentConfig xhighConfig = GoogleGenAiConfigBuilder.buildConfig(
+                parameters, null, null, null, "XHIGH", null, null, false, false, false, null, null, null, null);
+
+        assertThat(xhighConfig.thinkingConfig().get().thinkingLevel().get().knownEnum())
+                .isEqualTo(com.google.genai.types.ThinkingLevel.Known.XHIGH);
     }
 
     @Test
@@ -973,5 +980,35 @@ class GoogleGenAiConfigBuilderTest {
         assertThat(config.tools().get())
                 .hasSize(3)
                 .allSatisfy(tool -> assertThat(tool.codeExecution()).isEmpty());
+    }
+
+    @Test
+    void withMaskedHttpHeaders_should_mask_header_values_for_logging() {
+        GenerateContentConfig config = GenerateContentConfig.builder()
+                .temperature(0.5f)
+                .httpOptions(HttpOptions.builder()
+                        .headers(Map.of("x-goog-api-key", "secret-api-key", "X-Custom", "secret-custom"))
+                        .timeout(1000)
+                        .build())
+                .build();
+
+        GenerateContentConfig masked = GoogleGenAiConfigBuilder.withMaskedHttpHeaders(config);
+
+        assertThat(masked.toString())
+                .doesNotContain("secret")
+                .contains("x-goog-api-key=***")
+                .contains("X-Custom=***");
+        assertThat(masked.temperature()).isEqualTo(config.temperature());
+        assertThat(masked.httpOptions().flatMap(HttpOptions::timeout)).contains(1000);
+        assertThat(config.httpOptions().flatMap(HttpOptions::headers).orElseThrow())
+                .containsEntry("x-goog-api-key", "secret-api-key");
+    }
+
+    @Test
+    void withMaskedHttpHeaders_should_return_config_without_headers_unchanged() {
+        GenerateContentConfig config =
+                GenerateContentConfig.builder().temperature(0.5f).build();
+
+        assertThat(GoogleGenAiConfigBuilder.withMaskedHttpHeaders(config)).isSameAs(config);
     }
 }

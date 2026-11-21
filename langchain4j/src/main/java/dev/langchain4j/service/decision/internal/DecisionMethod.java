@@ -15,9 +15,15 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
+import dev.langchain4j.data.message.VideoContent;
+import dev.langchain4j.data.pdf.PdfFile;
+import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.model.decision.request.ChoiceQuestion;
 import dev.langchain4j.model.decision.request.DecisionRequest;
@@ -203,8 +209,8 @@ public final class DecisionMethod {
     /**
      * The types of the parameters that are sent to the model as structured values. Objects among them are converted to
      * maps with the JSON codec, so frameworks may need to register them, and the types they contain, for native images.
-     * Parameters of {@link Content} types (such as {@link ImageContent}) and {@link Image}, which are sent as contents,
-     * are left out.
+     * Parameters of {@link Content} types (such as {@link ImageContent}) and of type {@link Image}, {@link Audio},
+     * {@link Video} or {@link PdfFile}, which are sent as contents, are left out.
      */
     public List<Type> inputTypes() {
         return inputTypes;
@@ -238,28 +244,47 @@ public final class DecisionMethod {
     }
 
     /**
-     * Whether the argument is a {@link Content} or an {@link Image}, or a collection or array of them, also when the
-     * declared type of the parameter does not say so (for example {@code Object}).
+     * Whether the argument is a {@link Content}, an {@link Image}, an {@link Audio}, a {@link Video} or a
+     * {@link PdfFile}, or a collection or array of them, also when the declared type of the parameter does not say so
+     * (for example {@code Object}).
      */
     private static boolean isContents(Object value) {
         List<?> items = items(value);
         if (items == null) {
-            return value instanceof Content || value instanceof Image;
+            return isContent(value);
         }
         List<?> nonNull = items.stream().filter(Objects::nonNull).toList();
-        return !nonNull.isEmpty() && nonNull.stream().allMatch(item -> item instanceof Content || item instanceof Image);
+        return !nonNull.isEmpty() && nonNull.stream().allMatch(DecisionMethod::isContent);
+    }
+
+    private static boolean isContent(Object value) {
+        return value instanceof Content
+                || value instanceof Image
+                || value instanceof Audio
+                || value instanceof Video
+                || value instanceof PdfFile;
     }
 
     /**
      * Converts a content argument into a {@link Content}, or a list of them for a collection or an array, with
      * {@link Image}s converted to {@link ImageContent}s with the {@link ImageContent.DetailLevel#AUTO} detail level,
-     * so that the model provider chooses the detail, and {@code null}s left out. Returns {@code null} if there is
-     * no content, so that the parameter is left out like a {@code null} argument.
+     * so that the model provider chooses the detail, {@link Audio}, {@link Video} and {@link PdfFile} converted to
+     * {@link AudioContent}, {@link VideoContent} and {@link PdfFileContent}, and {@code null}s left out. Returns
+     * {@code null} if there is no content, so that the parameter is left out like a {@code null} argument.
      */
     private static Object toContents(Object value) {
         List<?> items = items(value);
         if (items == null) {
-            return value instanceof Image image ? ImageContent.from(image, ImageContent.DetailLevel.AUTO) : value;
+            if (value instanceof Image image) {
+                return ImageContent.from(image, ImageContent.DetailLevel.AUTO);
+            } else if (value instanceof Audio audio) {
+                return AudioContent.from(audio);
+            } else if (value instanceof Video video) {
+                return VideoContent.from(video);
+            } else if (value instanceof PdfFile pdfFile) {
+                return PdfFileContent.from(pdfFile);
+            }
+            return value;
         }
         List<Object> contents = new ArrayList<>();
         items.forEach(item -> {
@@ -683,13 +708,16 @@ public final class DecisionMethod {
     }
 
     /**
-     * Whether the type is a {@link Content} type (such as {@link ImageContent}) or {@link Image}, or a collection or
-     * array of them.
+     * Whether the type is a {@link Content} type (such as {@link ImageContent}), {@link Image}, {@link Audio},
+     * {@link Video} or {@link PdfFile}, or a collection or array of them.
      */
     private static boolean isContentType(Type type) {
         if (type instanceof Class<?> c) {
             return Content.class.isAssignableFrom(c)
                     || Image.class.isAssignableFrom(c)
+                    || Audio.class.isAssignableFrom(c)
+                    || Video.class.isAssignableFrom(c)
+                    || PdfFile.class.isAssignableFrom(c)
                     || (c.isArray() && isContentType(c.getComponentType()));
         }
         if (type instanceof ParameterizedType parameterized) {

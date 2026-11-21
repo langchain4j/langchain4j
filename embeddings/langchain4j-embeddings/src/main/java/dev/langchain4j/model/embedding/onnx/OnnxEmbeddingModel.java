@@ -17,6 +17,10 @@ import java.util.concurrent.Executor;
  * <a href="https://huggingface.co/docs/optimum/exporters/onnx/usage_guides/export_a_model">here</a>.
  * <br>
  * Many models already converted to ONNX format are available <a href="https://huggingface.co/Xenova">here</a>.
+ * <p>
+ * Load only model files you trust. ONNX runtime parses the model file with native code,
+ * and a crafted model file can exploit flaws in the runtime,
+ * for example to read other files on your machine or to crash the JVM.
  */
 public class OnnxEmbeddingModel extends AbstractInProcessEmbeddingModel {
 

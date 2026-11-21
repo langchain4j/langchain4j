@@ -3,6 +3,7 @@ package dev.langchain4j.model.scoring;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.scoring.listener.ScoringModelErrorContext;
 import dev.langchain4j.model.scoring.listener.ScoringModelListener;
@@ -12,6 +13,7 @@ import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +29,7 @@ class ScoringModelListenerUtils {
             ScoringRequest request,
             ModelProvider modelProvider,
             Map<Object, Object> attributes,
+            UUID invocationId,
             List<ScoringModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
@@ -35,6 +38,7 @@ class ScoringModelListenerUtils {
                 .scoringRequest(request)
                 .modelProvider(modelProvider)
                 .attributes(attributes)
+                .invocationId(invocationId)
                 .build();
         notify(listeners, modelProvider, listener -> listener.onRequest(context));
     }
@@ -44,6 +48,7 @@ class ScoringModelListenerUtils {
             ScoringRequest request,
             ModelProvider modelProvider,
             Map<Object, Object> attributes,
+            UUID invocationId,
             List<ScoringModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
@@ -53,6 +58,7 @@ class ScoringModelListenerUtils {
                 .scoringRequest(request)
                 .modelProvider(modelProvider)
                 .attributes(attributes)
+                .invocationId(invocationId)
                 .build();
         notify(listeners, modelProvider, listener -> listener.onResponse(context));
     }
@@ -62,6 +68,7 @@ class ScoringModelListenerUtils {
             ScoringRequest request,
             ModelProvider modelProvider,
             Map<Object, Object> attributes,
+            UUID invocationId,
             List<ScoringModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
@@ -71,6 +78,7 @@ class ScoringModelListenerUtils {
                 .scoringRequest(request)
                 .modelProvider(modelProvider)
                 .attributes(attributes)
+                .invocationId(invocationId)
                 .build();
         notify(listeners, modelProvider, listener -> listener.onError(context));
     }
@@ -79,7 +87,7 @@ class ScoringModelListenerUtils {
             List<ScoringModelListener> listeners,
             ModelProvider modelProvider,
             Consumer<ScoringModelListener> notification) {
-        listeners.forEach(listener -> {
+        CurrentInvocation.runWithout(() -> listeners.forEach(listener -> {
             try {
                 notification.accept(listener);
             } catch (Exception e) {
@@ -90,6 +98,6 @@ class ScoringModelListenerUtils {
                         modelProvider,
                         e);
             }
-        });
+        }));
     }
 }

@@ -13,6 +13,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.internal.CurrentInvocation;
+import dev.langchain4j.internal.HandlerWithoutInvocation;
 import dev.langchain4j.invocation.CapturedContextSupport;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
@@ -246,7 +247,6 @@ public class AiServiceTokenStream implements TokenStream {
                         runContext.chatMemoryId()));
 
         ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
-                .errorHandler(errorHandler)
                 .chatRequest(chatRequest)
                 .invocationContext(runContext)
                 .eventListenerRegistrar(context.eventListenerRegistrar)
@@ -278,7 +278,8 @@ public class AiServiceTokenStream implements TokenStream {
                 toolExecutor,
                 completeResponseProcessingExecutor,
                 guardrailParams(runContext),
-                methodKey);
+                methodKey,
+                context.toolService.newCompensableExecutionsAccumulator());
 
         if (contentsHandler != null && retrievedContents != null) {
             contentsHandler.accept(retrievedContents);
@@ -289,7 +290,7 @@ public class AiServiceTokenStream implements TokenStream {
                 .request(chatRequest)
                 .build());
 
-        context.streamingChatModel.chat(chatRequest, handler);
+        CurrentInvocation.runWith(runContext, () -> context.streamingChatModel.chat(chatRequest, HandlerWithoutInvocation.wrap(handler)));
     }
 
     private GuardrailRequestParams guardrailParams(InvocationContext runContext) {

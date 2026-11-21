@@ -6,8 +6,10 @@ import dev.langchain4j.data.message.UserMessage;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 class InMemoryChatMemoryStoreTest implements WithAssertions {
     @Test
@@ -39,6 +41,24 @@ class InMemoryChatMemoryStoreTest implements WithAssertions {
         store.deleteMessagesAsync("foo").toCompletableFuture().join();
 
         assertThat(getAsync(store, "foo")).isEmpty();
+    }
+
+    @Test
+    void async_methods_should_return_failed_future_for_null_memory_id() {
+        InMemoryChatMemoryStore store = new InMemoryChatMemoryStore();
+
+        assertThat(store.getMessagesAsync(null))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(NullPointerException.class);
+        assertThat(store.updateMessagesAsync(null, List.of(new UserMessage("abc def"))))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(NullPointerException.class);
+        assertThat(store.deleteMessagesAsync(null))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(NullPointerException.class);
     }
 
     private static List<ChatMessage> getAsync(InMemoryChatMemoryStore store, Object memoryId) {

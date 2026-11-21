@@ -16,6 +16,7 @@ import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +33,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.junit.jupiter.api.TestInstance.Lifecycle.PER_CLASS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -166,6 +168,20 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         return true;
     }
 
+    /**
+     * Whether the model reports a request it cannot handle (e.g. an unsupported parameter) to the handler's
+     * {@code onError()} instead of throwing it from {@code chat(request, handler)}.
+     *
+     * @deprecated No longer used, so overriding this method has no effect: every streaming model now reports an
+     * unsupported parameter to {@code onError()} (see
+     * {@link StreamingChatModel#chat(ChatRequest, StreamingChatResponseHandler)}), and the tests of this class always
+     * expect that. Remove your override. This method will be removed in a future release.
+     */
+    @Deprecated(since = "1.25.0", forRemoval = true)
+    protected boolean reportsUnsupportedParametersThroughOnError() {
+        return true;
+    }
+
     @Override
     protected boolean assertThreads() {
         return streamingModes().equals(List.of(StreamingMode.HANDLER));
@@ -290,6 +306,8 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         CompletableFuture<Void> futureErrors = new CompletableFuture<>();
 
         RuntimeException userCodeException = new RuntimeException("something wrong happened in user code");
+        RuntimeException onErrorException =
+                new RuntimeException("something unexpected happened, but it should be ignored");
 
         StreamingChatResponseHandler handler = new StreamingChatResponseHandler() {
 
@@ -307,7 +325,7 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             public void onError(Throwable error) {
                 errors.add(error);
                 futureErrors.complete(null);
-                throw new RuntimeException("something unexpected happened, but it should be ignored");
+                throw onErrorException;
             }
         };
 
@@ -318,9 +336,15 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
         }
 
         // when
-        model.chat("What is the capital of Germany?", handler);
+        Throwable thrown = catchThrowable(() -> model.chat("What is the capital of Germany?", handler));
 
         // then
+        if (thrown != null) {
+            // a model that streams on the calling thread calls onError before chat(...) returns,
+            // and then chat(...) throws what onError throws
+            assertThat(thrown).isSameAs(onErrorException);
+        }
+
         ChatResponse response = futureResponse.get(30, SECONDS);
         assertThat(response.aiMessage().text()).containsIgnoringCase("Berlin");
 
@@ -349,10 +373,8 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
                 .parameters(parameters)
                 .build();
 
-        // when-then: the same UnsupportedFeatureException is reported, but HOW it reaches the caller
-        // depends on the streaming mode — thrown synchronously from the handler API (the handler is never
-        // notified), but delivered via Subscriber.onError from the publisher API (a cold publisher does no
-        // work at assembly, so chat(request) itself must not throw).
+        // when-then: the same UnsupportedFeatureException is reported, through the handler's onError in the
+        // handler API and through Subscriber.onError in the publisher API; chat(...) itself never throws.
         if (model instanceof StreamingModeAwareModel wrapped && wrapped.mode() == StreamingMode.PUBLISHER) {
 
             AtomicReference<Publisher<ChatModelStreamingEvent>> publisherReference = new AtomicReference<>();
@@ -401,11 +423,13 @@ public abstract class AbstractStreamingChatModelIT extends AbstractBaseChatModel
             assertThat(onCompleteCalled).isFalse();
         } else {
             StreamingChatResponseHandler handler = mock(StreamingChatResponseHandler.class);
-            assertThatThrownBy(() -> model.chat(chatRequest, handler))
+            assertThatCode(() -> model.chat(chatRequest, handler)).doesNotThrowAnyException();
+            ArgumentCaptor<Throwable> error = ArgumentCaptor.forClass(Throwable.class);
+            verify(handler, timeout(30_000)).onError(error.capture());
+            assertThat(error.getValue())
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessageContaining("stopSequences")
                     .hasMessageContaining("not support");
-            verify(handler, never()).onError(any());
             verify(handler, never()).onCompleteResponse(any());
         }
 

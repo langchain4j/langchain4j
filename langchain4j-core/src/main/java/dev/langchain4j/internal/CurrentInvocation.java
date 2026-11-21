@@ -2,6 +2,7 @@ package dev.langchain4j.internal;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.model.chat.ChatRequestOptions;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -26,15 +27,42 @@ public final class CurrentInvocation {
     }
 
     /**
+     * @return the invocation id that the listeners of a chat model call get: the one in the given options (which can
+     *         be {@code null}) if any, otherwise the current one, otherwise {@code null}.
+     */
+    public static UUID invocationId(ChatRequestOptions options) {
+        return options != null && options.invocationId() != null ? options.invocationId() : invocationId();
+    }
+
+    /**
+     * Runs the given action with the id of the given invocation context as the current one, then restores the
+     * previous one. Does nothing special when the invocation context is {@code null}.
+     */
+    public static void runWith(InvocationContext invocationContext, Runnable action) {
+        callWith(invocationContext, () -> {
+            action.run();
+            return null;
+        });
+    }
+
+    /**
      * Calls the given action with the id of the given invocation context as the current one, then restores the
      * previous one. Does nothing special when the invocation context is {@code null}.
      */
     public static <T> T callWith(InvocationContext invocationContext, Supplier<T> action) {
-        if (invocationContext == null) {
+        return callWithId(invocationContext == null ? null : invocationContext.invocationId(), action);
+    }
+
+    /**
+     * Calls the given action with the given invocation id as the current one, then restores the previous one. Does
+     * nothing special when the invocation id is {@code null}.
+     */
+    public static <T> T callWithId(UUID invocationId, Supplier<T> action) {
+        if (invocationId == null) {
             return action.get();
         }
         UUID previous = CURRENT_INVOCATION_ID.get();
-        CURRENT_INVOCATION_ID.set(invocationContext.invocationId());
+        CURRENT_INVOCATION_ID.set(invocationId);
         try {
             return action.get();
         } finally {
@@ -44,6 +72,36 @@ public final class CurrentInvocation {
                 CURRENT_INVOCATION_ID.set(previous);
             }
         }
+    }
+
+    /**
+     * Calls the given action with the given invocation id as the current one, or with no current invocation when the
+     * id is {@code null}, then restores the previous one. Used where an id captured earlier must apply exactly, also
+     * when it is {@code null}.
+     */
+    public static <T> T callWithIdOrWithout(UUID invocationId, Supplier<T> action) {
+        return invocationId == null ? callWithout(action) : callWithId(invocationId, action);
+    }
+
+    /**
+     * Runs the given action like {@link #callWithIdOrWithout(UUID, Supplier)}.
+     */
+    public static void runWithIdOrWithout(UUID invocationId, Runnable action) {
+        callWithIdOrWithout(invocationId, () -> {
+            action.run();
+            return null;
+        });
+    }
+
+    /**
+     * Runs the given action with no current invocation, then restores the previous one. Used to notify listeners:
+     * their code is not part of the work of the invocation.
+     */
+    public static void runWithout(Runnable action) {
+        callWithout(() -> {
+            action.run();
+            return null;
+        });
     }
 
     /**

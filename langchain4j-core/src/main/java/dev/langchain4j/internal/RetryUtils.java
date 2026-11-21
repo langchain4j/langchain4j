@@ -269,12 +269,7 @@ public final class RetryUtils {
                 return;
             }
 
-            CompletableFuture<T> attempt;
-            try {
-                attempt = action.get();
-            } catch (Throwable t) {
-                attempt = CompletableFuture.failedFuture(t);
-            }
+            CompletableFuture<T> attempt = CompletableFutureUtils.failOnThrow(action);
 
             CompletableFutureUtils.propagateCancellation(result, attempt);
 
@@ -298,10 +293,25 @@ public final class RetryUtils {
                                 .formatted(maxRetries - retry, maxRetries),
                         mapped);
                 Executor delayed = CompletableFuture.delayedExecutor(
-                        jitterDelayMillis(retry), TimeUnit.MILLISECONDS, DefaultExecutorProvider.getDefaultExecutor());
+                        jitterDelayMillis(retry), TimeUnit.MILLISECONDS, failingOnRejection(result));
                 delayed.execute(() -> attemptAsync(action, maxRetries, exceptionMapper, retry + 1, result));
             });
         }
+    }
+
+    /**
+     * The default executor, but a task it rejects fails {@code result}: a delayed executor of
+     * {@link CompletableFuture} drops what its executor throws, so the retry would never complete it.
+     */
+    private static Executor failingOnRejection(CompletableFuture<?> result) {
+        return task -> {
+            try {
+                DefaultExecutorProvider.getDefaultExecutor().execute(task);
+            } catch (Throwable error) {
+                Exceptions.restoreInterruptIfInterrupted(error);
+                result.completeExceptionally(error);
+            }
+        };
     }
 
     /**

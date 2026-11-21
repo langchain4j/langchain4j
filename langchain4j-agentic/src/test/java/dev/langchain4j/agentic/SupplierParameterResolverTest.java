@@ -424,6 +424,7 @@ class SupplierParameterResolverTest {
     void mcpClientSupplier_parameter_resolved() {
         Object fakeMcpClient = new Object();
         McpClientHolder holder = new McpClientHolder(fakeMcpClient);
+        AtomicInteger resolutions = new AtomicInteger();
 
         DeclarativeUtil.addSupplierParameterResolver(new SupplierParameterResolver() {
             @Override
@@ -433,16 +434,19 @@ class SupplierParameterResolverTest {
 
             @Override
             public Object resolve(Context context) {
+                resolutions.incrementAndGet();
                 return holder;
             }
         });
 
-        // The supplier parameter is resolved, then McpService.get().mcpBuilder() fails
-        // because langchain4j-agentic-mcp is not on the classpath.
+        // The supplier parameter is resolved when the agent is built, while the supplier method itself is invoked
+        // only when the MCP client is first needed, on the first invocation of the agent: here
+        // McpService.get().mcpBuilder() fails first, because langchain4j-agentic-mcp is not on the classpath.
         assertThatThrownBy(() -> AgenticServices.createAgenticSystem(McpWrapper.class, DUMMY_MODEL))
                 .isInstanceOf(UnsupportedOperationException.class)
                 .hasMessageContaining("No MCP service implementation found");
 
-        assertThat(capturedMcpClientHolder).isSameAs(holder);
+        assertThat(resolutions).hasValue(1);
+        assertThat(capturedMcpClientHolder).isNull();
     }
 }

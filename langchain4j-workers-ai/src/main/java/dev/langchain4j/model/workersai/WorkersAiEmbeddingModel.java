@@ -4,6 +4,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.embedding.EmbeddingModel;
+import dev.langchain4j.model.embedding.EmbeddingModelListenerUtils;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.workersai.client.AbstractWorkersAIModel;
@@ -148,6 +149,10 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
      */
     @Override
     public Response<Embedding> embed(String text) {
+        return EmbeddingModelListenerUtils.withListeners(this, TextSegment.from(text), () -> embedText(text));
+    }
+
+    private Response<Embedding> embedText(String text) {
         dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest req = new dev.langchain4j.model.workersai.client.WorkersAiEmbeddingRequest();
         req.getText().add(text);
 
@@ -184,6 +189,10 @@ public class WorkersAiEmbeddingModel extends AbstractWorkersAIModel implements E
      */
     @Override
     public Response<List<Embedding>> embedAll(List<TextSegment> textSegments) {
+        return EmbeddingModelListenerUtils.withListeners(this, textSegments, () -> embedSegments(textSegments));
+    }
+
+    private Response<List<Embedding>> embedSegments(List<TextSegment> textSegments) {
         List<Future<List<Embedding>>> futures = new ArrayList<>();
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         try {

@@ -15,7 +15,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
@@ -81,7 +81,7 @@ class AiServicesTest {
     void should_not_call_chatModel_when_ChatMemoryAccess_methods_are_called() {
 
         // given
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("Hi"));
+        ChatModel chatModel = spy(MockChatModel.thatResponds("Hi"));
         AssistantWithMemoryAccess assistant = AiServices.builder(AssistantWithMemoryAccess.class)
                 .chatModel(chatModel)
                 .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
@@ -98,6 +98,32 @@ class AiServicesTest {
         assertThat(assistant.getChatMemory("known")).isNull();
         assertThat(assistant.evictChatMemory("unknown")).isFalse();
         verify(chatModel, times(1)).chat(any(ChatRequest.class));
+    }
+
+    interface AssistantWithSingleMemoryAccess extends ChatMemoryAccess {
+
+        String chat(String message);
+    }
+
+    @Test
+    void should_fail_with_a_clear_error_when_evicting_the_single_chat_memory_of_an_AI_service() {
+
+        // given
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+        AssistantWithSingleMemoryAccess assistant = AiServices.builder(AssistantWithSingleMemoryAccess.class)
+                .chatModel(MockChatModel.thatResponds("Hi"))
+                .chatMemory(chatMemory)
+                .build();
+        assistant.chat("Hello");
+
+        // when-then
+        assertThatThrownBy(() -> assistant.evictChatMemory("default"))
+                .isExactlyInstanceOf(UnsupportedOperationException.class)
+                .hasMessage("Cannot evict the chat memory of the memory id 'default': this AI service has a single"
+                        + " chat memory, shared by all the memory ids. Configure it with chatMemoryProvider(...)"
+                        + " instead of chatMemory(...) to have a chat memory for each memory id, which can be"
+                        + " evicted.");
+        assertThat(chatMemory.messages()).hasSize(2);
     }
 
     @Test
@@ -173,7 +199,7 @@ class AiServicesTest {
     void should_transform_system_message() {
 
         // given
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("Grill for 30 minutes."));
+        ChatModel chatModel = spy(MockChatModel.thatResponds("Grill for 30 minutes."));
 
         ChefAssistant chef = AiServices.builder(ChefAssistant.class)
                 .chatModel(chatModel)
@@ -195,7 +221,7 @@ class AiServicesTest {
     void should_transform_system_message_with_invocation_context() {
 
         // given
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("Grill for 30 minutes."));
+        ChatModel chatModel = spy(MockChatModel.thatResponds("Grill for 30 minutes."));
 
         ChefAssistant chef = AiServices.builder(ChefAssistant.class)
                 .chatModel(chatModel)
@@ -217,7 +243,7 @@ class AiServicesTest {
     void should_add_system_message_via_transformer_when_none_is_configured() {
 
         // given
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("4"));
+        ChatModel chatModel = spy(MockChatModel.thatResponds("4"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -239,7 +265,7 @@ class AiServicesTest {
     void should_transform_system_message_from_system_message_provider() {
 
         // given
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("4"));
+        ChatModel chatModel = spy(MockChatModel.thatResponds("4"));
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModel)
@@ -267,7 +293,7 @@ class AiServicesTest {
     void should_not_append_output_format_instructions_when_return_type_is_ChatResponse() {
 
         // given
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds("Hi"));
+        ChatModel chatModel = spy(MockChatModel.thatResponds("Hi"));
 
         ChatResponseAssistant assistant = AiServices.builder(ChatResponseAssistant.class)
                 .chatModel(chatModel)
@@ -285,8 +311,7 @@ class AiServicesTest {
     void should_not_send_json_schema_when_return_type_is_ChatResponse() {
 
         // given
-        ChatModel chatModel =
-                spy(ChatModelMock.thatAlwaysResponds("Hi").withSupportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA));
+        ChatModel chatModel = spy(MockChatModel.thatResponds("Hi").withSupportedCapabilities(RESPONSE_FORMAT_JSON_SCHEMA));
 
         ChatResponseAssistant assistant = AiServices.builder(ChatResponseAssistant.class)
                 .chatModel(chatModel)

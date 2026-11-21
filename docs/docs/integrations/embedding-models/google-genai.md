@@ -11,7 +11,7 @@ This integration uses the official Google Gen AI SDK for Java (`com.google.genai
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-genai</artifactId>
-    <version>1.23.0-beta33</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 
@@ -53,7 +53,7 @@ EmbeddingModel embeddingModel = GoogleGenAiEmbeddingModel.builder()
     .outputDimensionality(768)      // reduce the embedding size (for models that support it)
     .titleMetadataKey("title")      // metadata key used as the document title for RETRIEVAL_DOCUMENT
     .maxRetries(3)
-    .timeout(Duration.ofSeconds(30))
+    .timeout(Duration.ofSeconds(30)) // limits each HTTP request as a whole; default: 20 minutes
     .build();
 ```
 

@@ -93,6 +93,11 @@ public class LocalAiChatModel implements ChatModel {
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
+        return ChatModel.super.chat(chatRequest); // kept because revapi reports its removal; the logic is in doChat
+    }
+
+    @Override
+    public ChatResponse doChat(ChatRequest chatRequest) {
         ChatRequestParameters parameters = chatRequest.parameters();
         ChatRequestValidationUtils.validateParameters(parameters);
         ChatRequestValidationUtils.validate(parameters.responseFormat());

@@ -222,6 +222,7 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .parentInvocationId(CurrentInvocation.invocationId())
                                 .interfaceName(context.aiServiceClass.getName())
                                 .methodName(method.getName())
+                                .methodReturnType(method.getGenericReturnType())
                                 .methodArguments(args != null ? Arrays.asList(args) : List.of())
                                 .chatMemoryId(findMemoryId(method, args).orElse(ChatMemoryService.DEFAULT))
                                 .defaultRequestParameters(determineChatRequestParameters(context))
@@ -923,7 +924,8 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         CompletableFuture<Object> result = new CompletableFuture<>();
 
-                        CompletableFuture<ChatResponse> firstModelCall = context.chatModel.chatAsync(chatRequest);
+                        CompletableFuture<ChatResponse> firstModelCall = CurrentInvocation.callWith(
+                                invocationContext, () -> context.chatModel.chatAsync(chatRequest));
                         propagateCancellation(result, firstModelCall);
 
                         firstModelCall

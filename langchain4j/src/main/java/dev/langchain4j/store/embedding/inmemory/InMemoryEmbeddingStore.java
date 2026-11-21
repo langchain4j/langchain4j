@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.inmemory;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -201,11 +202,7 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
      */
     @Override
     public CompletableFuture<EmbeddingSearchResult<Embedded>> searchAsync(EmbeddingSearchRequest request) {
-        try {
-            return CompletableFuture.completedFuture(search(request));
-        } catch (Throwable t) {
-            return CompletableFuture.failedFuture(t);
-        }
+        return failOnThrow(() -> CompletableFuture.completedFuture(search(request)));
     }
 
     public String serializeToJson() {

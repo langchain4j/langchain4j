@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -32,6 +33,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.net.URI;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -69,8 +71,10 @@ public class WatsonxDeploymentStreamingChatModelTest {
         when(mockDeploymentServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockDeploymentServiceBuilder);
         when(mockDeploymentServiceBuilder.timeout(any())).thenReturn(mockDeploymentServiceBuilder);
         when(mockDeploymentServiceBuilder.version(any())).thenReturn(mockDeploymentServiceBuilder);
-        when(mockDeploymentServiceBuilder.logRequests(any())).thenReturn(mockDeploymentServiceBuilder);
-        when(mockDeploymentServiceBuilder.logResponses(any())).thenReturn(mockDeploymentServiceBuilder);
+        when(mockDeploymentServiceBuilder.logRequests(nullable(Boolean.class)))
+                .thenReturn(mockDeploymentServiceBuilder);
+        when(mockDeploymentServiceBuilder.logResponses(nullable(Boolean.class)))
+                .thenReturn(mockDeploymentServiceBuilder);
         when(mockDeploymentServiceBuilder.authenticator(any())).thenReturn(mockDeploymentServiceBuilder);
         when(mockDeploymentServiceBuilder.apiKey(any())).thenReturn(mockDeploymentServiceBuilder);
         when(mockDeploymentServiceBuilder.httpClient(any())).thenReturn(mockDeploymentServiceBuilder);
@@ -277,31 +281,22 @@ public class WatsonxDeploymentStreamingChatModelTest {
                 .apiKey("api-key")
                 .build();
 
-        assertThrows(
-                UnsupportedFeatureException.class,
-                () -> streamingChatModel.chat(
-                        ChatRequest.builder()
+        AtomicReference<Throwable> reportedError = new AtomicReference<>();
+        streamingChatModel.chat(ChatRequest.builder()
                                 .messages(UserMessage.from("Hello"))
                                 .topK(10)
-                                .build(),
-                        new StreamingChatResponseHandler() {
+                                .build(), new StreamingChatResponseHandler() {
 
-                            @Override
-                            public void onPartialResponse(String partialResponse) {
-                                throw new UnsupportedOperationException("Unimplemented method 'onPartialResponse'");
-                            }
+            @Override
+            public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {}
 
-                            @Override
-                            public void onCompleteResponse(
-                                    dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
-                                throw new UnsupportedOperationException("Unimplemented method 'onCompleteResponse'");
-                            }
-
-                            @Override
-                            public void onError(Throwable error) {
-                                throw new UnsupportedOperationException("Unimplemented method 'onError'");
-                            }
-                        }));
+            @Override
+            public void onError(Throwable error) {
+                reportedError.set(error);
+            }
+        });
+        // the model reports the unsupported parameter to the handler instead of throwing it
+        assertInstanceOf(UnsupportedFeatureException.class, reportedError.get());
 
         assertThrows(
                 UnsupportedFeatureException.class,
@@ -323,31 +318,22 @@ public class WatsonxDeploymentStreamingChatModelTest {
                 .apiKey("api-key")
                 .build();
 
-        assertThrows(
-                UnsupportedFeatureException.class,
-                () -> streamingChatModel.chat(
-                        ChatRequest.builder()
+        AtomicReference<Throwable> reportedError = new AtomicReference<>();
+        streamingChatModel.chat(ChatRequest.builder()
                                 .messages(UserMessage.from("Hello"))
                                 .modelName("my-model")
-                                .build(),
-                        new StreamingChatResponseHandler() {
+                                .build(), new StreamingChatResponseHandler() {
 
-                            @Override
-                            public void onPartialResponse(String partialResponse) {
-                                throw new UnsupportedOperationException("Unimplemented method 'onPartialResponse'");
-                            }
+            @Override
+            public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {}
 
-                            @Override
-                            public void onCompleteResponse(
-                                    dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
-                                throw new UnsupportedOperationException("Unimplemented method 'onCompleteResponse'");
-                            }
-
-                            @Override
-                            public void onError(Throwable error) {
-                                throw new UnsupportedOperationException("Unimplemented method 'onError'");
-                            }
-                        }));
+            @Override
+            public void onError(Throwable error) {
+                reportedError.set(error);
+            }
+        });
+        // the model reports the unsupported parameter to the handler instead of throwing it
+        assertInstanceOf(UnsupportedFeatureException.class, reportedError.get());
 
         assertThrows(
                 UnsupportedFeatureException.class,

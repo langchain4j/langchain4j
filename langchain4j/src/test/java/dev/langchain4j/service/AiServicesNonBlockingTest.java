@@ -1072,7 +1072,7 @@ class AiServicesNonBlockingTest {
                 .singleElement()
                 .satisfies(message -> assertThat(message.text())
                         .isEqualTo("Tool 'credit' was executed successfully "
-                                + "but was rolled back due to failure of tool 'withdraw'"));
+                                + "but was rolled back because tool 'withdraw' failed"));
 
         assertNoBlockingCalls();
     }

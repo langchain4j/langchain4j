@@ -6,6 +6,7 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.spi.CapturedContext;
+import java.lang.reflect.Type;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,12 +44,12 @@ public interface InvocationContext {
      * <li>the chat memory (including its {@code ChatMemoryStore}) or the chat memory provider</li>
      * <li>the moderation model</li>
      * <li>the {@code chatRequestTransformer}</li>
+     * <li>the chat model itself (for example your own {@code ChatModel} implementation)</li>
      * </ul>
      * <p>
      * It is {@code null} when the AI Service is called from your own code (for example from a handler of a
-     * {@code TokenStream} or from a listener, also from those of an AI Service that itself has a parent), from any
-     * other part of an AI Service (for example your own {@code ChatModel} implementation), when there is no parent, or when this
-     * {@code InvocationContext} implementation does not track it.
+     * {@code TokenStream} or from a listener, also from those of an AI Service that itself has a parent), when there
+     * is no parent, or when this {@code InvocationContext} implementation does not track it.
      * <p>
      * The parent is also known when LangChain4j itself runs that part on another thread (for example tools executed
      * concurrently, or a blocking content retriever offloaded to an executor). But if your own code in that part hands
@@ -84,6 +85,21 @@ public interface InvocationContext {
      * The method name on {@link #interfaceName()} where the invocation was initiated from
      */
     String methodName();
+
+    /**
+     * The declared return type of the AI Service method, including its type arguments (for example
+     * {@code List<String>} or {@code TokenStream}).
+     * <p>
+     * Frameworks that create the context with their own AI Service implementation return {@code null} until they
+     * add support for it.
+     *
+     * @return the return type of the AI Service method, or {@code null} if it is not known
+     * @since 1.24.0
+     */
+    @Experimental
+    default Type methodReturnType() {
+        return null;
+    }
 
     /**
      * The arguments passed into the AI Service method
@@ -184,6 +200,7 @@ public interface InvocationContext {
         private UUID parentInvocationId;
         private String interfaceName;
         private String methodName;
+        private Type methodReturnType;
         private List<@NonNull Object> methodArguments = new ArrayList<>();
         private UserMessage userMessage;
         private UserMessage originalUserMessage;
@@ -204,6 +221,7 @@ public interface InvocationContext {
             parentInvocationId(invocationContext.parentInvocationId());
             interfaceName(invocationContext.interfaceName());
             methodName(invocationContext.methodName());
+            methodReturnType(invocationContext.methodReturnType());
             methodArguments(invocationContext.methodArguments());
             userMessage(invocationContext.userMessage());
             originalUserMessage(invocationContext.originalUserMessage());
@@ -252,6 +270,17 @@ public interface InvocationContext {
          */
         public Builder methodName(String methodName) {
             this.methodName = methodName;
+            return this;
+        }
+
+        /**
+         * Sets the {@link InvocationContext#methodReturnType()}.
+         *
+         * @since 1.24.0
+         */
+        @Experimental
+        public Builder methodReturnType(Type methodReturnType) {
+            this.methodReturnType = methodReturnType;
             return this;
         }
 
@@ -376,6 +405,11 @@ public interface InvocationContext {
 
         public String methodName() {
             return methodName;
+        }
+
+        @Experimental
+        public Type methodReturnType() {
+            return methodReturnType;
         }
 
         public List<@NonNull Object> methodArguments() {

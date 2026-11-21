@@ -6,14 +6,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Flow;
 import org.junit.jupiter.api.Test;
 
 class OpenAiResponsesStreamingChatModelPayloadTest {
@@ -205,5 +210,52 @@ class OpenAiResponsesStreamingChatModelPayloadTest {
                 .get("tools")
                 .get(0);
         assertThat(tool.get("strict").asBoolean()).isFalse();
+    }
+
+    @Test
+    void publisher_hook_should_signal_an_unsupported_parameter_instead_of_throwing() {
+        MockHttpClient mockHttpClient = new MockHttpClient();
+        OpenAiResponsesStreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(MODEL_NAME)
+                .build();
+        // the hook is called directly, so the parameters are those of this model, as chat(ChatRequest) passes them
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("Hi"))
+                .parameters(OpenAiResponsesChatRequestParameters.builder()
+                        .modelName(MODEL_NAME)
+                        .topK(3)
+                        .build())
+                .build();
+        List<Object> signals = new CopyOnWriteArrayList<>();
+
+        model.doChat(request).subscribe(new Flow.Subscriber<>() {
+
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                signals.add("onSubscribe");
+            }
+
+            @Override
+            public void onNext(ChatModelStreamingEvent event) {
+                signals.add(event);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                signals.add(error);
+            }
+
+            @Override
+            public void onComplete() {
+                signals.add("onComplete");
+            }
+        });
+
+        assertThat(signals).hasSize(2);
+        assertThat(signals.get(0)).isEqualTo("onSubscribe");
+        assertThat(signals.get(1)).isInstanceOf(UnsupportedFeatureException.class);
+        assertThat(mockHttpClient.requests()).isEmpty();
     }
 }

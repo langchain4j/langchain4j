@@ -11,6 +11,7 @@ import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GoogleMaps;
 import com.google.genai.types.GoogleSearch;
+import com.google.genai.types.HttpOptions;
 import com.google.genai.types.Retrieval;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Schema;
@@ -29,8 +30,10 @@ import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 class GoogleGenAiConfigBuilder {
@@ -411,6 +414,19 @@ class GoogleGenAiConfigBuilder {
                     .functionCallingConfig(funcConfig.build())
                     .build());
         }
+    }
+
+    static GenerateContentConfig withMaskedHttpHeaders(GenerateContentConfig config) {
+        Optional<HttpOptions> httpOptions = config.httpOptions();
+        Optional<Map<String, String>> headers = httpOptions.flatMap(HttpOptions::headers);
+        if (headers.isEmpty()) {
+            return config;
+        }
+        Map<String, String> maskedHeaders = new LinkedHashMap<>();
+        headers.get().keySet().forEach(name -> maskedHeaders.put(name, "***"));
+        return config.toBuilder()
+                .httpOptions(httpOptions.get().toBuilder().headers(maskedHeaders).build())
+                .build();
     }
 
     private GoogleGenAiConfigBuilder() {}

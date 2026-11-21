@@ -8,6 +8,7 @@ import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -43,6 +44,8 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.service.guardrail.InputGuardrails;
+import dev.langchain4j.service.guardrail.OutputGuardrails;
 import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
@@ -62,6 +65,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -678,6 +682,13 @@ public abstract class AiServices<T> {
      * are then submitted in request order and executed serially, while still being kept off the
      * model-response thread. (The synchronous and {@link TokenStream} modes already execute tools sequentially
      * by default.)
+     * <p>
+     * <b>Rejected tool calls.</b> When the {@code executor} rejects a tool call (it throws a
+     * {@link RejectedExecutionException}), the rejected tool call counts as a tool call that failed: the other tool
+     * calls of the same response still run, also the ones requested after the rejected one, the AI Service waits for
+     * all of them, and then fails with the rejection (or with the error of a tool call requested before the rejected
+     * one, when that error ends the call). With {@link #compensateOnToolErrors(boolean)} enabled, the tool calls that
+     * succeeded, also the ones that ran after the rejected one, are rolled back first.
      *
      * @param executor The {@link Executor} to be used to execute tools.
      * @return builder
@@ -1017,6 +1028,10 @@ public abstract class AiServices<T> {
 
     /**
      * Configures the input guardrails for the AI service context by setting the provided InputGuardrailsConfig.
+     * <p>
+     *     The configuration set this way applies to every method of the AI service, including methods whose input
+     *     guardrails are declared in an {@link InputGuardrails} annotation.
+     * </p>
      *
      * @param inputGuardrailsConfig the configuration object that defines input guardrails for the AI service
      * @return the current instance of {@link AiServices} to allow method chaining
@@ -1028,6 +1043,11 @@ public abstract class AiServices<T> {
 
     /**
      * Configures the output guardrails for AI services.
+     * <p>
+     *     The configuration set this way applies to every method of the AI service and takes precedence over the
+     *     configuration declared in any {@link OutputGuardrails} annotation on the AI service methods or class, such
+     *     as its {@link OutputGuardrails#maxRetries() maxRetries}.
+     * </p>
      *
      * @param outputGuardrailsConfig the configuration object specifying the output guardrails
      * @return the current instance of {@link AiServices} to allow for method chaining
@@ -1040,8 +1060,8 @@ public abstract class AiServices<T> {
     /**
      * Configures the input guardrail classes for the AI services.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.InputGuardrails InptputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Input guardrails set this way replace the ones declared in {@link InputGuardrails} annotations, for every
+     *     method of the AI service. See {@link InputGuardrails} for the exact rules.
      * </p>
      * <p>
      *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
@@ -1057,8 +1077,8 @@ public abstract class AiServices<T> {
      *     they are listed.
      * </p>
      *
-     * @param guardrailClasses A list of {@link InputGuardrailsConfig} classes, which will be used for input validation.
-     *                         The list can be {@code null} if no guardrails are to be applied.
+     * @param guardrailClasses A list of {@link InputGuardrail} classes, which will be used for input validation.
+     *                         Can be {@code null}.
      * @param <I> The type of {@link InputGuardrail}
      * @return The instance of {@link AiServices} to allow method chaining.
      */
@@ -1070,8 +1090,8 @@ public abstract class AiServices<T> {
     /**
      * Configures input guardrail classes for the AI service.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.InputGuardrails InptputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Input guardrails set this way replace the ones declared in {@link InputGuardrails} annotations, for every
+     *     method of the AI service. See {@link InputGuardrails} for the exact rules.
      * </p>
      * <p>
      *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
@@ -1087,8 +1107,8 @@ public abstract class AiServices<T> {
      *     they are listed.
      * </p>
      *
-     * @param guardrailClasses A list of {@link InputGuardrail} classes, which
-     *                         can include {@code null} to indicate no guardrails or optional configurations.
+     * @param guardrailClasses The {@link InputGuardrail} classes, which will be used for input validation.
+     *                         Can be {@code null}.
      * @param <I> The type of {@link InputGuardrail}
      * @return the current instance of {@link AiServices} for chaining further configurations.
      */
@@ -1100,8 +1120,8 @@ public abstract class AiServices<T> {
     /**
      * Sets the input guardrails to be used by the guardrail service builder in the current context.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.InputGuardrails InptputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Input guardrails set this way replace the ones declared in {@link InputGuardrails} annotations, for every
+     *     method of the AI service. See {@link InputGuardrails} for the exact rules.
      * </p>
      * <p>
      *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
@@ -1126,10 +1146,10 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Adds the specified input guardrails to the context's guardrail service builder.
+     * Sets the specified input guardrails on the context's guardrail service builder.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.InputGuardrails InptputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Input guardrails set this way replace the ones declared in {@link InputGuardrails} annotations, for every
+     *     method of the AI service. See {@link InputGuardrails} for the exact rules.
      * </p>
      * <p>
      *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
@@ -1156,11 +1176,12 @@ public abstract class AiServices<T> {
     /**
      * Configures the output guardrail classes for the AI services.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Output guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations, for every
+     *     method of the AI service. See {@link OutputGuardrails} for the exact rules, including which
+     *     {@code maxRetries} applies.
      * </p>
      * <p>
-     *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
+     *     An output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
      *     certain expectations.
      * </p>
      * <p>
@@ -1192,11 +1213,12 @@ public abstract class AiServices<T> {
     /**
      * Sets the output guardrail classes to be used in the guardrail service.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Output guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations, for every
+     *     method of the AI service. See {@link OutputGuardrails} for the exact rules, including which
+     *     {@code maxRetries} applies.
      * </p>
      * <p>
-     *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
+     *     An output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
      *     certain expectations.
      * </p>
      * <p>
@@ -1229,11 +1251,12 @@ public abstract class AiServices<T> {
     /**
      * Configures the output guardrails for the AI service.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Output guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations, for every
+     *     method of the AI service. See {@link OutputGuardrails} for the exact rules, including which
+     *     {@code maxRetries} applies.
      * </p>
      * <p>
-     *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
+     *     An output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
      *     certain expectations.
      * </p>
      * <p>
@@ -1263,11 +1286,12 @@ public abstract class AiServices<T> {
     /**
      * Configures output guardrails for the AI services.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Output guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations, for every
+     *     method of the AI service. See {@link OutputGuardrails} for the exact rules, including which
+     *     {@code maxRetries} applies.
      * </p>
      * <p>
-     *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
+     *     An output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
      *     certain expectations.
      * </p>
      * <p>
@@ -1318,12 +1342,16 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Enables or disables compensating actions on tool errors.
-     * When enabled, if any tool execution fails, all previously executed tools'
-     * compensating actions (declared via {@link dev.langchain4j.agent.tool.CompensateFor}) are called
-     * in reverse order to undo the effects of the successful tool calls.
+     * Enables or disables compensating actions on tool errors and on cancellation.
+     * When enabled, if a tool fails or the invocation is cancelled, the compensating actions (declared with
+     * {@link CompensateFor}) of the tool calls that succeeded in the same invocation are called in reverse order, to
+     * undo their effects.
+     * A tool error starts the rollback also when it ends the invocation (for example when the
+     * {@link ToolExecutionErrorHandler} or the {@link ToolArgumentsErrorHandler} rethrows it, or when the LLM calls a
+     * tool that does not exist): the tool calls are rolled back before the error reaches the caller.
      *
-     * @param compensateOnToolErrors whether to run compensating actions on tool errors
+     * @param compensateOnToolErrors whether to run compensating actions when a tool fails or the invocation is
+     *                               cancelled
      * @return builder
      */
     public AiServices<T> compensateOnToolErrors(boolean compensateOnToolErrors) {

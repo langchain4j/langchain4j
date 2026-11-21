@@ -45,6 +45,9 @@ import dev.langchain4j.Experimental;
  * <b>Any tool error forces reprocess</b> regardless of behaviors, so the LLM
  * can react to the error on the next turn.
  * <p>
+ * If the AI Service has a chat memory, the tool results are added to it before the AI Service returns,
+ * whatever the behavior, so they are sent to the LLM on later calls that use the same memory.
+ * <p>
  * {@link #IMMEDIATE} and {@link #IMMEDIATE_IF_LAST} are only allowed on AI services declaring
  * {@code dev.langchain4j.service.Result} as their return type. Using either on a service with
  * a different return type causes an {@code IllegalConfigurationException} the first time an

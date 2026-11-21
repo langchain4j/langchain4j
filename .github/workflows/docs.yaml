@@ -34,7 +34,7 @@ jobs:
           cache: 'maven'
 
       - name: Generate Javadoc
-        run: mvn javadoc:aggregate -DskipTests
+        run: mvn -B -DskipTests -DembeddingsSkipDownload -T8C test-compile javadoc:aggregate
 
       - name: Set up Node.js
         uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5

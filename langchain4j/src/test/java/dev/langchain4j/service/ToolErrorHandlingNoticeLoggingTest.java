@@ -6,8 +6,8 @@ import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import java.io.ByteArrayOutputStream;
@@ -55,8 +55,8 @@ class ToolErrorHandlingNoticeLoggingTest {
         }
     }
 
-    private static final ChatModel CHAT_MODEL = ChatModelMock.thatAlwaysResponds("ok");
-    private static final StreamingChatModel STREAMING_CHAT_MODEL = StreamingChatModelMock.thatAlwaysStreams("ok");
+    private static final ChatModel CHAT_MODEL = MockChatModel.thatResponds("ok");
+    private static final StreamingChatModel STREAMING_CHAT_MODEL = MockStreamingChatModel.thatResponds("ok");
 
     @BeforeEach
     void resetNotice() {

@@ -15,14 +15,15 @@ import java.lang.annotation.Target;
 
 /**
  * Marks a method as the supplier of the decision model used by a decision agent (see
- * {@link AgenticServices#decisionAgentBuilder(Class)}). The method must be static and
+ * {@link AgenticServices#decisionAgentBuilder(Class)}). The method must be static on the agent type and
  * return a {@link DecisionModel}.
  * <p>
- * When the method has no parameters, it is invoked once at build time to provide a fixed model.
+ * When the method has no parameters, or only parameters provided by a {@link SupplierParameterResolver}, it is
+ * invoked once at build time to provide a fixed model.
  * When the method has parameters annotated with {@link V @V}, they are resolved from the
  * current {@link AgenticScope} at each invocation, enabling dynamic
- * model selection based on runtime state. Parameters resolved through a {@link SupplierParameterResolver} are
- * resolved each time the method is invoked.
+ * model selection based on runtime state. Its parameters provided by a {@link SupplierParameterResolver} are
+ * then resolved each time the method is invoked too.
  * <p>
  * An interface declaring this method is recognized as a decision agent by the declarative API, also when its
  * {@link Agent @Agent} method returns an object with several
@@ -48,6 +49,10 @@ import java.lang.annotation.Target;
  * </pre>
  *
  * @since 1.23.0
+ * <p>
+ * Like every helper method, it can be an instance method of a helper object of the agent instead of a static method
+ * of the agent type: see the "Helper objects" section of the agentic tutorial and
+ * {@link AgenticServices.AgentConfigurator}.
  */
 @Experimental
 @Retention(RUNTIME)

@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.exception.InternalServerException;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.moderation.Moderation;
 import dev.langchain4j.model.moderation.ModerationModel;
 import dev.langchain4j.model.moderation.ModerationRequest;
@@ -18,6 +18,7 @@ import dev.langchain4j.model.openai.internal.chat.AssistantMessage;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionChoice;
 import dev.langchain4j.model.openai.internal.chat.ChatCompletionResponse;
 import dev.langchain4j.model.openai.internal.chat.FunctionCall;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
@@ -123,7 +124,7 @@ class AiServicesModerationTest {
     void should_reject_moderation_on_async_return_type() {
         // moderation is not supported on the new asynchronous (CompletableFuture) return type: fail fast
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("Hello"))
+                .chatModel(MockChatModel.thatResponds("Hello"))
                 .moderationModel(moderationModelReturning(Moderation.notFlagged()))
                 .build();
 
@@ -136,7 +137,7 @@ class AiServicesModerationTest {
     void should_reject_moderation_on_reactive_return_type() {
         // moderation is not supported on the reactive (Flow.Publisher) path: fail fast at invocation time
         ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
-                .streamingChatModel(StreamingEventChatModelMock.thatStreams(AiMessage.from("Hello")))
+                .streamingChatModel(MockStreamingChatModel.thatResponds(AiMessage.from("Hello")))
                 .moderationModel(moderationModelReturning(Moderation.notFlagged()))
                 .build();
 

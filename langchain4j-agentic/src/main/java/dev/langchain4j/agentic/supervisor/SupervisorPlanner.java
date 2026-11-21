@@ -1,12 +1,14 @@
 package dev.langchain4j.agentic.supervisor;
 
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.stream.Collectors.toMap;
 
 import dev.langchain4j.agentic.internal.Context;
+import dev.langchain4j.agentic.internal.CurrentPlanningContext;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
-import dev.langchain4j.agentic.planner.AgentCondition;
+import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.ChatMemoryAccessProvider;
 import dev.langchain4j.agentic.planner.InitPlanningContext;
@@ -28,9 +30,12 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -44,6 +49,10 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     public static final String SUPERVISOR_CONTEXT_KEY = "supervisorContext";
     public static final String SUPERVISOR_CONTEXT_PREFIX = "Use the following supervisor context to better understand "
             + "constraints, policies or preferences when creating the plan ";
+
+    /** Sent to the model in place of the description of a subagent that has none, so that it knows it is missing. */
+    static final String MISSING_DESCRIPTION =
+            "no description provided, infer the purpose of this agent from its id and arguments";
 
     private final ChatModel chatModel;
     private final Context.ContextSummarizer contextSummarizer;
@@ -68,12 +77,23 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     private Map<String, AgentInstance> agents;
     private List<AgentInstance> subagents;
 
+    // Shared by the planners of all the invocations of the same supervisor, so that the warning about the subagents
+    // without a description is logged once
+    private final AtomicBoolean subagentsDescriptionsChecked;
+
+    // The subagents left out of this invocation because their description cannot be read: the planner is created
+    // for each invocation of the supervisor, so the next one tries them again
+    private final Set<String> unavailableSubagents = new HashSet<>();
+    private String supervisorName;
+
     private String request;
 
     /**
      * Creates a supervisor planner reusing a pre-built {@link Context.ContextSummarizer}, so that
      * planners created for separate invocations can share the same summarizer AI service.
      *
+     * @param subagentsDescriptionsChecked whether the subagents have already been checked for a missing description,
+     *        shared by the planners of all the invocations of the same supervisor
      * @throws IllegalConfigurationException if {@code contextStrategy} requires summarization (any
      *         strategy other than {@link SupervisorContextStrategy#CHAT_MEMORY}) and
      *         {@code contextSummarizer} is {@code null}
@@ -87,7 +107,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             Function<AgenticScope, String> requestGenerator,
             String outputKey,
             Function<AgenticScope, Object> output,
-            Context.ContextSummarizer contextSummarizer) {
+            Context.ContextSummarizer contextSummarizer,
+            AtomicBoolean subagentsDescriptionsChecked) {
         if (contextStrategy != SupervisorContextStrategy.CHAT_MEMORY && contextSummarizer == null) {
             throw new IllegalConfigurationException(
                     "A ContextSummarizer is required for the " + contextStrategy + " context strategy.");
@@ -101,10 +122,13 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         this.requestGenerator = requestGenerator;
         this.outputKey = outputKey;
         this.output = output;
+        this.subagentsDescriptionsChecked = subagentsDescriptionsChecked;
     }
 
     @Override
     public void init(final InitPlanningContext initPlanningContext) {
+        this.supervisorName = initPlanningContext.plannerAgent().name();
+        warnAboutSubagentsWithoutDescription(initPlanningContext);
         this.agents =
                 initPlanningContext.subagents().stream().collect(toMap(AgentInstance::agentId, Function.identity()));
         this.subagents = initPlanningContext.subagents();
@@ -113,8 +137,64 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                 ? requestGenerator.apply(initPlanningContext.agenticScope())
                 : initPlanningContext.agenticScope().readState("request", "");
         if (responseStrategy == SupervisorResponseStrategy.SCORED) {
-            this.responseAgent =
-                    AiServices.builder(ResponseAgent.class).chatModel(chatModel).build();
+            this.responseAgent = AiServices.builder(ResponseAgent.class)
+                    .chatModel(chatModel)
+                    .registerListener(CurrentPlanningContext.modelResponseListener())
+                    .build();
+        }
+    }
+
+    /**
+     * The supervisor sends the description of each subagent to its model to decide which one to invoke, so a
+     * subagent without a description cannot be chosen meaningfully: the model receives {@link #MISSING_DESCRIPTION}
+     * in its place and a warning naming those subagents is logged once per supervisor, at its first invocation, for
+     * the subagents whose description can be read at that time. Reading the description of a remote agent, like an
+     * A2A one without an explicit description, may fetch it from the remote server at this point.
+     */
+    private void warnAboutSubagentsWithoutDescription(InitPlanningContext initPlanningContext) {
+        if (subagentsDescriptionsChecked.get()) {
+            return;
+        }
+        List<String> subagentsWithoutDescription = initPlanningContext.subagents().stream()
+                .filter(this::isAvailable)
+                .filter(agent -> isNullOrBlank(agent.description()))
+                .map(AgentInstance::name)
+                .toList();
+        if (subagentsDescriptionsChecked.compareAndSet(false, true) && !subagentsWithoutDescription.isEmpty()) {
+            LOG.warn(
+                    "The subagents {} of the supervisor '{}' have no description. The supervisor relies on the"
+                            + " descriptions of its subagents to decide which one to invoke, so provide one for each"
+                            + " of them: until then its model is told that no description was provided.",
+                    subagentsWithoutDescription,
+                    supervisorName);
+        }
+    }
+
+    /**
+     * A subagent that is unavailable, like an A2A or MCP agent whose description cannot be read because its server
+     * is down, is left out of the agents offered to the model for the rest of this invocation, with a warning, so
+     * that a remote agent that is down only affects the invocations that actually reach it. The planner is created
+     * for each invocation of the supervisor, so the next one tries that subagent again. Only an
+     * {@link AgentUnavailableException} means that: any other failure of the description, like a configuration
+     * error of an MCP agent whose tool does not exist on its server, propagates and fails the invocation, instead of
+     * being hidden behind a warning at every invocation.
+     */
+    private boolean isAvailable(AgentInstance agent) {
+        if (unavailableSubagents.contains(agent.agentId())) {
+            return false;
+        }
+        try {
+            agent.description();
+            return true;
+        } catch (AgentUnavailableException e) {
+            unavailableSubagents.add(agent.agentId());
+            LOG.warn(
+                    "The subagent '{}' of the supervisor '{}' is left out of this invocation, because it is"
+                            + " unavailable and its description cannot be read",
+                    agent.agentId(),
+                    supervisorName,
+                    e);
+            return false;
         }
     }
 
@@ -136,7 +216,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         }
 
         if (loopCount++ >= maxAgentsInvocations) {
-            return doneAction(planningContext.agenticScope(), lastResponse, null);
+            return doneAction(planningContext, lastResponse, null);
         }
         // a skipped agent produced no response, so the model is told why instead
         String plannerResponse = previousInvocation != null && previousInvocation.skipped()
@@ -155,7 +235,11 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
                 .filter(a -> !a.name().equals("@MemoryId"))
                 .map(SupervisorPlanner::argumentDescription)
                 .toList();
-        return "{'" + agent.agentId() + "', '" + agent.description() + "', " + agentArguments + "}";
+        String description = agent.description();
+        if (isNullOrBlank(description)) {
+            description = MISSING_DESCRIPTION;
+        }
+        return "{'" + agent.agentId() + "', '" + description + "', " + agentArguments + "}";
     }
 
     private static String argumentDescription(AgentArgument arg) {
@@ -279,14 +363,15 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         // only the agents that would run now are offered to the model
         String agentsList = subagents.stream()
                 .filter(planningContext::isActive)
+                .filter(this::isAvailable)
                 .map(SupervisorPlanner::toCard)
                 .collect(Collectors.joining(", "));
         String supervisorContext = agenticScope.hasState(SUPERVISOR_CONTEXT_KEY)
                 ? SUPERVISOR_CONTEXT_PREFIX + "'" + agenticScope.readState(SUPERVISOR_CONTEXT_KEY, "") + "'."
                 : "";
 
-        AgentInvocation agentInvocation = withAgenticScope(
-                agenticScope,
+        AgentInvocation agentInvocation = withPlanningContext(
+                planningContext,
                 () -> planner(agenticScope)
                         .plan(agenticScope.memoryId(), agentsList, request, plannerResponse, supervisorContext));
         LOG.info("Agent Invocation: {}", agentInvocation);
@@ -296,7 +381,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         }
 
         if (agentInvocation.getAgentName().equalsIgnoreCase("done")) {
-            return doneAction(agenticScope, lastResponse, agentInvocation);
+            return doneAction(planningContext, lastResponse, agentInvocation);
         }
 
         AgentInstance agent = findAgentByName(agentInvocation.getAgentName());
@@ -308,12 +393,24 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         return call(agent);
     }
 
-    private static <T> T withAgenticScope(AgenticScope agenticScope, Supplier<T> supplier) {
-        LangChain4jManaged.setCurrent(Map.of(AgenticScope.class, agenticScope));
+    /**
+     * Runs a model call of the supervisor with its scope and its {@link CurrentPlanningContext} bound to the thread.
+     * The AI service making the call reports each response of its model to that planning context, through the
+     * listener registered on it, and so does the summarizer of its context.
+     */
+    private static <T> T withPlanningContext(PlanningContext planningContext, Supplier<T> supplier) {
+        // the managed parameters of the caller are put back afterwards, since the supervisor can be invoked from
+        // inside another AI service call, for instance by one of its tools
+        Map<Class<? extends LangChain4jManaged>, LangChain4jManaged> callerParameters = LangChain4jManaged.current();
+        LangChain4jManaged.setCurrent(Map.of(
+                AgenticScope.class,
+                planningContext.agenticScope(),
+                CurrentPlanningContext.class,
+                new CurrentPlanningContext(planningContext)));
         try {
             return supplier.get();
         } finally {
-            LangChain4jManaged.removeCurrent();
+            LangChain4jManaged.restore(callerParameters);
         }
     }
 
@@ -351,8 +448,9 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         return true;
     }
 
-    private Action doneAction(AgenticScope agenticScope, String lastResponse, AgentInvocation done) {
-        Object result = result(agenticScope, request, lastResponse, done);
+    private Action doneAction(PlanningContext planningContext, String lastResponse, AgentInvocation done) {
+        AgenticScope agenticScope = planningContext.agenticScope();
+        Object result = result(planningContext, request, lastResponse, done);
         if (outputKey != null) {
             agenticScope.writeState(outputKey, result);
         }
@@ -363,7 +461,7 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
         return ((DefaultAgenticScope) agenticScope).getOrCreateAgent(agentId(), this::buildPlannerAgent);
     }
 
-    private Object result(AgenticScope agenticScope, String request, String lastResponse, AgentInvocation done) {
+    private Object result(PlanningContext planningContext, String request, String lastResponse, AgentInvocation done) {
         if (done == null || done.getArguments() == null || done.getArguments().get("response") == null) {
             return lastResponse;
         }
@@ -373,8 +471,8 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
             case LAST -> lastResponse;
             case SUMMARY -> doneResponse;
             case SCORED -> {
-                ResponseScore score = withAgenticScope(
-                        agenticScope, () -> responseAgent.scoreResponses(request, lastResponse, doneResponse));
+                ResponseScore score = withPlanningContext(
+                        planningContext, () -> responseAgent.scoreResponses(request, lastResponse, doneResponse));
                 LOG.info("Response scores: {}", score);
                 yield score.getScore2() > score.getScore1() ? doneResponse : lastResponse;
             }
@@ -382,7 +480,9 @@ public class SupervisorPlanner implements Planner, ChatMemoryAccessProvider {
     }
 
     private PlannerAgent buildPlannerAgent(AgenticScope agenticScope) {
-        var builder = AiServices.builder(PlannerAgent.class).chatModel(chatModel);
+        var builder = AiServices.builder(PlannerAgent.class)
+                .chatModel(chatModel)
+                .registerListener(CurrentPlanningContext.modelResponseListener());
         configureMemoryAndContext(agenticScope, builder);
         return builder.build();
     }

@@ -1,13 +1,12 @@
 package dev.langchain4j.web.search.google.customsearch;
 
-import com.google.api.client.http.HttpHeaders;
+import static dev.langchain4j.web.search.google.customsearch.GoogleSearchApiHttpRequestLoggingInterceptor.getHeaders;
+
 import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpResponseInterceptor;
 import com.google.api.client.json.gson.GsonFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.stream.Collectors;
 
 class GoogleSearchApiHttpResponseLoggingInterceptor implements HttpResponseInterceptor {
 
@@ -26,10 +25,5 @@ class GoogleSearchApiHttpResponseLoggingInterceptor implements HttpResponseInter
         } catch (Exception e) {
             LOGGER.warn("Error while logging response: {}", e.getMessage());
         }
-    }
-
-    private static String getHeaders(HttpHeaders headers) {
-        return headers.entrySet().stream()
-                .map(entry -> String.format("[%s: %s]", entry.getKey(), entry.getValue())).collect(Collectors.joining(", "));
     }
 }

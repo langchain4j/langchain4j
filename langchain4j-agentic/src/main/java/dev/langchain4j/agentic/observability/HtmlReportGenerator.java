@@ -2,6 +2,7 @@ package dev.langchain4j.agentic.observability;
 
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentCondition;
+import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.workflow.ConditionalAgent;
@@ -295,8 +296,9 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
                 detail(html, "Type", typeName);
             }
         }
-        if (agent.description() != null && !agent.description().isEmpty()) {
-            detail(html, "Desc", truncate(agent.description(), 60));
+        String description = description(agent);
+        if (description != null && !description.isEmpty()) {
+            detail(html, "Desc", truncate(description, 60));
         }
         if (agent.outputType() != null) {
             detail(html, "Returns", simpleTypeName(agent.outputType()));
@@ -489,7 +491,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             html.append("<span class=\"exec-time\">").append(top.startTime().format(TIME_FMT));
             html.append(" &#8594; ").append(top.finishTime().format(TIME_FMT)).append("</span>");
         } else {
-            html.append("<span class=\"dur-badge\">running...</span>");
+            html.append("<span class=\"dur-badge\">").append(exec.suspended() ? "suspended" : "running...").append("</span>");
         }
         html.append("</div>\n");
 
@@ -567,16 +569,14 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
         html.append("</td>");
 
-        // Model column
+        // Model column, also for an invocation that failed or is still in progress, when its planner called a model
         html.append("<td class=\"wf-dur\">");
-        if (inv.done()) {
-            inv.modelName().ifPresent(modelName -> html.append(esc(modelName)));
-        }
+        inv.modelName().ifPresent(modelName -> html.append(esc(modelName)));
         html.append("</td>");
 
-        // Tokens column
+        // Tokens column, with what the planner of a failed or still in progress invocation spent so far
         html.append("<td class=\"wf-dur\">");
-        if (inv.done() && inv.totalTokenCount() > 0) {
+        if (inv.totalTokenCount() > 0) {
             html.append(fmtTokens(inv.totalTokenCount()));
         }
         html.append("</td>");
@@ -587,7 +587,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             html.append("<div class=\"wf-bar bar-").append(css).append("\" style=\"left:")
                     .append(fmt(leftPct)).append("%;width:").append(fmt(widthPct)).append("%;\"");
             html.append(" title=\"").append(esc(ag.name())).append(": ")
-                    .append(inv.done() ? fmtDur(inv.duration()) : "running").append("\">");
+                    .append(inv.done() ? fmtDur(inv.duration()) : inv.suspended() ? "suspended" : "running").append("\">");
             html.append("</div>");
         }
         html.append("</div></td>");
@@ -869,6 +869,19 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
     // -----------------------------------------------------------------------
     // Utility helpers
     // -----------------------------------------------------------------------
+
+    /**
+     * The description of a remote agent, like an A2A or MCP one read from a server that is down, may be unavailable:
+     * the report says so for that agent instead of failing as a whole. Any other failure, like a configuration error
+     * of an MCP agent whose tool does not exist on its server, fails the report, so that it does not go unnoticed.
+     */
+    private static String description(AgentInstance agent) {
+        try {
+            return agent.description();
+        } catch (AgentUnavailableException e) {
+            return "unavailable: " + e.getMessage();
+        }
+    }
 
     private static void detail(StringBuilder html, String label, String value) {
         html.append("<div class=\"node-detail\">");

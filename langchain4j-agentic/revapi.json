@@ -251,6 +251,12 @@
           "code": "java.class.removed",
           "old": "interface dev.langchain4j.agentic.agent.ChatMessagesAccess",
           "justification": "Plumbing between the invocation handler of an AI agent and its invoker, never documented for users: the handler kept the last chat request and response per agentic scope id, so concurrent invocations of one agent in one scope overwrote each other (issue #6857). The response of each invocation is now handed to the invoker with the invocation itself, and nothing reads this interface any more."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method boolean dev.langchain4j.agentic.scope.AgenticScopeAccess::deleteAgenticScope(java.lang.Object)",
+          "justification": "Evicts an AgenticScope and deletes the stored messages of the chat memories its agents hold for its id, which evictAgenticScope keeps, with the meaning of ChatMemoryAccess.evictChatMemory. AgenticScopeAccess is extended by agent interfaces and implemented by the agent objects that langchain4j-agentic and its integrations generate, not by user code."
         }
       ]
     }

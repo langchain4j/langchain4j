@@ -1,11 +1,15 @@
 package dev.langchain4j.agentic.declarative;
 
+import dev.langchain4j.agentic.Agent;
+import dev.langchain4j.agentic.AgenticServices;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 
 /**
- * SPI for resolving parameters of the static methods of declarative agents from external sources
- * such as a dependency injection container.
+ * SPI for resolving parameters of the helper methods of declarative agents from external sources
+ * such as a dependency injection container. A helper method is a static method of the agent type, or an instance
+ * method of one of the <em>helper objects</em> of the agent, returned by the {@code helperObjectsResolver} of an
+ * {@link AgenticServices.AgentConfigurator}.
  * <p>
  * Applies to the methods annotated with any supplier annotation: {@link ChatModelSupplier},
  * {@link StreamingChatModelSupplier}, {@link DecisionModelSupplier}, {@link DecisionThresholdSupplier},
@@ -15,10 +19,15 @@ import java.lang.reflect.Parameter;
  * {@link ToolsSupplier}, {@link ToolSearchStrategySupplier}, {@link AgentListenerSupplier},
  * {@link SystemMessageProviderSupplier},
  * {@link UserMessageProviderSupplier}, {@link McpClientSupplier}, {@link PlannerSupplier},
- * {@link A2AServerUrlSupplier} and {@link ParallelExecutor}; to the methods annotated with
+ * {@link A2AServerUrlSupplier}, {@link A2AAgentCardHeaders} and {@link ParallelExecutor}; to the methods annotated with
  * {@link ExitCondition}, {@link ActivationCondition}, {@link Output}, {@link BeforeCall},
- * {@link ErrorHandler}, {@link SupervisorRequest} and {@link A2AClientCustomizer}; to the static
- * {@link dev.langchain4j.agentic.Agent} methods of non-AI agents and to the {@link HumanInTheLoop} methods.
+ * {@link ErrorHandler}, {@link SupervisorRequest} and {@link A2AClientCustomizer}; to the
+ * {@link Agent} methods of non-AI agents, static or on an instance, and to the
+ * {@link HumanInTheLoop} methods.
+ * <p>
+ * For a static method, {@link Context#declaringAgentClass()} is the agent type declaring, or inheriting, the method.
+ * For an instance method of a helper object it is still the type of the agent the helper configures, which can differ
+ * from the class declaring the method, {@code Context.supplierMethod().getDeclaringClass()}.
  * <p>
  * The methods invoked without any value from the framework, like the {@link ToolsSupplier}, {@link PlannerSupplier}
  * or {@link ParallelExecutor} ones, can only declare resolved parameters: when one of their parameters is not
@@ -56,6 +65,8 @@ public interface SupplierParameterResolver {
      * is created, for the suppliers of fixed components like tools or chat memory, and at each invocation for the
      * methods depending on the agent invocation, like conditions or non-AI agents. In the latter case it can be
      * called on the thread executing the agent.
+     * Parameters of {@link A2AAgentCardHeaders} and {@link A2AClientCustomizer} methods are resolved once when the
+     * agent is built, even though those methods are invoked later.
      */
     Object resolve(Context context);
 }

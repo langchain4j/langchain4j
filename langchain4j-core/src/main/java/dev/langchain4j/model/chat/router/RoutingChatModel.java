@@ -1,9 +1,11 @@
 package dev.langchain4j.model.chat.router;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -13,6 +15,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -82,10 +85,13 @@ public class RoutingChatModel implements ChatModel {
     @Override
     public ChatResponse chat(ChatRequest chatRequest, ChatRequestOptions options) {
         ensureNotNull(chatRequest, "chatRequest");
-        String routeName = selector.select(chatRequest, options);
-        ChatResponse response =
-                selector.model(routeName).chat(chatRequest, RouteSelector.withRoute(options, routeName));
-        return RouteSelector.withRoute(response, routeName);
+        UUID invocationId = CurrentInvocation.invocationId(options);
+        return CurrentInvocation.callWithIdOrWithout(invocationId, () -> {
+            String routeName = selector.select(chatRequest, options);
+            ChatResponse response = selector.model(routeName)
+                    .chat(chatRequest, RouteSelector.withRoute(options, routeName, invocationId));
+            return RouteSelector.withRoute(response, routeName);
+        });
     }
 
     @Override
@@ -95,8 +101,11 @@ public class RoutingChatModel implements ChatModel {
 
     @Override
     public CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest, ChatRequestOptions options) {
-        ensureNotNull(chatRequest, "chatRequest");
-        CompletableFuture<String> route = selector.selectAsync(chatRequest, options);
+        UUID invocationId = CurrentInvocation.invocationId(options);
+        CompletableFuture<String> route = failOnThrow(() -> {
+            ensureNotNull(chatRequest, "chatRequest");
+            return CurrentInvocation.callWithIdOrWithout(invocationId, () -> selector.selectAsync(chatRequest, options));
+        });
         CompletableFuture<ChatResponse> result = new CompletableFuture<>();
         propagateCancellation(result, route);
         route.whenComplete((routeName, routingError) -> {
@@ -104,13 +113,15 @@ public class RoutingChatModel implements ChatModel {
                 result.completeExceptionally(unwrapCompletionException(routingError));
                 return;
             }
-            CompletableFuture<ChatResponse> response;
-            try {
-                response = selector.model(routeName).chatAsync(chatRequest, RouteSelector.withRoute(options, routeName));
-            } catch (Exception e) {
-                result.completeExceptionally(e);
-                return;
-            }
+            CompletableFuture<ChatResponse> response = failOnThrow(() -> {
+                ChatModel model = selector.model(routeName);
+                ChatRequestOptions routeOptions = RouteSelector.withRoute(options, routeName, invocationId);
+                return failOnThrow(
+                        model,
+                        "chatAsync(ChatRequest, ChatRequestOptions)",
+                        () -> CurrentInvocation.callWithIdOrWithout(
+                                invocationId, () -> model.chatAsync(chatRequest, routeOptions)));
+            });
             propagateCancellation(result, response);
             response.whenComplete((chatResponse, error) -> {
                 if (error != null) {

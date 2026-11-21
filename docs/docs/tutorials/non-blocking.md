@@ -85,7 +85,7 @@ information the callback-based `TokenStream` gives you:
 | `BeforeToolExecutionEvent`, `AfterToolExecutionEvent` | a tool about to run, and its result |
 | `IntermediateResponseEvent` | the response that closed one tool-calling round |
 | `RetrievedContentsEvent` | content retrieved by RAG |
-| `ToolCompensatedEvent` | a completed tool was compensated after the interaction was cancelled or failed |
+| `ToolCompensatedEvent` | a completed tool was compensated (rolled back), because another tool call failed (see [Compensating Tool Actions](/tutorials/tools#compensating-tool-actions)); `compensationError()` returns the error when the rollback failed. A rollback after a cancellation is not in the stream, because nothing is delivered after a cancel: register a `ToolCompensatedEventListener` for it (see [Observability](/tutorials/observability)) |
 | `RawEvent` | a provider-specific event LangChain4j does not map |
 | `FinalResponseEvent` | the final answer |
 
@@ -179,6 +179,10 @@ future or publisher fails with an `AsyncNotSupportedException` naming the compon
 `AsyncNotSupportedException` is an `UnsupportedFeatureException`, so one catch clause covers both flavours of
 "not supported", and it is never retried.
 
+The asynchronous methods never throw: every failure, including an invalid request, completes the returned future
+exceptionally or reaches the subscriber's `onError`. So handle errors on the future (for example with
+`exceptionally(...)` or `whenComplete(...)`) or in `onError`, not with a `try`/`catch` around the call.
+
 ## Blocking code you cannot avoid
 
 Tools are the common case: a tool that calls a database or a blocking HTTP API cannot be made non-blocking. Such
@@ -193,6 +197,9 @@ own bounded `Executor` (see below) if that matters to you.
 
 This applies to `@Tool`-annotated methods. A hand-written `ToolExecutor` that does not override `executeAsync`
 fails loudly with an `AsyncNotSupportedException` instead, like any other component that has not opted in.
+Compensating actions (see [Compensating Tool Actions](/tutorials/tools#compensating-tool-actions)) are not offloaded:
+they run on the thread that starts the rollback, so a compensating action that blocks should do its work on its own
+executor and return a `CompletableFuture`.
 
 Tools run **concurrently** by default in the asynchronous and reactive modes. To run them one at a time, pass a
 single-threaded executor:
@@ -247,6 +254,8 @@ See [Error Handling](/tutorials/tools#error-handling) for what those handlers ca
 Because tools always run on an `Executor` in these modes, several tool calls in one LLM response run at the same
 time. If your tools are not safe to run concurrently, pass a single-threaded executor:
 `executeToolsConcurrently(Executors.newSingleThreadExecutor())`.
+If the executor rejects a tool call, the other tool calls of the response still run, and the invocation fails once
+all of them have finished (see [Executing Tools Concurrently](/tutorials/tools#executing-tools-concurrently)).
 
 ### Event ordering
 
@@ -345,6 +354,9 @@ Some things to be aware of:
   integration starts on its own (for example to read a streaming response), and the parallel and asynchronous agents
   of `langchain4j-agentic`. Combine `captureContext()` with a context-propagating executor if you need context
   there.
+- The lazy resolution of the A2A and MCP client agents of `langchain4j-agentic` (fetching the agent card, creating
+  the MCP client and listing its tools) runs with the context of the invocation that started it, also for the other
+  invocations waiting on it.
 - For methods returning `Flow.Publisher`, `Mono` or `Flux`, the context is captured when the method is called, not
   when the result is subscribed.
 - The captured context is kept for as long as the invocation, so offloaded work may run with it after the request
@@ -385,10 +397,12 @@ Support is opt-in per provider and is being rolled out gradually. Today:
 | OpenAI — Responses | ✅ | ✅ |
 | Anthropic | ✅ | ✅ |
 | Bedrock | ✅ | ✅ |
+| Google GenAI | ✅ | ❌ |
 | every other provider | ❌ | ❌ |
 
 Beyond chat models: OpenAI implements asynchronous embeddings (`embedAsync`), Cohere asynchronous scoring
-(`scoreAsync`) and Tavily asynchronous web search (`searchAsync`).
+(`scoreAsync`) and Tavily asynchronous web search (`searchAsync`). The decision models of OpenAI, OpenAI Official,
+Ollama, TypeSafe, Google AI Gemini and Google GenAI implement asynchronous decisions (`decideAsync`).
 
 A provider that has not opted in is unaffected on the synchronous and `TokenStream` APIs — those keep working
 exactly as before.
@@ -400,19 +414,24 @@ interaction fails the call the same way. In practice that means:
 
 | Component | What it must implement | Bundled implementations |
 |---|---|---|
-| Chat memory | `addAsync` / `messagesAsync` / `setAsync` | `MessageWindowChatMemory` and `InMemoryChatMemoryStore` already do |
+| Chat memory | `addAsync` / `messagesAsync` / `setAsync` | `MessageWindowChatMemory`, `InMemoryChatMemoryStore` and `InfinispanChatMemoryStore` already do |
 | Guardrails | `validateAsync` | none — a guardrail you write must override it, even if it does no I/O |
 | Content retriever, query router, aggregator | `retrieveAsync`, `routeAsync`, `aggregateAsync` | opt into offloading instead with `offloadBlocking(true)` |
-| Embedding store | `searchAsync` | as above, via the retriever's `offloadBlocking(true)` |
+| Embedding store | `searchAsync` | `InMemoryEmbeddingStore` and `InfinispanEmbeddingStore` already do; for other stores, use the retriever's `offloadBlocking(true)` |
 | Custom `ToolExecutor` | `executeAsync` | `@Tool`-annotated methods are offloaded for you |
 | Chat model router ([`RoutingChatModel`](/tutorials/model-routing)) | `routeAsync` | `DecisionModelChatModelRouter` does, if its decision model supports `decideAsync` |
 
-A guardrail that does no blocking work satisfies the contract in one line:
+A guardrail that does no blocking work can call `validate(...)` directly. Like every asynchronous method, it reports
+a failure through the returned future instead of throwing:
 
 ```java
 @Override
 public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
-    return CompletableFuture.completedFuture(validate(request));
+    try {
+        return CompletableFuture.completedFuture(validate(request));
+    } catch (Throwable e) {
+        return CompletableFuture.failedFuture(e);
+    }
 }
 ```
 
@@ -440,7 +459,7 @@ LangChain4j then runs offloaded work on the application's task executor, whose p
 `spring.task.execution.*`. It is off by default because the setting is process-wide, not scoped to one application
 context.
 
-Starting with version 1.23.0-beta33 of the Spring Boot starters, the caller's context is captured as well (see
+Starting with version 1.24.0-beta34 of the Spring Boot starters, the caller's context is captured as well (see
 [above](#controlling-the-executor-and-propagating-context)), so that tracing spans, MDC and security context follow
 the work LangChain4j offloads:
 

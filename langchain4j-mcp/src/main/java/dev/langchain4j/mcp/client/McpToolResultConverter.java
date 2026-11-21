@@ -12,7 +12,7 @@ import java.util.Map;
  * Content items are presented as plain maps, so implementations do not need a JSON library.
  * A text item, for example, looks like {@code {"type": "text", "text": "..."}}.
  * <p>
- * The default client only supports {@code structuredContent} and text content out of the box.
+ * The default converter supports text, native images and embedded text resources.
  * More specialized conversion strategies can be provided through
  * {@link DefaultMcpClient.Builder#toolResultConverter(McpToolResultConverter)}.
  */
@@ -22,7 +22,7 @@ public interface McpToolResultConverter {
     /**
      * @param content the content blocks of {@code CallToolResult}.
      * @param isError whether the tool response is marked as an application-level error.
-     * @return the result to hand back to the caller, whose text is what the model sees.
+     * @return the result to hand back to the caller, whose contents are what the model sees.
      */
     ToolExecutionResult convert(List<Map<String, Object>> content, boolean isError);
 }

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.chat.router;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -23,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
@@ -85,20 +87,19 @@ final class RouteSelector<M> {
     }
 
     CompletableFuture<String> selectAsync(ChatRequest chatRequest, ChatRequestOptions options) {
-        try {
+        return failOnThrow(() -> {
             String previousRoute = toolCallRoute(chatRequest.messages());
             if (previousRoute != null) {
                 return CompletableFuture.completedFuture(previousRoute);
             }
             List<ChatModelRoute> candidates = candidates(chatRequest);
             ChatModelRoutingRequest routingRequest = routingRequest(chatRequest, candidates, options);
-            CompletableFuture<ChatModelRoutingResult> routed = router.routeAsync(routingRequest);
+            CompletableFuture<ChatModelRoutingResult> routed = failOnThrow(
+                    router, "routeAsync(ChatModelRoutingRequest)", () -> router.routeAsync(routingRequest));
             CompletableFuture<String> result = routed.thenApply(routingResult -> validate(routingResult, candidates));
             propagateCancellation(result, routed);
             return result;
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        });
     }
 
     M model(String routeName) {
@@ -116,11 +117,14 @@ final class RouteSelector<M> {
     /**
      * Adds the selected route to the listener attributes, so that listeners of the selected model can report it.
      */
-    static ChatRequestOptions withRoute(ChatRequestOptions options, String routeName) {
+    static ChatRequestOptions withRoute(ChatRequestOptions options, String routeName, UUID invocationId) {
         Map<Object, Object> attributes =
                 new LinkedHashMap<>(options == null ? Map.of() : options.listenerAttributes());
         attributes.put(ROUTE_ATTRIBUTE, routeName);
-        return ChatRequestOptions.builder().listenerAttributes(attributes).build();
+        return ChatRequestOptions.builder()
+                .listenerAttributes(attributes)
+                .invocationId(invocationId)
+                .build();
     }
 
     /**

@@ -1,6 +1,8 @@
 package dev.langchain4j.http.client.okhttp;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
@@ -82,6 +84,10 @@ public class OkHttpClient implements HttpClient {
 
     @Override
     public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+        return failOnThrow(() -> doExecuteAsync(request));
+    }
+
+    private CompletableFuture<SuccessfulHttpResponse> doExecuteAsync(HttpRequest request) {
         Request okRequest = toOkHttpRequest(request);
         CompletableFuture<SuccessfulHttpResponse> future = new CompletableFuture<>();
         Call call = client.newCall(okRequest);
@@ -128,50 +134,57 @@ public class OkHttpClient implements HttpClient {
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(streamingBufferSize);
         return ZeroPublisher.create(config, tube -> {
-            Call call = enqueueServerSentEvents(
-                    request,
-                    parser,
-                    new ServerSentEventListener() {
-                        @Override
-                        public void onOpen(SuccessfulHttpResponse response) {
-                            if (!tube.cancelled()) {
-                                tube.send(new HttpResponseReceived(response));
+            Call call;
+            try {
+                call = enqueueServerSentEvents(
+                        request,
+                        parser,
+                        new ServerSentEventListener() {
+                            @Override
+                            public void onOpen(SuccessfulHttpResponse response) {
+                                if (!tube.cancelled()) {
+                                    tube.send(new HttpResponseReceived(response));
+                                }
                             }
-                        }
 
-                        @Override
-                        public void onEvent(ServerSentEvent event) {
-                            if (!tube.cancelled()) {
-                                tube.send(event);
+                            @Override
+                            public void onEvent(ServerSentEvent event) {
+                                if (!tube.cancelled()) {
+                                    tube.send(event);
+                                }
                             }
-                        }
 
-                        @Override
-                        public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
-                            if (!tube.cancelled()) {
-                                tube.send(event);
+                            @Override
+                            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                                if (!tube.cancelled()) {
+                                    tube.send(event);
+                                }
                             }
-                        }
 
-                        @Override
-                        public void onError(Throwable throwable) {
-                            if (!tube.cancelled()) {
-                                tube.fail(throwable);
+                            @Override
+                            public void onError(Throwable throwable) {
+                                if (!tube.cancelled()) {
+                                    tube.fail(throwable);
+                                }
                             }
-                        }
 
-                        @Override
-                        public void onClose() {
-                            if (!tube.cancelled()) {
-                                tube.complete();
+                            @Override
+                            public void onClose() {
+                                if (!tube.cancelled()) {
+                                    tube.complete();
+                                }
                             }
-                        }
-                    },
-                    (statusCode, headers) -> {
-                        if (!tube.cancelled() && tube.outstandingRequests() > 0) {
-                            tube.send(new HttpErrorResponseReceived(statusCode, headers));
-                        }
-                    });
+                        },
+                        (statusCode, headers) -> {
+                            if (!tube.cancelled() && tube.outstandingRequests() > 0) {
+                                tube.send(new HttpErrorResponseReceived(statusCode, headers));
+                            }
+                        });
+            } catch (Throwable error) {
+                restoreInterruptIfInterrupted(error);
+                tube.fail(error);
+                return;
+            }
             // Cancel the underlying HTTP call on any terminal signal (downstream cancel, failure incl. buffer
             // overflow, or completion). Using the Call - not the SSE parsing handle, which only exists after the
             // first event - also aborts a cancel that arrives before the first event.
@@ -185,7 +198,12 @@ public class OkHttpClient implements HttpClient {
 
     @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
-        enqueueServerSentEvents(request, parser, listener, (statusCode, headers) -> {});
+        try {
+            enqueueServerSentEvents(request, parser, listener, (statusCode, headers) -> {});
+        } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
+            listener.onError(error); // not ignoringExceptions: what onError throws on the calling thread propagates
+        }
     }
 
     private Call enqueueServerSentEvents(

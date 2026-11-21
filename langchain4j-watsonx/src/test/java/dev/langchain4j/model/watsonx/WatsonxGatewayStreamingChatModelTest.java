@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -45,6 +46,7 @@ import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.net.URI;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -84,8 +86,10 @@ public class WatsonxGatewayStreamingChatModelTest {
         when(mockModelGatewayChatServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockModelGatewayChatServiceBuilder);
         when(mockModelGatewayChatServiceBuilder.timeout(any())).thenReturn(mockModelGatewayChatServiceBuilder);
         when(mockModelGatewayChatServiceBuilder.version(any())).thenReturn(mockModelGatewayChatServiceBuilder);
-        when(mockModelGatewayChatServiceBuilder.logRequests(any())).thenReturn(mockModelGatewayChatServiceBuilder);
-        when(mockModelGatewayChatServiceBuilder.logResponses(any())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.logRequests(nullable(Boolean.class)))
+                .thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.logResponses(nullable(Boolean.class)))
+                .thenReturn(mockModelGatewayChatServiceBuilder);
         when(mockModelGatewayChatServiceBuilder.authenticator(any())).thenReturn(mockModelGatewayChatServiceBuilder);
         when(mockModelGatewayChatServiceBuilder.apiKey(any())).thenReturn(mockModelGatewayChatServiceBuilder);
         when(mockModelGatewayChatServiceBuilder.httpClient(any())).thenReturn(mockModelGatewayChatServiceBuilder);
@@ -151,7 +155,7 @@ public class WatsonxGatewayStreamingChatModelTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockModelGatewayChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withModelGatewayChatServiceMock(() -> {
             var streamingChatModel = WatsonxGatewayStreamingChatModel.builder()
@@ -223,7 +227,7 @@ public class WatsonxGatewayStreamingChatModelTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockModelGatewayChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withModelGatewayChatServiceMock(() -> {
             var streamingChatModel = WatsonxGatewayStreamingChatModel.builder()
@@ -283,7 +287,7 @@ public class WatsonxGatewayStreamingChatModelTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockModelGatewayChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withModelGatewayChatServiceMock(() -> {
             StreamingChatModel streamingChatModel = WatsonxGatewayStreamingChatModel.builder()
@@ -384,7 +388,7 @@ public class WatsonxGatewayStreamingChatModelTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockModelGatewayChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withModelGatewayChatServiceMock(() -> {
             var streamingChatModel = WatsonxGatewayStreamingChatModel.builder()
@@ -441,7 +445,7 @@ public class WatsonxGatewayStreamingChatModelTest {
                     return CompletableFuture.completedFuture(null);
                 })
                 .when(mockModelGatewayChatService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
         withModelGatewayChatServiceMock(() -> {
             var streamingChatModel = WatsonxGatewayStreamingChatModel.builder()
@@ -485,24 +489,22 @@ public class WatsonxGatewayStreamingChatModelTest {
                 .apiKey("api-key")
                 .build();
 
-        assertThrows(
-                UnsupportedFeatureException.class,
-                () -> streamingChatModel.chat(
-                        ChatRequest.builder()
+        AtomicReference<Throwable> reportedError = new AtomicReference<>();
+        streamingChatModel.chat(ChatRequest.builder()
                                 .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
                                 .topK(10)
-                                .build(),
-                        new StreamingChatResponseHandler() {
-                            @Override
-                            public void onPartialResponse(String partialResponse) {}
+                                .build(), new StreamingChatResponseHandler() {
 
-                            @Override
-                            public void onCompleteResponse(
-                                    dev.langchain4j.model.chat.response.ChatResponse completeResponse) {}
+            @Override
+            public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {}
 
-                            @Override
-                            public void onError(Throwable error) {}
-                        }));
+            @Override
+            public void onError(Throwable error) {
+                reportedError.set(error);
+            }
+        });
+        // the model reports the unsupported parameter to the handler instead of throwing it
+        assertInstanceOf(UnsupportedFeatureException.class, reportedError.get());
 
         assertThrows(
                 UnsupportedFeatureException.class,

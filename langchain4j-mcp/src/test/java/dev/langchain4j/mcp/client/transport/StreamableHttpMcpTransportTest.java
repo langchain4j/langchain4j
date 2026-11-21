@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.mcp.client.transport.http.StreamableHttpMcpTransport;
 import java.lang.reflect.Field;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import javax.net.ssl.SSLContext;
@@ -120,6 +121,28 @@ class StreamableHttpMcpTransportTest {
 
         transport.setMcpSessionId(null);
         assertThat(transport.getMcpSessionId()).isNull();
+    }
+
+    @Test
+    void stopShouldForgetTheSessionWithoutClosingTheTransport() throws Exception {
+        StreamableHttpMcpTransport transport =
+                StreamableHttpMcpTransport.builder().url("http://localhost/mcp").build();
+        transport.setMcpSessionId("session-123");
+
+        transport.stop();
+
+        // the next initialization starts a new session, and the transport is still usable, unlike after close()
+        assertThat(transport.getMcpSessionId()).isNull();
+        assertThat(isClosed(transport)).isFalse();
+
+        transport.close();
+        assertThat(isClosed(transport)).isTrue();
+    }
+
+    private static boolean isClosed(StreamableHttpMcpTransport transport) throws Exception {
+        Field field = StreamableHttpMcpTransport.class.getDeclaredField("closed");
+        field.setAccessible(true);
+        return ((AtomicBoolean) field.get(transport)).get();
     }
 
     private static SSLContext extractSslContext(StreamableHttpMcpTransport transport) throws Exception {

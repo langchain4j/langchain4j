@@ -1,6 +1,7 @@
 package dev.langchain4j.code.graalvm;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.graalvm.polyglot.EnvironmentAccess.NONE;
 import static org.graalvm.polyglot.HostAccess.UNTRUSTED;
 import static org.graalvm.polyglot.SandboxPolicy.CONSTRAINED;
 
@@ -36,6 +37,7 @@ public class GraalVmJavaScriptExecutionEngine implements CodeExecutionEngine {
         try (Context context = Context.newBuilder("js")
                 .sandbox(CONSTRAINED)
                 .allowHostAccess(UNTRUSTED)
+                .allowEnvironmentAccess(NONE)
                 .out(outputStream)
                 .err(outputStream)
                 // Truffle logs (for example the warning about running without runtime compilation)
