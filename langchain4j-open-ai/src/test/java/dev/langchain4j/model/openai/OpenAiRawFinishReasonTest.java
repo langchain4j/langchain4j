@@ -43,7 +43,8 @@ class OpenAiRawFinishReasonTest {
                 .httpClientBuilder(new MockHttpClientBuilder(client))
                 .build();
 
-        ChatResponse response = model.chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build());
+        ChatResponse response = model.chat(
+                ChatRequest.builder().messages(UserMessage.from("Hi")).build());
 
         assertFinishReasons(response, rawReason, mappedReason);
     }
