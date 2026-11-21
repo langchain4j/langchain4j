@@ -87,8 +87,9 @@ public @interface P {
      * <p>
      * <b>1.x behaviour when a required argument is missing:</b>
      * <ul>
-     *   <li><b>Primitive parameters</b> ({@code int}, {@code long}, {@code boolean}, …) — detected
-     *       and surfaced as a {@link ToolArgumentsException}.</li>
+     *   <li><b>Primitive parameters</b> ({@code int}, {@code long}, {@code boolean}, …), including primitive
+     *       fields inside object, collection, map and array parameters — detected and surfaced as a
+     *       {@link ToolArgumentsException}.</li>
      *   <li><b>Object parameters</b> — not validated; {@code null} is passed to the
      *       {@link Tool}-annotated method, even though the schema marked the parameter as required.</li>
      * </ul>
