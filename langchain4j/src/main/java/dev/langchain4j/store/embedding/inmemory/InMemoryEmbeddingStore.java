@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.inmemory;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.Utils.randomUUID;
+import static dev.langchain4j.internal.ValidationUtils.ensureConsistentSizes;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactory;
@@ -23,7 +24,6 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
-import java.util.concurrent.CompletableFuture;
 import dev.langchain4j.store.embedding.RelevanceScore;
 import dev.langchain4j.store.embedding.filter.Filter;
 import java.io.BufferedInputStream;
@@ -43,6 +43,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.PriorityQueue;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -104,14 +105,15 @@ public class InMemoryEmbeddingStore<Embedded> implements EmbeddingStore<Embedded
 
     @Override
     public void addAll(List<String> ids, List<Embedding> embeddings, List<Embedded> embedded) {
-        if (ids.size() != embeddings.size() || embeddings.size() != embedded.size()) {
-            throw new IllegalArgumentException("The list of ids and embeddings and embedded must have the same size");
+        ensureConsistentSizes(ids, embeddings, embedded);
+        if (isNullOrEmpty(embeddings)) {
+            return;
         }
 
         List<Entry<Embedded>> newEntries = new ArrayList<>(ids.size());
 
         for (int i = 0; i < ids.size(); i++) {
-            newEntries.add(new Entry<>(ids.get(i), embeddings.get(i), embedded.get(i)));
+            newEntries.add(new Entry<>(ids.get(i), embeddings.get(i), embedded == null ? null : embedded.get(i)));
         }
         add(newEntries);
     }
