@@ -14,7 +14,8 @@ public record InfinispanStoreConfiguration(
         String langchainItemName,
         String metadataItemName,
         boolean createCache,
-        boolean registerSchema) {
+        boolean registerSchema,
+        String textFieldAnnotation) {
 
     /**
      * Default Cache Config
@@ -50,6 +51,10 @@ public record InfinispanStoreConfiguration(
      */
     public static final String DEFAULT_SIMILARITY = "COSINE";
 
+    public static final String TEXT_FIELD_ANNOTATION_BASIC = "@Basic(projectable=true)";
+
+    public static final String TEXT_FIELD_ANNOTATION_FULLTEXT = "@Text(projectable=true, analyzer=\"standard\")";
+
     /**
      * Creates the configuration and sets default values
      *
@@ -76,7 +81,8 @@ public record InfinispanStoreConfiguration(
             String langchainItemName,
             String metadataItemName,
             boolean createCache,
-            boolean registerSchema) {
+            boolean registerSchema,
+            String textFieldAnnotation) {
         this.cacheName = cacheName;
         this.dimension = dimension;
         this.cacheConfig = cacheConfig;
@@ -88,6 +94,7 @@ public record InfinispanStoreConfiguration(
         this.metadataItemName = metadataItemName != null ? metadataItemName : DEFAULT_METADATA_ITEM + dimension;
         this.createCache = createCache;
         this.registerSchema = registerSchema;
+        this.textFieldAnnotation = textFieldAnnotation != null ? textFieldAnnotation : TEXT_FIELD_ANNOTATION_BASIC;
     }
 
     /**
