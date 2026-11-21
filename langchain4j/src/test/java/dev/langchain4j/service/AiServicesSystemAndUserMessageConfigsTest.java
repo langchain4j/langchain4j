@@ -112,14 +112,22 @@ class AiServicesSystemAndUserMessageConfigsTest {
 
         // with system and user message
         String chat22();
+    }
 
-        // illegal
+    /**
+     * Parameter validation runs when the AI Service is built, so the illegal methods below need
+     * their own interfaces: otherwise building {@link AiService} would fail for all of its methods.
+     */
+    interface AiServiceWithIllegalChat1 {
 
         @SystemMessage("Given a name of a country, answer with {{answerInstructions}}")
-        String illegalChat1(@V("answerInstructions") String answerInstructions, String userMessage);
+        String chat(@V("answerInstructions") String answerInstructions, String userMessage);
+    }
 
-        // with systemMessageProvider
-        String illegalChat2(@V("answerInstructions") String answerInstructions, String userMessage);
+    // with systemMessageProvider
+    interface AiServiceWithIllegalChat2 {
+
+        String chat(@V("answerInstructions") String answerInstructions, String userMessage);
     }
 
     @Test
@@ -592,32 +600,26 @@ class AiServicesSystemAndUserMessageConfigsTest {
     @Test
     void illegal_system_message_configuration_1() {
 
-        // given
-        AiService aiService =
-                AiServices.builder(AiService.class).chatModel(model).build();
-
         // when-then
-        assertThatThrownBy(() -> aiService.illegalChat1("a name of it's capital", "Country: Germany"))
+        assertThatThrownBy(() -> AiServices.builder(AiServiceWithIllegalChat1.class)
+                        .chatModel(model)
+                        .build())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage(
-                        "The parameter 'arg1' in the method 'illegalChat1' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService"
-                                + VALIDATION_ERROR_MESSAGE_SUFFIX);
+                .hasMessage("The parameter 'arg1' in the method 'chat' of the class "
+                        + AiServiceWithIllegalChat1.class.getName() + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 
     @Test
     void illegal_system_message_configuration_2() {
 
-        // given
-        AiService aiService = AiServices.builder(AiService.class)
-                .chatModel(model)
-                .systemMessageProvider(chatMemoryId -> "Given a name of a country, answer with {{answerInstructions}}")
-                .build();
-
         // when-then
-        assertThatThrownBy(() -> aiService.illegalChat2("a name of it's capital", "Country: Germany"))
+        assertThatThrownBy(() -> AiServices.builder(AiServiceWithIllegalChat2.class)
+                        .chatModel(model)
+                        .systemMessageProvider(
+                                chatMemoryId -> "Given a name of a country, answer with {{answerInstructions}}")
+                        .build())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
-                .hasMessage(
-                        "The parameter 'arg1' in the method 'illegalChat2' of the class dev.langchain4j.service.AiServicesSystemAndUserMessageConfigsTest$AiService"
-                                + VALIDATION_ERROR_MESSAGE_SUFFIX);
+                .hasMessage("The parameter 'arg1' in the method 'chat' of the class "
+                        + AiServiceWithIllegalChat2.class.getName() + VALIDATION_ERROR_MESSAGE_SUFFIX);
     }
 }
