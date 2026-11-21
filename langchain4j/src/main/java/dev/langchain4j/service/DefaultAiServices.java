@@ -56,6 +56,7 @@ import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.moderation.Moderation;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.AiServiceErrorEvent;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
 import dev.langchain4j.observability.api.event.AiServiceResponseReceivedEvent;
@@ -1260,7 +1261,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
-                        ChatExecutor toolAwareRepromptExecutor = ToolAwareRepromptExecutor.wrap(
+                        var toolAwareRepromptExecutor = ToolAwareRepromptExecutor.wrap(
                                 chatExecutor,
                                 context,
                                 memoryId,
@@ -1285,7 +1286,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 returnsImage,
                                 isReturnTypeResult,
                                 augmentationResult,
-                                toolServiceResult);
+                                toolServiceResult,
+                                toolAwareRepromptExecutor);
                     }
 
                     /**
@@ -1325,7 +1327,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
                         ChatResponse aggregateResponse = toolServiceResult.aggregateResponse();
 
-                        ChatExecutor toolAwareRepromptExecutor = ToolAwareRepromptExecutor.wrapAsync(
+                        var toolAwareRepromptExecutor = ToolAwareRepromptExecutor.wrapAsync(
                                 chatExecutor,
                                 context,
                                 memoryId,
@@ -1353,7 +1355,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                         returnsImage,
                                         isReturnTypeResult,
                                         augmentationResult,
-                                        toolServiceResult));
+                                        toolServiceResult,
+                                        toolAwareRepromptExecutor));
                     }
 
                     private Object immediateToolReturnResult(
@@ -1422,7 +1425,14 @@ class DefaultAiServices<T> extends AiServices<T> {
                             boolean returnsImage,
                             boolean isReturnTypeResult,
                             AugmentationResult augmentationResult,
-                            ToolServiceResult toolServiceResult) {
+                            ToolServiceResult toolServiceResult,
+                            ToolAwareRepromptExecutor.RepromptExecutor reprompts) {
+
+                        // after a retry or reprompt of an output guardrail, the final response is the one of the last
+                        // model call, and the token usage includes all calls
+                        ChatResponse finalResponse = reprompts.lastResponse() != null
+                                ? reprompts.lastResponse()
+                                : toolServiceResult.finalResponse();
 
                         if (response != null) {
                             if (returnsImage && response instanceof ChatResponse cResponse) {
@@ -1438,14 +1448,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                         var actualResponse = (isReturnTypeResult)
                                 ? Result.builder()
                                         .content(parsedResponse)
-                                        .tokenUsage(toolServiceResult.aggregateTokenUsage())
+                                        .tokenUsage(TokenUsage.sum(
+                                                toolServiceResult.aggregateTokenUsage(), reprompts.tokenUsage()))
                                         .sources(augmentationResult == null ? null : augmentationResult.contents())
-                                        .finishReason(toolServiceResult
-                                                .finalResponse()
-                                                .finishReason())
+                                        .finishReason(finalResponse.finishReason())
                                         .toolExecutions(toolServiceResult.toolExecutions())
                                         .intermediateResponses(toolServiceResult.intermediateResponses())
-                                        .finalResponse(toolServiceResult.finalResponse())
+                                        .finalResponse(finalResponse)
                                         .build()
                                 : parsedResponse;
 
