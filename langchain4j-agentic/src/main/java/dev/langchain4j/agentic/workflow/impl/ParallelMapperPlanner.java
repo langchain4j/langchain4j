@@ -125,7 +125,11 @@ public class ParallelMapperPlanner implements Planner {
         // filled through reflection, which unboxes each result when the array is of a primitive type, like int[]
         Object array = Array.newInstance(arrayClass.getComponentType(), results.size());
         for (int i = 0; i < results.size(); i++) {
-            Array.set(array, i, results.get(i));
+            Object result = results.get(i);
+            // a null result keeps the default value of the component type: 0 or false for a primitive, null otherwise
+            if (result != null) {
+                Array.set(array, i, result);
+            }
         }
         return array;
     }

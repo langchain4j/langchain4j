@@ -20,6 +20,22 @@ class ParallelMapperPrimitiveArrayTest {
         }
     }
 
+    public static class NullForEvenDoubler {
+
+        @Agent(description = "Doubles an odd number", outputKey = "doubled")
+        public Integer doubleIt(@V("number") int number) {
+            return number % 2 == 0 ? null : number * 2;
+        }
+    }
+
+    public static class NullForEvenChecker {
+
+        @Agent(description = "Checks an odd number", outputKey = "checked")
+        public Boolean check(@V("number") int number) {
+            return number % 2 == 0 ? null : true;
+        }
+    }
+
     public interface IntArrayToListMapper {
 
         @Agent
@@ -30,6 +46,18 @@ class ParallelMapperPrimitiveArrayTest {
 
         @Agent
         int[] mapAll(@V("numbers") int... numbers);
+    }
+
+    public interface IntArrayToBooleanArrayMapper {
+
+        @Agent
+        boolean[] mapAll(@V("numbers") int... numbers);
+    }
+
+    public interface IntArrayToIntegerArrayMapper {
+
+        @Agent
+        Integer[] mapAll(@V("numbers") int... numbers);
     }
 
     public interface DoubleArrayToListMapper {
@@ -81,5 +109,32 @@ class ParallelMapperPrimitiveArrayTest {
                 .build();
 
         assertThat(mapper.mapAll()).isEmpty();
+    }
+
+    @Test
+    void null_result_is_returned_as_zero_in_a_numeric_primitive_array() {
+        IntArrayToIntArrayMapper mapper = AgenticServices.parallelMapperBuilder(IntArrayToIntArrayMapper.class)
+                .subAgents(new NullForEvenDoubler())
+                .build();
+
+        assertThat(mapper.mapAll(1, 2, 3)).containsExactly(2, 0, 6);
+    }
+
+    @Test
+    void null_result_is_returned_as_false_in_a_boolean_array() {
+        IntArrayToBooleanArrayMapper mapper = AgenticServices.parallelMapperBuilder(IntArrayToBooleanArrayMapper.class)
+                .subAgents(new NullForEvenChecker())
+                .build();
+
+        assertThat(mapper.mapAll(1, 2, 3)).containsExactly(true, false, true);
+    }
+
+    @Test
+    void null_result_is_returned_as_null_in_an_array_of_objects() {
+        IntArrayToIntegerArrayMapper mapper = AgenticServices.parallelMapperBuilder(IntArrayToIntegerArrayMapper.class)
+                .subAgents(new NullForEvenDoubler())
+                .build();
+
+        assertThat(mapper.mapAll(1, 2, 3)).containsExactly(2, null, 6);
     }
 }
