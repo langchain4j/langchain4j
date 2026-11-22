@@ -22,6 +22,7 @@ import com.google.genai.types.Part;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.SpeechConfig;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -35,7 +36,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import dev.langchain4j.data.message.CustomMessage;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 

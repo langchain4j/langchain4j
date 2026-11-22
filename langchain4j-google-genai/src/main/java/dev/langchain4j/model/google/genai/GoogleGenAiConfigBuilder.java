@@ -475,7 +475,8 @@ class GoogleGenAiConfigBuilder {
         Map<String, String> maskedHeaders = new LinkedHashMap<>();
         headers.get().keySet().forEach(name -> maskedHeaders.put(name, "***"));
         return config.toBuilder()
-                .httpOptions(httpOptions.get().toBuilder().headers(maskedHeaders).build())
+                .httpOptions(
+                        httpOptions.get().toBuilder().headers(maskedHeaders).build())
                 .build();
     }
 
