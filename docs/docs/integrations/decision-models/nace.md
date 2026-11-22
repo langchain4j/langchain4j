@@ -49,7 +49,7 @@ public class DrexExample {
         return new TypeSafeDecisionModel(TypeSafeDecisionModel.builder()
                 .baseUrl("https://console.nace.ai")
                 .apiKey(apiKey)
-                .modelName("drex-max-v1.1")
+                .modelName("drex-latest")
                 .timeout(Duration.ofSeconds(60))
                 .maxRetries(0)
                 .customHeaders(Map.of(
@@ -80,6 +80,7 @@ public class DrexExample {
                 .build();
 
         var response = decisionModel().decide(request);
+        System.out.println(response.modelName());
         System.out.println(response.yesNo("refund").probability());
         System.out.println(response.choice("team").value());
         System.out.println(response.choice("team").probabilities());
@@ -91,7 +92,8 @@ public class DrexExample {
 ```
 
 The base URL does not include `/v1`: the client appends its default `v1/systemone` path.
-Use an explicit model ID from the current [Drex model catalog](https://console.nace.ai/docs/drex/reference/models).
+This example uses `drex-latest`, which can move to a newer version. The response's model name reports the concrete
+version that answered; see the current [Drex model catalog](https://console.nace.ai/docs/drex/reference/models).
 Keep the API key associated with the configured destination.
 
 The small subclass changes only `provider()`. Without it, `TypeSafeDecisionModel` reports `TYPESAFE` even for

@@ -47,7 +47,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 class TypeSafeDecisionModelNaceTest {
 
     private static final String PATH = "/v1/systemone";
-    private static final String MODEL = "drex-max-v1.1";
+    private static final String REQUEST_MODEL = "drex-latest";
+    private static final String RESOLVED_MODEL = "drex-max-v1.1";
     private static final String CLIENT = "langchain4j-typesafe-nace-example/1.0";
 
     // System One answers do not require a "type" field; Nace includes additional metadata.
@@ -102,7 +103,7 @@ class TypeSafeDecisionModelNaceTest {
 
         DecisionResponse response = async ? model.decideAsync(request).get(5, SECONDS) : model.decide(request);
 
-        assertThat(response.modelName()).isEqualTo(MODEL);
+        assertThat(response.modelName()).isEqualTo(RESOLVED_MODEL);
         assertThat(response.yesNo("refund").probability()).isEqualTo(0.95);
         assertThat(response.choice("team").value()).isEqualTo("billing");
         assertThat(response.choice("team").probabilities())
@@ -121,7 +122,7 @@ class TypeSafeDecisionModelNaceTest {
                         .withHeader("Authorization", equalTo("Bearer nace-test-key"))
                         .withHeader("X-Nace-Client", equalTo(CLIENT))
                         .withHeader("User-Agent", equalTo(CLIENT))
-                        .withRequestBody(matchingJsonPath("$.model", equalTo(MODEL)))
+                        .withRequestBody(matchingJsonPath("$.model", equalTo(REQUEST_MODEL)))
                         .withRequestBody(
                                 matchingJsonPath("$.state", equalTo("I was charged twice. Please refund one charge.")))
                         .withRequestBody(matchingJsonPath("$.questions.refund.type", equalTo("noul")))
@@ -224,7 +225,7 @@ class TypeSafeDecisionModelNaceTest {
         return new TypeSafeDecisionModel(TypeSafeDecisionModel.builder()
                 .baseUrl(server.baseUrl())
                 .apiKey("nace-test-key")
-                .modelName(MODEL)
+                .modelName(REQUEST_MODEL)
                 .timeout(Duration.ofSeconds(5))
                 .maxRetries(0)
                 .customHeaders(Map.of("X-Nace-Client", CLIENT, "User-Agent", CLIENT))
