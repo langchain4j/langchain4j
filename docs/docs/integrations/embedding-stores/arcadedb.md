@@ -324,7 +324,7 @@ docker run -d \
   --name arcadedb \
   -p 2480:2480 \
   -e JAVA_OPTS="-Darcadedb.server.rootPassword=playwithdata" \
-  arcadedata/arcadedb:latest
+  arcadedata/arcadedb:26.10.2
 ```
 
 Then connect your store:
