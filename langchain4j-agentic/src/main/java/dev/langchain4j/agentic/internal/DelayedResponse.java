@@ -7,6 +7,8 @@ public interface DelayedResponse<T> {
 
     String PENDING = "<pending>";
 
+    String FAILED = "<failed>";
+
     boolean isDone();
 
     T blockingGet();

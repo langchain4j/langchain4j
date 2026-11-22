@@ -4,6 +4,7 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.agentic.internal.AsyncResponse;
 import dev.langchain4j.agentic.internal.DelayedResponse;
 
 import java.util.Map;
@@ -40,6 +41,17 @@ public record AgentInvocation(
     @Override
     public Object output() {
         return output instanceof DelayedResponse<?> delayedResponse ? delayedResponse.result() : output;
+    }
+
+    /**
+     * This invocation as it can be persisted: the output of an asynchronous agent that failed, which rethrows that
+     * failure when read, is replaced by {@value DelayedResponse#FAILED}.
+     */
+    AgentInvocation persistable() {
+        if (output instanceof AsyncResponse<?> asyncResponse && asyncResponse.isFailed()) {
+            return new AgentInvocation(agentType, agentName, agentId, input, DelayedResponse.FAILED, skipReason);
+        }
+        return this;
     }
 
     @Override

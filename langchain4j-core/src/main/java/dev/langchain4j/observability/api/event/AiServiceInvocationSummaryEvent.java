@@ -12,13 +12,14 @@ import java.util.List;
  * or {@link AiServiceCancelledEvent}, and contains every {@link AiServiceEvent} fired for that invocation (i.e. every
  * event sharing its {@link InvocationContext#invocationId()}), in the order they were fired, starting with the
  * {@link AiServiceStartedEvent} and ending with the {@link AiServiceCompletedEvent}, {@link AiServiceErrorEvent} or
- * {@link AiServiceCancelledEvent}.
+ * {@link AiServiceCancelledEvent}. In between, it also contains one AiServiceInvocationSummaryEvent for each nested
+ * invocation (see below), which has its own invocation id.
  * <p>
  * A few things to keep in mind:
  * <ul>
  *     <li>
- *         Events are only collected for an invocation if an AiServiceInvocationSummaryListener is registered when its
- *         {@link AiServiceStartedEvent} is fired.
+ *         Events are collected if an AiServiceInvocationSummaryListener is registered when the invocation starts,
+ *         or if the events of its parent invocation are being collected.
  *     </li>
  *     <li>
  *         The event is only fired once the invocation fires its {@link AiServiceCompletedEvent},
@@ -32,7 +33,12 @@ import java.util.List;
  *     </li>
  *     <li>
  *         An AI Service invoked while another AI Service invocation is in progress (for example from within a tool)
- *         is a separate invocation with its own invocation id, so it results in its own AiServiceInvocationSummaryEvent.
+ *         is a separate invocation with its own invocation id. If it is linked to the enclosing invocation (its
+ *         {@link InvocationContext#parentInvocationId()} is not {@code null}), its summary is added to the enclosing
+ *         invocation's events when it ends, and is still fired independently to its own listeners. Its own events
+ *         are only in its summary, not in the enclosing invocation's events. A linked invocation that ends before
+ *         the enclosing invocation's {@link AiServiceStartedEvent} (for example one called by the chat memory
+ *         provider or the system message provider) or after the enclosing invocation has ended is not included.
  *     </li>
  *     <li>
  *         For an AI Service method returning a {@code TokenStream}, the invocation starts when the method is called,
@@ -55,7 +61,8 @@ import java.util.List;
 public interface AiServiceInvocationSummaryEvent extends AiServiceEvent {
 
     /**
-     * Returns all the events fired for this AI Service invocation, in the order they were fired.
+     * Returns all the events fired for this AI Service invocation, in the order they were fired, including the
+     * AiServiceInvocationSummaryEvents of the nested invocations, which have their own invocation ids.
      *
      * @return An unmodifiable list of the events, in the order they were fired
      */

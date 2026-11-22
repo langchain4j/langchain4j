@@ -4,7 +4,7 @@ import static dev.langchain4j.MockitoUtils.ignoreInteractions;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.O3_MINI;
+import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_6_1_SOL;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static dev.langchain4j.service.AiServicesIT.Ingredient.OIL;
 import static dev.langchain4j.service.AiServicesIT.Ingredient.PEPPER;
@@ -1090,7 +1090,7 @@ public class AiServicesIT {
                 .baseUrl(System.getenv("OPENAI_BASE_URL"))
                 .apiKey(System.getenv("OPENAI_API_KEY"))
                 .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-                .modelName(O3_MINI)
+                .modelName(GPT_6_1_SOL)
                 .logRequests(true)
                 .logResponses(true)
                 .build());

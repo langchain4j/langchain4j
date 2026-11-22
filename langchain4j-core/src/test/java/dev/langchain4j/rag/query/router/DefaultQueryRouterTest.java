@@ -7,7 +7,9 @@ import static org.mockito.Mockito.mock;
 
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
+import java.time.Duration;
 import java.util.Collection;
+import java.util.concurrent.ExecutionException;
 import org.junit.jupiter.api.Test;
 
 class DefaultQueryRouterTest {
@@ -149,6 +151,24 @@ class DefaultQueryRouterTest {
         assertThatThrownBy(() -> Query.from("\t\n\r"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("text cannot be null or blank");
+    }
+
+    @Test
+    void routeAsync_should_return_failed_future_when_route_throws() {
+
+        IllegalStateException failure = new IllegalStateException("cannot route");
+        QueryRouter router = new DefaultQueryRouter(mock(ContentRetriever.class)) {
+            @Override
+            public Collection<ContentRetriever> route(Query query) {
+                throw failure;
+            }
+        };
+
+        assertThat(router.routeAsync(Query.from("query")))
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isSameAs(failure);
     }
 
     @Test

@@ -228,11 +228,20 @@ class MicrometerMetricsChatModelListenerTest {
     }
 
     private ChatModelRequestContext requestContext() {
-        return new ChatModelRequestContext(chatRequest(), ModelProvider.MICROSOFT_FOUNDRY, attributes);
+        return ChatModelRequestContext.builder()
+                .chatRequest(chatRequest())
+                .modelProvider(ModelProvider.MICROSOFT_FOUNDRY)
+                .attributes(attributes)
+                .build();
     }
 
     private ChatModelErrorContext errorContext(Throwable error) {
-        return new ChatModelErrorContext(error, chatRequest(), ModelProvider.MICROSOFT_FOUNDRY, attributes);
+        return ChatModelErrorContext.builder()
+                .error(error)
+                .chatRequest(chatRequest())
+                .modelProvider(ModelProvider.MICROSOFT_FOUNDRY)
+                .attributes(attributes)
+                .build();
     }
 
     private static ChatRequest chatRequest() {
@@ -253,7 +262,12 @@ class MicrometerMetricsChatModelListenerTest {
                 .tokenUsage(tokenUsage)
                 .build();
 
-        return new ChatModelResponseContext(chatResponse, chatRequest(), ModelProvider.MICROSOFT_FOUNDRY, attributes);
+        return ChatModelResponseContext.builder()
+                .chatResponse(chatResponse)
+                .chatRequest(chatRequest())
+                .modelProvider(ModelProvider.MICROSOFT_FOUNDRY)
+                .attributes(attributes)
+                .build();
     }
 
     private ChatModelResponseContext createResponseContext(
@@ -269,7 +283,11 @@ class MicrometerMetricsChatModelListenerTest {
             requestBuilder.modelName(requestModelName);
         }
 
-        return new ChatModelResponseContext(
-                responseBuilder.build(), requestBuilder.build(), modelProvider, new HashMap<>());
+        return ChatModelResponseContext.builder()
+                .chatResponse(responseBuilder.build())
+                .chatRequest(requestBuilder.build())
+                .modelProvider(modelProvider)
+                .attributes(new HashMap<>())
+                .build();
     }
 }

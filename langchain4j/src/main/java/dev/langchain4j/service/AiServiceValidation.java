@@ -1,6 +1,7 @@
 package dev.langchain4j.service;
 
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
+import static dev.langchain4j.service.output.ServiceOutputParser.isReturnedAsIs;
 import static java.lang.reflect.Modifier.isStatic;
 import static java.util.stream.Collectors.joining;
 
@@ -8,7 +9,6 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
-import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import java.lang.reflect.Method;
@@ -26,12 +26,6 @@ import java.util.stream.Stream;
 class AiServiceValidation {
 
     private static final Set<Method> VALID_METHODS = new HashSet<>();
-
-    /**
-     * LangChain4j types that AI Services return as-is, without asking the LLM to produce them.
-     */
-    private static final Set<Class<?>> SUPPORTED_RETURN_TYPES =
-            Set.of(AiMessage.class, ChatResponse.class, Response.class, TokenStream.class);
 
     /**
      * LangChain4j types that are supported as the content of a {@link Result}, e.g. {@code Result<AiMessage>}.
@@ -122,7 +116,7 @@ class AiServiceValidation {
         }
 
         Class<?> rawReturnType = TypeUtils.getRawClass(returnType);
-        if (SUPPORTED_RETURN_TYPES.contains(rawReturnType) || isImage(returnType)) {
+        if (isReturnedAsIs(rawReturnType) || isImage(returnType)) {
             return;
         }
 

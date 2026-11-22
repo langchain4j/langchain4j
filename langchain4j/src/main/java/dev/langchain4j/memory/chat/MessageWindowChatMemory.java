@@ -1,5 +1,6 @@
 package dev.langchain4j.memory.chat;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -75,14 +76,14 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public CompletableFuture<Void> addAsync(List<ChatMessage> messagesToAdd) {
-        return store.getMessagesAsync(id).thenCompose(stored -> {
+        return storedMessagesAsync().thenCompose(stored -> {
             List<ChatMessage> messages = windowed(stored);
             boolean changed = false;
             for (ChatMessage message : messagesToAdd) {
                 changed |= appendMessage(messages, message);
             }
             if (changed) {
-                return store.updateMessagesAsync(id, messages);
+                return updateStoredMessagesAsync(messages);
             }
             return CompletableFuture.completedFuture(null);
         });
@@ -140,17 +141,13 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public CompletableFuture<Void> setAsync(List<ChatMessage> messages) {
-        // Deliver validation/windowing failures through the returned stage rather than throwing synchronously,
-        // consistent with addAsync and the async error contract.
-        try {
+        return failOnThrow(() -> {
             Integer maxMessages = this.maxMessagesProvider.apply(this.id);
             ensureGreaterThanZero(maxMessages, "maxMessages");
             List<ChatMessage> windowed = new ArrayList<>(messages);
             ensureCapacity(windowed, maxMessages);
-            return store.updateMessagesAsync(id, windowed);
-        } catch (Throwable t) {
-            return CompletableFuture.failedFuture(t);
-        }
+            return updateStoredMessagesAsync(windowed);
+        });
     }
 
     @Override
@@ -160,7 +157,15 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public CompletableFuture<List<ChatMessage>> messagesAsync() {
-        return store.getMessagesAsync(id).thenApply(this::windowed);
+        return storedMessagesAsync().thenApply(this::windowed);
+    }
+
+    private CompletableFuture<List<ChatMessage>> storedMessagesAsync() {
+        return failOnThrow(store, "getMessagesAsync(Object)", () -> store.getMessagesAsync(id));
+    }
+
+    private CompletableFuture<Void> updateStoredMessagesAsync(List<ChatMessage> messages) {
+        return failOnThrow(store, "updateMessagesAsync(Object, List)", () -> store.updateMessagesAsync(id, messages));
     }
 
     private List<ChatMessage> windowed(List<ChatMessage> stored) {

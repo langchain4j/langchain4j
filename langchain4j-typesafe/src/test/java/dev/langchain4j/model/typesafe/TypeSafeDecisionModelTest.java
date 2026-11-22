@@ -1104,6 +1104,39 @@ class TypeSafeDecisionModelTest {
         return "{\"model\": \"jev-1.13.0\", \"answers\": {" + String.join(", ", answers) + "}}";
     }
 
+    @Test
+    void do_decide_async_should_return_failed_future_instead_of_throwing() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        TypeSafeDecisionModel model = model(httpClient);
+        // doDecideAsync is called directly, so the model name of the builder is not applied
+        DecisionRequest withoutModelName = DecisionRequest.builder()
+                .input("Hi")
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                .build();
+        DecisionRequest withCustomInput = DecisionRequest.builder()
+                .input(() -> DecisionInputType.TEXT)
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                .parameters(DecisionRequestParameters.builder().modelName("jev-latest").build())
+                .build();
+
+        // when
+        CompletableFuture<DecisionResponse> missingModelName = model.doDecideAsync(withoutModelName);
+        CompletableFuture<DecisionResponse> customInput = model.doDecideAsync(withCustomInput);
+
+        // then
+        assertThat(missingModelName)
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseExactlyInstanceOf(IllegalArgumentException.class);
+        assertThat(customInput)
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(UnsupportedFeatureException.class);
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
     private static TypeSafeDecisionModel model(MockHttpClient httpClient) {
         return TypeSafeDecisionModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(httpClient))

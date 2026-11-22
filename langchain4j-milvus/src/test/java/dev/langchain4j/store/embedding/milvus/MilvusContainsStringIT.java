@@ -31,7 +31,7 @@ class MilvusContainsStringIT {
     private static final String COLLECTION_NAME = "contains_string_test";
 
     @Container
-    private static final MilvusContainer milvus = new MilvusContainer(MilvusEmbeddingStoreIT.MILVUS_DOCKER_IMAGE);
+    private static final MilvusContainer milvus = MilvusEmbeddingStoreIT.milvusContainer();
 
     private final EmbeddingModel embeddingModel = new AllMiniLmL6V2QuantizedEmbeddingModel();
 

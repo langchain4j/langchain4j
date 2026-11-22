@@ -2,9 +2,14 @@ package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.observability.A2AStreamingClientListener;
 import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 /**
  * Builder for creating A2A client proxies that communicate with remote agents
@@ -13,6 +18,35 @@ import java.util.function.Predicate;
  * @param <T> the agent service interface type
  */
 public interface A2AClientBuilder<T> {
+
+    /**
+     * Sets the name of the agent, from which its id in the reports, in the agents list sent to a supervisor and in
+     * the error handler context is derived. When not set, a typed agent takes the name of the annotation of its agent
+     * method or, when that is not set either, the name of the method, and an untyped one gets a placeholder derived
+     * from the host, port and path of the A2A server URL, so that the name is known without fetching the agent
+     * card, which happens only on the first invocation. The name never changes once the agent is built, even after
+     * the card has been fetched.
+     *
+     * @param name the name of the agent, ignored when null or blank
+     * @return this builder for method chaining
+     */
+    default A2AClientBuilder<T> name(String name) {
+        return this;
+    }
+
+    /**
+     * Sets the description of the agent, used by the supervisor and the other planners to decide when to invoke
+     * it. When neither this method nor the annotation of the agent method set it, the description is read from the
+     * agent card, which is fetched on the first call to {@link AgentInstance#description()}: for a subagent of a
+     * supervisor this happens on the first invocation of the supervisor, which then depends on the availability of
+     * the remote agent, so an explicit description is recommended there.
+     *
+     * @param description the description of the agent, ignored when null or blank
+     * @return this builder for method chaining
+     */
+    default A2AClientBuilder<T> description(String description) {
+        return this;
+    }
 
     /**
      * Sets the state keys whose values will be sent as message parts to the remote agent.
@@ -33,6 +67,12 @@ public interface A2AClientBuilder<T> {
     /**
      * Sets whether the agent should be invoked asynchronously, allowing the
      * workflow to continue without waiting for the agent's result.
+     * The result is awaited only where it is read: by another agent taking it as an argument, or by the output
+     * function or output key of the agentic system.
+     * <p>
+     * When nothing reads the result, the call to the agentic system returns while the agent is still running, and
+     * the result or the failure of the agent is then reported only to its {@link AgentListener}. The next call on
+     * the same memory id waits for these agents to complete before it starts.
      *
      * @param async {@code true} for asynchronous invocation
      * @return this builder for method chaining
@@ -84,6 +124,25 @@ public interface A2AClientBuilder<T> {
     A2AClientBuilder<T> clientCustomizer(Consumer<?> clientCustomizer);
 
     /**
+     * Sets the HTTP headers used to fetch the remote agent card, for example an {@code Authorization} header.
+     * The supplier is called when the card is first needed, not when the agent is built, and again if a failed
+     * fetch is retried. A successfully fetched card is cached, so the supplier is not called on every invocation.
+     * It runs on the thread fetching the card, normally a thread of the LangChain4j executor.
+     * <p>
+     * These headers apply only to agent card discovery. Configure authentication for A2A messages separately
+     * through {@link #clientCustomizer(Consumer)}.
+     *
+     * @param headers the supplier of request headers; {@code null}, or a supplier returning {@code null} or an
+     *                empty map, sends no additional headers
+     * @return this builder for method chaining
+     * @throws UnsupportedOperationException if this builder implementation does not support agent card headers
+     * @since 1.24.0
+     */
+    default A2AClientBuilder<T> agentCardHeaders(Supplier<Map<String, String>> headers) {
+        throw new UnsupportedOperationException("This A2A client builder does not support agent card headers");
+    }
+
+    /**
      * Sets an {@link A2AStreamingClientListener} for observing updates received
      * from the remote agent during streaming invocation.
      *
@@ -109,6 +168,27 @@ public interface A2AClientBuilder<T> {
      * @return this builder for method chaining
      */
     default A2AClientBuilder<T> tenant(String tenant) {
+        return this;
+    }
+
+    /**
+     * Sets the time given to the fetch of the agent card, which happens the first time the card is needed, normally
+     * on the first invocation of the agent, on a thread of the LangChain4j executor. It does not limit the messages
+     * sent to the agent. When the card is not fetched within this time the fetch is interrupted and the invocation
+     * fails with an {@code A2AAgentCardException} caused by a {@link TimeoutException}. Concurrent first invocations
+     * wait on the same fetch, so none of them waits longer than this time, and they all fail when it fails. An
+     * invocation arriving before the interrupted fetch has ended fails at once with the same timeout, and the next
+     * one after that fetches the card again. The default is 30 seconds, and a time of zero removes the limit: the
+     * card is then fetched by the first invocation needing it, on its own thread, and the fetch takes as long as the
+     * server of the agent makes it take.
+     *
+     * @param resolutionTimeout the time given to the fetch of the agent card, {@link Duration#ZERO} for no limit, or
+     *                          {@code null} for the default
+     * @return this builder for method chaining
+     * @throws IllegalArgumentException if the time is negative
+     * @since 1.24.0
+     */
+    default A2AClientBuilder<T> resolutionTimeout(Duration resolutionTimeout) {
         return this;
     }
 

@@ -50,6 +50,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.assertj.core.api.AbstractThrowableAssert;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -90,6 +91,12 @@ public abstract class AbstractBaseChatModelIT<M> {
             .name("getWeather")
             .parameters(JsonObjectSchema.builder().addStringProperty("city").build())
             .build();
+
+    private static final String CITY_MUNICH_ARGUMENTS = "{\"city\":\"Munich\"}";
+
+    // The city has no description, so models may qualify it, e.g. {"city":"Munich, Germany"}
+    private static final Pattern CITY_MUNICH_ARGUMENTS_PATTERN =
+            Pattern.compile("\\{\\s*\"city\"\\s*:\\s*\"Munich[^\"]*\"\\s*\\}");
 
     static final ResponseFormat RESPONSE_FORMAT = ResponseFormat.builder()
             .type(ResponseFormatType.JSON)
@@ -703,7 +710,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             assertThat(toolExecutionRequest.id()).isNotBlank();
         }
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
+        assertCityIsMunich(toolExecutionRequest.arguments());
 
         if (assertTokenUsage()) {
             assertTokenUsage(chatResponse.metadata(), model);
@@ -823,7 +830,7 @@ public abstract class AbstractBaseChatModelIT<M> {
     protected record ExpectedToolCall(int index, String id, String name, String arguments) {}
 
     protected ExpectedToolCall getWeather(String id) {
-        return new ExpectedToolCall(0, id, "getWeather", "{\"city\":\"Munich\"}");
+        return new ExpectedToolCall(0, id, "getWeather", CITY_MUNICH_ARGUMENTS);
     }
 
     protected ExpectedToolCall getTime(String id) {
@@ -889,7 +896,22 @@ public abstract class AbstractBaseChatModelIT<M> {
         return complete.index() == expected.index()
                 && Objects.equals(request.id(), expected.id())
                 && request.name().equals(expected.name())
-                && request.arguments().replace(" ", "").equals(expected.arguments());
+                && argumentsMatch(request.arguments(), expected.arguments());
+    }
+
+    private static boolean argumentsMatch(String actual, String expected) {
+        if (expected.equals(CITY_MUNICH_ARGUMENTS)) {
+            return isCityMunich(actual);
+        }
+        return actual.replace(" ", "").equals(expected);
+    }
+
+    private static void assertCityIsMunich(String arguments) {
+        assertThat(arguments).matches(CITY_MUNICH_ARGUMENTS_PATTERN);
+    }
+
+    private static boolean isCityMunich(String arguments) {
+        return CITY_MUNICH_ARGUMENTS_PATTERN.matcher(arguments).matches();
     }
 
     @ParameterizedTest
@@ -1067,7 +1089,7 @@ public abstract class AbstractBaseChatModelIT<M> {
             assertThat(toolExecutionRequests.get(0).id()).isNotBlank();
         }
         assertThat(toolExecutionRequests.get(0).name()).isEqualTo(WEATHER_TOOL.name());
-        assertThat(toolExecutionRequests.get(0).arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
+        assertCityIsMunich(toolExecutionRequests.get(0).arguments());
 
         if (assertToolId(model)) {
             assertThat(toolExecutionRequests.get(1).id())
@@ -1319,7 +1341,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         ToolExecutionRequest toolExecutionRequest =
                 aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
+        assertCityIsMunich(toolExecutionRequest.arguments());
 
         if (assertTokenUsage()) {
             assertTokenUsage(chatResponse.metadata(), model);
@@ -1354,7 +1376,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         ToolExecutionRequest toolExecutionRequest =
                 aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
+        assertCityIsMunich(toolExecutionRequest.arguments());
 
         if (assertTokenUsage()) {
             assertTokenUsage(chatResponse.metadata(), model);
@@ -1596,7 +1618,7 @@ public abstract class AbstractBaseChatModelIT<M> {
         ToolExecutionRequest toolExecutionRequest =
                 aiMessage.toolExecutionRequests().get(0);
         assertThat(toolExecutionRequest.name()).isEqualTo(WEATHER_TOOL.name());
-        assertThat(toolExecutionRequest.arguments()).isEqualToIgnoringWhitespace("{\"city\":\"Munich\"}");
+        assertCityIsMunich(toolExecutionRequest.arguments());
 
         if (assertTokenUsage()) {
             assertTokenUsage(chatResponse.metadata(), model);

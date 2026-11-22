@@ -2,11 +2,13 @@ package dev.langchain4j.agentic.observability;
 
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentCondition;
+import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.AgenticSystemTopology;
 import dev.langchain4j.agentic.workflow.ConditionalAgent;
 import dev.langchain4j.agentic.workflow.ConditionalAgentInstance;
 import dev.langchain4j.agentic.workflow.LoopAgentInstance;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -20,6 +22,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -293,8 +296,9 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
                 detail(html, "Type", typeName);
             }
         }
-        if (agent.description() != null && !agent.description().isEmpty()) {
-            detail(html, "Desc", truncate(agent.description(), 60));
+        String description = description(agent);
+        if (description != null && !description.isEmpty()) {
+            detail(html, "Desc", truncate(description, 60));
         }
         if (agent.outputType() != null) {
             detail(html, "Returns", simpleTypeName(agent.outputType()));
@@ -487,7 +491,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             html.append("<span class=\"exec-time\">").append(top.startTime().format(TIME_FMT));
             html.append(" &#8594; ").append(top.finishTime().format(TIME_FMT)).append("</span>");
         } else {
-            html.append("<span class=\"dur-badge\">running...</span>");
+            html.append("<span class=\"dur-badge\">").append(exec.suspended() ? "suspended" : "running...").append("</span>");
         }
         html.append("</div>\n");
 
@@ -565,16 +569,14 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         }
         html.append("</td>");
 
-        // Model column
+        // Model column, also for an invocation that failed or is still in progress, when its planner called a model
         html.append("<td class=\"wf-dur\">");
-        if (inv.done()) {
-            inv.modelName().ifPresent(modelName -> html.append(esc(modelName)));
-        }
+        inv.modelName().ifPresent(modelName -> html.append(esc(modelName)));
         html.append("</td>");
 
-        // Tokens column
+        // Tokens column, with what the planner of a failed or still in progress invocation spent so far
         html.append("<td class=\"wf-dur\">");
-        if (inv.done() && inv.totalTokenCount() > 0) {
+        if (inv.totalTokenCount() > 0) {
             html.append(fmtTokens(inv.totalTokenCount()));
         }
         html.append("</td>");
@@ -585,7 +587,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             html.append("<div class=\"wf-bar bar-").append(css).append("\" style=\"left:")
                     .append(fmt(leftPct)).append("%;width:").append(fmt(widthPct)).append("%;\"");
             html.append(" title=\"").append(esc(ag.name())).append(": ")
-                    .append(inv.done() ? fmtDur(inv.duration()) : "running").append("\">");
+                    .append(inv.done() ? fmtDur(inv.duration()) : inv.suspended() ? "suspended" : "running").append("\">");
             html.append("</div>");
         }
         html.append("</div></td>");
@@ -602,7 +604,12 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         if (inv.skipped()) {
             appendTruncatedWithTooltip(html, inv.skipReason(), 80);
         } else if (inv.done() && inv.output() != null) {
-            appendTruncatedWithTooltip(html, String.valueOf(inv.output()), 80);
+            Optional<DecisionResponse> decisionResponse = inv.decisionResponse();
+            if (decisionResponse.isPresent()) {
+                appendDecisionOutput(html, String.valueOf(inv.output()), decisionResponse.get(), 80);
+            } else {
+                appendTruncatedWithTooltip(html, String.valueOf(inv.output()), 80);
+            }
         }
         html.append("</td>");
 
@@ -697,6 +704,18 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         if (text.length() > max) {
             html.append("<span class=\"tt-content\">").append(esc(text)).append("</span>");
         }
+        html.append("</span>");
+    }
+
+    /**
+     * The output of a decision agent, with the answers of the decision model and their probabilities in the tooltip.
+     */
+    private void appendDecisionOutput(StringBuilder html, String output, DecisionResponse decisionResponse, int max) {
+        StringBuilder tooltip = new StringBuilder(output);
+        decisionResponse.answers().forEach((name, answer) -> tooltip.append('\n').append(name).append(" = ").append(answer));
+        html.append("<span class=\"tt-trigger\">");
+        html.append(esc(truncate(output, max)));
+        html.append("<span class=\"tt-content\">").append(esc(tooltip.toString())).append("</span>");
         html.append("</span>");
     }
 
@@ -851,6 +870,19 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
     // Utility helpers
     // -----------------------------------------------------------------------
 
+    /**
+     * The description of a remote agent, like an A2A or MCP one read from a server that is down, may be unavailable:
+     * the report says so for that agent instead of failing as a whole. Any other failure, like a configuration error
+     * of an MCP agent whose tool does not exist on its server, fails the report, so that it does not go unnoticed.
+     */
+    private static String description(AgentInstance agent) {
+        try {
+            return agent.description();
+        } catch (AgentUnavailableException e) {
+            return "unavailable: " + e.getMessage();
+        }
+    }
+
     private static void detail(StringBuilder html, String label, String value) {
         html.append("<div class=\"node-detail\">");
         html.append("<span class=\"nd-label\">").append(label).append("</span> ");
@@ -912,6 +944,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         return switch (t) {
             case AI_AGENT -> "ai";
             case NON_AI_AGENT -> "nonai";
+            case DECISION_AGENT -> "decision";
             case HUMAN_IN_THE_LOOP -> "human";
             case SEQUENCE -> "seq";
             case PARALLEL -> "par";
@@ -925,6 +958,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         return switch (t) {
             case AI_AGENT -> "AI";
             case NON_AI_AGENT -> "Action";
+            case DECISION_AGENT -> "Decision";
             case HUMAN_IN_THE_LOOP -> "Human";
             case SEQUENCE -> "Sequence";
             case PARALLEL -> "Parallel";
@@ -938,6 +972,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
         return switch (t) {
             case AI_AGENT -> "#2e8555";
             case NON_AI_AGENT -> "#6b7280";
+            case DECISION_AGENT -> "#0d9488";
             case HUMAN_IN_THE_LOOP -> "#d97706";
             case SEQUENCE -> "#0891b2";
             case PARALLEL -> "#3b82f6";
@@ -1028,6 +1063,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
                 --c-rtr: #dc2626;
                 --c-star: #ca8a04;
                 --c-tool: #e74694;
+                --c-decision: #0d9488;
                 --bg: #f8faf9;
                 --bg2: #f0f4f2;
                 --fg: #1a1a2e;
@@ -1116,6 +1152,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             .topology-badge.rtr   { background:var(--c-rtr); }
             .topology-badge.star  { background:var(--c-star); }
             .topology-badge.tool  { background:var(--c-tool); }
+            .topology-badge.decision { background:var(--c-decision); }
 
             .node-border-ai    { border-left:3px solid var(--c-ai); }
             .node-border-nonai { border-left:3px solid var(--c-nonai); }
@@ -1125,6 +1162,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             .node-border-loop  { border-left:3px solid var(--c-loop); }
             .node-border-rtr   { border-left:3px solid var(--c-rtr); }
             .node-border-star  { border-left:3px solid var(--c-star); }
+            .node-border-decision { border-left:3px solid var(--c-decision); }
 
             .async-badge { font-size:9px; background:#fef3c7; color:#92400e; padding:0 5px;
                            border-radius:3px; border:1px solid #fcd34d; }
@@ -1243,6 +1281,7 @@ public record HtmlReportGenerator(AgentMonitor monitor, AgentInstance rootAgent,
             .bar-rtr   { background:var(--c-rtr); }
             .bar-star  { background:var(--c-star); }
             .bar-tool  { background:var(--c-tool); }
+            .bar-decision { background:var(--c-decision); }
 
             .wf-io { font-size:11px; color:var(--fg3); white-space:nowrap; }
 

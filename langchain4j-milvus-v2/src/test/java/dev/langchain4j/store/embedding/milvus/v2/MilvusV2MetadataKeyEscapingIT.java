@@ -1,6 +1,7 @@
 package dev.langchain4j.store.embedding.milvus.v2;
 
 import static dev.langchain4j.store.embedding.TestUtils.awaitUntilAsserted;
+import static dev.langchain4j.store.embedding.filter.Filter.not;
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,7 +34,7 @@ class MilvusV2MetadataKeyEscapingIT {
     private static final String INJECTED_KEY = "tenant\"] != \"\" or metadata_field[\"x";
 
     @Container
-    private static final MilvusContainer milvus = new MilvusContainer("milvusdb/milvus:v2.6.11")
+    private static final MilvusContainer milvus = new MilvusContainer(MilvusV2EmbeddingStoreIT.MILVUS_DOCKER_IMAGE)
             .withEnv("DEPLOY_MODE", "STANDALONE")
             .withEnv("MILVUS_MODE", "standalone")
             .withEnv("ETCD_USE_EMBED", "true")
@@ -97,6 +98,18 @@ class MilvusV2MetadataKeyEscapingIT {
         awaitUntilAsserted(() ->
                 assertThat(search(metadataKey("tenant").isEqualTo("acme"))).hasSize(1));
         assertThat(search(metadataKey("tenant").isEqualTo("globex"))).hasSize(1);
+    }
+
+    @Test
+    void should_round_trip_negations_on_a_key_containing_a_double_quote() {
+        assertThat(search(metadataKey("a\"b").isNotEqualTo("v"))).hasSize(3);
+        assertThat(search(not(metadataKey("a\"b").isEqualTo("v")))).hasSize(3);
+    }
+
+    @Test
+    void should_round_trip_negations_on_a_key_containing_a_backslash() {
+        assertThat(search(metadataKey("a\\b").isNotEqualTo("v"))).hasSize(3);
+        assertThat(search(not(metadataKey("a\\b").isEqualTo("v")))).hasSize(3);
     }
 
     private void add(String text, Metadata metadata) {

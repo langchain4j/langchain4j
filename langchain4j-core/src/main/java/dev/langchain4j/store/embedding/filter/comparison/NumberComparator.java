@@ -11,10 +11,10 @@ import java.util.Collection;
  * {@code double} (for example {@code 9007199254740992L} and {@code 9007199254740993L}) are not mistaken for
  * each other.
  *
- * <p>{@code BigDecimal} can represent neither infinity nor {@code NaN}, so non-finite values are compared as
- * {@code double}s instead: infinities keep their natural ordering, while {@code NaN} is not comparable to
- * anything at all, not even to itself. Every comparison involving {@code NaN} is therefore {@code false},
- * which is how {@code NaN} behaves in Java, in SQL and in most embedding stores.
+ * <p>Comparison values are always finite, but stored metadata values can be infinite or {@code NaN}.
+ * {@code BigDecimal} can represent neither, so non-finite values are compared as {@code double}s instead:
+ * infinities keep their natural ordering, while {@code NaN} is not comparable to anything at all, not even to
+ * itself. Every comparison involving {@code NaN} is therefore {@code false}, as in Java.
  */
 @Internal
 class NumberComparator {

@@ -1,5 +1,7 @@
 package dev.langchain4j.memory.chat;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.memory.ChatMemory;
@@ -45,33 +47,23 @@ class SingleSlotChatMemoryStore implements ChatMemoryStore {
 
     @Override
     public CompletableFuture<List<ChatMessage>> getMessagesAsync(Object memoryId) {
-        // Deliver the precondition failure through the returned stage rather than throwing synchronously,
-        // honoring the async error contract.
-        try {
-            return CompletableFuture.completedFuture(getMessages(memoryId));
-        } catch (Throwable t) {
-            return CompletableFuture.failedFuture(t);
-        }
+        return failOnThrow(() -> CompletableFuture.completedFuture(getMessages(memoryId)));
     }
 
     @Override
     public CompletableFuture<Void> updateMessagesAsync(Object memoryId, List<ChatMessage> messages) {
-        try {
+        return failOnThrow(() -> {
             updateMessages(memoryId, messages);
             return CompletableFuture.completedFuture(null);
-        } catch (Throwable t) {
-            return CompletableFuture.failedFuture(t);
-        }
+        });
     }
 
     @Override
     public CompletableFuture<Void> deleteMessagesAsync(Object memoryId) {
-        try {
+        return failOnThrow(() -> {
             deleteMessages(memoryId);
             return CompletableFuture.completedFuture(null);
-        } catch (Throwable t) {
-            return CompletableFuture.failedFuture(t);
-        }
+        });
     }
 
     private void checkMemoryId(Object memoryId) {

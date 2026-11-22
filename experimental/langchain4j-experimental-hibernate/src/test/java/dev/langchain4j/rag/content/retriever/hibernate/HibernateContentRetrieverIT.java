@@ -1,7 +1,6 @@
 package dev.langchain4j.rag.content.retriever.hibernate;
 
 import static dev.langchain4j.model.mistralai.MistralAiChatModelName.MISTRAL_SMALL_LATEST;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_1_NANO;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
@@ -36,7 +35,8 @@ class HibernateContentRetrieverIT {
             .baseUrl(System.getenv("OPENAI_BASE_URL"))
             .apiKey(System.getenv("OPENAI_API_KEY"))
             .organizationId(System.getenv("OPENAI_ORGANIZATION_ID"))
-            .modelName(GPT_4_1_NANO)
+            .modelName("gpt-5.6-luna")
+            .reasoningEffort("none") // gpt-5.6-luna accepts a temperature only without reasoning
             .temperature(0.0)
             .logRequests(true)
             .logResponses(true)

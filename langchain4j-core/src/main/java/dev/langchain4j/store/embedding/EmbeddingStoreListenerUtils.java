@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.store.embedding.listener.EmbeddingStoreErrorContext;
 import dev.langchain4j.store.embedding.listener.EmbeddingStoreListener;
 import dev.langchain4j.store.embedding.listener.EmbeddingStoreRequestContext;
@@ -22,7 +23,7 @@ class EmbeddingStoreListenerUtils {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        listeners.forEach(listener -> {
+        CurrentInvocation.runWithout(() -> listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
             } catch (Exception e) {
@@ -31,14 +32,14 @@ class EmbeddingStoreListenerUtils {
                                 + "This exception has been ignored.",
                         e);
             }
-        });
+        }));
     }
 
     static void onResponse(EmbeddingStoreResponseContext<?> responseContext, List<EmbeddingStoreListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        listeners.forEach(listener -> {
+        CurrentInvocation.runWithout(() -> listeners.forEach(listener -> {
             try {
                 listener.onResponse(responseContext);
             } catch (Exception e) {
@@ -47,14 +48,14 @@ class EmbeddingStoreListenerUtils {
                                 + "This exception has been ignored.",
                         e);
             }
-        });
+        }));
     }
 
     static void onError(EmbeddingStoreErrorContext<?> errorContext, List<EmbeddingStoreListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        listeners.forEach(listener -> {
+        CurrentInvocation.runWithout(() -> listeners.forEach(listener -> {
             try {
                 listener.onError(errorContext);
             } catch (Exception e) {
@@ -63,6 +64,6 @@ class EmbeddingStoreListenerUtils {
                                 + "This exception has been ignored.",
                         e);
             }
-        });
+        }));
     }
 }

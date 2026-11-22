@@ -21,7 +21,6 @@ import static java.util.Collections.singletonMap;
 import static java.util.stream.Collectors.toMap;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.langchain4j.model.anthropic.internal.client.Json;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -50,6 +49,7 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicTool;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolResultContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolSchema;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicToolUseContent;
+import dev.langchain4j.model.anthropic.internal.client.Json;
 import dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
@@ -731,6 +731,28 @@ class AnthropicMapperTest {
     }
 
     @Test
+    void should_serialize_base64_tool_image_as_native_image_block() throws Exception {
+        ToolExecutionResultMessage message = ToolExecutionResultMessage.builder()
+                .id("call_123")
+                .toolName("screenshot")
+                .contents(TextContent.from("diagnostic screenshot"), ImageContent.from("iVBORw0KGgo=", "image/png"))
+                .isError(true)
+                .build();
+        AnthropicToolResultContent toolResult = (AnthropicToolResultContent)
+                toAnthropicMessages(List.of(message)).get(0).content.get(0);
+        com.fasterxml.jackson.databind.JsonNode json = new ObjectMapper().readTree(Json.toJson(toolResult));
+        assertThat(json.get("type").asText()).isEqualTo("tool_result");
+        assertThat(json.get("tool_use_id").asText()).isEqualTo("call_123");
+        assertThat(json.get("is_error").asBoolean()).isTrue();
+        assertThat(json.get("content").get(0).get("text").asText()).isEqualTo("diagnostic screenshot");
+        com.fasterxml.jackson.databind.JsonNode image = json.get("content").get(1);
+        assertThat(image.get("type").asText()).isEqualTo("image");
+        assertThat(image.get("source").get("type").asText()).isEqualTo("base64");
+        assertThat(image.get("source").get("media_type").asText()).isEqualTo("image/png");
+        assertThat(image.get("source").get("data").asText()).isEqualTo("iVBORw0KGgo=");
+    }
+
+    @Test
     void should_map_tool_execution_result_message_with_multiple_content_blocks_and_cache_control_metadata() {
         // given
         ToolExecutionResultMessage toolExecutionResultMessage = ToolExecutionResultMessage.builder()
@@ -1269,10 +1291,8 @@ class AnthropicMapperTest {
         Map<String, Object> cacheControl = singletonMap("cache_control", "ephemeral");
         UserMessage userText = UserMessage.from("Hello");
         userText.attributes().putAll(cacheControl);
-        UserMessage userImage = UserMessage.from(ImageContent.from(Image.builder()
-                .base64Data("base64data")
-                .mimeType("image/jpeg")
-                .build()));
+        UserMessage userImage = UserMessage.from(ImageContent.from(
+                Image.builder().base64Data("base64data").mimeType("image/jpeg").build()));
         userImage.attributes().putAll(cacheControl);
         UserMessage userPdf = UserMessage.from(PdfFileContent.from("base64data", "application/pdf"));
         userPdf.attributes().putAll(cacheControl);
@@ -1308,7 +1328,10 @@ class AnthropicMapperTest {
     void should_apply_cache_ttl_to_last_system_message_and_last_tool() {
         // when
         List<AnthropicTextContent> systemPrompt = toAnthropicSystemPrompt(
-                List.of(SystemMessage.from("one"), SystemMessage.from("two")), AnthropicCacheType.EPHEMERAL, false, "1h");
+                List.of(SystemMessage.from("one"), SystemMessage.from("two")),
+                AnthropicCacheType.EPHEMERAL,
+                false,
+                "1h");
         List<AnthropicTool> tools = AnthropicMapper.toAnthropicTools(
                 List.of(
                         ToolSpecification.builder().name("one").build(),

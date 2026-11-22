@@ -28,6 +28,14 @@ import org.junit.jupiter.params.provider.ValueSource;
 class StdioMcpTransportTest {
 
     @Test
+    void should_describe_command_without_its_arguments() {
+        String description =
+                StdioMcpTransport.describe(List.of("npx", "-y", "some-mcp-server", "--api-key", "secret-api-key"));
+
+        assertThat(description).isEqualTo("npx (with 4 arguments)").doesNotContain("secret-api-key");
+    }
+
+    @Test
     void should_inherit_working_directory_by_default() throws Exception {
         ExecutorService executorService = Executors.newCachedThreadPool();
         try (StdioMcpTransport transport =
@@ -140,6 +148,40 @@ class StdioMcpTransportTest {
                     .as("the previous process should have been destroyed on restart")
                     .isTrue();
             assertThat(firstProcess.isAlive()).isFalse();
+            assertThat(secondProcess.isAlive()).isTrue();
+
+            transport.close();
+            secondProcess.waitFor(5, TimeUnit.SECONDS);
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    @Test
+    @DisabledOnOs(OS.WINDOWS)
+    void stop_should_destroy_the_process_and_allow_another_start() throws IOException, InterruptedException {
+        ExecutorService executorService = Executors.newCachedThreadPool();
+        try {
+            StdioMcpTransport transport = new StdioMcpTransport.Builder()
+                    .command(List.of("cat"))
+                    .environment(Map.of())
+                    .executorService(executorService)
+                    .build();
+            McpOperationHandler messageHandler = mock(McpOperationHandler.class);
+            transport.start(messageHandler);
+            Process firstProcess = transport.getProcess();
+            assertThat(firstProcess.isAlive()).isTrue();
+
+            // as the client does when its build fails: the process goes, the transport stays usable
+            transport.stop();
+            assertThat(firstProcess.waitFor(5, TimeUnit.SECONDS))
+                    .as("the process should have been destroyed by stop")
+                    .isTrue();
+            assertThat(transport.getProcess()).isNull();
+
+            transport.start(messageHandler);
+            Process secondProcess = transport.getProcess();
+            assertThat(secondProcess).isNotSameAs(firstProcess);
             assertThat(secondProcess.isAlive()).isTrue();
 
             transport.close();

@@ -43,7 +43,7 @@ class ToolSpecificationHelperLocaleTest {
                 """;
 
         withDefaultLocale(languageTag, () -> {
-            List<Map<String, Object>> json = McpJson.deserialize(McpJson.parse(text), List.class);
+            List<Map<String, Object>> json = McpJson.deserialize(text, List.class);
             assertThat(ToolSpecificationHelper.toolSpecificationListFromMcpResponse(json))
                     .isEmpty();
         });

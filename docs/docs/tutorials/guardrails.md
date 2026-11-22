@@ -109,6 +109,9 @@ There are several ways to declare input guardrails, listed here in order of prec
 1. [`InputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/guardrail/InputGuardrail.java) implementation class names or instances set directly on the [`AiServices`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/AiServices.java) builder.
 2. [`@InputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/InputGuardrails.java) placed on an individual [AI Service](/tutorials/ai-services) method.
 3. [`@InputGuardrails` annotation](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/InputGuardrails.java) placed on an [AI Service](/tutorials/ai-services) class.
+
+Only the input guardrails from one of these places are used: the ones set on the `AiServices` builder if there is at least one, otherwise the `@InputGuardrails` annotation on the method if it is present, otherwise the one on the class. Guardrails declared in different places are not combined. For example, an `@InputGuardrails` annotation on a method replaces the one on the class for that method.
+
 Regardless of how they are declared, input guardrails are always executed in the order they appear in the list. A user message rewritten by any guardrail in the list is visible to the guardrails that follow it and, unless a later guardrail rewrites it again, to the LLM.
 
 #### `AiServices` builder
@@ -153,7 +156,7 @@ The way classes are converted to instances can be customized. For example, frame
 
 #### Annotation on individual AI Service methods
 
-[`@InputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/InputGuardrails.java) placed on an individual [AI Service](/tutorials/ai-services) methods have the next highest precedence.
+[`@InputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/InputGuardrails.java) placed on individual [AI Service](/tutorials/ai-services) methods have the next highest precedence.
 
 ```java
 public interface Assistant {
@@ -300,6 +303,8 @@ Output guardrails can have the following outcomes. There are helper methods on t
 | **_fatal with retry_**     | `retry(String)` or `retry(String, Throwable)`                       | - Similar to **_fatal_** except the LLM is called again with the same prompt and chat history as the original call.<br/> - If the failure persists after a [configurable number of retries](#configuration) then execution is halted with an `OutputGuardrailException` thrown to the caller.<br/> - If the guardrail passes after a retry, the entire chain of guardrails are re-executed from the beginning.                                                                                                                                                                                                        |
 | **_fatal with reprompt_**  | `reprompt(String, String)` or `reprompt(String, Throwable, String)` | - Similar to **_fatal with retry_** except the LLM is called again with a new prompt supplied by the guardrail.<br/> - In this situation, the guardrail supplies an additional message to append to the previous user message, then sends a new request to the LLM with the new user message and original chat history.<br/> - If the failure persists after a [configurable number of retries](#configuration) then execution is halted with an `OutputGuardrailException` thrown to the caller.<br/> - If the guardrail passes after a reprompt, the entire chain of guardrails are re-executed from the beginning. |
 
+When the AI Service method returns a `TokenStream`, the `OutputGuardrailException` is not thrown from `TokenStream.start()`: it is passed to the `onError` callback of the `TokenStream`.
+
 A retry or reprompt resends the conversation of the original call (the system message, the user message, any tool calls and results, and the rejected response), whether or not the AI Service has a [chat memory](/tutorials/chat-memory). Without one, the conversation is kept for the duration of the call only.
 
 ### Declaring Output Guardrails
@@ -308,6 +313,8 @@ There are several ways to declare output guardrails, listed here in order of pre
 1. [`OutputGuardrail`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j-core/src/main/java/dev/langchain4j/guardrail/OutputGuardrail.java) implementation class names or instances set directly on the [`AiServices`](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/AiServices.java) builder.
 2. [`@OutputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrails.java) placed on an individual [AI Service](/tutorials/ai-services) method.
 3. [`@OutputGuardrails` annotation](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrails.java) placed on an [AI Service](/tutorials/ai-services) class.
+
+Only the output guardrails from one of these places are used: the ones set on the `AiServices` builder if there is at least one, otherwise the `@OutputGuardrails` annotation on the method if it is present, otherwise the one on the class. Guardrails declared in different places are not combined. For example, an `@OutputGuardrails` annotation on a method replaces the one on the class for that method.
 
 Regardless of how they are declared, output guardrails are always executed in the order they appear in the list. An output rewritten by any guardrail in the list is visible to the guardrails that follow it and, unless a later guardrail rewrites it again, to the caller.
 
@@ -349,7 +356,7 @@ The way classes are converted to instances can be customized. For example, frame
 
 #### Annotation on individual AI Service methods
 
-[`@OutputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrails.java) placed on ndividual [AI Service](/tutorials/ai-services) methods have the next highest precendence.
+[`@OutputGuardrails` annotations](https://github.com/langchain4j/langchain4j/blob/main/langchain4j/src/main/java/dev/langchain4j/service/guardrail/OutputGuardrails.java) placed on individual [AI Service](/tutorials/ai-services) methods have the next highest precedence.
 
 ```java
 public interface Assistant {
@@ -396,7 +403,9 @@ Output guardrails have the following additional configuration that can be suppli
 
 | Configuration | Description                                                                                                                                                |
 |:--------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `maxRetries`  | - The maximum number of retries for an output guardrail when performing a retry or reprompt.<br/> - Defaults to `2`.<br/> - Set to `0` to disable retries. |
+| `maxRetries`  | - The maximum number of times the output guardrails validate a response of the model, including the first one: at most `maxRetries - 1` retries or reprompts.<br/> - Unlike `maxRetries` on chat models, which counts only the retries after the first call, this value includes the first response.<br/> - Defaults to `2` (one retry or reprompt).<br/> - Set to `0` or `1` to disable retries. A negative value uses the default. |
+
+The configuration is resolved independently of the guardrails themselves, following the same order of precedence: an `OutputGuardrailsConfig` set on the `AiServices` builder, then the `@OutputGuardrails` annotation on the AI Service method, then the one on the AI Service class. For example, output guardrails set on the `AiServices` builder still use the `maxRetries` of an `@OutputGuardrails` annotation when no `OutputGuardrailsConfig` is set on the builder. An `@OutputGuardrails` annotation on a method replaces the one on the class as a whole: when it does not set `maxRetries`, the default applies, not the `maxRetries` of the annotation on the class.
 
 ##### Annotation on individual AI Service methods
 
@@ -440,7 +449,7 @@ var outputGuardrailsConfig = OutputGuardrailsConfig.builder()
 var assistant = AiServices.builder(Assistant.class)
         .chatModel(chatModel)
         .outputGuardrailsConfig(outputGuardrailsConfig)
-        .outputGuardrailClasss(FirstOutputGuardrail.class, SecondOutputGuardrail.class)
+        .outputGuardrailClasses(FirstOutputGuardrail.class, SecondOutputGuardrail.class)
         .build();
 ```
 
@@ -458,6 +467,8 @@ public interface StreamingAssistant {
 In this scenario, the output guardrails will be executed once the entire stream is complete, or more specifically, when `TokenStream.onCompleteResponse` is called. `onPartialResponse` will be buffered and replayed once the guardrails succeed.
 
 In the situation where a **_retry_** or **_reprompt_** in the chain eventually succeeds, then the entire chain is re-executed _synchronously_. Each guardrail will be re-executed one after the other in the original order. Once the chain completes the result is passed into `TokenStream.onCompleteResponse`.
+
+If the output guardrails fail, the `OutputGuardrailException` is passed to `TokenStream.onError`. It is not thrown from `TokenStream.start()`, also when the model streams on the thread that calls `start()`.
 
 ### Out-of-the-box Output Guardrails
 
@@ -570,7 +581,7 @@ In this example, all the methods on the `Assistant` have a single input guardrai
 
 The `chat` method has a single output guardrail, `SomeOutputGuardrail`, with a `maxRetries` value == `10`.
 
-The `chatAndReturnJson` method a single output guardrail, `MyObjectJsonOutputGuardrail` with a `maxRetries` value == `10`.
+The `chatAndReturnJson` method has a single output guardrail, `MyObjectJsonOutputGuardrail` with a `maxRetries` value == `10`.
 
 ## Extension points
 

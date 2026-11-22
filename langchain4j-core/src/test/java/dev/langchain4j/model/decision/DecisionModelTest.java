@@ -1,8 +1,17 @@
 package dev.langchain4j.model.decision;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.decision.listener.DecisionModelErrorContext;
@@ -14,13 +23,16 @@ import dev.langchain4j.model.decision.request.DecisionRequestParameters;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class DecisionModelTest {
 
@@ -359,5 +371,139 @@ class DecisionModelTest {
         // then
         assertThat(call).isCancelled();
         assertThat(listener.events).containsExactly("request:default-model:OTHER");
+    }
+
+    @Test
+    void decideAsync_should_return_failed_future_when_listeners_cannot_be_obtained() {
+
+        // given
+        MockDecisionModel model = spy(MockDecisionModel.thatAnswers(Map.of("urgent", YesNoAnswer.from(0.9))));
+        IllegalStateException error = new IllegalStateException("cannot obtain listeners");
+        doThrow(error).when(model).listeners();
+
+        // when
+        CompletableFuture<DecisionResponse> future = model.decideAsync(request(DecisionRequestParameters.EMPTY));
+
+        // then
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isSameAs(error);
+    }
+
+    @Test
+    void decideAsync_should_return_failed_future_without_notifying_listeners_when_listener_context_cannot_be_built() {
+
+        // given
+        DecisionModelListener listener = mock(DecisionModelListener.class);
+        MockDecisionModel model = spy(MockDecisionModel.thatAnswers(Map.of("urgent", YesNoAnswer.from(0.9)))
+                .withListeners(listener));
+        doReturn(null).when(model).provider();
+
+        // when
+        CompletableFuture<DecisionResponse> future = model.decideAsync(request(DecisionRequestParameters.EMPTY));
+
+        // then
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(listener);
+    }
+
+    @Test
+    void decideAsync_should_return_failed_future_and_notify_listeners_once_when_doDecideAsync_returns_null() {
+
+        // given
+        DecisionModelListener listener = mock(DecisionModelListener.class);
+        MockDecisionModel model = spy(MockDecisionModel.thatAnswers(Map.of("urgent", YesNoAnswer.from(0.9)))
+                .withListeners(listener)); // its doDecideAsync returns null
+        doReturn(null).when(model).doDecideAsync(any());
+
+        // when
+        CompletableFuture<DecisionResponse> future = model.decideAsync(request(DecisionRequestParameters.EMPTY));
+
+        // then
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isInstanceOf(IllegalStateException.class)
+                .withMessageContaining("doDecideAsync(DecisionRequest) returned null");
+        Throwable failure = unwrapCompletionException(future.handle((response, error) -> error).join());
+        ArgumentCaptor<DecisionModelErrorContext> errorContext =
+                ArgumentCaptor.forClass(DecisionModelErrorContext.class);
+        verify(listener).onRequest(any());
+        verify(listener).onError(errorContext.capture());
+        verify(listener, never()).onResponse(any());
+        assertThat(errorContext.getValue().error()).isSameAs(failure);
+    }
+
+    @Test
+    void decideAsync_should_return_failed_future_and_notify_listeners_once_when_doDecideAsync_throws_an_error() {
+
+        // given
+        DecisionModelListener listener = mock(DecisionModelListener.class);
+        NoClassDefFoundError error = new NoClassDefFoundError("MissingOptionalDependency");
+        MockDecisionModel model = spy(MockDecisionModel.thatAnswers(Map.of("urgent", YesNoAnswer.from(0.9)))
+                .withListeners(listener)); // its doDecideAsync throws
+        doThrow(error).when(model).doDecideAsync(any());
+
+        // when
+        CompletableFuture<DecisionResponse> future = model.decideAsync(request(DecisionRequestParameters.EMPTY));
+
+        // then
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isSameAs(error);
+        ArgumentCaptor<DecisionModelErrorContext> errorContext =
+                ArgumentCaptor.forClass(DecisionModelErrorContext.class);
+        verify(listener).onRequest(any());
+        verify(listener).onError(errorContext.capture());
+        verify(listener, never()).onResponse(any());
+        assertThat(errorContext.getValue().error()).isSameAs(error);
+    }
+
+    @Test
+    void decideAsync_should_return_failed_future_without_calling_the_model_when_a_listener_on_request_throws_an_error() {
+
+        // given
+        DecisionModelListener listener = mock(DecisionModelListener.class);
+        NoClassDefFoundError error = new NoClassDefFoundError("MissingOptionalDependency");
+        doThrow(error).when(listener).onRequest(any());
+        MockDecisionModel model = spy(MockDecisionModel.thatAnswers(Map.of("urgent", YesNoAnswer.from(0.9)))
+                .withListeners(listener));
+
+        // when
+        CompletableFuture<DecisionResponse> future = model.decideAsync(request(DecisionRequestParameters.EMPTY));
+
+        // then
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .havingCause()
+                .isSameAs(error);
+        verify(model, never()).doDecideAsync(any());
+    }
+
+    @Test
+    void decideAsync_should_return_a_failed_future_for_a_null_request_without_notifying_listeners() {
+        DecisionModelListener listener = mock(DecisionModelListener.class);
+        MockDecisionModel model =
+                MockDecisionModel.thatAnswers(Map.of("urgent", YesNoAnswer.from(0.9))).withListeners(listener);
+
+        CompletableFuture<DecisionResponse> future = model.decideAsync(null);
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .withMessage("request cannot be null");
+        verifyNoInteractions(listener);
+        assertThat(model.requests()).isEmpty();
     }
 }

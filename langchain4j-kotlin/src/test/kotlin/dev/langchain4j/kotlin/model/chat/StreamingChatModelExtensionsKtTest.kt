@@ -1,14 +1,18 @@
 package dev.langchain4j.kotlin.model.chat
 
+import assertk.all
 import assertk.assertFailure
 import assertk.assertions.hasMessage
+import assertk.assertions.isInstanceOf
 import dev.langchain4j.data.message.AiMessage.aiMessage
 import dev.langchain4j.data.message.UserMessage.userMessage
+import dev.langchain4j.exception.UnsupportedFeatureException
 import dev.langchain4j.kotlin.model.chat.StreamingChatModelReply.CompleteResponse
 import dev.langchain4j.kotlin.model.chat.StreamingChatModelReply.PartialResponse
 import dev.langchain4j.model.chat.request.ChatRequest
 import dev.langchain4j.model.chat.response.ChatResponse
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler
+import dev.langchain4j.test.mock.MockStreamingChatModel
 import io.kotest.matchers.collections.shouldContainExactly
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.toList
@@ -19,6 +23,8 @@ import org.mockito.Mock
 import org.mockito.junit.jupiter.MockitoExtension
 import org.mockito.kotlin.any
 import org.mockito.kotlin.doAnswer
+import org.mockito.kotlin.doThrow
+import org.mockito.kotlin.spy
 import org.mockito.kotlin.whenever
 
 @ExtendWith(MockitoExtension::class)
@@ -94,5 +100,22 @@ internal class StreamingChatModelExtensionsKtTest {
             assertFailure {
                 flow.toList()
             }.hasMessage("Test error")
+        }
+
+    @Test
+    fun `chatFlow should emit an error and then fail when the model rejects the request`() =
+        runTest {
+            val unsupported = UnsupportedFeatureException("'topK' parameter is not supported")
+            val model = spy(MockStreamingChatModel.thatResponds("Hi"))
+            doThrow(unsupported).whenever(model).doChat(any<ChatRequest>(), any<StreamingChatResponseHandler>())
+            val replies = mutableListOf<StreamingChatModelReply>()
+
+            assertFailure {
+                model.chatFlow { messages += userMessage("Hey, there!") }.toList(replies)
+            }.all {
+                isInstanceOf(UnsupportedFeatureException::class)
+                hasMessage("'topK' parameter is not supported")
+            }
+            replies shouldContainExactly listOf(StreamingChatModelReply.Error(unsupported))
         }
 }

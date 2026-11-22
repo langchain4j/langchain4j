@@ -1,16 +1,15 @@
 package dev.langchain4j.mcp.client.transport.websocket;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
 import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
-import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import java.io.IOException;
@@ -33,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 public class WebSocketMcpTransport implements McpTransport {
     private static final Logger LOG = LoggerFactory.getLogger(WebSocketMcpTransport.class);
+    static final int DEFAULT_MAX_MESSAGE_SIZE = 20 * 1024 * 1024;
     private final String url;
     private final McpHeadersSupplier headersSupplier;
     private final boolean logResponses;
@@ -41,6 +41,7 @@ public class WebSocketMcpTransport implements McpTransport {
     private volatile McpOperationHandler operationHandler;
     private volatile McpInitializeRequest initializeRequest;
     private final Duration connectTimeout;
+    private final int maxMessageSize;
     private volatile SSLContext sslContext;
     private volatile HttpClient httpClient;
     private final Executor executor;
@@ -54,6 +55,8 @@ public class WebSocketMcpTransport implements McpTransport {
         this.logRequests = builder.logRequests;
         this.trafficLog = getOrDefault(builder.logger, McpLoggers.traffic());
         this.connectTimeout = getOrDefault(builder.timeout, Duration.ofSeconds(60));
+        this.maxMessageSize =
+                ensureGreaterThanZero(getOrDefault(builder.maxMessageSize, DEFAULT_MAX_MESSAGE_SIZE), "maxMessageSize");
         this.headersSupplier = getOrDefault(builder.headersSupplier, (i) -> Map.of());
         this.executor = builder.executor;
         this.sslContext = builder.sslContext;
@@ -127,7 +130,8 @@ public class WebSocketMcpTransport implements McpTransport {
                             // so all running operations were lost anyway.
                             webSocketRef.set(null);
                         },
-                        actionOnFailure));
+                        actionOnFailure,
+                        maxMessageSize));
         // if the initialize method was already called and we know the necessary data for initialization, schedule
         // a new initialization right away
         if (this.initializeRequest != null) {
@@ -160,18 +164,8 @@ public class WebSocketMcpTransport implements McpTransport {
     }
 
     @Override
-    public CompletableFuture<String> sendRequest(McpClientMessage request) {
-        return sendRequest(new McpCallContext(null, request));
-    }
-
-    @Override
     public CompletableFuture<String> sendRequest(McpCallContext context) {
         return execute(context, Optional.empty(), context.message().getId());
-    }
-
-    @Override
-    public void sendMessage(McpClientMessage request) {
-        sendMessage(new McpCallContext(null, request));
     }
 
     @Override
@@ -194,34 +188,56 @@ public class WebSocketMcpTransport implements McpTransport {
         this.actionOnFailure = actionOnFailure;
     }
 
+    /**
+     * Aborts the connection, if any, and forgets the initialize request a reconnection would replay, without closing
+     * the HTTP client: the next {@link #start} opens a new connection.
+     */
+    @Override
+    public void stop() {
+        initializeRequest = null;
+        CompletableFuture<WebSocket> current = webSocketRef.getAndSet(null);
+        if (current != null) {
+            // Not sendClose(): a server that does not answer would keep the connection open, and a late answer
+            // would reach the close callback, which would then forget the connection of the next start().
+            current.thenAccept(WebSocket::abort);
+        }
+    }
+
     @Override
     public void close() throws IOException {
         this.closed = true;
-        CompletableFuture<WebSocket> future = webSocketRef.get();
-        if (future != null) {
-            if (future.isDone()) {
-                try {
-                    WebSocket webSocket = future.get();
-                    webSocket
-                            .sendClose(WebSocket.NORMAL_CLOSURE, "Client closing")
-                            .thenRun(() -> LOG.info("WebSocket connection closed"));
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new RuntimeException(e);
-                } catch (ExecutionException e) {
-                    if (e.getCause() != null && e.getCause() instanceof ConnectException) {
-                        // this means the connection was previously attempted but failed, so nothing to close
-                    } else {
-                        LOG.warn("Failed to close WebSocket connection", e);
-                    }
-                }
-            }
-        }
+        closeWebSocket(webSocketRef.get());
         // The httpClient.close() method only exists on JDK 21+, so invoke it only if we can.
         // Replace this with a normal method call when switching the base to JDK 21+.
         try {
             httpClient.getClass().getMethod("close").invoke(httpClient);
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ignored) {
+        }
+    }
+
+    private void closeWebSocket(CompletableFuture<WebSocket> future) {
+        if (future == null) {
+            return;
+        }
+        if (!future.isDone()) {
+            // still connecting: close the connection once it is open, instead of leaving it behind
+            future.thenAccept(webSocket -> webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "Client closing"));
+            return;
+        }
+        try {
+            WebSocket webSocket = future.get();
+            webSocket
+                    .sendClose(WebSocket.NORMAL_CLOSURE, "Client closing")
+                    .thenRun(() -> LOG.info("WebSocket connection closed"));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            if (e.getCause() != null && e.getCause() instanceof ConnectException) {
+                // this means the connection was previously attempted but failed, so nothing to close
+            } else {
+                LOG.warn("Failed to close WebSocket connection", e);
+            }
         }
     }
 
@@ -283,6 +299,7 @@ public class WebSocketMcpTransport implements McpTransport {
         private Duration timeout;
         private SSLContext sslContext;
         private McpHeadersSupplier headersSupplier;
+        private Integer maxMessageSize;
 
         public Builder logResponses(boolean logResponses) {
             this.logResponses = logResponses;
@@ -343,58 +360,28 @@ public class WebSocketMcpTransport implements McpTransport {
             return this;
         }
 
+        /**
+         * The maximum size, in bytes, of a single message received from the server.
+         * When a server sends a larger message, the transport closes the connection with status 1009
+         * (message too big) and all pending requests fail. This protects the client against servers that send
+         * an endless or huge message, which would otherwise be buffered in memory until it runs out.
+         * The size is that of the JSON text, so binary content such as images, which is base64-encoded,
+         * takes about a third more than its raw size.
+         * Defaults to 20 MiB.
+         *
+         * @param maxMessageSize the maximum message size in bytes, must be greater than zero;
+         *                       {@code null} means the default
+         * @return this builder
+         * @since 1.24.0
+         */
+        public Builder maxMessageSize(Integer maxMessageSize) {
+            this.maxMessageSize = maxMessageSize;
+            return this;
+        }
+
         public WebSocketMcpTransport build() {
             return new WebSocketMcpTransport(this);
         }
     }
 
-    /**
-     * @deprecated use {@link #sendInitializeRequest(McpInitializeRequest)} instead, which does not
-     * expose Jackson types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    @Override
-    public CompletableFuture<JsonNode> initialize(McpInitializeRequest request) {
-        return McpJson.map(sendInitializeRequest(request), McpJson::parse);
-    }
-
-    /**
-     * @deprecated use {@link #sendRequest(McpClientMessage)} instead, which does not expose Jackson
-     * types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpClientMessage request) {
-        return McpJson.map(sendRequest(request), McpJson::parse);
-    }
-
-    /**
-     * @deprecated use {@link #sendRequest(McpCallContext)} instead, which does not expose Jackson
-     * types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    @Override
-    public CompletableFuture<JsonNode> executeOperationWithResponse(McpCallContext context) {
-        return McpJson.map(sendRequest(context), McpJson::parse);
-    }
-
-    /**
-     * @deprecated use {@link #sendMessage(McpClientMessage)} instead, which does not expose Jackson
-     * types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    @Override
-    public void executeOperationWithoutResponse(McpClientMessage request) {
-        sendMessage(request);
-    }
-
-    /**
-     * @deprecated use {@link #sendMessage(McpCallContext)} instead, which does not expose Jackson
-     * types.
-     */
-    @Deprecated(since = "1.20.0", forRemoval = true)
-    @Override
-    public void executeOperationWithoutResponse(McpCallContext context) {
-        sendMessage(context);
-    }
 }

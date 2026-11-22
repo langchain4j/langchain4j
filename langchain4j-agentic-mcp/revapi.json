@@ -1,0 +1,23 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "ignore": true,
+          "code": "java.method.numberOfParametersChanged",
+          "old": "method <T> dev.langchain4j.agentic.internal.McpClientBuilder<T> dev.langchain4j.agentic.mcp.DefaultMcpService::mcpBuilder(java.lang.Object, java.lang.Class<T>)",
+          "new": "method <T> dev.langchain4j.agentic.internal.McpClientBuilder<T> dev.langchain4j.agentic.mcp.DefaultMcpService::mcpBuilder(java.util.function.Supplier<java.lang.Object>, java.lang.Class<?>, java.lang.Class<T>)",
+          "justification": "The MCP client is created lazily, when it is first needed, so the internal McpService SPI takes its supplier instead of the client, together with the declared return type of the supplier method, checked when the agent is built (issue #6957)"
+        },
+        {
+          "ignore": true,
+          "code": "java.method.addedToInterface",
+          "new": "method dev.langchain4j.agent.tool.ToolSpecification dev.langchain4j.agentic.mcp.McpClientInstance::toolSpecification()",
+          "justification": "The MCP tool is resolved lazily, on the first invocation of the agent; toolSpecification() resolves it earlier as a warm-up. The interface is only implemented by the proxies of this module (issue #6957)"
+        }
+      ]
+    }
+  }
+]

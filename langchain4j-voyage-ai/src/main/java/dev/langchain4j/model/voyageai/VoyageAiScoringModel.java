@@ -2,19 +2,25 @@ package dev.langchain4j.model.voyageai;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
+import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.voyageai.VoyageAiClient.DEFAULT_BASE_URL;
 import static java.lang.String.format;
 import static java.time.Duration.ofSeconds;
-import static java.util.stream.Collectors.toList;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.scoring.ScoringModel;
+import dev.langchain4j.model.scoring.listener.ScoringModelListener;
+import dev.langchain4j.model.scoring.request.ScoringRequest;
+import dev.langchain4j.model.scoring.request.ScoringRequestParameters;
+import dev.langchain4j.model.scoring.response.ScoringResponse;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,8 +38,10 @@ public class VoyageAiScoringModel implements ScoringModel {
     private final VoyageAiClient client;
     private final Integer maxRetries;
     private final String modelName;
+    private final ScoringRequestParameters defaultRequestParameters;
     private final Integer topK;
     private final Boolean truncation;
+    private final List<ScoringModelListener> listeners;
 
     @Deprecated(forRemoval = true, since = "1.4.0")
     public VoyageAiScoringModel(
@@ -51,9 +59,11 @@ public class VoyageAiScoringModel implements ScoringModel {
         // Below attributes are force to non-null
         this.maxRetries = getOrDefault(maxRetries, 2);
         this.modelName = ensureNotBlank(modelName, "modelName");
+        this.defaultRequestParameters = ScoringRequestParameters.builder().modelName(this.modelName).build();
         // Below attributes can be null
         this.truncation = truncation;
         this.topK = topK;
+        this.listeners = List.of();
 
         this.client = VoyageAiClient.builder()
                 .httpClientBuilder(httpClientBuilder)
@@ -70,9 +80,11 @@ public class VoyageAiScoringModel implements ScoringModel {
         // Below attributes are force to non-null
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
+        this.defaultRequestParameters = ScoringRequestParameters.builder().modelName(this.modelName).build();
         // Below attributes can be null
         this.truncation = builder.truncation;
         this.topK = builder.topK;
+        this.listeners = copy(builder.listeners);
 
         this.client = VoyageAiClient.builder()
                 .httpClientBuilder(builder.httpClientBuilder)
@@ -87,19 +99,45 @@ public class VoyageAiScoringModel implements ScoringModel {
     }
 
     @Override
+    public ScoringRequestParameters defaultRequestParameters() {
+        return defaultRequestParameters;
+    }
+
+    @Override
+    public List<ScoringModelListener> listeners() {
+        return listeners;
+    }
+
+    @Override
+    public ModelProvider provider() {
+        return ModelProvider.VOYAGE_AI;
+    }
+
+    @Override
     public Response<List<Double>> scoreAll(List<TextSegment> segments, String query) {
-        if (topK != null && topK < segments.size()) {
+        ensureNotNull(segments, "segments");
+        ScoringResponse response = score(ScoringRequest.builder()
+                .documents(segments.stream().map(TextSegment::text).toList())
+                .query(query)
+                .build());
+        return Response.from(response.scores(), response.tokenUsage());
+    }
+
+    @Override
+    public ScoringResponse doScore(ScoringRequest scoringRequest) {
+        List<String> documents = scoringRequest.documents();
+        if (topK != null && topK < documents.size()) {
             throw illegalArgument(
                     "'topK' (%s) must be greater than or equal to the number of segments (%s) because "
                             + "ScoringModel must return one score per segment. Use "
                             + "ReRankingContentAggregator.builder().maxResults(...) to limit the final results.",
-                    topK, segments.size());
+                    topK, documents.size());
         }
 
         RerankRequest request = RerankRequest.builder()
-                .model(modelName)
-                .query(query)
-                .documents(segments.stream().map(TextSegment::text).collect(toList()))
+                .model(getOrDefault(scoringRequest.modelName(), modelName))
+                .query(scoringRequest.query())
+                .documents(documents)
                 .topK(topK)
                 .truncation(truncation)
                 .build();
@@ -107,16 +145,16 @@ public class VoyageAiScoringModel implements ScoringModel {
         RerankResponse response = withRetryMappingExceptions(() -> client.rerank(request), maxRetries);
 
         List<RerankResponse.RerankData> results = response.getData();
-        if (results == null || results.size() != segments.size()) {
+        if (results == null || results.size() != documents.size()) {
             throw new InternalServerException(format(
                     "Re-ranking failed: expected %s scores, but got %s",
-                    segments.size(), results == null ? 0 : results.size()));
+                    documents.size(), results == null ? 0 : results.size()));
         }
 
-        List<Double> scores = new ArrayList<>(Collections.nCopies(segments.size(), null));
+        List<Double> scores = new ArrayList<>(Collections.nCopies(documents.size(), null));
         for (RerankResponse.RerankData result : results) {
             Integer index = result.getIndex();
-            if (index == null || index < 0 || index >= segments.size()) {
+            if (index == null || index < 0 || index >= documents.size()) {
                 throw new InternalServerException(
                         format("Re-ranking failed: got an out-of-range document index: %s", index));
             }
@@ -132,7 +170,11 @@ public class VoyageAiScoringModel implements ScoringModel {
             scores.set(index, relevanceScore);
         }
 
-        return Response.from(scores, new TokenUsage(response.getUsage().getTotalTokens()));
+        return ScoringResponse.builder()
+                .scores(scores)
+                .modelName(getOrDefault(response.getModel(), getOrDefault(scoringRequest.modelName(), modelName)))
+                .tokenUsage(new TokenUsage(response.getUsage().getTotalTokens()))
+                .build();
     }
 
     public static Builder builder() {
@@ -153,6 +195,7 @@ public class VoyageAiScoringModel implements ScoringModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
+        private List<ScoringModelListener> listeners;
 
         /**
          * Sets a custom HTTP client builder, allowing fine-grained control over the HTTP client
@@ -321,6 +364,29 @@ public class VoyageAiScoringModel implements ScoringModel {
         public Builder logger(Logger logger) {
             this.logger = logger;
             return this;
+        }
+
+        /**
+         * Sets the {@link ScoringModelListener}s notified before each scoring request, after each response and on
+         * each error.
+         *
+         * @param listeners the listeners
+         * @return {@code this}
+         */
+        public Builder listeners(List<ScoringModelListener> listeners) {
+            this.listeners = listeners;
+            return this;
+        }
+
+        /**
+         * Sets the {@link ScoringModelListener}s notified before each scoring request, after each response and on
+         * each error.
+         *
+         * @param listeners the listeners
+         * @return {@code this}
+         */
+        public Builder listeners(ScoringModelListener... listeners) {
+            return listeners(List.of(listeners));
         }
 
         public VoyageAiScoringModel build() {

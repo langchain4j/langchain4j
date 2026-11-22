@@ -36,6 +36,19 @@ import org.junit.jupiter.params.provider.MethodSource;
 class OpenAiUtilsTest {
 
     @Test
+    void should_reject_native_tool_images_in_chat_completions() {
+        dev.langchain4j.data.message.ToolExecutionResultMessage message =
+                dev.langchain4j.data.message.ToolExecutionResultMessage.builder()
+                        .id("call_123")
+                        .toolName("screenshot")
+                        .contents(dev.langchain4j.data.message.ImageContent.from("iVBORw0KGgo=", "image/png"))
+                        .build();
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> OpenAiUtils.toOpenAiMessage(message))
+                .isInstanceOf(dev.langchain4j.exception.UnsupportedFeatureException.class)
+                .hasMessageContaining("does not support non-text content");
+    }
+
+    @Test
     void should_return_ai_message_with_text_when_no_functions_and_tool_calls_are_present() {
 
         // given
@@ -382,7 +395,8 @@ class OpenAiUtilsTest {
                 Arguments.of("{\"error\":{\"message\":\"Service is too busy\"}}", "Service is too busy"),
                 Arguments.of("\n\n{\"error\":{\"message\":\"Service is too busy\"}}", "Service is too busy"),
                 Arguments.of("{\"error\":\"Service is too busy\"}", "Service is too busy"),
-                Arguments.of("{\"error\":{\"message\":\" \",\"code\":503}}", "{\"error\":{\"message\":\" \",\"code\":503}}"),
+                Arguments.of(
+                        "{\"error\":{\"message\":\" \",\"code\":503}}", "{\"error\":{\"message\":\" \",\"code\":503}}"),
                 Arguments.of("{\"error\":{\"code\":503}}", "{\"error\":{\"code\":503}}"),
                 Arguments.of("{\"id\":\"chatcmpl-123\",\"choices\":[]}", "no choices returned in response"),
                 Arguments.of("{\"error\":null}", "no choices returned in response"),

@@ -3,7 +3,7 @@ package dev.langchain4j.agentic.patterns.decisionrouter.experts;
 import static dev.langchain4j.agentic.patterns.Models.baseModel;
 import static dev.langchain4j.agentic.patterns.decisionrouter.experts.ExpertAgents.MEDICAL_AND_LEGAL_REQUEST;
 import static dev.langchain4j.agentic.patterns.decisionrouter.experts.ExpertAgents.TECHNICAL_REQUEST;
-import static dev.langchain4j.agentic.patterns.decisionrouter.experts.ExpertAgents.decisionModel;
+import static dev.langchain4j.agentic.patterns.DecisionModels.decisionModel;
 import static dev.langchain4j.agentic.patterns.decisionrouter.experts.ExpertAgents.invokedExperts;
 import static org.assertj.core.api.Assertions.assertThat;
 

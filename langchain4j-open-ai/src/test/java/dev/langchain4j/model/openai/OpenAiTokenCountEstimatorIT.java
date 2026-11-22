@@ -17,8 +17,6 @@ import static dev.langchain4j.data.message.AiMessage.aiMessage;
 import static dev.langchain4j.data.message.SystemMessage.systemMessage;
 import static dev.langchain4j.data.message.ToolExecutionResultMessage.toolExecutionResultMessage;
 import static dev.langchain4j.data.message.UserMessage.userMessage;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_32K;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_32K_0613;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.O3;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.O3_2025_04_16;
 import static java.util.Arrays.asList;
@@ -34,8 +32,6 @@ class OpenAiTokenCountEstimatorIT {
 
     // my API key does not have access to these models
     private static final Set<OpenAiChatModelName> MODELS_WITHOUT_ACCESS = new HashSet<>(asList(
-            GPT_4_32K,
-            GPT_4_32K_0613,
             O3,
             O3_2025_04_16
     ));

@@ -1,6 +1,8 @@
 package dev.langchain4j.http.client.apache;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
@@ -9,6 +11,7 @@ import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -28,7 +31,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.concurrent.Flow;
+import java.util.function.BiConsumer;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
@@ -161,10 +166,14 @@ public class ApacheHttpClient implements HttpClient {
 
     @Override
     public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+        return failOnThrow(() -> doExecuteAsync(request));
+    }
+
+    private CompletableFuture<SuccessfulHttpResponse> doExecuteAsync(HttpRequest request) {
         SimpleHttpRequest apacheRequest = toSimpleApacheRequest(request);
         CompletableFuture<SuccessfulHttpResponse> future = new CompletableFuture<>();
-        java.util.concurrent.Future<SimpleHttpResponse> apacheFuture =
-                asyncClient().execute(apacheRequest, new FutureCallback<>() {
+        Future<SimpleHttpResponse> apacheFuture = asyncClient()
+                .execute(apacheRequest, new FutureCallback<>() {
                     @Override
                     public void completed(SimpleHttpResponse apacheResponse) {
                         if (!isSuccessful(apacheResponse)) {
@@ -242,11 +251,27 @@ public class ApacheHttpClient implements HttpClient {
                     }
                 }
             };
-            java.util.concurrent.Future<Void> future = asyncClient().execute(
-                    SimpleRequestProducer.create(toSimpleApacheRequest(request)),
-                    new SseResponseConsumer(parser, listener),
-                    null);
+            Future<Void> future;
+            try {
+                future = asyncClient()
+                        .execute(
+                                SimpleRequestProducer.create(toSimpleApacheRequest(request)),
+                                new SseResponseConsumer(parser, listener, (statusCode, headers) -> {
+                                    if (!tube.cancelled() && tube.outstandingRequests() > 0) {
+                                        tube.send(new HttpErrorResponseReceived(statusCode, headers));
+                                    }
+                                }),
+                                null);
+            } catch (Throwable error) {
+                restoreInterruptIfInterrupted(error);
+                tube.fail(error);
+                return;
+            }
             tube.whenTerminates(() -> future.cancel(true));
+            // Tube does not replay termination to an action registered after it.
+            if (tube.cancelled()) {
+                future.cancel(true);
+            }
         });
     }
 
@@ -260,15 +285,20 @@ public class ApacheHttpClient implements HttpClient {
 
         private final ServerSentEventParser parser;
         private final ServerSentEventListener listener;
+        private final BiConsumer<Integer, Map<String, List<String>>> onErrorResponseHead;
 
         private ServerSentEventParser.Incremental incremental;
         private FutureCallback<Void> resultCallback;
         private int errorStatus;
         private ByteArrayOutputStream errorBody;
 
-        SseResponseConsumer(ServerSentEventParser parser, ServerSentEventListener listener) {
+        SseResponseConsumer(
+                ServerSentEventParser parser,
+                ServerSentEventListener listener,
+                BiConsumer<Integer, Map<String, List<String>>> onErrorResponseHead) {
             this.parser = parser;
             this.listener = listener;
+            this.onErrorResponseHead = onErrorResponseHead;
         }
 
         @Override
@@ -290,6 +320,7 @@ public class ApacheHttpClient implements HttpClient {
             } else {
                 errorStatus = status;
                 errorBody = new ByteArrayOutputStream();
+                ignoringExceptions(() -> onErrorResponseHead.accept(status, headersFrom(response)));
                 if (entityDetails == null) {
                     finishError();
                 }
@@ -355,28 +386,37 @@ public class ApacheHttpClient implements HttpClient {
     }
 
     private static SuccessfulHttpResponse successfulResponseFrom(HttpResponse response, byte[] body) {
-        Map<String, List<String>> headers = new HashMap<>();
-        for (Header header : response.getHeaders()) {
-            headers.computeIfAbsent(header.getName(), k -> new ArrayList<>()).add(header.getValue());
-        }
         return SuccessfulHttpResponse.builder()
                 .statusCode(response.getCode())
-                .headers(headers)
+                .headers(headersFrom(response))
                 .body(body)
                 .build();
     }
 
+    private static Map<String, List<String>> headersFrom(HttpResponse response) {
+        Map<String, List<String>> headers = new HashMap<>();
+        for (Header header : response.getHeaders()) {
+            headers.computeIfAbsent(header.getName(), k -> new ArrayList<>()).add(header.getValue());
+        }
+        return headers;
+    }
+
     @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
-        executeServerSentEvents(request, parser, listener);
+        try {
+            executeServerSentEvents(request, parser, listener);
+        } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
+            listener.onError(error); // not ignoringExceptions: what onError throws on the calling thread propagates
+        }
     }
 
     /**
-     * Starts a server-sent-events request and returns the in-flight Apache {@link java.util.concurrent.Future}, so
+     * Starts a server-sent-events request and returns the in-flight Apache {@link Future}, so
      * a caller (the reactive {@link #stream}) can abort the underlying HTTP request. The listener callbacks are
      * unchanged.
      */
-    private java.util.concurrent.Future<SimpleHttpResponse> executeServerSentEvents(
+    private Future<SimpleHttpResponse> executeServerSentEvents(
             HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
         SimpleHttpRequest apacheRequest = toSimpleApacheRequest(request);
         return asyncClient().execute(apacheRequest, new FutureCallback<>() {

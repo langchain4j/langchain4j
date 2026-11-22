@@ -21,17 +21,17 @@ import org.junit.jupiter.params.provider.ValueSource;
 @Execution(ExecutionMode.SAME_THREAD)
 class HttpRequestLoggerTest {
 
-    private static final String API_KEY = "sk-1234567890abcdef";
+    private static final String API_KEY = "sk-1234567890abcdefgh";
 
     @ParameterizedTest
     @ValueSource(strings = {"tr-TR", "az-AZ", "lt-LT", "en-US"})
     void secret_header_should_be_masked_locale_independently(String languageTag) {
-        // Without Locale.ROOT, "X-API-Key".toLowerCase() yields "x-apı-key" under tr/az, which matches
-        // neither COMMON_SECRET_HEADERS nor "api-key", so the key value is logged in clear text.
+        // Without Locale.ROOT, "X-SESSION-ID".toLowerCase() yields "x-sessıon-ıd" under tr/az, which does not
+        // contain "session", so the session value is logged in clear text.
         withDefaultLocale(languageTag, () -> {
-            String formatted = HttpRequestLogger.format("X-API-Key", List.of(API_KEY));
+            String formatted = HttpRequestLogger.format("X-SESSION-ID", List.of(API_KEY));
 
-            assertThat(formatted).isEqualTo("[X-API-Key: sk-12...ef]").doesNotContain(API_KEY);
+            assertThat(formatted).isEqualTo("[X-SESSION-ID: sk-12...gh]").doesNotContain(API_KEY);
         });
     }
 
@@ -41,9 +41,9 @@ class HttpRequestLoggerTest {
         // The mirror image: a header name spelled with the dotless 'ı' is not a secret header name
         // in any locale, so its value is rendered unchanged.
         withDefaultLocale(languageTag, () -> {
-            String formatted = HttpRequestLogger.format("X-APı-Key", List.of(API_KEY));
+            String formatted = HttpRequestLogger.format("X-Sessıon-Id", List.of(API_KEY));
 
-            assertThat(formatted).isEqualTo("[X-APı-Key: " + API_KEY + "]");
+            assertThat(formatted).isEqualTo("[X-Sessıon-Id: " + API_KEY + "]");
         });
     }
 

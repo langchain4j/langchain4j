@@ -6,20 +6,37 @@ import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
+import dev.langchain4j.test.mock.MockEmbeddingModel;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * An {@link EmbeddingModel} for tests: it returns the same fixed embedding for every input.
  * This implementation is experimental and subject to change in the future.
+ *
+ * @deprecated use {@link MockEmbeddingModel} (package {@code dev.langchain4j.test.mock}) from the
+ * {@code langchain4j-test} module: {@code MockEmbeddingModel.thatEmbeds(1f, 2f, 3f).thenRepeats()} returns the same
+ * vector as this class for every request, and {@link MockEmbeddingModel#thatEmbeds(Function)} followed by
+ * {@link MockEmbeddingModel#thenRepeats()} computes the vector from each text. Unlike this class, it answers one
+ * request per scripted step and fails when the script runs out, so that a script can also let a request fail and the
+ * next one succeed; end the script with {@code thenRepeats()} to answer every further request with its last step. It
+ * supports asynchronous calls, which complete on another thread. It accepts the per-call parameters {@code modelName}
+ * and {@code inputType}, which this class rejects, and a response reports the model name. {@code withProvider(...)} has
+ * no replacement. This class will be removed in 1.26.0 at the earliest.
  */
 @Experimental
+@Deprecated(since = "1.24.0", forRemoval = true)
 public class EmbeddingModelMock implements EmbeddingModel {
 
     private ModelProvider provider = ModelProvider.OTHER;
 
     /**
      * Reports the given provider from {@link #provider()}.
+     *
+     * @deprecated has no replacement: {@link MockEmbeddingModel} reports {@code OTHER} as its provider. Removed
+     * together with this class, in 1.26.0 at the earliest.
      */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public EmbeddingModelMock withProvider(ModelProvider provider) {
         this.provider = provider;
         return this;

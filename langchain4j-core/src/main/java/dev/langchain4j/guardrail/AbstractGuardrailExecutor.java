@@ -1,5 +1,6 @@
 package dev.langchain4j.guardrail;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -7,6 +8,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.guardrail.GuardrailResult.Failure;
 import dev.langchain4j.guardrail.config.GuardrailsConfig;
 import dev.langchain4j.internal.CancellationChain;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.GuardrailExecutedEvent.GuardrailExecutedEventBuilder;
@@ -104,10 +106,15 @@ public abstract sealed class AbstractGuardrailExecutor<
         ensureNotNull(guardrail, "guardrail");
 
         try {
-            return guardrail.validate(request).validatedBy(guardrail.getClass());
+            return CurrentInvocation.callWith(invocationContextOf(request), () -> guardrail.validate(request))
+                    .validatedBy(guardrail.getClass());
         } catch (Exception e) {
             throw createGuardrailException(e.getMessage(), e);
         }
+    }
+
+    static InvocationContext invocationContextOf(GuardrailRequest<?> request) {
+        return request.requestParams() == null ? null : request.requestParams().invocationContext();
     }
 
     /**
@@ -171,11 +178,15 @@ public abstract sealed class AbstractGuardrailExecutor<
      * mirroring the synchronous error handling.
      */
     protected CompletableFuture<R> validateAsync(P request, G guardrail, CancellationChain chain) {
-        ensureNotNull(request, "request");
-        ensureNotNull(guardrail, "guardrail");
+        return failOnThrow(() -> {
+            ensureNotNull(request, "request");
+            ensureNotNull(guardrail, "guardrail");
 
-        try {
-            CompletableFuture<R> inFlight = guardrail.validateAsync(request);
+            CompletableFuture<R> inFlight = failOnThrow(
+                    guardrail,
+                    "validateAsync(GuardrailRequest)",
+                    () -> CurrentInvocation.callWith(
+                            invocationContextOf(request), () -> guardrail.validateAsync(request)));
             chain.track(inFlight);
             return inFlight.handle((result, error) -> {
                 if (error != null) {
@@ -187,9 +198,7 @@ public abstract sealed class AbstractGuardrailExecutor<
                 }
                 return result.validatedBy(guardrail.getClass());
             });
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(createGuardrailException(e.getMessage(), e));
-        }
+        });
     }
 
     /**
@@ -198,8 +207,10 @@ public abstract sealed class AbstractGuardrailExecutor<
      * event and short-circuiting on a fatal result, without blocking the calling thread.
      */
     protected CompletableFuture<R> executeGuardrailsAsync(P request, CancellationChain chain) {
-        ensureNotNull(request, "request");
-        return executeGuardrailsAsync(request, request, createSuccess(), 0, chain);
+        return failOnThrow(() -> {
+            ensureNotNull(request, "request");
+            return executeGuardrailsAsync(request, request, createSuccess(), 0, chain);
+        });
     }
 
     private CompletableFuture<R> executeGuardrailsAsync(

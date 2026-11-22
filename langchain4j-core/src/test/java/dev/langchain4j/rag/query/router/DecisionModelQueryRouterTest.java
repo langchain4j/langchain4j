@@ -4,10 +4,14 @@ import static dev.langchain4j.rag.query.router.DecisionModelQueryRouter.Fallback
 import static dev.langchain4j.rag.query.router.DecisionModelQueryRouter.FallbackStrategy.ROUTE_TO_ALL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.model.decision.request.FieldsInput;
@@ -16,7 +20,7 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.model.decision.DecisionModel;
-import dev.langchain4j.model.decision.mock.DecisionModelMock;
+import dev.langchain4j.test.mock.MockDecisionModel;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
@@ -42,16 +46,17 @@ class DecisionModelQueryRouterTest {
         retrievers.put(wiki, "Engineering wiki");
     }
 
-    DecisionModelMock decisionModel;
+    MockDecisionModel decisionModel;
 
-    DecisionModelMock answering(double hrProbability, double wikiProbability) {
-        decisionModel = DecisionModelMock.thatAlwaysAnswers(Map.of(
+    MockDecisionModel answering(double hrProbability, double wikiProbability) {
+        decisionModel = MockDecisionModel.thatAnswers(Map.of(
                 "source1", YesNoAnswer.from(hrProbability),
                 "source2", YesNoAnswer.from(wikiProbability)));
         return decisionModel;
     }
 
-    final DecisionModel failing = DecisionModelMock.thatAlwaysThrowsExceptionWithMessage("decision model is down");
+    final DecisionModel failing =
+            MockDecisionModel.thatFails(new RuntimeException("decision model is down")).thenRepeats();
 
     @Test
     void should_route_to_retrievers_above_threshold() {
@@ -255,7 +260,7 @@ class DecisionModelQueryRouterTest {
     @Test
     void should_apply_fallback_strategy_when_decision_model_refuses_to_answer() {
 
-        DecisionModel refusing = DecisionModelMock.thatAlwaysAnswers(
+        DecisionModel refusing = MockDecisionModel.thatAnswers(
                 Map.of("source1", RefusalAnswer.of(), "source2", YesNoAnswer.from(0.9)));
         QueryRouter router = DecisionModelQueryRouter.builder()
                 .decisionModel(refusing)
@@ -298,7 +303,7 @@ class DecisionModelQueryRouterTest {
     @Test
     void should_propagate_missing_async_support_so_that_retrieval_augmentor_can_offload_routing() {
 
-        QueryRouter router = new DecisionModelQueryRouter(answering(0.9, 0.1).withoutAsyncSupport(), retrievers);
+        QueryRouter router = new DecisionModelQueryRouter(withoutAsyncSupport(answering(0.9, 0.1)), retrievers);
 
         assertThat(router.routeAsync(Query.from("query")))
                 .failsWithin(Duration.ofSeconds(1))
@@ -366,5 +371,13 @@ class DecisionModelQueryRouterTest {
         assertThatThrownBy(() -> new DecisionModelQueryRouter(answering(0, 0), Map.of(hr, " ")))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("description");
+    }
+
+    private static DecisionModel withoutAsyncSupport(MockDecisionModel model) {
+        MockDecisionModel withoutAsync = spy(model); // a decision model without asynchronous support
+        doAnswer(invocation -> AsyncNotSupported.failedFuture(MockDecisionModel.class, "doDecideAsync"))
+                .when(withoutAsync)
+                .doDecideAsync(any());
+        return withoutAsync;
     }
 }

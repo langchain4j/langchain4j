@@ -28,7 +28,7 @@ public class AiServiceContext {
     private static final Function<Object, Optional<String>> DEFAULT_SYSTEM_MESSAGE_PROVIDER = x -> Optional.empty();
 
     public final Class<?> aiServiceClass;
-    public final AiServiceListenerRegistrar eventListenerRegistrar = AiServiceListenerRegistrar.newInstance();
+    public AiServiceListenerRegistrar eventListenerRegistrar = AiServiceListenerRegistrar.newInstance();
 
     public Class<?> returnType;
 

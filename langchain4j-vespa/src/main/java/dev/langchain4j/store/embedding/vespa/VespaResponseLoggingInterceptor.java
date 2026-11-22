@@ -1,5 +1,7 @@
 package dev.langchain4j.store.embedding.vespa;
 
+import static dev.langchain4j.internal.SecretMasking.isSecretName;
+
 import java.io.IOException;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
@@ -42,7 +44,7 @@ class VespaResponseLoggingInterceptor implements Interceptor {
         return StreamSupport.stream(headers.spliterator(), false)
                 .map(header -> {
                     String headerKey = header.component1();
-                    String headerValue = header.component2();
+                    String headerValue = isSecretName(headerKey) ? "***" : header.component2();
                     return String.format("[%s: %s]", headerKey, headerValue);
                 })
                 .collect(Collectors.joining(", "));

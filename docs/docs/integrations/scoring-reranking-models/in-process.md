@@ -14,6 +14,13 @@ Information on how to convert models into ONNX format can be found [here](https:
 
 Many models already converted to ONNX format are available [here](https://huggingface.co/Xenova).
 
+:::warning
+**Load only model files you trust.**
+An ONNX model file is not just data: ONNX runtime parses it with native code,
+and a crafted model file can exploit flaws in the runtime, for example to read other files on your machine or to crash the JVM.
+Use models from sources you trust, or models you converted yourself.
+:::
+
 ### Usage
 
 By default, scoring (reranking) model uses the CPU. 
@@ -21,7 +28,7 @@ By default, scoring (reranking) model uses the CPU.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-onnx-scoring</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 ```java
@@ -35,13 +42,21 @@ Double score = response.content();
 
 `OnnxScoringModel` implements `AutoCloseable`; close it when it is no longer needed to release its native resources.
 
+:::note Windows
+ONNX runtime needs version 14.40 or newer of the Microsoft Visual C++ runtime library `msvcp140.dll`.
+Many JDKs ship their own copy of this file in their `bin` folder, and Windows uses that copy first.
+If your JDK ships an older copy, the model fails to load, and the root cause of the error is
+`java.lang.UnsatisfiedLinkError: ...\onnxruntime.dll: A dynamic link library (DLL) initialization routine failed`.
+To fix it, update your JDK to a recent build that ships `msvcp140.dll` version 14.40 or newer.
+:::
+
 If you want to use the GPU, `onnxruntime_gpu` version can be found
 [here](https://onnxruntime.ai/docs/execution-providers/CUDA-ExecutionProvider.html).
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-onnx-scoring</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.24.0-beta34</version>
     <exclusions>
         <exclusion>
             <groupId>com.microsoft.onnxruntime</groupId>

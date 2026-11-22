@@ -3,6 +3,7 @@ package dev.langchain4j.model.chat;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
@@ -12,6 +13,7 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,12 +28,18 @@ class ChatModelListenerUtils {
             ChatRequest chatRequest,
             ModelProvider modelProvider,
             Map<Object, Object> attributes,
+            UUID invocationId,
             List<ChatModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        ChatModelRequestContext requestContext = new ChatModelRequestContext(chatRequest, modelProvider, attributes);
-        listeners.forEach(listener -> {
+        ChatModelRequestContext requestContext = ChatModelRequestContext.builder()
+                .chatRequest(chatRequest)
+                .modelProvider(modelProvider)
+                .attributes(attributes)
+                .invocationId(invocationId)
+                .build();
+        CurrentInvocation.runWithout(() -> listeners.forEach(listener -> {
             try {
                 listener.onRequest(requestContext);
             } catch (Exception e) {
@@ -40,7 +48,7 @@ class ChatModelListenerUtils {
                                 + "This exception has been ignored.",
                         e);
             }
-        });
+        }));
     }
 
     static void onResponse(
@@ -48,13 +56,19 @@ class ChatModelListenerUtils {
             ChatRequest chatRequest,
             ModelProvider modelProvider,
             Map<Object, Object> attributes,
+            UUID invocationId,
             List<ChatModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        ChatModelResponseContext responseContext =
-                new ChatModelResponseContext(chatResponse, chatRequest, modelProvider, attributes);
-        listeners.forEach(listener -> {
+        ChatModelResponseContext responseContext = ChatModelResponseContext.builder()
+                .chatResponse(chatResponse)
+                .chatRequest(chatRequest)
+                .modelProvider(modelProvider)
+                .attributes(attributes)
+                .invocationId(invocationId)
+                .build();
+        CurrentInvocation.runWithout(() -> listeners.forEach(listener -> {
             try {
                 listener.onResponse(responseContext);
             } catch (Exception e) {
@@ -63,7 +77,7 @@ class ChatModelListenerUtils {
                                 + "This exception has been ignored.",
                         e);
             }
-        });
+        }));
     }
 
     static void onError(
@@ -71,12 +85,19 @@ class ChatModelListenerUtils {
             ChatRequest chatRequest,
             ModelProvider modelProvider,
             Map<Object, Object> attributes,
+            UUID invocationId,
             List<ChatModelListener> listeners) {
         if (isNullOrEmpty(listeners)) {
             return;
         }
-        ChatModelErrorContext errorContext = new ChatModelErrorContext(error, chatRequest, modelProvider, attributes);
-        listeners.forEach(listener -> {
+        ChatModelErrorContext errorContext = ChatModelErrorContext.builder()
+                .error(error)
+                .chatRequest(chatRequest)
+                .modelProvider(modelProvider)
+                .attributes(attributes)
+                .invocationId(invocationId)
+                .build();
+        CurrentInvocation.runWithout(() -> listeners.forEach(listener -> {
             try {
                 listener.onError(errorContext);
             } catch (Exception e) {
@@ -85,6 +106,6 @@ class ChatModelListenerUtils {
                                 + "This exception has been ignored.",
                         e);
             }
-        });
+        }));
     }
 }

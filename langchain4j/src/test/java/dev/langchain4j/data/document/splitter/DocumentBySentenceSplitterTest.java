@@ -11,7 +11,6 @@ import java.util.List;
 
 import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
-import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_3_5_TURBO;
 import static java.lang.String.format;
 import static java.util.stream.Collectors.joining;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -154,7 +153,7 @@ class DocumentBySentenceSplitterTest {
         );
 
         int maxSegmentSize = 26;
-        TokenCountEstimator countEstimator = new OpenAiTokenCountEstimator(GPT_3_5_TURBO);
+        TokenCountEstimator countEstimator = new OpenAiTokenCountEstimator("gpt-3.5-turbo");
         DocumentSplitter splitter = new DocumentBySentenceSplitter(maxSegmentSize, 0, countEstimator);
 
         List<TextSegment> segments = splitter.split(document);

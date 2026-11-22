@@ -1,7 +1,9 @@
 package dev.langchain4j.data.document.loader.playwright;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -43,5 +45,21 @@ class PlaywrightDocumentLoaderTest {
 
         byte[] actualBytes = captor.getValue().readAllBytes();
         assertThat(actualBytes).isEqualTo(html.getBytes(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void failure_should_report_url_without_query_and_user_info() {
+        Page page = mock(Page.class);
+        doThrow(new RuntimeException("navigation failed")).when(page).navigate(any(String.class));
+
+        Browser browser = mock(Browser.class);
+        when(browser.newPage()).thenReturn(page);
+
+        PlaywrightDocumentLoader loader =
+                PlaywrightDocumentLoader.builder().browser(browser).build();
+
+        assertThatThrownBy(() -> loader.load("https://user:secret@example.com:8443/report.pdf?token=secret"))
+                .hasMessage("Failed to load document from URL: https://example.com:8443/report.pdf");
+        verify(page).navigate("https://user:secret@example.com:8443/report.pdf?token=secret");
     }
 }

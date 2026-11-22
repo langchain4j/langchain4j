@@ -6,12 +6,12 @@ import static dev.langchain4j.model.ollama.OllamaImage.TINY_DOLPHIN_MODEL;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.langchain4j.data.message.ContentType;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.ModelNotFoundException;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -171,7 +171,7 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
 
     @ParameterizedTest
     @MethodSource("dev.langchain4j.model.ollama.OllamaChatModelIT#notSupportedContentTypesProvider")
-    void should_throw_when_not_supported_content_types_used(List<ContentType> contentTypes) {
+    void should_report_not_supported_content_types_to_on_error(List<ContentType> contentTypes) throws Exception {
 
         // given
 
@@ -183,9 +183,14 @@ class OllamaStreamingChatModelIT extends AbstractOllamaLanguageModelInfrastructu
         StreamingChatResponseHandler handler = new ErrorHandler(futureError);
         final UserMessage userMessage = OllamaChatModelIT.createUserMessageBasedOnContentTypes(contentTypes);
 
-        // when-then
+        // when
 
-        assertThrows(dev.langchain4j.exception.UnsupportedFeatureException.class, () -> model.chat(List.of(userMessage), handler));
+        model.chat(List.of(userMessage), handler);
+
+        // then: the unsupported content type is reported to the handler, chat() does not throw
+
+        Throwable error = futureError.get(5, SECONDS);
+        assertThat(error).isExactlyInstanceOf(UnsupportedFeatureException.class);
     }
 
     @ParameterizedTest

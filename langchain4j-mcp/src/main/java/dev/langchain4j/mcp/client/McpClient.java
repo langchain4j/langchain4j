@@ -57,6 +57,9 @@ public interface McpClient extends AutoCloseable {
      * executes a tool on the MCP server without holding a thread while the result is in flight.
      * <p>
      * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}.
+     * <p>
+     * An implementation must not throw and must not return {@code null}: every failure, including invalid tool
+     * arguments or a closed client, completes the returned future exceptionally.
      *
      * @since 1.20.0
      */

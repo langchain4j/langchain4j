@@ -1,0 +1,28 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method void dev.langchain4j.guardrails.JsonExtractorOutputGuardrail<T>::<init>(com.fasterxml.jackson.core.type.TypeReference<T>)",
+          "justification": "Deprecated for removal since 1.20.0 because it exposed Jackson 2 types, which kept applications from excluding Jackson 2. The replacement exists since 1.20.0: JsonExtractorOutputGuardrail(Class) or JsonExtractorOutputGuardrail(Type)."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method void dev.langchain4j.guardrails.JsonExtractorOutputGuardrail<T>::<init>(com.fasterxml.jackson.databind.ObjectMapper, java.lang.Class<T>)",
+          "justification": "Deprecated for removal since 1.20.0 because it exposed Jackson 2 types, which kept applications from excluding Jackson 2. The replacement exists since 1.20.0: JsonExtractorOutputGuardrail(Class) or JsonExtractorOutputGuardrail(Type)."
+        },
+        {
+          "ignore": true,
+          "code": "java.method.removed",
+          "old": "method void dev.langchain4j.guardrails.JsonExtractorOutputGuardrail<T>::<init>(com.fasterxml.jackson.databind.ObjectMapper, com.fasterxml.jackson.core.type.TypeReference<T>)",
+          "justification": "Deprecated for removal since 1.20.0 because it exposed Jackson 2 types, which kept applications from excluding Jackson 2. The replacement exists since 1.20.0: JsonExtractorOutputGuardrail(Class) or JsonExtractorOutputGuardrail(Type)."
+        }
+      ]
+    }
+  }
+]

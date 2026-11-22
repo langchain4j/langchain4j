@@ -150,6 +150,11 @@ public class WorkersAiChatModel extends AbstractWorkersAIModel implements ChatMo
 
     @Override
     public ChatResponse chat(ChatRequest chatRequest) {
+        return ChatModel.super.chat(chatRequest); // kept because revapi reports its removal; the logic is in doChat
+    }
+
+    @Override
+    public ChatResponse doChat(ChatRequest chatRequest) {
         ChatRequestValidationUtils.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
         ChatRequestValidationUtils.validateParameters(parameters);

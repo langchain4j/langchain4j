@@ -4,6 +4,7 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.spi.CapturedContext;
+import java.lang.reflect.Type;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,8 +26,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class DefaultInvocationContext implements InvocationContext {
 
     private final UUID invocationId;
+    private final UUID parentInvocationId;
     private final String interfaceName;
     private final String methodName;
+    private final Type methodReturnType;
     private final List<Object> methodArguments = new ArrayList<>();
     private final UserMessage userMessage;
     private final UserMessage originalUserMessage;
@@ -41,8 +44,10 @@ public class DefaultInvocationContext implements InvocationContext {
 
     public DefaultInvocationContext(InvocationContext.Builder builder) {
         this.invocationId = builder.invocationId();
+        this.parentInvocationId = builder.parentInvocationId();
         this.interfaceName = builder.interfaceName();
         this.methodName = builder.methodName();
+        this.methodReturnType = builder.methodReturnType();
         this.methodArguments.addAll(builder.methodArguments());
         this.userMessage = builder.userMessage();
         this.originalUserMessage = builder.originalUserMessage();
@@ -72,6 +77,11 @@ public class DefaultInvocationContext implements InvocationContext {
     }
 
     @Override
+    public UUID parentInvocationId() {
+        return parentInvocationId;
+    }
+
+    @Override
     public String interfaceName() {
         return interfaceName;
     }
@@ -79,6 +89,11 @@ public class DefaultInvocationContext implements InvocationContext {
     @Override
     public String methodName() {
         return methodName;
+    }
+
+    @Override
+    public Type methodReturnType() {
+        return methodReturnType;
     }
 
     @Override
@@ -132,8 +147,10 @@ public class DefaultInvocationContext implements InvocationContext {
         if (object == null || getClass() != object.getClass()) return false;
         DefaultInvocationContext that = (DefaultInvocationContext) object;
         return Objects.equals(invocationId, that.invocationId)
+                && Objects.equals(parentInvocationId, that.parentInvocationId)
                 && Objects.equals(interfaceName, that.interfaceName)
                 && Objects.equals(methodName, that.methodName)
+                && Objects.equals(methodReturnType, that.methodReturnType)
                 && Objects.equals(methodArguments, that.methodArguments)
                 && Objects.equals(userMessage, that.userMessage)
                 && Objects.equals(originalUserMessage, that.originalUserMessage)
@@ -149,8 +166,10 @@ public class DefaultInvocationContext implements InvocationContext {
     public int hashCode() {
         return Objects.hash(
                 invocationId,
+                parentInvocationId,
                 interfaceName,
                 methodName,
+                methodReturnType,
                 methodArguments,
                 userMessage,
                 originalUserMessage,
@@ -166,8 +185,10 @@ public class DefaultInvocationContext implements InvocationContext {
     public String toString() {
         return "DefaultInvocationContext{" +
                 "invocationId=" + invocationId +
+                ", parentInvocationId=" + parentInvocationId +
                 ", interfaceName='" + interfaceName + '\'' +
                 ", methodName='" + methodName + '\'' +
+                ", methodReturnType=" + methodReturnType +
                 ", methodArguments=" + methodArguments +
                 ", userMessage=" + userMessage +
                 ", originalUserMessage=" + originalUserMessage +

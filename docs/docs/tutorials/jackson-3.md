@@ -19,7 +19,7 @@ Add one dependency:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-jackson3</artifactId>
-    <version>1.22.0-beta32</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 
@@ -170,8 +170,10 @@ Whether it can actually leave depends on which modules you use:
 | Provider modules — OpenAI, Anthropic, Mistral, Ollama, Gemini, and the rest | Yes |
 | Embedding stores, web search, code execution | Yes |
 | `langchain4j-agentic` | Yes |
+| `langchain4j-mcp` | Yes, since 1.24.0 |
+| `langchain4j-watsonx` | Yes, since 1.24.0-beta34, if you also swap the watsonx.ai SDK's JSON binding: exclude `com.ibm.watsonx:watsonx-ai-jackson2` and add `com.ibm.watsonx:watsonx-ai-jackson3` (see [watsonx.ai](/integrations/language-models/watsonx#jackson-3)) |
+| `langchain4j-mcp-docker` | No — docker-java, which it uses to talk to Docker, depends on Jackson 2 |
 | `langchain4j-guardrails` | No - `JsonExtractorOutputGuardrail` parses with a plain Jackson 2 `ObjectMapper` on purpose, so that a guardrail stays as strict as it was |
-| `langchain4j-mcp` | No — Jackson's `JsonNode` appears in its public API, so the module loads Jackson 2 on every path |
 | `langchain4j-vespa` | No — its HTTP client uses Retrofit's own Jackson 2 converter |
 | Anything using a vendor SDK — AWS, Azure, Google | No — the SDK depends on Jackson 2 itself |
 
@@ -182,7 +184,7 @@ dependency you declare, not only the first:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j</artifactId>
-    <version>1.22.0</version>
+    <version>1.24.0</version>
     <exclusions>
         <exclusion>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -202,13 +204,13 @@ but is shared: Jackson 3 depends on it and reads those annotations.
 
 This configuration is not just believed to work, it is built and run on every pull request:
 `integration-tests/integration-tests-jackson3` is an application assembled exactly this way - core,
-the main module, a provider, agents and this module, with Jackson 2 excluded from the whole graph -
-and its
-tests cover AI Services structured output, tool calling, chat-memory persistence, embedding-store
-persistence and agent-state persistence. If any of that started needing Jackson 2, those tests would
-fail to find the class.
+the main module, four providers (OpenAI, Anthropic, Mistral AI and watsonx.ai), agents, MCP and this module,
+with Jackson 2 excluded from the whole graph - and its tests cover AI Services structured output,
+tool calling, chat-memory persistence, embedding-store persistence, agent-state persistence,
+provider wire formats, and an MCP client listing and calling tools and reading registry metadata.
+If any of that started needing Jackson 2, those tests would fail to find the class.
 
-If you use MCP, Vespa, or a cloud SDK, Jackson 2 stays. The opt-in still gives you a single Jackson 3
+If you use `langchain4j-guardrails`, `langchain4j-mcp-docker`, Vespa or a cloud SDK, Jackson 2 stays. The opt-in still gives you a single Jackson 3
 code path for everything LangChain4j itself serializes.
 
 ## If you write a provider or a DTO

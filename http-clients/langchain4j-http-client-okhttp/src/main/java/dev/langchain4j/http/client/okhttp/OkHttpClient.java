@@ -1,7 +1,10 @@
 package dev.langchain4j.http.client.okhttp;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.TimeoutException;
@@ -9,12 +12,23 @@ import dev.langchain4j.http.client.FormDataFile;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
 import dev.langchain4j.http.client.sse.HttpResponseReceived;
 import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.SocketTimeoutException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import mutiny.zero.BackpressureStrategy;
 import mutiny.zero.TubeConfiguration;
 import mutiny.zero.ZeroPublisher;
@@ -25,18 +39,6 @@ import okhttp3.MultipartBody;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.SocketTimeoutException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Flow;
-import java.util.concurrent.TimeUnit;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
 public class OkHttpClient implements HttpClient {
 
@@ -82,6 +84,10 @@ public class OkHttpClient implements HttpClient {
 
     @Override
     public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+        return failOnThrow(() -> doExecuteAsync(request));
+    }
+
+    private CompletableFuture<SuccessfulHttpResponse> doExecuteAsync(HttpRequest request) {
         Request okRequest = toOkHttpRequest(request);
         CompletableFuture<SuccessfulHttpResponse> future = new CompletableFuture<>();
         Call call = client.newCall(okRequest);
@@ -128,56 +134,83 @@ public class OkHttpClient implements HttpClient {
                 .withBackpressureStrategy(BackpressureStrategy.BUFFER)
                 .withBufferSize(streamingBufferSize);
         return ZeroPublisher.create(config, tube -> {
-            Call call = enqueueServerSentEvents(request, parser, new ServerSentEventListener() {
-                @Override
-                public void onOpen(SuccessfulHttpResponse response) {
-                    if (!tube.cancelled()) {
-                        tube.send(new HttpResponseReceived(response));
-                    }
-                }
+            Call call;
+            try {
+                call = enqueueServerSentEvents(
+                        request,
+                        parser,
+                        new ServerSentEventListener() {
+                            @Override
+                            public void onOpen(SuccessfulHttpResponse response) {
+                                if (!tube.cancelled()) {
+                                    tube.send(new HttpResponseReceived(response));
+                                }
+                            }
 
-                @Override
-                public void onEvent(ServerSentEvent event) {
-                    if (!tube.cancelled()) {
-                        tube.send(event);
-                    }
-                }
+                            @Override
+                            public void onEvent(ServerSentEvent event) {
+                                if (!tube.cancelled()) {
+                                    tube.send(event);
+                                }
+                            }
 
-                @Override
-                public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
-                    if (!tube.cancelled()) {
-                        tube.send(event);
-                    }
-                }
+                            @Override
+                            public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                                if (!tube.cancelled()) {
+                                    tube.send(event);
+                                }
+                            }
 
-                @Override
-                public void onError(Throwable throwable) {
-                    if (!tube.cancelled()) {
-                        tube.fail(throwable);
-                    }
-                }
+                            @Override
+                            public void onError(Throwable throwable) {
+                                if (!tube.cancelled()) {
+                                    tube.fail(throwable);
+                                }
+                            }
 
-                @Override
-                public void onClose() {
-                    if (!tube.cancelled()) {
-                        tube.complete();
-                    }
-                }
-            });
+                            @Override
+                            public void onClose() {
+                                if (!tube.cancelled()) {
+                                    tube.complete();
+                                }
+                            }
+                        },
+                        (statusCode, headers) -> {
+                            if (!tube.cancelled() && tube.outstandingRequests() > 0) {
+                                tube.send(new HttpErrorResponseReceived(statusCode, headers));
+                            }
+                        });
+            } catch (Throwable error) {
+                restoreInterruptIfInterrupted(error);
+                tube.fail(error);
+                return;
+            }
             // Cancel the underlying HTTP call on any terminal signal (downstream cancel, failure incl. buffer
             // overflow, or completion). Using the Call - not the SSE parsing handle, which only exists after the
             // first event - also aborts a cancel that arrives before the first event.
             tube.whenTerminates(call::cancel);
+            // Tube does not replay termination to an action registered after it.
+            if (tube.cancelled()) {
+                call.cancel();
+            }
         });
     }
 
     @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
-        enqueueServerSentEvents(request, parser, listener);
+        try {
+            enqueueServerSentEvents(request, parser, listener, (statusCode, headers) -> {});
+        } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
+            listener.onError(error); // not ignoringExceptions: what onError throws on the calling thread propagates
+        }
     }
 
     private Call enqueueServerSentEvents(
-            HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
+            HttpRequest request,
+            ServerSentEventParser parser,
+            ServerSentEventListener listener,
+            BiConsumer<Integer, Map<String, List<String>>> onErrorResponseHead) {
         Request okRequest = toOkHttpRequest(request);
         Call call = client.newCall(okRequest);
         call.enqueue(new Callback() {
@@ -185,6 +218,8 @@ public class OkHttpClient implements HttpClient {
             public void onResponse(Call call, Response response) {
                 try (response) {
                     if (!response.isSuccessful()) {
+                        ignoringExceptions(() -> onErrorResponseHead.accept(
+                                response.code(), response.headers().toMultimap()));
                         HttpException exception = new HttpException(response.code(), readBody(response));
                         ignoringExceptions(() -> listener.onError(exception));
                         return;

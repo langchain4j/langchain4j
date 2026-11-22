@@ -15,6 +15,7 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * An event emitted by the reactive stream of a non-blocking streaming AI Service — that is, an AI Service method
@@ -232,9 +233,10 @@ public interface AiServiceStreamingEvent {
     }
 
     /**
-     * Signals that a successfully-executed tool was compensated (rolled back) — for example because another tool
-     * in the same round failed. It carries the {@link ToolExecution} that was rolled back (its request and original
-     * successful result) and the {@link CompensationReason}.
+     * Signals that the compensating action of a successfully-executed tool has run to roll the tool back - because
+     * another tool failed. It carries the {@link ToolExecution} that was rolled back (its request and original
+     * successful result) and the {@link CompensationReason}. It is also emitted when the compensating action failed:
+     * then {@link #compensationError()} returns its error, and the effects of the tool may still be in place.
      * <p>
      * Note: this event is <b>not</b> emitted on cancellation. Cancelling the subscription also cancels the stream,
      * and the Reactive Streams contract forbids delivering further events after a cancel; a rollback triggered by
@@ -244,12 +246,40 @@ public interface AiServiceStreamingEvent {
 
         private final ToolExecution toolExecution;
         private final CompensationReason reason;
+        private final @Nullable Throwable compensationError;
+        private final boolean compensationErrorReported;
 
+        /**
+         * @deprecated Use {@link #ToolCompensatedEvent(ToolExecution, CompensationReason, Throwable, InvocationContext)}
+         * instead, which reports whether the compensating action failed. {@link #compensationError()} of an event
+         * created with this constructor throws an {@link UnsupportedOperationException}. This constructor will be
+         * removed in a future release, no earlier than six months after the 1.25.0 release.
+         */
+        @Deprecated(since = "1.25.0", forRemoval = true)
         public ToolCompensatedEvent(
                 ToolExecution toolExecution, CompensationReason reason, InvocationContext invocationContext) {
             super(invocationContext);
             this.toolExecution = toolExecution;
             this.reason = reason;
+            this.compensationError = null;
+            this.compensationErrorReported = false;
+        }
+
+        /**
+         * @param compensationError the error of the compensating action, or {@code null} when the tool was rolled
+         *                          back successfully
+         * @since 1.25.0
+         */
+        public ToolCompensatedEvent(
+                ToolExecution toolExecution,
+                CompensationReason reason,
+                @Nullable Throwable compensationError,
+                InvocationContext invocationContext) {
+            super(invocationContext);
+            this.toolExecution = toolExecution;
+            this.reason = reason;
+            this.compensationError = compensationError;
+            this.compensationErrorReported = true;
         }
 
         public ToolExecution toolExecution() {
@@ -258,6 +288,25 @@ public interface AiServiceStreamingEvent {
 
         public CompensationReason reason() {
             return reason;
+        }
+
+        /**
+         * Returns the error of the compensating action, when it failed: the exception the compensating method threw,
+         * or the error its returned asynchronous result (for example a {@code CompletableFuture}) completed with. When
+         * this is not {@code null}, the tool could not be rolled back, and its effects may still be in place.
+         *
+         * @return the error of the compensating action, or {@code null} when the tool was rolled back successfully
+         * @throws UnsupportedOperationException if this event was created with the deprecated constructor that does
+         *                                       not report it
+         * @since 1.25.0
+         */
+        public @Nullable Throwable compensationError() {
+            if (!compensationErrorReported) {
+                throw new UnsupportedOperationException(
+                        "This ToolCompensatedEvent was created with a deprecated constructor that does not report "
+                                + "whether the compensating action failed");
+            }
+            return compensationError;
         }
     }
 

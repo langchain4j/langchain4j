@@ -18,8 +18,12 @@ import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiBlob;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class PartsAndContentsMapperTest {
 
@@ -414,6 +418,38 @@ class PartsAndContentsMapperTest {
         assertThat(result).isNotNull();
         List<Image> generatedImages = result.images();
         assertThat(generatedImages).isEmpty(); // Should ignore non-image data
+    }
+
+    @Test
+    void fromContentToGPart_guessesMimeTypeOfFileUriFromItsNameOnly(@TempDir Path tempDir) throws Exception {
+        // Given: a file with PNG bytes but no file extension, and one with a .png name
+        byte[] png = Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ");
+        Path withoutExtension = Files.write(tempDir.resolve("picture"), png);
+        Path withExtension = Files.write(tempDir.resolve("picture.png"), png);
+
+        // When
+        List<GeminiContent.GeminiPart> parts = List.of(
+                PartsAndContentsMapper.fromContentToGPart(ImageContent.from(withoutExtension.toUri())),
+                PartsAndContentsMapper.fromContentToGPart(
+                        AudioContent.from(Audio.builder().url(withoutExtension.toUri()).build())),
+                PartsAndContentsMapper.fromContentToGPart(
+                        VideoContent.from(Video.builder().url(withoutExtension.toUri()).build())),
+                PartsAndContentsMapper.fromContentToGPart(
+                        PdfFileContent.from(PdfFile.builder().url(withoutExtension.toUri()).build())),
+                PartsAndContentsMapper.fromContentToGPart(ImageContent.from(withExtension.toUri())));
+
+        // Then
+        assertThat(parts)
+                .extracting(part -> part.fileData().fileUri())
+                .containsExactly(
+                        withoutExtension.toUri().toString(),
+                        withoutExtension.toUri().toString(),
+                        withoutExtension.toUri().toString(),
+                        withoutExtension.toUri().toString(),
+                        withExtension.toUri().toString());
+        assertThat(parts)
+                .extracting(part -> part.fileData().mimeType())
+                .containsExactly(null, null, null, null, "image/png");
     }
 
     @Test

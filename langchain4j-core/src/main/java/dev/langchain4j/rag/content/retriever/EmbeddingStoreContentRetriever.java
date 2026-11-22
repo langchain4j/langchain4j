@@ -2,6 +2,7 @@ package dev.langchain4j.rag.content.retriever;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -14,6 +15,7 @@ import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.CancellationChain;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.request.EmbeddingInputType;
@@ -371,12 +373,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
      */
     private <T> CompletableFuture<T> nativeOrOffload(
             Query query, Supplier<CompletableFuture<T>> asyncCall, Supplier<T> blockingCall) {
-        CompletableFuture<T> async;
-        try {
-            async = asyncCall.get();
-        } catch (Throwable t) {
-            async = CompletableFuture.failedFuture(t);
-        }
+        CompletableFuture<T> async = failOnThrow(asyncCall);
         CompletableFuture<T> result = async.exceptionallyCompose(error -> {
             Throwable cause = unwrapCompletionException(error);
             if (cause instanceof AsyncNotSupportedException) {
@@ -384,7 +381,7 @@ public class EmbeddingStoreContentRetriever implements ContentRetriever {
                     InvocationContext invocationContext =
                             query.metadata() != null ? query.metadata().invocationContext() : null;
                     return CompletableFuture.supplyAsync(
-                            blockingCall,
+                            () -> CurrentInvocation.callWith(invocationContext, blockingCall),
                             CapturedContextSupport.restoringIn(DefaultExecutorProvider.getDefaultExecutor(), invocationContext));
                 }
                 return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()

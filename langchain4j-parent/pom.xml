@@ -4,7 +4,7 @@
 
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-parent</artifactId>
-    <version>1.23.0-beta33-SNAPSHOT</version>
+    <version>1.25.0-beta35-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>LangChain4j :: Parent POM</name>
@@ -35,7 +35,7 @@
     </scm>
 
     <properties>
-        <langchain4j.beta.version>1.23.0-beta33-SNAPSHOT</langchain4j.beta.version>
+        <langchain4j.beta.version>1.25.0-beta35-SNAPSHOT</langchain4j.beta.version>
         <java.version>17</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <kotlin.code.style>official</kotlin.code.style>
@@ -44,41 +44,41 @@
         <kotlin.compiler.apiVersion>1.9</kotlin.compiler.apiVersion>
         <kotlin-compiler.version>2.1.21</kotlin-compiler.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.build.outputTimestamp>1791449559</project.build.outputTimestamp>
+        <project.build.outputTimestamp>1795018226</project.build.outputTimestamp>
         <argLine></argLine>
         <!-- Dependency Versions -->
         <dokka.version>2.1.0-Beta</dokka.version>
         <ai-mocks.version>0.4.6</ai-mocks.version>
-        <archunit.version>1.1.0</archunit.version>
+        <archunit.version>1.5.1</archunit.version>
         <assertj.version>4.0.0-M1</assertj.version>
         <assertk.version>0.28.1</assertk.version>
         <awaitility.version>4.3.0</awaitility.version>
-        <aws.java.sdk.version>2.42.4</aws.java.sdk.version>
-        <azure-sdk.version>1.3.7</azure-sdk.version>
-        <blockhound.version>1.0.17.RELEASE</blockhound.version>
-        <jackson.version>2.22.4</jackson.version>
-        <jackson3.version>3.2.4</jackson3.version>
+        <aws.java.sdk.version>2.57.12</aws.java.sdk.version>
+        <azure-sdk.version>1.3.10</azure-sdk.version>
+        <blockhound.version>1.0.18.RELEASE</blockhound.version>
+        <jackson.version>2.23.0</jackson.version>
+        <jackson3.version>3.3.0</jackson3.version>
         <jspecify.version>1.0.1</jspecify.version>
         <jtokkit.version>1.1.0</jtokkit.version>
         <junit.version>6.0.3</junit.version>
         <kotest.version>5.9.1</kotest.version>
         <kotlin.version>1.9.25</kotlin.version>
         <kotlinx-coroutines.version>1.8.1</kotlinx-coroutines.version>
-        <log4j.version>2.24.3</log4j.version>
-        <logback.version>1.5.32</logback.version>
+        <log4j.version>2.26.1</log4j.version>
+        <logback.version>1.6.6</logback.version>
         <mockito-kotlin.version>5.4.0</mockito-kotlin.version>
         <mockito.version>5.23.0</mockito.version>
         <mutiny-zero.version>1.3.1</mutiny-zero.version>
-        <okhttp.version>4.12.0</okhttp.version>
+        <okhttp.version>4.12.1</okhttp.version>
         <reactive-streams-tck.version>1.0.4</reactive-streams-tck.version>
-        <retrofit.version>2.9.0</retrofit.version>
-        <slf4j.version>2.0.18</slf4j.version>
+        <retrofit.version>2.12.0</retrofit.version>
+        <slf4j.version>2.0.20</slf4j.version>
         <testcontainers.version>1.21.4</testcontainers.version>
         <testng.version>7.12.0</testng.version>
         <testng-engine.version>1.0.5</testng-engine.version>
         <tinylog.version>2.7.0</tinylog.version>
         <wiremock.version>3.13.2</wiremock.version>
-        <hibernate.version>7.4.2.Final</hibernate.version>
+        <hibernate.version>7.4.15.Final</hibernate.version>
         <jsoup.version>1.23.2</jsoup.version>
         <onnxruntime.version>1.23.2</onnxruntime.version>
     </properties>
@@ -342,13 +342,13 @@
             <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-lang3</artifactId>
-                <version>3.18.0</version>
+                <version>3.22.0</version>
             </dependency>
 
             <dependency>
                 <groupId>com.azure</groupId>
                 <artifactId>azure-cosmos</artifactId>
-                <version>4.71.0-beta.1</version>
+                <version>4.83.0</version>
             </dependency>
 
             <dependency>
@@ -493,12 +493,12 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-install-plugin</artifactId>
-                    <version>3.1.4</version>
+                    <version>3.2.0</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-deploy-plugin</artifactId>
-                    <version>3.1.4</version>
+                    <version>3.2.0</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -508,7 +508,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
-                    <version>3.5.5</version>
+                    <version>3.6.1</version>
                     <configuration>
                         <systemPropertyVariables>
                             <maven.home>${maven.home}</maven.home>
@@ -519,12 +519,12 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-failsafe-plugin</artifactId>
-                    <version>3.6.0</version>
+                    <version>3.6.1</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-dependency-plugin</artifactId>
-                    <version>3.10.0</version>
+                    <version>3.11.0</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -534,7 +534,7 @@
                 <plugin>
                     <groupId>com.diffplug.spotless</groupId>
                     <artifactId>spotless-maven-plugin</artifactId>
-                    <version>2.44.4</version>
+                    <version>2.46.1</version>
                     <configuration>
                         <!-- optional: limit format enforcement to just the files changed by this feature branch -->
                         <ratchetFrom>origin/main</ratchetFrom>
@@ -553,7 +553,7 @@
                 <plugin>
                     <groupId>org.jacoco</groupId>
                     <artifactId>jacoco-maven-plugin</artifactId>
-                    <version>0.8.14</version>
+                    <version>0.8.16</version>
                 </plugin>
                 <plugin>
                     <groupId>org.jetbrains.kotlin</groupId>
@@ -711,7 +711,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.15.0</version>
+                <version>3.16.0</version>
                 <configuration>
                     <annotationProcessorPaths></annotationProcessorPaths>
                 </configuration>
@@ -781,9 +781,12 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration combine.children="append">
-                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
+                    <!-- see tinylog.level below -->
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar} -Dtinylog.level@dev.langchain4j=debug</argLine>
                     <systemPropertyVariables>
-                        <tinylog.level>debug</tinylog.level>
+                        <!-- Third-party libraries stay at info: at debug, HTTP and gRPC clients print request headers,
+                             including the real API keys used by the integration tests. LangChain4j itself logs at debug. -->
+                        <tinylog.level>info</tinylog.level>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -793,8 +796,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <configuration combine.children="append">
+                    <!-- see tinylog.level in the surefire configuration above -->
+                    <argLine>@{argLine} -Dtinylog.level@dev.langchain4j=debug</argLine>
                     <systemPropertyVariables>
-                        <tinylog.level>debug</tinylog.level>
+                        <tinylog.level>info</tinylog.level>
                     </systemPropertyVariables>
                 </configuration>
                 <executions>
