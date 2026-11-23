@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.Locale;
 import java.util.Objects;
 
 public class FullTextContains implements Filter {
@@ -38,7 +39,7 @@ public class FullTextContains implements Filter {
         if (actualValue instanceof String str) {
             // Simple contains check for testing - actual implementation depends on the
             // store
-            return str.toLowerCase().contains(searchTerm.toLowerCase());
+            return str.toLowerCase(Locale.ROOT).contains(searchTerm.toLowerCase(Locale.ROOT));
         }
 
         return false;
