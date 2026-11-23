@@ -2,6 +2,7 @@ package dev.langchain4j.model.openai.internal;
 
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.aiMessageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.noChoicesErrorMessage;
+import static dev.langchain4j.model.openai.internal.OpenAiUtils.providerErrorMessageFrom;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.toOpenAiToolChoice;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.toTools;
 import static dev.langchain4j.model.openai.internal.chat.ToolType.FUNCTION;
@@ -424,5 +425,42 @@ class OpenAiUtilsTest {
     @Test
     void should_build_no_choices_error_message_without_raw_response() {
         assertThat(noChoicesErrorMessage(null)).isEqualTo("Chat completion failed: no choices returned in response");
+    }
+
+    @Test
+    void should_extract_provider_error_message_with_type_and_code() {
+
+        // vLLM sends message, type, param and code
+        assertThat(providerErrorMessageFrom(
+                        "{\"error\":{\"message\":\"Internal server error\",\"type\":\"InternalServerError\","
+                                + "\"param\":null,\"code\":500}}"))
+                .isEqualTo("Internal server error (type: InternalServerError, code: 500)");
+
+        // OpenRouter sends a string code
+        assertThat(providerErrorMessageFrom(
+                        "{\"error\":{\"code\":\"server_error\",\"message\":\"Provider disconnected unexpectedly\"}}"))
+                .isEqualTo("Provider disconnected unexpectedly (code: server_error)");
+
+        // errors without type/code keep the plain message
+        assertThat(providerErrorMessageFrom("{\"error\":{\"message\":\"Service is too busy\"}}"))
+                .isEqualTo("Service is too busy");
+    }
+
+    @Test
+    void should_not_detect_provider_error_when_error_is_not_at_the_top_level() {
+
+        // a regular content chunk whose text merely mentions "error", even as a quoted JSON-like token
+        assertThat(providerErrorMessageFrom(
+                        "{\"choices\":[{\"index\":0,\"delta\":{\"content\":\"No \\\"error\\\" occurred\"}}]}"))
+                .isNull();
+        assertThat(providerErrorMessageFrom("{\"choices\":[{\"delta\":{\"content\":\"error\"}}]}"))
+                .isNull();
+
+        // "error" nested inside another object is not a provider error
+        assertThat(providerErrorMessageFrom("{\"top\":{\"error\":\"nested\"}}")).isNull();
+
+        // usage chunks carry no error
+        assertThat(providerErrorMessageFrom("{\"choices\":[],\"usage\":{\"total_tokens\":2}}"))
+                .isNull();
     }
 }
