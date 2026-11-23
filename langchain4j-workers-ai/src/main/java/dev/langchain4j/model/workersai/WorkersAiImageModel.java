@@ -1,22 +1,35 @@
 package dev.langchain4j.model.workersai;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.media.DefaultMediaFetcher;
+import dev.langchain4j.data.media.MediaFetcher;
+import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.workersai.client.AbstractWorkersAIModel;
 import dev.langchain4j.model.workersai.client.WorkersAiImageGenerationRequest;
 import dev.langchain4j.model.workersai.spi.WorkersAiImageModelBuilderFactory;
+import org.jspecify.annotations.Nullable;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+import javax.imageio.stream.MemoryCacheImageInputStream;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.URI;
 import java.net.URL;
 import java.util.Base64;
+import java.util.Iterator;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
@@ -32,6 +45,14 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
     private static final String MIME_TYPE = "image/png";
 
     /**
+     * The largest width times height that the Workers AI image models accept (2048 x 2048). An image with more pixels
+     * is rejected before it is decoded, because decoding needs memory for every pixel, whatever the file size.
+     */
+    private static final long MAX_PIXELS = 2048L * 2048L;
+
+    private final MediaFetcher mediaFetcher;
+
+    /**
      * Constructor with Builder.
      *
      * @param builder
@@ -39,6 +60,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
      */
     public WorkersAiImageModel(Builder builder) {
         super(builder.accountId, builder.modelName, builder.apiToken, builder.httpClientBuilder);
+        this.mediaFetcher = getOrDefault(builder.mediaFetcher, MediaPrefetcher.defaultMediaFetcher());
     }
 
     /**
@@ -53,6 +75,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
      */
     public WorkersAiImageModel(String accountId, String modelName, String apiToken) {
         super(accountId, modelName, apiToken);
+        this.mediaFetcher = MediaPrefetcher.defaultMediaFetcher();
     }
 
     /**
@@ -89,6 +112,8 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
          * The HTTP client builder used to create the underlying HTTP client.
          */
         public HttpClientBuilder httpClientBuilder;
+
+        private MediaFetcher mediaFetcher;
 
         /**
          * Simple constructor.
@@ -139,6 +164,26 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
          */
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
+            return this;
+        }
+
+        /**
+         * Sets the {@link MediaFetcher} that downloads the images given by URL to
+         * {@link WorkersAiImageModel#edit(Image, String)}, {@link WorkersAiImageModel#edit(Image, Image, String)} and
+         * {@link WorkersAiImageModel#getPixels(URL)}. They are downloaded and decoded before the request is sent.
+         * <p>
+         * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
+         * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To edit
+         * a local file, create the image from its content with {@link Image.Builder#base64Data(String)}. To download
+         * from your own servers, use a {@link DefaultMediaFetcher} that allows them, or your own {@link MediaFetcher}.
+         *
+         * @param mediaFetcher the fetcher, or {@code null} to use the default one.
+         * @return The current instance of {@link Builder}.
+         * @since 1.25.0-beta35
+         */
+        @Experimental
+        public Builder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {
+            this.mediaFetcher = mediaFetcher;
             return this;
         }
 
@@ -206,21 +251,17 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
      *    image.
      */
     private byte[] executeQuery(String prompt, Image image, Image mask) {
-        try {
-            // Mapping inbound
-            WorkersAiImageGenerationRequest imgReq = new WorkersAiImageGenerationRequest();
-            imgReq.setPrompt(prompt);
-            if (image != null) {
-                if (image.url() != null) {
-                    imgReq.setImage(getPixels(image.url().toURL()));
-                }
-            }
-            if (mask != null) {
-                if (mask.url() != null) {
-                    imgReq.setMask(getPixels(mask.url().toURL()));
-                }
-            }
+        // Mapping inbound
+        WorkersAiImageGenerationRequest imgReq = new WorkersAiImageGenerationRequest();
+        imgReq.setPrompt(prompt);
+        if (image != null) {
+            imgReq.setImage(pixels(image));
+        }
+        if (mask != null) {
+            imgReq.setMask(pixels(mask));
+        }
 
+        try {
             return client.generateImage(imgReq, accountId, modelName);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -228,17 +269,61 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
     }
 
     /**
-     * Convert an image into a array of number, supposedly the Pixels.
+     * Downloads the image at the given URL with the {@link Builder#mediaFetcher(MediaFetcher) media fetcher} and
+     * converts it into an array of numbers, supposedly the pixels.
      * @param imageUrl
      *      current image URL
      * @return
      *      pixels of the image
+     * @throws InvalidRequestException
+     *      if the media fetcher does not allow the URL, if the image format is not supported, or if the image has
+     *      more than 2048 x 2048 pixels
      * @throws Exception
      *      return an exception if pixel not returned
      */
     public int[] getPixels(URL imageUrl) throws Exception {
-        BufferedImage image = ImageIO.read(imageUrl);
+        return pixels(download(imageUrl.toURI()));
+    }
 
+    private int[] pixels(Image image) {
+        if (image.base64Data() != null) {
+            return pixels(Base64.getDecoder().decode(image.base64Data()));
+        }
+        if (image.url() == null) {
+            throw new IllegalArgumentException("The image has neither base64 data nor a URL");
+        }
+        return pixels(download(image.url()));
+    }
+
+    private byte[] download(URI url) {
+        return mediaFetcher.fetch(url).bytes();
+    }
+
+    private static int[] pixels(byte[] imageBytes) {
+        try (ImageInputStream input = new MemoryCacheImageInputStream(new ByteArrayInputStream(imageBytes))) {
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) {
+                throw new InvalidRequestException("The image format is not supported");
+            }
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input, true, true);
+                int width = reader.getWidth(0);
+                int height = reader.getHeight(0);
+                if ((long) width * height > MAX_PIXELS) {
+                    throw new InvalidRequestException("The image has " + width + " x " + height
+                            + " pixels, more than the maximum of " + MAX_PIXELS + " pixels (2048 x 2048)");
+                }
+                return pixels(reader.read(0));
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException e) {
+            throw new InvalidRequestException("The image cannot be read", e);
+        }
+    }
+
+    private static int[] pixels(BufferedImage image) {
         // Get image dimensions
         int width = image.getWidth();
         int height = image.getHeight();
