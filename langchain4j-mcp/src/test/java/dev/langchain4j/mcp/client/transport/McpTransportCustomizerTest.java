@@ -214,6 +214,16 @@ class McpTransportCustomizerTest {
     }
 
     @Test
+    void should_customize_a_websocket_transport_when_the_constructor_is_called() throws Exception {
+        register(RemovingTheWebSocketUrl.class);
+
+        assertThatThrownBy(() -> new WebSocketMcpTransport(
+                        WebSocketMcpTransport.builder().url(WEBSOCKET_URL)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Missing server endpoint URL");
+    }
+
+    @Test
     void should_give_a_customizer_a_copy_with_every_setting_of_the_websocket_builder() throws Exception {
         register(Capturing.class);
         WebSocketMcpTransport.Builder builder = WebSocketMcpTransport.builder()
