@@ -54,6 +54,7 @@ class OpenAiChatRequestParametersTest {
 
         // then
         assertThat(result).isInstanceOf(OpenAiChatRequestParameters.class);
+        assertThat(result.seed()).isEqualTo(42);
         OpenAiChatRequestParameters openAiResult = (OpenAiChatRequestParameters) result;
 
         assertThat(openAiResult.modelName()).isEqualTo(GPT_4_O_MINI.toString());

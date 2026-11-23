@@ -1,7 +1,6 @@
 package dev.langchain4j.model.chat.request;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-
 import java.util.List;
 
 /**
@@ -17,6 +16,14 @@ public interface ChatRequestParameters {
     Double temperature();
 
     Double topP();
+
+    /**
+     * Returns the random seed configured for this request, or {@code null} if none is configured
+     * or the provider does not expose it.
+     */
+    default Integer seed() {
+        return null;
+    }
 
     Integer topK();
 
@@ -85,7 +92,8 @@ public interface ChatRequestParameters {
      * @return a new {@link ChatRequestParameters} instance combining both sets of parameters
      */
     default ChatRequestParameters defaultedBy(ChatRequestParameters parameters) {
-        throw new UnsupportedOperationException("Missing implementation, please override this method in " + this.getClass().getName());
+        throw new UnsupportedOperationException("Missing implementation, please override this method in "
+                + this.getClass().getName());
     }
 
     static DefaultChatRequestParameters.Builder<?> builder() {
