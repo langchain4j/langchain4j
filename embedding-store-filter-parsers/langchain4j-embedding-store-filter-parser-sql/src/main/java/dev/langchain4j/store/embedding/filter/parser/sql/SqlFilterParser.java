@@ -14,8 +14,12 @@ import dev.langchain4j.store.embedding.filter.logical.Or;
 import java.net.URLEncoder;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.List;
 import java.util.Locale;
 import net.sf.jsqlparser.JSQLParserException;
 import net.sf.jsqlparser.expression.*;
@@ -29,6 +33,7 @@ import net.sf.jsqlparser.expression.operators.relational.*;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.statement.select.PlainSelect;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Parses an SQL "WHERE" clause into a {@link Filter} object using
@@ -116,19 +121,54 @@ public class SqlFilterParser implements FilterParser {
 
         try {
             PlainSelect select = (PlainSelect) CCJSqlParserUtil.parse(sql);
-            return mapParenthesis(select.getWhere());
+            return mapWhereClause(select.getWhere());
         } catch (JSQLParserException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private Filter mapParenthesis(Expression expression) {
+    private Filter mapWhereClause(@Nullable Expression whereClause) {
+        Deque<Filter> mapped = new ArrayDeque<>();
+        for (Expression expression : inPostOrder(whereClause)) {
+            if (expression instanceof AndExpression) {
+                Filter right = mapped.pop();
+                mapped.push(new And(mapped.pop(), right));
+            } else if (expression instanceof OrExpression) {
+                Filter right = mapped.pop();
+                mapped.push(new Or(mapped.pop(), right));
+            } else if (expression instanceof NotExpression) {
+                mapped.push(new Not(mapped.pop()));
+            } else if (!(expression instanceof Parenthesis)) {
+                mapped.push(mapCondition(expression));
+            }
+        }
+        return mapped.pop();
+    }
+
+    private static List<Expression> inPostOrder(@Nullable Expression whereClause) {
+        List<Expression> reversedPostOrder = new ArrayList<>();
+        List<Expression> toVisit = new ArrayList<>();
+        toVisit.add(whereClause);
+        while (!toVisit.isEmpty()) {
+            Expression expression = toVisit.remove(toVisit.size() - 1);
+            reversedPostOrder.add(expression);
+            if (expression instanceof AndExpression || expression instanceof OrExpression) {
+                BinaryExpression binaryExpression = (BinaryExpression) expression;
+                toVisit.add(binaryExpression.getLeftExpression());
+                toVisit.add(binaryExpression.getRightExpression());
+            } else if (expression instanceof NotExpression notExpression) {
+                toVisit.add(notExpression.getExpression());
+            } else if (expression instanceof Parenthesis parenthesis) {
+                toVisit.add(parenthesis.getExpression());
+            }
+        }
+        Collections.reverse(reversedPostOrder);
+        return reversedPostOrder;
+    }
+
+    private Filter mapCondition(@Nullable Expression expression) {
         if (expression instanceof BinaryExpression) {
             return mapBinaryExpression((BinaryExpression) expression);
-        } else if (expression instanceof NotExpression) {
-            return new Not(mapParenthesis(((NotExpression) expression).getExpression()));
-        } else if (expression instanceof Parenthesis) {
-            return mapParenthesis(((Parenthesis) expression).getExpression());
         } else if (expression instanceof InExpression) {
             return mapInExpression(((InExpression) expression));
         } else if (expression instanceof Between) {
@@ -149,11 +189,7 @@ public class SqlFilterParser implements FilterParser {
     }
 
     private Filter mapBinaryExpression(BinaryExpression exp) {
-        if (exp instanceof AndExpression) {
-            return new And(mapParenthesis(exp.getLeftExpression()), mapParenthesis(exp.getRightExpression()));
-        } else if (exp instanceof OrExpression) {
-            return new Or(mapParenthesis(exp.getLeftExpression()), mapParenthesis(exp.getRightExpression()));
-        } else if (exp instanceof EqualsTo) {
+        if (exp instanceof EqualsTo) {
             return new IsEqualTo(getKey(exp), getValue(exp));
         } else if (exp instanceof NotEqualsTo) {
             return new IsNotEqualTo(getKey(exp), getValue(exp));
@@ -327,41 +363,60 @@ public class SqlFilterParser implements FilterParser {
                     // TODO parse timestamp?
                 }
             }
-        } else if (expression instanceof Addition) {
-            Comparable<?> left = getValue(((Addition) expression).getLeftExpression());
-            Comparable<?> right = getValue(((Addition) expression).getRightExpression());
-            if (left instanceof Long && right instanceof Long) {
-                return (Long) left + (Long) right;
-            } else if (left instanceof Double && right instanceof Double) {
-                return (Double) left + (Double) right;
-            }
-        } else if (expression instanceof Subtraction) {
-            Comparable<?> left = getValue(((Subtraction) expression).getLeftExpression());
-            Comparable<?> right = getValue(((Subtraction) expression).getRightExpression());
-            if (left instanceof Long && right instanceof Long) {
-                return (Long) left - (Long) right;
-            } else if (left instanceof Double && right instanceof Double) {
-                return (Double) left - (Double) right;
-            }
-        } else if (expression instanceof Multiplication) {
-            Comparable<?> left = getValue(((Multiplication) expression).getLeftExpression());
-            Comparable<?> right = getValue(((Multiplication) expression).getRightExpression());
-            if (left instanceof Long && right instanceof Long) {
-                return (Long) left * (Long) right;
-            } else if (left instanceof Double && right instanceof Double) {
-                return (Double) left * (Double) right;
-            }
-        } else if (expression instanceof Division) {
-            Comparable<?> left = getValue(((Division) expression).getLeftExpression());
-            Comparable<?> right = getValue(((Division) expression).getRightExpression());
-            if (left instanceof Long && right instanceof Long) {
-                return (Long) left / (Long) right;
-            } else if (left instanceof Double && right instanceof Double) {
-                return (Double) left / (Double) right;
-            }
+        } else if (isArithmetic(expression)) {
+            return calculate((BinaryExpression) expression);
         }
 
         throw illegalArgument("Unsupported expression: '%s'%s", expression, createGithubIssueLink(expression));
+    }
+
+    private static boolean isArithmetic(Expression expression) {
+        return expression instanceof Addition
+                || expression instanceof Subtraction
+                || expression instanceof Multiplication
+                || expression instanceof Division;
+    }
+
+    private Comparable<?> calculate(BinaryExpression arithmeticExpression) {
+        Deque<BinaryExpression> operations = new ArrayDeque<>();
+        Expression leftmostOperand = arithmeticExpression;
+        while (isArithmetic(leftmostOperand)) {
+            BinaryExpression operation = (BinaryExpression) leftmostOperand;
+            operations.push(operation);
+            leftmostOperand = operation.getLeftExpression();
+        }
+
+        Comparable<?> result = getValue(leftmostOperand);
+        while (!operations.isEmpty()) {
+            BinaryExpression operation = operations.pop();
+            result = calculate(operation, result, getValue(operation.getRightExpression()));
+        }
+        return result;
+    }
+
+    private static Comparable<?> calculate(BinaryExpression operation, Comparable<?> left, Comparable<?> right) {
+        if (left instanceof Long leftLong && right instanceof Long rightLong) {
+            if (operation instanceof Addition) {
+                return leftLong + rightLong;
+            } else if (operation instanceof Subtraction) {
+                return leftLong - rightLong;
+            } else if (operation instanceof Multiplication) {
+                return leftLong * rightLong;
+            } else if (operation instanceof Division) {
+                return leftLong / rightLong;
+            }
+        } else if (left instanceof Double leftDouble && right instanceof Double rightDouble) {
+            if (operation instanceof Addition) {
+                return leftDouble + rightDouble;
+            } else if (operation instanceof Subtraction) {
+                return leftDouble - rightDouble;
+            } else if (operation instanceof Multiplication) {
+                return leftDouble * rightDouble;
+            } else if (operation instanceof Division) {
+                return leftDouble / rightDouble;
+            }
+        }
+        throw illegalArgument("Unsupported expression: '%s'%s", operation, createGithubIssueLink(operation));
     }
 
     private long currentYear() {

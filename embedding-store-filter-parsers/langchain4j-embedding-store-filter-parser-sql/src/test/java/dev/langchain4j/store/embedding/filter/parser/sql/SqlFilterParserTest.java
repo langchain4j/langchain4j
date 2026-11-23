@@ -13,6 +13,8 @@ import static org.junit.jupiter.params.provider.Arguments.of;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.FilterParser;
+import dev.langchain4j.store.embedding.filter.logical.And;
+import dev.langchain4j.store.embedding.filter.logical.Or;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -1482,6 +1484,49 @@ class SqlFilterParserTest {
                 .isEqualTo(metadataKey("year").isEqualTo(currentYear() * 2));
         assertThat(parser.parse("year = EXTRACT(YEAR FROM CURRENT_DATE) / 2"))
                 .isEqualTo(metadataKey("year").isEqualTo(currentYear() / 2));
+    }
+
+    @Test
+    void should_parse_long_chain_of_AND_conditions() {
+
+        Filter filter = parser.parse(chainOfConditions("AND", 50_000));
+
+        for (int i = 49_999; i > 0; i--) {
+            assertThat(filter.getClass()).isEqualTo(And.class);
+            And and = (And) filter;
+            assertThat(and.right()).isEqualTo(metadataKey("id").isEqualTo((long) i));
+            filter = and.left();
+        }
+        assertThat(filter).isEqualTo(metadataKey("id").isEqualTo(0L));
+    }
+
+    @Test
+    void should_parse_long_chain_of_OR_conditions() {
+
+        Filter filter = parser.parse(chainOfConditions("OR", 50_000));
+
+        for (int i = 49_999; i > 0; i--) {
+            assertThat(filter.getClass()).isEqualTo(Or.class);
+            Or or = (Or) filter;
+            assertThat(or.right()).isEqualTo(metadataKey("id").isEqualTo((long) i));
+            filter = or.left();
+        }
+        assertThat(filter).isEqualTo(metadataKey("id").isEqualTo(0L));
+    }
+
+    private static String chainOfConditions(String operator, int conditions) {
+        StringBuilder sql = new StringBuilder("id = 0");
+        for (int i = 1; i < conditions; i++) {
+            sql.append(" ").append(operator).append(" id = ").append(i);
+        }
+        return sql.toString();
+    }
+
+    @Test
+    void should_calculate_long_arithmetic_expression() {
+
+        assertThat(parser.parse("id = 0" + " + 2 - 1".repeat(25_000)))
+                .isEqualTo(metadataKey("id").isEqualTo(25_000L));
     }
 
     @Test

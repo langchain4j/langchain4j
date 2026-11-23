@@ -1,11 +1,14 @@
 package dev.langchain4j.store.embedding.filter.builder.sql;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.parser.sql.SqlFilterParser;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -88,6 +91,28 @@ class LanguageModelSqlFilterBuilderTest {
         // then
         verify(sqlFilterParser).parse(dirtySql);
         verify(sqlFilterParser).parse("SELECT * FROM table WHERE id = 1");
+        verifyNoMoreInteractions(sqlFilterParser);
+    }
+
+    @Test
+    void should_build_filter_from_long_chain_of_conditions() {
+
+        // given
+        String sql = "SELECT * FROM table WHERE column = 0" + " AND column = 1".repeat(50_000);
+        ChatModel chatModel = MockChatModel.thatResponds(sql);
+
+        LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
+                .chatModel(chatModel)
+                .tableDefinition(tableDefinition)
+                .sqlFilterParser(sqlFilterParser)
+                .build();
+
+        // when
+        Filter filter = sqlFilterBuilder.build(Query.from("does not matter"));
+
+        // then
+        assertThat(filter.getClass()).isEqualTo(And.class);
+        verify(sqlFilterParser).parse(sql);
         verifyNoMoreInteractions(sqlFilterParser);
     }
 
