@@ -3,6 +3,7 @@ package dev.langchain4j.model.ollama;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
@@ -14,12 +15,16 @@ import org.junit.jupiter.api.Test;
 
 class InternalOllamaHelperTest {
 
+    private static final MediaFetcher NO_DOWNLOADS = url -> {
+        throw new AssertionError("Unexpected download of " + url);
+    };
+
     @Test
     void toOllamaMessages_concatenatesMultipleTextContents() {
         UserMessage userMessage =
                 UserMessage.from(TextContent.from("Hello"), TextContent.from("world"), TextContent.from("!"));
 
-        List<Message> messages = InternalOllamaHelper.toOllamaMessages(List.<ChatMessage>of(userMessage));
+        List<Message> messages = InternalOllamaHelper.toOllamaMessages(List.<ChatMessage>of(userMessage), NO_DOWNLOADS);
 
         assertThat(messages).hasSize(1);
         assertThat(messages.get(0).getContent()).isEqualTo("Hello\nworld\n!");
@@ -33,7 +38,7 @@ class InternalOllamaHelperTest {
                 TextContent.from("two parts"),
                 ImageContent.from("aW1hZ2U=", "image/png"));
 
-        List<Message> messages = InternalOllamaHelper.toOllamaMessages(List.<ChatMessage>of(userMessage));
+        List<Message> messages = InternalOllamaHelper.toOllamaMessages(List.<ChatMessage>of(userMessage), NO_DOWNLOADS);
 
         assertThat(messages).hasSize(1);
         assertThat(messages.get(0).getContent()).isEqualTo("Describe these\ntwo parts");
@@ -44,7 +49,7 @@ class InternalOllamaHelperTest {
     void toOllamaMessages_imageOnlyMessageHasEmptyContent() {
         UserMessage userMessage = UserMessage.from(ImageContent.from("aW1hZ2U=", "image/png"));
 
-        List<Message> messages = InternalOllamaHelper.toOllamaMessages(List.<ChatMessage>of(userMessage));
+        List<Message> messages = InternalOllamaHelper.toOllamaMessages(List.<ChatMessage>of(userMessage), NO_DOWNLOADS);
 
         assertThat(messages).hasSize(1);
         assertThat(messages.get(0).getContent()).isEmpty();
@@ -88,7 +93,7 @@ class InternalOllamaHelperTest {
                         .build())
                 .build();
 
-        OllamaChatRequest result = InternalOllamaHelper.toOllamaChatRequest(chatRequest, false);
+        OllamaChatRequest result = InternalOllamaHelper.toOllamaChatRequest(chatRequest, false, NO_DOWNLOADS);
 
         assertThat(result.getTruncate()).isFalse();
     }
@@ -102,7 +107,7 @@ class InternalOllamaHelperTest {
                         .build())
                 .build();
 
-        OllamaChatRequest result = InternalOllamaHelper.toOllamaChatRequest(chatRequest, false);
+        OllamaChatRequest result = InternalOllamaHelper.toOllamaChatRequest(chatRequest, false, NO_DOWNLOADS);
 
         assertThat(result.getTruncate())
                 .as("the field must be absent from the request so the server default applies")
@@ -121,7 +126,7 @@ class InternalOllamaHelperTest {
                 .build();
 
         String json =
-                OllamaJsonUtils.toJsonWithoutIdent(InternalOllamaHelper.toOllamaChatRequest(chatRequest, false));
+                OllamaJsonUtils.toJsonWithoutIdent(InternalOllamaHelper.toOllamaChatRequest(chatRequest, false, NO_DOWNLOADS));
 
         // truncate is a sibling of model and messages, not a member of options, which carries num_ctx.
         assertThat(json).contains("\"truncate\":false");
@@ -139,7 +144,7 @@ class InternalOllamaHelperTest {
                 .build();
 
         String json =
-                OllamaJsonUtils.toJsonWithoutIdent(InternalOllamaHelper.toOllamaChatRequest(chatRequest, false));
+                OllamaJsonUtils.toJsonWithoutIdent(InternalOllamaHelper.toOllamaChatRequest(chatRequest, false, NO_DOWNLOADS));
 
         assertThat(json).doesNotContain("truncate");
     }

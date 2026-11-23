@@ -1,62 +1,53 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.internal.Utils;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
+import dev.langchain4j.internal.MediaPrefetcher;
+import java.net.URI;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
+/**
+ * Every download of an image in this module goes through {@link #base64Image(Image, MediaFetcher)} or
+ * {@link #prefetch(MediaFetcher, List)}.
+ */
 @Internal
 class ImageUtils {
 
-    private static final List<String> SUPPORTED_URL_SCHEMES = Arrays.asList("http", "https", "file");
-
-    static List<String> base64EncodeImageList(List<ImageContent> contentList) {
+    static List<String> base64EncodeImageList(List<ImageContent> contentList, MediaFetcher mediaFetcher) {
         return contentList.stream()
                 .map(ImageContent::image)
-                .map(ImageUtils::base64Image)
+                .map(image -> base64Image(image, mediaFetcher))
                 .collect(Collectors.toList());
     }
 
-    static String base64Image(Image image) {
-
-        if (image.base64Data() != null && !image.base64Data().isEmpty()) {
+    static String base64Image(Image image, MediaFetcher mediaFetcher) {
+        if (!isNullOrEmpty(image.base64Data())) {
             return image.base64Data();
-        } else {
-            if (SUPPORTED_URL_SCHEMES.contains(image.url().getScheme())) {
-                return image.url().getScheme().startsWith("http") ? httpScheme(image) : fileScheme(image);
-            } else {
-                throw new UnsupportedFeatureException("Ollama integration only supports http/https and file urls. " +
-                        "Unsupported url scheme: " + image.url().getScheme());
+        }
+        return Base64.getEncoder().encodeToString(mediaFetcher.fetch(image.url()).bytes());
+    }
+
+    /**
+     * Downloads, with {@link MediaFetcher#fetchAsync(URI)}, the images that {@link #base64Image(Image, MediaFetcher)}
+     * would download.
+     *
+     * @return a future of a fetcher that returns the downloaded images; it never throws.
+     */
+    static CompletableFuture<MediaFetcher> prefetch(MediaFetcher mediaFetcher, List<Image> images) {
+        List<URI> urls = new ArrayList<>();
+        for (Image image : images) {
+            if (isNullOrEmpty(image.base64Data()) && image.url() != null) {
+                urls.add(image.url());
             }
         }
-    }
-
-    private static String httpScheme(Image image) {
-        byte[] imageBytes = Utils.readBytes(image.url().toString());
-        return Base64.getEncoder().encodeToString(imageBytes);
-    }
-
-    private static String fileScheme(Image image) {
-        byte[] fileBytes = readAllBytes(Paths.get(image.url()));
-        return Base64.getEncoder().encodeToString(fileBytes);
-
-    }
-
-    private static byte[] readAllBytes(Path path) {
-        try {
-            return Files.readAllBytes(path);
-        } catch (IOException e) {
-            throw new RuntimeException("Can't read file with path '%s'".formatted(path), e);
-        }
+        return MediaPrefetcher.prefetch(mediaFetcher, urls);
     }
 }

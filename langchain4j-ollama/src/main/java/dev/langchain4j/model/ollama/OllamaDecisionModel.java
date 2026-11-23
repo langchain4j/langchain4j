@@ -1,7 +1,7 @@
 package dev.langchain4j.model.ollama;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
-import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
 import static dev.langchain4j.internal.Utils.copy;
@@ -9,18 +9,26 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.media.DefaultMediaFetcher;
+import dev.langchain4j.data.media.MediaFetcher;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.CancellationChain;
+import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
 import dev.langchain4j.model.decision.request.DecisionRequest;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.ollama.spi.OllamaDecisionModelBuilderFactory;
+import java.net.URI;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
 /**
@@ -43,10 +51,10 @@ import org.slf4j.Logger;
  * each of them by its position, for example {@code [image 1]}. Images are numbered from 1 in the order they appear
  * in the input, across all fields.
  * <p>
- * Images given by an {@code http}, {@code https} or {@code file} URL are downloaded or read by this class, on the
- * calling thread (also for {@link #decideAsync(DecisionRequest)}), before the request is sent. Do not pass URLs that
- * come from untrusted sources, such as users or retrieved content: download and check them yourself, and pass the
- * image as base64 data.
+ * Ollama accepts images only as content, so images given by URL are downloaded before the request is sent, with the
+ * {@link OllamaDecisionModelBuilder#mediaFetcher(MediaFetcher) media fetcher}. By default, only {@code http} and
+ * {@code https} URLs of public hosts are downloaded, and local files are never read: to send a local file, read it
+ * when you create the content, for example with {@link ImageContent#from(Path, String)}.
  *
  * @since 1.23.0
  */
@@ -58,6 +66,7 @@ public class OllamaDecisionModel implements DecisionModel {
     private final Integer keepAlive;
     private final OllamaDecisionRequestParameters defaultRequestParameters;
     private final List<DecisionModelListener> listeners;
+    private final MediaFetcher mediaFetcher;
 
     public OllamaDecisionModel(OllamaDecisionModelBuilder builder) {
         this.client = OllamaClient.builder()
@@ -76,6 +85,7 @@ public class OllamaDecisionModel implements DecisionModel {
                 .customParameters(builder.customParameters)
                 .build();
         this.listeners = copy(builder.listeners);
+        this.mediaFetcher = getOrDefault(builder.mediaFetcher, MediaPrefetcher.defaultMediaFetcher());
     }
 
     public static OllamaDecisionModelBuilder builder() {
@@ -87,7 +97,7 @@ public class OllamaDecisionModel implements DecisionModel {
 
     @Override
     public DecisionResponse doDecide(DecisionRequest request) {
-        OllamaDecisionRequest ollamaRequest = OllamaDecisionMapper.toOllamaRequest(request, keepAlive);
+        OllamaDecisionRequest ollamaRequest = OllamaDecisionMapper.toOllamaRequest(request, keepAlive, mediaFetcher);
         OllamaDecisionResponse response = withRetryMappingExceptions(() -> client.decide(ollamaRequest), maxRetries);
         return OllamaDecisionMapper.toDecisionResponse(response, request);
     }
@@ -95,12 +105,24 @@ public class OllamaDecisionModel implements DecisionModel {
     @Override
     public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
         return failOnThrow(() -> {
-            OllamaDecisionRequest ollamaRequest = OllamaDecisionMapper.toOllamaRequest(request, keepAlive);
-            CompletableFuture<OllamaDecisionResponse> responseFuture =
-                    withRetryMappingExceptionsAsync(() -> client.decideAsync(ollamaRequest), maxRetries);
-            CompletableFuture<DecisionResponse> result =
-                    responseFuture.thenApply(response -> OllamaDecisionMapper.toDecisionResponse(response, request));
-            propagateCancellation(result, responseFuture);
+            OllamaDecisionMapper.ensureModelName(request);
+            CompletableFuture<DecisionResponse> result = new CompletableFuture<>();
+            CancellationChain chain = new CancellationChain(result);
+            chain.track(ImageUtils.prefetch(mediaFetcher, OllamaDecisionMapper.images(request.input())))
+                    .thenCompose(media -> {
+                        OllamaDecisionRequest ollamaRequest =
+                                OllamaDecisionMapper.toOllamaRequest(request, keepAlive, media);
+                        return chain.track(
+                                withRetryMappingExceptionsAsync(() -> client.decideAsync(ollamaRequest), maxRetries));
+                    })
+                    .thenApply(response -> OllamaDecisionMapper.toDecisionResponse(response, request))
+                    .whenComplete((response, error) -> {
+                        if (error != null) {
+                            result.completeExceptionally(unwrapCompletionException(error));
+                        } else {
+                            result.complete(response);
+                        }
+                    });
             return result;
         });
     }
@@ -134,6 +156,7 @@ public class OllamaDecisionModel implements DecisionModel {
         private Supplier<Map<String, String>> customHeadersSupplier;
         private Map<String, Object> customParameters;
         private List<DecisionModelListener> listeners;
+        private MediaFetcher mediaFetcher;
 
         public OllamaDecisionModelBuilder() {
             // This is public so it can be extended
@@ -259,6 +282,30 @@ public class OllamaDecisionModel implements DecisionModel {
 
         public OllamaDecisionModelBuilder listeners(DecisionModelListener... listeners) {
             return listeners(List.of(listeners));
+        }
+
+        /**
+         * Sets the {@link MediaFetcher} that downloads the images that the input refers to by URL, for example an
+         * {@link ImageContent} created with {@link ImageContent#from(URI)}. Ollama accepts images only as content, so
+         * they are downloaded before the request is sent.
+         * <p>
+         * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
+         * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To send
+         * a local file, read it when you create the content, for example with {@link ImageContent#from(Path, String)}.
+         * To download from your own servers, use a {@link DefaultMediaFetcher} that allows them, or your own
+         * {@link MediaFetcher}.
+         * <p>
+         * {@link OllamaDecisionModel#decideAsync(DecisionRequest)} downloads with {@link MediaFetcher#fetchAsync(URI)},
+         * so a fetcher used with it must implement it.
+         *
+         * @param mediaFetcher the fetcher, or {@code null} to use the default one
+         * @return {@code this}
+         * @since 1.25.0
+         */
+        @Experimental
+        public OllamaDecisionModelBuilder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {
+            this.mediaFetcher = mediaFetcher;
+            return this;
         }
 
         public OllamaDecisionModel build() {

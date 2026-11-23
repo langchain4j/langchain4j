@@ -604,7 +604,7 @@ class OllamaDecisionModelTest {
     }
 
     @Test
-    void should_read_images_from_file_urls(@TempDir Path tempDir) throws Exception {
+    void should_send_images_read_from_local_files(@TempDir Path tempDir) throws Exception {
 
         // given
         Path image = tempDir.resolve("photo.png");
@@ -617,7 +617,7 @@ class OllamaDecisionModelTest {
         // when
         model(httpClient)
                 .decide(DecisionRequest.builder()
-                        .inputContents(List.of(ImageContent.from(image.toUri())))
+                        .inputContents(List.of(ImageContent.from(image, "image/png")))
                         .question("damaged", YesNoQuestion.from("Is the phone damaged?"))
                         .build());
 

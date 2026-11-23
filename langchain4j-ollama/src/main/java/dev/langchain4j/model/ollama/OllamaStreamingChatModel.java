@@ -1,6 +1,11 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.ModelProvider.OLLAMA;
+import static dev.langchain4j.model.ollama.InternalOllamaHelper.images;
+import static dev.langchain4j.model.ollama.InternalOllamaHelper.toOllamaChatRequest;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.model.ModelProvider;
@@ -27,7 +32,18 @@ public class OllamaStreamingChatModel extends OllamaBaseChatModel implements Str
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         validate(chatRequest.parameters());
-        client.streamingChat(chatRequest, this.returnThinking, handler);
+        ensureNotEmpty(chatRequest.messages(), "messages");
+        ImageUtils.prefetch(mediaFetcher, images(chatRequest.messages())).whenComplete((media, error) -> {
+            if (error != null) {
+                withLoggingExceptions(() -> handler.onError(unwrapCompletionException(error)));
+                return;
+            }
+            try {
+                client.streamingChat(toOllamaChatRequest(chatRequest, true, media), this.returnThinking, handler);
+            } catch (Throwable e) {
+                withLoggingExceptions(() -> handler.onError(e));
+            }
+        });
     }
 
     @Override
