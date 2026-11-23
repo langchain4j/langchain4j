@@ -262,7 +262,8 @@ public final class DefaultMediaFetcher implements MediaFetcher {
         if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
             throw new InvalidRequestException("Only http and https URLs can be fetched, but got "
                     + (scheme == null ? "a URL without a scheme" : "a URL with the scheme '" + scheme + "'")
-                    + ". To send a local file, read it yourself, for example with ImageContent.from(Path, String)");
+                    + ". To send a local file, read it yourself with ImageContent.from(Path, String), "
+                    + "PdfFileContent.from(Path), AudioContent.from(Path, String) or VideoContent.from(Path, String)");
         }
         String host = url.getHost();
         if (host == null || host.isEmpty()) {

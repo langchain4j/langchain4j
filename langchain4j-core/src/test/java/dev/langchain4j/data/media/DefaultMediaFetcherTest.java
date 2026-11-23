@@ -150,7 +150,10 @@ class DefaultMediaFetcherTest {
         assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(URI.create(url))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageStartingWith("Only http and https URLs can be fetched")
-                .hasMessageContaining("ImageContent.from(Path, String)");
+                .hasMessageContaining("ImageContent.from(Path, String)")
+                .hasMessageContaining("PdfFileContent.from(Path)")
+                .hasMessageContaining("AudioContent.from(Path, String)")
+                .hasMessageContaining("VideoContent.from(Path, String)");
     }
 
     @ParameterizedTest
