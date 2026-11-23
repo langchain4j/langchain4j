@@ -24,8 +24,12 @@ import com.google.genai.types.SafetySetting;
 import com.google.genai.types.SpeechConfig;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.media.DefaultMediaFetcher;
+import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.internal.DefaultExecutorProvider;
+import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
@@ -41,6 +45,8 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import java.net.URI;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -87,6 +93,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
     private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
     private final Executor executor;
+    private final MediaFetcher mediaFetcher;
 
     private GoogleGenAiStreamingChatModel(Builder builder) {
         this.listeners = copy(builder.listeners);
@@ -152,14 +159,30 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
                 .build();
 
         this.executor = getOrDefault(builder.executor, DefaultExecutorProvider::getDefaultExecutor);
+        this.mediaFetcher = getOrDefault(builder.mediaFetcher, MediaPrefetcher::defaultMediaFetcher);
     }
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        GoogleGenAiContentMapper.prefetch(mediaFetcher, chatRequest.messages())
+                .whenComplete((prefetched, error) -> {
+                    if (error != null) {
+                        handler.onError(error);
+                        return;
+                    }
+                    try {
+                        stream(chatRequest, prefetched, handler);
+                    } catch (Throwable e) {
+                        handler.onError(e);
+                    }
+                });
+    }
+
+    private void stream(ChatRequest chatRequest, MediaFetcher prefetched, StreamingChatResponseHandler handler) {
         String modelName = chatRequest.modelName();
 
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(chatRequest.messages());
-        List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking);
+        List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking, prefetched);
 
         GoogleGenAiChatRequestParameters parameters = (GoogleGenAiChatRequestParameters) chatRequest.parameters();
 
@@ -428,6 +451,7 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         private List<String> responseModalities;
         private Boolean automaticContinuation;
         private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
+        private @Nullable MediaFetcher mediaFetcher;
 
         /**
          * Sets a pre-configured Google GenAI {@link Client}.
@@ -1016,6 +1040,31 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
          */
         public Builder automaticContinuation(Boolean automaticContinuation) {
             this.automaticContinuation = automaticContinuation;
+            return this;
+        }
+
+        /**
+         * Sets the {@link MediaFetcher} that downloads media given by a URL, for example an image created with
+         * {@link ImageContent#from(URI)}. Gemini receives images, audio, video and PDF files as content, so media
+         * given by a URL is downloaded before the request is sent. Cloud Storage URLs ({@code gs://...}) are not
+         * downloaded: they are passed on to Gemini.
+         * <p>
+         * When not set, a {@link DefaultMediaFetcher} with the default settings is used: it downloads only
+         * {@code http} and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local
+         * files. To send a local file, read it yourself, for example with {@link ImageContent#from(Path, String)}.
+         * To download media from your own servers, or to change the limits, configure a {@link DefaultMediaFetcher}
+         * and set it here.
+         * <p>
+         * This model downloads with {@link MediaFetcher#fetchAsync(URI)}, so that it does not block the calling
+         * thread. A custom fetcher that does not implement it fails, through
+         * {@link StreamingChatResponseHandler#onError(Throwable)}.
+         *
+         * @param mediaFetcher the fetcher that downloads media, or {@code null} to use the default one.
+         * @return {@code this}.
+         */
+        @Experimental
+        public Builder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {
+            this.mediaFetcher = mediaFetcher;
             return this;
         }
 

@@ -24,7 +24,11 @@ import com.google.genai.types.JobState.Known;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.SpeechConfig;
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.media.DefaultMediaFetcher;
+import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchPage;
 import dev.langchain4j.model.batch.BatchPagination;
@@ -35,6 +39,8 @@ import dev.langchain4j.model.chat.BatchChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import java.net.URI;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -80,6 +86,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
     private final List<String> responseModalities;
     private final ChatRequestParameters defaultRequestParameters;
     private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
+    private final MediaFetcher mediaFetcher;
 
     private GoogleGenAiBatchChatModel(Builder builder) {
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
@@ -103,6 +110,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         this.responseModalities = copy(builder.responseModalities);
         this.defaultRequestParameters = builder.defaultRequestParameters;
         this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
+        this.mediaFetcher = getOrDefault(builder.mediaFetcher, MediaPrefetcher::defaultMediaFetcher);
 
         this.client = builder.client != null
                 ? builder.client
@@ -206,7 +214,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
 
     private InlinedRequest createInlinedRequest(ChatRequest request) {
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(request.messages());
-        List<Content> contents = GoogleGenAiContentMapper.toContents(request.messages(), sendThinking);
+        List<Content> contents = GoogleGenAiContentMapper.toContents(request.messages(), sendThinking, mediaFetcher);
 
         ChatRequestParameters params = defaultRequestParameters != null
                 ? defaultRequestParameters.overrideWith(request.parameters())
@@ -312,6 +320,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         private SpeechConfig speechConfig;
         private List<String> responseModalities;
         private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
+        private @Nullable MediaFetcher mediaFetcher;
 
         public Builder client(Client client) {
             this.client = client;
@@ -534,6 +543,27 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         public Builder generateContentConfigCustomizer(
                 Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
             this.generateContentConfigCustomizer = generateContentConfigCustomizer;
+            return this;
+        }
+
+        /**
+         * Sets the {@link MediaFetcher} that downloads media given by a URL, for example an image created with
+         * {@link ImageContent#from(URI)}. Gemini receives images, audio, video and PDF files as content, so media
+         * given by a URL is downloaded when the batch is submitted. Cloud Storage URLs ({@code gs://...}) are not
+         * downloaded: they are passed on to Gemini.
+         * <p>
+         * When not set, a {@link DefaultMediaFetcher} with the default settings is used: it downloads only
+         * {@code http} and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local
+         * files. To send a local file, read it yourself, for example with {@link ImageContent#from(Path, String)}.
+         * To download media from your own servers, or to change the limits, configure a {@link DefaultMediaFetcher}
+         * and set it here.
+         *
+         * @param mediaFetcher the fetcher that downloads media, or {@code null} to use the default one.
+         * @return {@code this}.
+         */
+        @Experimental
+        public Builder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {
+            this.mediaFetcher = mediaFetcher;
             return this;
         }
 

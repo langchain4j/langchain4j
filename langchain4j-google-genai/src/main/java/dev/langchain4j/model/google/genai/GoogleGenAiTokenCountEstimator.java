@@ -13,12 +13,19 @@ import com.google.genai.types.CountTokensConfig;
 import com.google.genai.types.CountTokensResponse;
 import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.Tool;
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.media.DefaultMediaFetcher;
+import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.TokenCountEstimator;
+import java.net.URI;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -31,6 +38,7 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
     private final Client client;
     private final String modelName;
     private final Integer maxRetries;
+    private final MediaFetcher mediaFetcher;
 
     private GoogleGenAiTokenCountEstimator(Builder builder) {
         this.client = builder.client != null
@@ -46,6 +54,7 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
                         builder.apiVersion);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
+        this.mediaFetcher = getOrDefault(builder.mediaFetcher, MediaPrefetcher::defaultMediaFetcher);
     }
 
     public static Builder builder() {
@@ -67,7 +76,7 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
         List<ChatMessage> allMessages = new LinkedList<>();
         messages.forEach(allMessages::add);
 
-        List<Content> contents = GoogleGenAiContentMapper.toContents(allMessages);
+        List<Content> contents = GoogleGenAiContentMapper.toContents(allMessages, mediaFetcher);
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(allMessages);
 
         if (systemInstruction != null) {
@@ -130,6 +139,7 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
         private String apiEndpoint;
         private @Nullable String apiVersion;
         private Map<String, String> customHeaders;
+        private @Nullable MediaFetcher mediaFetcher;
 
         public Builder client(Client client) {
             this.client = client;
@@ -209,6 +219,27 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
 
         public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
+            return this;
+        }
+
+        /**
+         * Sets the {@link MediaFetcher} that downloads media given by a URL, for example an image created with
+         * {@link ImageContent#from(URI)}. Gemini receives images, audio, video and PDF files as content, so media
+         * given by a URL is downloaded before its tokens are counted. Cloud Storage URLs ({@code gs://...}) are not
+         * downloaded: they are passed on to Gemini.
+         * <p>
+         * When not set, a {@link DefaultMediaFetcher} with the default settings is used: it downloads only
+         * {@code http} and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local
+         * files. To send a local file, read it yourself, for example with {@link ImageContent#from(Path, String)}.
+         * To download media from your own servers, or to change the limits, configure a {@link DefaultMediaFetcher}
+         * and set it here.
+         *
+         * @param mediaFetcher the fetcher that downloads media, or {@code null} to use the default one.
+         * @return {@code this}.
+         */
+        @Experimental
+        public Builder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {
+            this.mediaFetcher = mediaFetcher;
             return this;
         }
 
