@@ -36,8 +36,11 @@ class MediaFetchRequestTest {
     }
 
     @Test
-    void should_show_the_url() {
-        assertThat(MediaFetchRequest.from(CAT))
-                .hasToString("MediaFetchRequest { url = \"https://example.com/cat.png\" }");
+    void should_show_only_scheme_and_host_of_the_url() {
+        assertThat(MediaFetchRequest.from(CAT)).hasToString("MediaFetchRequest { url = \"https://example.com/...\" }");
+        assertThat(MediaFetchRequest.from(URI.create("https://user:secret@example.com:8443/a/b.png?X-Token=abc")))
+                .hasToString("MediaFetchRequest { url = \"https://example.com:8443/...\" }");
+        assertThat(MediaFetchRequest.from(URI.create("data:image/png;base64,AAAA")))
+                .hasToString("MediaFetchRequest { url = \"data:...\" }");
     }
 }

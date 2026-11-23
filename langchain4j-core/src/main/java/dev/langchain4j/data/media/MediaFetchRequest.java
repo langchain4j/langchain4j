@@ -58,8 +58,21 @@ public final class MediaFetchRequest {
         return url.hashCode();
     }
 
+    /**
+     * Shows the scheme and the host of the URL only. The path and the query are left out, because they can contain
+     * credentials, for example in a presigned URL.
+     */
     @Override
     public String toString() {
-        return "MediaFetchRequest { url = " + quoted(url) + " }";
+        return "MediaFetchRequest { url = " + quoted(withoutPathAndQuery(url)) + " }";
+    }
+
+    private static String withoutPathAndQuery(URI url) {
+        String scheme = url.getScheme() == null ? "" : url.getScheme() + ":";
+        if (url.getHost() == null) {
+            return scheme + "...";
+        }
+        String port = url.getPort() == -1 ? "" : ":" + url.getPort();
+        return scheme + "//" + url.getHost() + port + "/...";
     }
 }
