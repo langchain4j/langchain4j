@@ -13,8 +13,13 @@ import static dev.langchain4j.model.googleai.SchemaMapper.canBeMapped;
 import static dev.langchain4j.model.googleai.SchemaMapper.fromJsonSchemaToGSchema;
 import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
+import dev.langchain4j.Experimental;
+import dev.langchain4j.data.media.DefaultMediaFetcher;
+import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -30,12 +35,14 @@ import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiCandid
 import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import java.net.URI;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
 class BaseGeminiChatModel {
@@ -58,6 +65,7 @@ class BaseGeminiChatModel {
     protected final Boolean enableEnhancedCivicAnswers;
     protected final GeminiMediaResolutionLevel mediaResolution;
     protected final boolean mediaResolutionPerPartEnabled;
+    final MediaFetcher mediaFetcher;
 
     protected final GoogleAiGeminiChatRequestParameters defaultRequestParameters;
 
@@ -82,6 +90,7 @@ class BaseGeminiChatModel {
         this.logprobs = builder.logprobs;
         this.mediaResolution = builder.mediaResolution;
         this.mediaResolutionPerPartEnabled = getOrDefault(builder.mediaResolutionPerPartEnabled, false);
+        this.mediaFetcher = getOrDefault(builder.mediaFetcher, MediaPrefetcher::defaultMediaFetcher);
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -129,13 +138,17 @@ class BaseGeminiChatModel {
     }
 
     protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
+        return createGenerateContentRequest(chatRequest, mediaFetcher);
+    }
+
+    GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest, MediaFetcher mediaFetcher) {
         GoogleAiGeminiChatRequestParameters parameters = (GoogleAiGeminiChatRequestParameters) chatRequest.parameters();
         GeminiGenerationConfig.GeminiImageConfig effectiveImageConfig =
                 buildImageConfig(parameters.aspectRatio(), parameters.imageSize());
 
         GeminiContent systemInstruction = new GeminiContent(List.of(), GeminiRole.MODEL.toString());
         List<GeminiContent> geminiContentList = fromMessageToGContent(
-                chatRequest.messages(), systemInstruction, sendThinking, mediaResolutionPerPartEnabled);
+                chatRequest.messages(), systemInstruction, sendThinking, mediaResolutionPerPartEnabled, mediaFetcher);
 
         ResponseFormat responseFormat = chatRequest.responseFormat();
         GeminiSchema schema = null;
@@ -398,6 +411,7 @@ class BaseGeminiChatModel {
         protected String imageSize;
         protected String cachedContentName;
         protected Supplier<Map<String, String>> customHeadersSupplier;
+        @Nullable MediaFetcher mediaFetcher;
 
         @SuppressWarnings("unchecked")
         protected B builder() {
@@ -829,6 +843,32 @@ class BaseGeminiChatModel {
 
         public B customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
             this.customHeadersSupplier = customHeadersSupplier;
+            return builder();
+        }
+
+        /**
+         * Sets the {@link MediaFetcher} that downloads images given by an {@code http} or {@code https} URL, for
+         * example with {@link ImageContent#from(URI)}. Gemini receives such images as content, so they are
+         * downloaded before the request is sent. Other media URLs (of audio, video and PDF files, and image URLs with
+         * another scheme) are passed on to Gemini as they are, and are not downloaded.
+         * <p>
+         * When not set, a {@link DefaultMediaFetcher} with the default settings is used: it downloads only from
+         * public hosts, with a timeout and a size limit, and never reads local files. To download images from your
+         * own servers, or to change the limits, configure a {@link DefaultMediaFetcher} and set it here:
+         * <pre>{@code
+         * MediaFetcher mediaFetcher = DefaultMediaFetcher.builder()
+         *         .allowNonPublicHosts("images.internal.example.com")
+         *         .build();
+         * }</pre>
+         * {@link GoogleAiGeminiStreamingChatModel} downloads with {@link MediaFetcher#fetchAsync(URI)}, so that it
+         * does not block the calling thread. A custom fetcher that does not implement it fails there.
+         *
+         * @param mediaFetcher the fetcher that downloads images, or {@code null} to use the default one.
+         * @return {@code this}.
+         */
+        @Experimental
+        public B mediaFetcher(@Nullable MediaFetcher mediaFetcher) {
+            this.mediaFetcher = mediaFetcher;
             return builder();
         }
     }

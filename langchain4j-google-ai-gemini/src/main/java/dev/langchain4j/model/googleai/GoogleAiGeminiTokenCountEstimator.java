@@ -6,16 +6,23 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageToGContent;
 import static java.util.Collections.singletonList;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.media.DefaultMediaFetcher;
+import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.TokenCountEstimator;
+import java.net.URI;
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
 public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
@@ -23,6 +30,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
     private final GeminiService geminiService;
     private final String modelName;
     private final Integer maxRetries;
+    private final MediaFetcher mediaFetcher;
 
     public GoogleAiGeminiTokenCountEstimator(Builder builder) {
         this.geminiService = new GeminiService(
@@ -37,6 +45,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
                 null);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
+        this.mediaFetcher = getOrDefault(builder.mediaFetcher, MediaPrefetcher::defaultMediaFetcher);
     }
 
     public static Builder builder() {
@@ -65,7 +74,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
         List<ChatMessage> allMessages = new LinkedList<>();
         messages.forEach(allMessages::add);
 
-        List<GeminiContent> geminiContentList = fromMessageToGContent(allMessages, null, false);
+        List<GeminiContent> geminiContentList = fromMessageToGContent(allMessages, null, false, mediaFetcher);
         GeminiCountTokensRequest countTokensRequest = new GeminiCountTokensRequest(geminiContentList, null);
 
         return estimateTokenCount(countTokensRequest);
@@ -115,6 +124,7 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
         private Logger logger;
         private Duration timeout;
         private Integer maxRetries;
+        private @Nullable MediaFetcher mediaFetcher;
 
         Builder() {}
 
@@ -169,6 +179,24 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
 
         public Builder maxRetries(Integer maxRetries) {
             this.maxRetries = maxRetries;
+            return this;
+        }
+
+        /**
+         * Sets the {@link MediaFetcher} that downloads images given by an {@code http} or {@code https} URL, for
+         * example with {@link ImageContent#from(URI)}. Gemini receives such images as content, so they are
+         * downloaded before their tokens are counted. Other media URLs are passed on to Gemini as they are.
+         * <p>
+         * When not set, a {@link DefaultMediaFetcher} with the default settings is used: it downloads only from
+         * public hosts, with a timeout and a size limit, and never reads local files. To download images from your
+         * own servers, or to change the limits, configure a {@link DefaultMediaFetcher} and set it here.
+         *
+         * @param mediaFetcher the fetcher that downloads images, or {@code null} to use the default one.
+         * @return {@code this}.
+         */
+        @Experimental
+        public Builder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {
+            this.mediaFetcher = mediaFetcher;
             return this;
         }
 

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -9,9 +10,15 @@ import static dev.langchain4j.model.googleai.PartsAndContentsMapper.fromMessageT
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.Experimental;
+import dev.langchain4j.data.media.DefaultMediaFetcher;
+import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.http.client.HttpClientBuilder;
+import dev.langchain4j.internal.MediaPrefetcher;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -36,6 +43,7 @@ import org.slf4j.Logger;
 public final class GeminiCaches {
 
     private final GeminiService geminiService;
+    private final MediaFetcher mediaFetcher;
 
     private GeminiCaches(Builder builder) {
         this.geminiService = new GeminiService(
@@ -48,6 +56,7 @@ public final class GeminiCaches {
                 builder.logger,
                 builder.timeout,
                 builder.customHeadersSupplier);
+        this.mediaFetcher = getOrDefault(builder.mediaFetcher, MediaPrefetcher::defaultMediaFetcher);
     }
 
     public static Builder builder() {
@@ -136,10 +145,10 @@ public final class GeminiCaches {
         geminiService.deleteCachedContent(name);
     }
 
-    private static GeminiCreateCachedContentRequest toCreateRequest(
+    private GeminiCreateCachedContentRequest toCreateRequest(
             String modelName, List<ChatMessage> messages, @Nullable String ttl, @Nullable String expireTime) {
         GeminiContent systemInstruction = new GeminiContent(List.of(), GeminiRole.MODEL.toString());
-        List<GeminiContent> contents = fromMessageToGContent(messages, systemInstruction, false);
+        List<GeminiContent> contents = fromMessageToGContent(messages, systemInstruction, false, mediaFetcher);
         return new GeminiCreateCachedContentRequest(
                 modelName.startsWith("models/") ? modelName : "models/" + modelName,
                 contents.isEmpty() ? null : contents,
@@ -208,6 +217,7 @@ public final class GeminiCaches {
         private Logger logger;
         private Duration timeout;
         private Supplier<Map<String, String>> customHeadersSupplier;
+        private @Nullable MediaFetcher mediaFetcher;
 
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
@@ -256,6 +266,24 @@ public final class GeminiCaches {
 
         public Builder customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
             this.customHeadersSupplier = customHeadersSupplier;
+            return this;
+        }
+
+        /**
+         * Sets the {@link MediaFetcher} that downloads images given by an {@code http} or {@code https} URL, for
+         * example with {@link ImageContent#from(URI)}. Gemini receives such images as content, so they are
+         * downloaded before the cache is created. Other media URLs are passed on to Gemini as they are.
+         * <p>
+         * When not set, a {@link DefaultMediaFetcher} with the default settings is used: it downloads only from
+         * public hosts, with a timeout and a size limit, and never reads local files. To download images from your
+         * own servers, or to change the limits, configure a {@link DefaultMediaFetcher} and set it here.
+         *
+         * @param mediaFetcher the fetcher that downloads images, or {@code null} to use the default one.
+         * @return {@code this}.
+         */
+        @Experimental
+        public Builder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {
+            this.mediaFetcher = mediaFetcher;
             return this;
         }
 

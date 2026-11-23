@@ -1,6 +1,7 @@
 package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
+import static dev.langchain4j.model.googleai.PartsAndContentsMapper.prefetch;
 
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -30,9 +31,19 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
     @Override
     public void doChat(ChatRequest request, StreamingChatResponseHandler handler) {
-        GeminiGenerateContentRequest geminiRequest = createGenerateContentRequest(request);
-        geminiService.generateContentStream(
-                request.modelName(), geminiRequest, includeCodeExecutionOutput, returnThinking, handler);
+        prefetch(mediaFetcher, request.messages()).whenComplete((prefetched, error) -> {
+            if (error != null) {
+                handler.onError(error);
+                return;
+            }
+            try {
+                GeminiGenerateContentRequest geminiRequest = createGenerateContentRequest(request, prefetched);
+                geminiService.generateContentStream(
+                        request.modelName(), geminiRequest, includeCodeExecutionOutput, returnThinking, handler);
+            } catch (Throwable e) {
+                handler.onError(e);
+            }
+        });
     }
 
     @Override
