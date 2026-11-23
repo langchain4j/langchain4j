@@ -73,6 +73,7 @@ import org.a2aproject.sdk.client.http.A2AHttpClientConfiguration;
 import org.a2aproject.sdk.client.http.A2AHttpClientFactory;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
+import org.a2aproject.sdk.client.transport.spi.interceptors.ClientCallContext;
 import org.a2aproject.sdk.spec.A2AClientError;
 import org.a2aproject.sdk.spec.A2AClientException;
 import org.a2aproject.sdk.spec.AgentCard;
@@ -114,7 +115,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private volatile Client a2aClient;
     private Consumer<ClientBuilder> clientCustomizer;
     private Supplier<Map<String, String>> agentCardHeaders;
-    private final Collection<A2AClientConfigurer> configurers = ServiceHelper.loadFactories(A2AClientConfigurer.class);
+    private final Collection<A2AClientConfigurator> configurators =
+            ServiceHelper.loadFactories(A2AClientConfigurator.class);
 
     private String name;
     private String agentId;
@@ -198,9 +200,10 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     private Map<String, String> cardHeaders() {
+        A2AClientContext context = context(tenant, null);
         Map<String, String> headers = new HashMap<>();
-        for (A2AClientConfigurer configurer : configurers) {
-            Map<String, String> configured = configurer.agentCardHeaders(a2aServerUrl);
+        for (A2AClientConfigurator configurator : configurators) {
+            Map<String, String> configured = configurator.agentCardHeaders(context);
             if (configured != null) {
                 headers.putAll(configured);
             }
@@ -211,6 +214,29 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             headers.putAll(ownHeaders);
         }
         return headers.isEmpty() ? null : headers;
+    }
+
+    /**
+     * The headers of the configurators for one message, sent with the call so that every transport adds them and a
+     * client customizer cannot remove them.
+     */
+    private ClientCallContext callContext(String callTenant) {
+        if (configurators.isEmpty()) {
+            return null;
+        }
+        A2AClientContext context = context(callTenant, resolveAgentCard());
+        Map<String, String> headers = new HashMap<>();
+        for (A2AClientConfigurator configurator : configurators) {
+            Map<String, String> configured = configurator.messageHeaders(context);
+            if (configured != null) {
+                headers.putAll(configured);
+            }
+        }
+        return headers.isEmpty() ? null : new ClientCallContext(new HashMap<>(), headers);
+    }
+
+    private A2AClientContext context(String contextTenant, AgentCard card) {
+        return new A2AClientContext(a2aServerUrl, contextTenant, name(), agentServiceClass, card);
     }
 
     private String describeCard() {
@@ -273,8 +299,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
             if (clientCustomizer == null) {
                 cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder());
             }
-            for (A2AClientConfigurer configurer : configurers) {
-                configurer.customize(a2aServerUrl, card, cb);
+            A2AClientContext context = context(tenant, card);
+            for (A2AClientConfigurator configurator : configurators) {
+                configurator.customize(context, cb);
             }
             if (clientCustomizer != null) {
                 clientCustomizer.accept(cb);
@@ -501,6 +528,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                 getEventConsumers(responseContextId, openTaskId, messageResponse);
         Consumer<Throwable> streamingErrorHandler = error -> handleStreamEnd(error, messageResponse);
         Client client = client();
+        ClientCallContext callContext = callContext(callTenant);
         if (callTenant != null) {
             client.sendMessage(
                     MessageSendParams.builder()
@@ -509,9 +537,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                             .build(),
                     consumers,
                     streamingErrorHandler,
-                    null);
+                    callContext);
         } else {
-            client.sendMessage(message, consumers, streamingErrorHandler, null);
+            client.sendMessage(message, consumers, streamingErrorHandler, callContext);
         }
 
         try {

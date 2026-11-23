@@ -4381,31 +4381,38 @@ apply only to card discovery; configure authentication for A2A messages separate
 ### Configuring every A2A client
 
 To apply the same configuration to all the A2A client agents of an application, including declarative ones, implement
-`A2AClientConfigurer` and register it with the `ServiceLoader`, in
-`META-INF/services/dev.langchain4j.agentic.a2a.A2AClientConfigurer`. This lets a framework, for example, add
+`A2AClientConfigurator` and register it with the `ServiceLoader`, in
+`META-INF/services/dev.langchain4j.agentic.a2a.A2AClientConfigurator`. This lets a framework, for example, add
 credentials to the card request and to the A2A messages of every agent:
 
 ```java
-public class AuthenticatingConfigurer implements A2AClientConfigurer {
+public class AuthenticatingConfigurator implements A2AClientConfigurator {
 
     private final TokenSource tokens = TokenSource.create(); // your application's tokens
 
     @Override
-    public Map<String, String> agentCardHeaders(String a2aServerUrl) {
-        return Map.of("Authorization", "Bearer " + tokens.tokenFor(a2aServerUrl));
+    public Map<String, String> agentCardHeaders(A2AClientContext context) {
+        return Map.of("Authorization", "Bearer " + tokens.tokenFor(context.a2aServerUrl()));
     }
 
     @Override
-    public void customize(String a2aServerUrl, AgentCard agentCard, ClientBuilder clientBuilder) {
-        clientBuilder.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder()
-                .addInterceptor(new BearerTokenInterceptor(tokens, agentCard.name())));
+    public Map<String, String> messageHeaders(A2AClientContext context) {
+        return Map.of("Authorization", "Bearer " + tokens.tokenFor(context.agentCard().name()));
     }
 }
 ```
 
-`agentCardHeaders` is called each time the card is fetched; the agent's own `agentCardHeaders` take precedence over
-it. `customize` receives the agent's Agent Card, so credentials can be chosen per agent. It runs before the agent's own client customizer, so a customizer that configures the same transport
-replaces what the configurer set.
+`agentCardHeaders` is called each time the card is fetched, and `messageHeaders` for every message, so both can return
+a refreshed token. The `A2AClientContext` describes the agent: the URL it was built with, the tenant, the name of the
+local agent, its interface, and, for messages, the remote Agent Card, so credentials can be chosen per agent.
+
+Message headers are sent with each call, so they apply to every transport and an agent's own client customizer cannot
+remove them. When several configurators return the same header, the one found later wins; the agent's own
+`agentCardHeaders` take precedence over all of them.
+
+For anything headers cannot do, `customize(A2AClientContext, ClientBuilder)` receives the A2A SDK client builder before
+the agent's own client customizer. Note that `ClientBuilder.withTransport` replaces the configuration of a transport, so
+a customizer that configures the same transport replaces what was set there.
 
 ### Streaming A2A Client Listener
 
