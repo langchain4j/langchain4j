@@ -1,6 +1,7 @@
 package dev.langchain4j.agentic.internal;
 
 import dev.langchain4j.agentic.agent.MissingArgumentException;
+import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.Map;
 
@@ -20,12 +21,22 @@ public class MapperAgentInvoker extends AbstractAgentInvoker {
     public MapperAgentInvoker(AgentInvoker delegate, Object item, int instanceIndex, String outputKeyPrefix) {
         super(delegate.method(), delegate);
         this.item = item;
-        this.injectionKey = delegate.arguments().isEmpty()
-                ? null
-                : delegate.arguments().get(0).name();
+        this.injectionKey = itemArgumentName(delegate);
         this.instanceName = delegate.name() + "_" + instanceIndex;
         this.instanceAgentId = delegate.agentId() + "_" + instanceIndex;
         this.instanceOutputKey = outputKeyPrefix + "_" + instanceIndex;
+    }
+
+    /**
+     * The item is passed to the first argument of the subagent that is not provided by the framework, like its
+     * {@link AgenticScope} or its memory id, whose names start with {@code @}, so that such an argument can come first.
+     */
+    private static String itemArgumentName(AgentInvoker delegate) {
+        return delegate.arguments().stream()
+                .map(AgentArgument::name)
+                .filter(name -> !name.startsWith("@"))
+                .findFirst()
+                .orElse(null);
     }
 
     @Override
