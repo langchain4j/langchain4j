@@ -26,6 +26,9 @@ public class MistralAiChatRequestParameters extends DefaultChatRequestParameters
     private final Integer randomSeed;
     private final Boolean sendThinking;
     private final Boolean returnThinking;
+    private final String serviceTier;
+    private final String reasoningEffort;
+    private final String promptCacheKey;
 
     private MistralAiChatRequestParameters(Builder builder) {
         super(builder);
@@ -33,6 +36,9 @@ public class MistralAiChatRequestParameters extends DefaultChatRequestParameters
         this.randomSeed = builder.randomSeed;
         this.sendThinking = builder.sendThinking;
         this.returnThinking = builder.returnThinking;
+        this.serviceTier = builder.serviceTier;
+        this.reasoningEffort = builder.reasoningEffort;
+        this.promptCacheKey = builder.promptCacheKey;
     }
 
     /**
@@ -64,6 +70,27 @@ public class MistralAiChatRequestParameters extends DefaultChatRequestParameters
         return returnThinking;
     }
 
+    /**
+     * @return the service tier to use for the request.
+     */
+    public String serviceTier() {
+        return serviceTier;
+    }
+
+    /**
+     * @return the level of reasoning to use for the request.
+     */
+    public String reasoningEffort() {
+        return reasoningEffort;
+    }
+
+    /**
+     * @return the cache key used for prompt caching.
+     */
+    public String promptCacheKey() {
+        return promptCacheKey;
+    }
+
     @Override
     public MistralAiChatRequestParameters overrideWith(ChatRequestParameters that) {
         return MistralAiChatRequestParameters.builder()
@@ -89,12 +116,13 @@ public class MistralAiChatRequestParameters extends DefaultChatRequestParameters
         return Objects.equals(safePrompt, that.safePrompt)
                 && Objects.equals(randomSeed, that.randomSeed)
                 && Objects.equals(sendThinking, that.sendThinking)
-                && Objects.equals(returnThinking, that.returnThinking);
+                && Objects.equals(returnThinking, that.returnThinking)
+                && Objects.equals(promptCacheKey, that.promptCacheKey);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(super.hashCode(), safePrompt, randomSeed, sendThinking, returnThinking);
+        return Objects.hash(super.hashCode(), safePrompt, randomSeed, sendThinking, returnThinking, promptCacheKey);
     }
 
     @Override
@@ -114,7 +142,8 @@ public class MistralAiChatRequestParameters extends DefaultChatRequestParameters
                 + safePrompt + ", randomSeed="
                 + randomSeed + ", sendThinking="
                 + sendThinking + ", returnThinking="
-                + returnThinking + '}';
+                + returnThinking + ", promptCacheKey="
+                + promptCacheKey + '}';
     }
 
     public Builder toBuilder() {
@@ -131,6 +160,9 @@ public class MistralAiChatRequestParameters extends DefaultChatRequestParameters
         private Integer randomSeed;
         private Boolean sendThinking;
         private Boolean returnThinking;
+        private String serviceTier;
+        private String reasoningEffort;
+        private String promptCacheKey;
 
         @Override
         public Builder overrideWith(ChatRequestParameters parameters) {
@@ -140,6 +172,9 @@ public class MistralAiChatRequestParameters extends DefaultChatRequestParameters
                 randomSeed(getOrDefault(mistralParameters.randomSeed(), randomSeed));
                 sendThinking(getOrDefault(mistralParameters.sendThinking(), sendThinking));
                 returnThinking(getOrDefault(mistralParameters.returnThinking(), returnThinking));
+                promptCacheKey(getOrDefault(mistralParameters.promptCacheKey(), promptCacheKey));
+                reasoningEffort(getOrDefault(mistralParameters.reasoningEffort(), reasoningEffort));
+                serviceTier(getOrDefault(mistralParameters.serviceTier(), serviceTier));
             }
             return this;
         }
@@ -181,6 +216,33 @@ public class MistralAiChatRequestParameters extends DefaultChatRequestParameters
          */
         public Builder returnThinking(Boolean returnThinking) {
             this.returnThinking = returnThinking;
+            return this;
+        }
+
+        /**
+         * @param serviceTier whether to serve the request using priority or standard capacity.
+         * @return {@code this}.
+         */
+        public Builder serviceTier(String serviceTier) {
+            this.serviceTier = serviceTier;
+            return this;
+        }
+
+        /**
+         * @param reasoningEffort the level of reasoning to use for the request.
+         * @return {@code this}.
+         */
+        public Builder reasoningEffort(String reasoningEffort) {
+            this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        /**
+         * @param promptCacheKey the cache key used for prompt caching.
+         * @return {@code this}.
+         */
+        public Builder promptCacheKey(String promptCacheKey) {
+            this.promptCacheKey = promptCacheKey;
             return this;
         }
 
