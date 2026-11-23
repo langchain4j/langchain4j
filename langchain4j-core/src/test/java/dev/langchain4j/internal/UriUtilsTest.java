@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.net.URI;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -111,6 +112,44 @@ class UriUtilsTest {
         URI result = UriUtils.createUriSafely(uriWithUnreserved);
 
         assertThat(result).hasToString(uriWithUnreserved);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "https://example.com/files/manual[1].pdf, https://example.com/files/manual%5B1%5D.pdf",
+        "https://example.com/search?filter[name]=a b, https://example.com/search?filter%5Bname%5D=a%20b",
+        "https://example.com/page[1]#section[2], https://example.com/page%5B1%5D#section%5B2%5D",
+        "http://[::1]:8080/a[1], http://[::1]:8080/a%5B1%5D",
+        "https://example.com/files/manual%5B1%5D[2].pdf, https://example.com/files/manual%5B1%5D%5B2%5D.pdf"
+    })
+    void createUriSafely_withBracketsOutsideHost_encodesBrackets(String input, String expected) {
+        URI result = UriUtils.createUriSafely(input);
+
+        assertThat(result).hasToString(expected);
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "http://[::1]:8080/path",
+                "https://example.com/files/manual%5B1%5D.pdf",
+                "https://example.com/search?filter[name]=a#section[2]"
+            })
+    void createUriSafely_withValidBracketsOrEncodedBrackets_returnsUnchanged(String validUri) {
+        URI result = UriUtils.createUriSafely(validUri);
+
+        assertThat(result).hasToString(validUri);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "https://example.com/a#b#c, https://example.com/a#b%23c",
+        "https://example.com/a b#c#d#e, https://example.com/a%20b#c%23d%23e"
+    })
+    void createUriSafely_withMultipleHashes_encodesAllButFirst(String input, String expected) {
+        URI result = UriUtils.createUriSafely(input);
+
+        assertThat(result).hasToString(expected);
     }
 
     @Test
