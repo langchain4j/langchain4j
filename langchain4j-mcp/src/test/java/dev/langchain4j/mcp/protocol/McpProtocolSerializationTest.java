@@ -30,6 +30,21 @@ class McpProtocolSerializationTest {
     }
 
     @Test
+    void should_deserialize_error_response_with_error_code_exceeding_int_range() {
+        // given: a vendor error code above Integer.MAX_VALUE (see #7246,
+        // e.g. 10990201005 from Volcengine Ark moderation)
+        String json = "{\"jsonrpc\": \"2.0\", \"id\": 1, "
+                + "\"error\": {\"code\": 10990201005, \"message\": \"Moderation failed\"}}";
+
+        // when
+        McpErrorResponse response = McpJson.deserialize(json, McpErrorResponse.class);
+
+        // then
+        assertThat(response.getError().getCode()).isEqualTo(10990201005L);
+        assertThat(response.getError().getMessage()).isEqualTo("Moderation failed");
+    }
+
+    @Test
     void should_serialize_call_tool_result_omitting_null_fields() throws Exception {
         // given
         McpCallToolResult response = new McpCallToolResult(
