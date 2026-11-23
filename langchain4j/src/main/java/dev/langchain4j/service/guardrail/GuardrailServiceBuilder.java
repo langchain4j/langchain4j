@@ -189,7 +189,8 @@ final class GuardrailServiceBuilder implements Builder {
             }
         });
 
-        return new DefaultGuardrailService(this.aiServiceClass, inputGuardrailsByMethod, outputGuardrailsByMethod);
+        return new DefaultGuardrailService(
+                this.aiServiceClass, inputGuardrailsByMethod, outputGuardrailsByMethod, factory::resolveMethodKey);
     }
 
     private static <P extends GuardrailRequest, R extends GuardrailResult<R>, G extends Guardrail<P, R>>
