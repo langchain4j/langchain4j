@@ -28,11 +28,17 @@ public interface MetadataStorageConfig {
      */
     List<String> columnDefinitions();
     /**
-     * Metadata Indexes, list of fields to use as index.
+     * Metadata Indexes, list of fields to use as index. These values are trusted
+     * developer-provided SQL fragments used by automatic metadata index creation:
+     * <ul>
+     * <li>COMBINED_JSON: indexes are not supported
+     * <li>COMBINED_JSONB: column or expression fragments such as <code>metadata</code>,
+     * <code>metadata jsonb_path_ops</code>, or <code>(metadata-&gt;'key')</code>
+     * <li>COLUMN_PER_KEY: column fragments such as <code>key</code>, <code>name</code>, or
+     * <code>age</code>
+     * </ul>
      * Example:
      * <ul>
-     * <li>COMBINED_JSON: <code>Collections.singletonList("metadata")</code> or
-     * <code>Arrays.asList("(metadata-&gt;'key')", "(metadata-&gt;'name')", "(metadata-&gt;'age')")</code>
      * <li>COMBINED_JSONB: <code>Collections.singletonList("metadata")</code> or
      * <code>Arrays.asList("(metadata-&gt;'key')", "(metadata-&gt;'name')", "(metadata-&gt;'age')")</code>
      * <li>COLUMN_PER_KEY: <code>Arrays.asList("key", "name", "age")</code>
@@ -45,8 +51,14 @@ public interface MetadataStorageConfig {
      * <ul>
      * <li>BTREE (default)
      * <li>GIN
-     * <li>... postgres indexes
+     * <li>HASH
+     * <li>GIST
+     * <li>BRIN
+     * <li>SPGIST
      * </ul>
+     * For automatic metadata index creation, values are validated against this allow-list
+     * of PostgreSQL index access methods. Other metadata storage configuration values are
+     * trusted developer-provided SQL fragments.
      * @return Index Type
      */
     String indexType();
