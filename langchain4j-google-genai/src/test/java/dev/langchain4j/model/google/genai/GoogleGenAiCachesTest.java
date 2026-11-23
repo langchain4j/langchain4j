@@ -13,8 +13,8 @@ import org.junit.jupiter.api.Test;
 
 class GoogleGenAiCachesTest {
 
-    private static final MediaFetcher NO_DOWNLOADS = url -> {
-        throw new AssertionError("Unexpected download of " + url);
+    private static final MediaFetcher NO_DOWNLOADS = request -> {
+        throw new AssertionError("Unexpected download of " + request.url());
     };
 
     @Test

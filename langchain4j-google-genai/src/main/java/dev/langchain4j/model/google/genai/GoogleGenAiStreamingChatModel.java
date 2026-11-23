@@ -25,6 +25,7 @@ import com.google.genai.types.SpeechConfig;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.media.DefaultMediaFetcher;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
@@ -1055,8 +1056,8 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
          * To download media from your own servers, or to change the limits, configure a {@link DefaultMediaFetcher}
          * and set it here.
          * <p>
-         * This model downloads with {@link MediaFetcher#fetchAsync(URI)}, so that it does not block the calling
-         * thread. A custom fetcher that does not implement it fails, through
+         * This model downloads with {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, so that it does not block the
+         * calling thread. A custom fetcher that does not implement it fails, through
          * {@link StreamingChatResponseHandler#onError(Throwable)}.
          *
          * @param mediaFetcher the fetcher that downloads media, or {@code null} to use the default one.

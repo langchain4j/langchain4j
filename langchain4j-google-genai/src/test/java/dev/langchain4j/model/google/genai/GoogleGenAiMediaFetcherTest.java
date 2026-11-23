@@ -21,6 +21,7 @@ import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.Part;
 import dev.langchain4j.data.media.FetchedMedia;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
@@ -156,7 +157,7 @@ class GoogleGenAiMediaFetcherTest {
     @Test
     void chatAsync_fails_through_the_future_when_media_fetcher_does_not_implement_fetchAsync() throws Exception {
         AsyncModels asyncModels = mock(AsyncModels.class);
-        MediaFetcher syncOnlyMediaFetcher = url -> FetchedMedia.from(IMAGE_BYTES, "image/png");
+        MediaFetcher syncOnlyMediaFetcher = request -> FetchedMedia.from(IMAGE_BYTES, "image/png");
         GoogleGenAiChatModel model = GoogleGenAiChatModel.builder()
                 .client(clientWith(asyncModels))
                 .modelName(MODEL_NAME)
@@ -216,7 +217,7 @@ class GoogleGenAiMediaFetcherTest {
     void streaming_chat_model_fails_through_onError_when_media_fetcher_does_not_implement_fetchAsync()
             throws Exception {
         Models models = streamingModels();
-        MediaFetcher syncOnlyMediaFetcher = url -> FetchedMedia.from(IMAGE_BYTES, "image/png");
+        MediaFetcher syncOnlyMediaFetcher = request -> FetchedMedia.from(IMAGE_BYTES, "image/png");
         GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
                 .client(clientWith(models))
                 .modelName(MODEL_NAME)
@@ -237,8 +238,8 @@ class GoogleGenAiMediaFetcherTest {
     @Test
     void streaming_chat_model_without_media_urls_does_not_use_media_fetcher() throws Exception {
         Models models = streamingModels();
-        MediaFetcher syncOnlyMediaFetcher = url -> {
-            throw new AssertionError("Unexpected download of " + url);
+        MediaFetcher syncOnlyMediaFetcher = request -> {
+            throw new AssertionError("Unexpected download of " + request.url());
         };
         GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
                 .client(clientWith(models))
@@ -260,8 +261,8 @@ class GoogleGenAiMediaFetcherTest {
         GoogleGenAiBatchChatModel model = GoogleGenAiBatchChatModel.builder()
                 .apiKey("does not matter")
                 .modelName(MODEL_NAME)
-                .mediaFetcher(url -> {
-                    fetched.add(url);
+                .mediaFetcher(request -> {
+                    fetched.add(request.url());
                     throw stop;
                 })
                 .build();
@@ -278,8 +279,8 @@ class GoogleGenAiMediaFetcherTest {
         GoogleGenAiTokenCountEstimator estimator = GoogleGenAiTokenCountEstimator.builder()
                 .apiKey("does not matter")
                 .modelName(MODEL_NAME)
-                .mediaFetcher(url -> {
-                    fetched.add(url);
+                .mediaFetcher(request -> {
+                    fetched.add(request.url());
                     throw stop;
                 })
                 .build();
@@ -295,8 +296,8 @@ class GoogleGenAiMediaFetcherTest {
         List<URI> fetched = new CopyOnWriteArrayList<>();
         GoogleGenAiCaches caches = GoogleGenAiCaches.builder()
                 .apiKey("does not matter")
-                .mediaFetcher(url -> {
-                    fetched.add(url);
+                .mediaFetcher(request -> {
+                    fetched.add(request.url());
                     throw stop;
                 })
                 .build();
@@ -311,12 +312,12 @@ class GoogleGenAiMediaFetcherTest {
         return new MediaFetcher() {
 
             @Override
-            public FetchedMedia fetch(URI url) {
+            public FetchedMedia fetch(MediaFetchRequest request) {
                 throw new AssertionError("fetch() must not be called");
             }
 
             @Override
-            public CompletableFuture<FetchedMedia> fetchAsync(URI url) {
+            public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
                 return download;
             }
         };
@@ -405,14 +406,14 @@ class GoogleGenAiMediaFetcherTest {
         private final List<URI> fetchedAsync = new CopyOnWriteArrayList<>();
 
         @Override
-        public FetchedMedia fetch(URI url) {
-            fetched.add(url);
+        public FetchedMedia fetch(MediaFetchRequest request) {
+            fetched.add(request.url());
             return FetchedMedia.from(IMAGE_BYTES, "image/webp");
         }
 
         @Override
-        public CompletableFuture<FetchedMedia> fetchAsync(URI url) {
-            fetchedAsync.add(url);
+        public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
+            fetchedAsync.add(request.url());
             return CompletableFuture.completedFuture(FetchedMedia.from(IMAGE_BYTES, "image/webp"));
         }
     }

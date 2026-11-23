@@ -57,8 +57,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 class GoogleGenAiContentMapperTest {
 
-    private static final MediaFetcher NO_DOWNLOADS = url -> {
-        throw new AssertionError("Unexpected download of " + url);
+    private static final MediaFetcher NO_DOWNLOADS = request -> {
+        throw new AssertionError("Unexpected download of " + request.url());
     };
 
     @Test
@@ -580,9 +580,10 @@ class GoogleGenAiContentMapperTest {
     @Test
     void should_download_media_urls_with_media_fetcher() {
         List<URI> downloaded = new ArrayList<>();
-        MediaFetcher mediaFetcher = url -> {
-            downloaded.add(url);
-            return FetchedMedia.from(url.getPath().getBytes(StandardCharsets.UTF_8), "application/octet-stream");
+        MediaFetcher mediaFetcher = request -> {
+            downloaded.add(request.url());
+            return FetchedMedia.from(
+                    request.url().getPath().getBytes(StandardCharsets.UTF_8), "application/octet-stream");
         };
         UserMessage message = UserMessage.from(
                 ImageContent.from("https://example.com/cat.png"),
@@ -607,7 +608,7 @@ class GoogleGenAiContentMapperTest {
 
     @Test
     void should_use_mime_type_of_download_when_url_has_no_extension() {
-        MediaFetcher mediaFetcher = url -> FetchedMedia.from("fake-image-data".getBytes(), "image/webp");
+        MediaFetcher mediaFetcher = request -> FetchedMedia.from("fake-image-data".getBytes(), "image/webp");
         UserMessage message = UserMessage.from(ImageContent.from("https://example.com/images?id=42"));
 
         Content result = GoogleGenAiContentMapper.toContent(message, mediaFetcher);
@@ -618,7 +619,7 @@ class GoogleGenAiContentMapperTest {
 
     @Test
     void should_fail_when_mime_type_is_unknown_after_download() {
-        MediaFetcher mediaFetcher = url -> FetchedMedia.from("fake-image-data".getBytes());
+        MediaFetcher mediaFetcher = request -> FetchedMedia.from("fake-image-data".getBytes());
         UserMessage message = UserMessage.from(ImageContent.from("https://example.com/images?id=42"));
 
         assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message, mediaFetcher))
@@ -628,7 +629,7 @@ class GoogleGenAiContentMapperTest {
 
     @Test
     void should_convert_user_message_with_image_url_and_explicit_mime_type() {
-        MediaFetcher mediaFetcher = url -> FetchedMedia.from("fake-image-data".getBytes(), "image/webp");
+        MediaFetcher mediaFetcher = request -> FetchedMedia.from("fake-image-data".getBytes(), "image/webp");
         Image image = Image.builder()
                 .url("https://example.com/test.dat")
                 .mimeType("image/png")
@@ -657,8 +658,8 @@ class GoogleGenAiContentMapperTest {
     @Test
     void should_download_images_of_tool_execution_results_with_media_fetcher() {
         List<URI> downloaded = new ArrayList<>();
-        MediaFetcher mediaFetcher = url -> {
-            downloaded.add(url);
+        MediaFetcher mediaFetcher = request -> {
+            downloaded.add(request.url());
             return FetchedMedia.from("png-bytes".getBytes(), "image/png");
         };
         ToolExecutionResultMessage toolMessage = ToolExecutionResultMessage.builder()

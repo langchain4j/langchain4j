@@ -21,6 +21,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.media.FetchedMedia;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
@@ -619,7 +620,7 @@ class GoogleGenAiContentMapper {
     }
 
     private static FetchedMedia fetch(MediaFetcher mediaFetcher, URI url) {
-        return mediaFetcher.fetch(url);
+        return mediaFetcher.fetch(MediaFetchRequest.from(url));
     }
 
     /**
