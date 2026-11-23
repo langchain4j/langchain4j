@@ -99,3 +99,35 @@ Once the model is configured, you can use it to create embeddings:
 ```java
 Response<Embedding> response = model.embed("Please embed this sentence.");
 ```
+
+## Per-call parameters
+
+`modelName` and `dimensions`, plus OpenAI's own `user`, `encoding_format` and arbitrary custom parameters, can
+be set per call through `OpenAiOfficialEmbeddingRequestParameters`. A value set on the builder is the default
+for every call, and a value set on the request overrides it for that call.
+
+`user` is a stable identifier for the end user the call is made on behalf of. `encoding_format` selects how
+the embeddings are encoded in the response: the SDK asks for `"base64"` and decodes it when nothing is set, so
+the embeddings you get back are the same whichever value is used and only the size of the response changes.
+Custom parameters are sent as additional properties of the request body, for providers that serve the OpenAI
+embeddings API with extensions of their own.
+
+```java
+import dev.langchain4j.model.embedding.request.EmbeddingRequest;
+import dev.langchain4j.model.embedding.response.EmbeddingResponse;
+import dev.langchain4j.model.openaiofficial.OpenAiOfficialEmbeddingRequestParameters;
+
+EmbeddingModel model = OpenAiOfficialEmbeddingModel.builder()
+        .apiKey(System.getenv("OPENAI_API_KEY"))
+        .modelName(TEXT_EMBEDDING_3_SMALL)
+        .encodingFormat("float") // the default for every call
+        .build();
+
+EmbeddingResponse response = model.embed(EmbeddingRequest.builder()
+        .input("Please embed this sentence.")
+        .parameters(OpenAiOfficialEmbeddingRequestParameters.builder()
+                .user("user-1") // only for this call
+                .dimensions(256)
+                .build())
+        .build());
+```
