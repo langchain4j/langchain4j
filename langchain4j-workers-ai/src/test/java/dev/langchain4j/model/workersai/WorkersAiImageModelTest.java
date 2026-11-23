@@ -50,8 +50,8 @@ class WorkersAiImageModelTest {
         URI url = URI.create("https://example.com/source.png");
         byte[] png = png(RED, BLUE);
         List<URI> fetched = new ArrayList<>();
-        WorkersAiImageModel model = model(fetchedUrl -> {
-            fetched.add(fetchedUrl);
+        WorkersAiImageModel model = model(request -> {
+            fetched.add(request.url());
             return FetchedMedia.from(png, "image/png");
         });
 
@@ -65,8 +65,8 @@ class WorkersAiImageModelTest {
     void getPixels_should_download_through_the_configured_media_fetcher() throws Exception {
         byte[] png = png(BLUE, RED);
         List<URI> fetched = new ArrayList<>();
-        WorkersAiImageModel model = model(url -> {
-            fetched.add(url);
+        WorkersAiImageModel model = model(request -> {
+            fetched.add(request.url());
             return FetchedMedia.from(png, "image/png");
         });
 

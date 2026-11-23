@@ -3,6 +3,7 @@ package dev.langchain4j.model.workersai;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.media.DefaultMediaFetcher;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -179,7 +180,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
          *
          * @param mediaFetcher the fetcher, or {@code null} to use the default one.
          * @return The current instance of {@link Builder}.
-         * @since 1.25.0-beta35
+         * @since 1.25.0
          */
         @Experimental
         public Builder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {
@@ -296,7 +297,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
     }
 
     private byte[] download(URI url) {
-        return mediaFetcher.fetch(url).bytes();
+        return mediaFetcher.fetch(MediaFetchRequest.from(url)).bytes();
     }
 
     private static int[] pixels(byte[] imageBytes) {
