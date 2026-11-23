@@ -614,6 +614,8 @@ System.out.println(rawServerSentEvents.get(0).event());
 
 ## Batch Processing
 
+> For an in-depth description of batching see the [batching tutorial](/tutorials/batch-processing).
+
 `MistralAiBatchChatModel` implements the core `BatchChatModel` interface to process many chat requests
 asynchronously via the [Mistral Batch API](https://docs.mistral.ai/capabilities/batch/), at 50% of the
 standard per-token price. All requests in a batch run against the single model configured on the batch
