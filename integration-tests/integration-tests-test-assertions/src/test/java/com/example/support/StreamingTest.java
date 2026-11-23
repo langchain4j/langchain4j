@@ -135,9 +135,19 @@ class StreamingTest {
         StreamingCustomerSupportAgent agent =
                 agent(MockStreamingChatModel.thatFails(new RuntimeException("Stream broken")));
         List<Throwable> errors = new CopyOnWriteArrayList<>();
+        CountDownLatch onErrorCalled = new CountDownLatch(1);
 
-        assertThatThrownBy(() -> capture(() -> agent.chat("Hi").onPartialResponse(token -> {}).onError(errors::add).start()))
+        assertThatThrownBy(() -> capture(() -> agent.chat("Hi")
+                        .onPartialResponse(token -> {})
+                        .onError(error -> {
+                            errors.add(error);
+                            onErrorCalled.countDown();
+                        })
+                        .start()))
                 .hasMessageContaining("Stream broken");
+
+        // the invocation finishes before the onError handler has run, so capture(...) can throw before it did
+        await(onErrorCalled);
         assertThat(errors).singleElement().satisfies(error -> assertThat(error).hasMessageContaining("Stream broken"));
     }
 
