@@ -56,6 +56,12 @@
             <version>${jdbc.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.oracle.database.security</groupId>
+            <artifactId>oraclepki</artifactId>
+            <version>${jdbc.version}</version>
+            <scope>test</scope>
+        </dependency>
 
         <!-- Tests extend the integration tests from the core module -->
         <dependency>
@@ -117,7 +123,7 @@
                 <groupId>org.honton.chas</groupId>
                 <artifactId>license-maven-plugin</artifactId>
                 <configuration>
-                    <!-- com.oracle.database.jdbc:ojdbc8 has a FUTC license -->
+                    <!-- Oracle JDBC and PKI artifacts have a FUTC license -->
                     <skipCompliance>true</skipCompliance>
                 </configuration>
             </plugin>
