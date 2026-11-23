@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellat
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.media.FetchedMedia;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.internal.MediaPrefetcher;
 import java.net.URI;
@@ -28,11 +29,12 @@ final class MediaDownloads {
     }
 
     FetchedMedia fetch(URI url) {
-        return downloaded.computeIfAbsent(url, mediaFetcher::fetch);
+        return downloaded.computeIfAbsent(url, u -> mediaFetcher.fetch(MediaFetchRequest.from(u)));
     }
 
     /**
-     * Downloads the given URLs with {@link MediaFetcher#fetchAsync(URI)}, without blocking the calling thread.
+     * Downloads the given URLs with {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, without blocking the calling
+     * thread.
      *
      * @return a future of the downloaded media; it never throws, and cancelling it cancels the downloads.
      */

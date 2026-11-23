@@ -216,7 +216,7 @@ class BedrockBatchChatModelTest {
         stubSubmit();
         URI imageUrl = URI.create("https://example.com/cat.png");
         BedrockBatchChatModel model = modelBuilder()
-                .mediaFetcher(url -> FetchedMedia.from(new byte[] {1, 2, 3}, "image/png"))
+                .mediaFetcher(request -> FetchedMedia.from(new byte[] {1, 2, 3}, "image/png"))
                 .build();
 
         model.submit(new BatchRequest<>(List.of(ChatRequest.builder()

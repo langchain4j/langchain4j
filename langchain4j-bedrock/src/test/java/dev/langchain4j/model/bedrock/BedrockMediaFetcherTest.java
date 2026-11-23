@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.media.FetchedMedia;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -72,7 +73,7 @@ class BedrockMediaFetcherTest {
     private static final byte[] PDF_BYTES = {4, 5, 6};
     private static final byte[] TOOL_IMAGE_BYTES = {7, 8, 9};
 
-    private static final MediaFetcher SYNC_ONLY_FETCHER = url -> FetchedMedia.from(IMAGE_BYTES, "image/png");
+    private static final MediaFetcher SYNC_ONLY_FETCHER = request -> FetchedMedia.from(IMAGE_BYTES, "image/png");
 
     @Test
     void should_download_images_and_pdf_files_through_the_configured_media_fetcher() {
@@ -457,8 +458,8 @@ class BedrockMediaFetcherTest {
     }
 
     /**
-     * Returns the given media for each URL and records whether it was asked with {@link #fetch(URI)} or
-     * {@link #fetchAsync(URI)}.
+     * Returns the given media for each URL and records whether it was asked with {@link #fetch(MediaFetchRequest)} or
+     * {@link #fetchAsync(MediaFetchRequest)}.
      */
     private static class RecordingMediaFetcher implements MediaFetcher {
 
@@ -471,15 +472,15 @@ class BedrockMediaFetcherTest {
         }
 
         @Override
-        public FetchedMedia fetch(URI url) {
-            fetched.add(url);
-            return media.get(url);
+        public FetchedMedia fetch(MediaFetchRequest request) {
+            fetched.add(request.url());
+            return media.get(request.url());
         }
 
         @Override
-        public CompletableFuture<FetchedMedia> fetchAsync(URI url) {
-            fetchedAsync.add(url);
-            return CompletableFuture.supplyAsync(() -> media.get(url));
+        public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
+            fetchedAsync.add(request.url());
+            return CompletableFuture.supplyAsync(() -> media.get(request.url()));
         }
     }
 

@@ -32,8 +32,8 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 class BedrockBatchConverseMapperTest {
 
-    private static final MediaFetcher NO_DOWNLOADS = url -> {
-        throw new AssertionError("Unexpected download of " + url);
+    private static final MediaFetcher NO_DOWNLOADS = request -> {
+        throw new AssertionError("Unexpected download of " + request.url());
     };
 
     private static Map<String, Object> modelInput(ChatRequest request) {
@@ -168,9 +168,9 @@ class BedrockBatchConverseMapperTest {
         URI imageUrl = URI.create("https://example.com/photo?id=1");
         URI pdfUrl = URI.create("https://example.com/reports/annual.pdf");
         List<URI> fetched = new ArrayList<>();
-        MediaFetcher mediaFetcher = url -> {
-            fetched.add(url);
-            return url.equals(imageUrl)
+        MediaFetcher mediaFetcher = request -> {
+            fetched.add(request.url());
+            return request.url().equals(imageUrl)
                     ? FetchedMedia.from(new byte[] {1, 2, 3}, "image/jpeg")
                     : FetchedMedia.from(new byte[] {4, 5, 6}, "application/pdf");
         };

@@ -28,6 +28,7 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.media.DefaultMediaFetcher;
 import dev.langchain4j.data.media.FetchedMedia;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -728,8 +729,8 @@ abstract class AbstractBedrockChatModel {
     }
 
     /**
-     * Downloads, with {@link MediaFetcher#fetchAsync(URI)}, every image and PDF file that the messages refer to by
-     * URL and that {@link #extractRegularMessages(List, BedrockCachePointPlacement, CacheTTL,
+     * Downloads, with {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, every image and PDF file that the messages
+     * refer to by URL and that {@link #extractRegularMessages(List, BedrockCachePointPlacement, CacheTTL,
      * BedrockGuardContentPlacement, MediaDownloads)} would download.
      */
     CompletableFuture<MediaDownloads> prefetchMedia(List<ChatMessage> messages) {
@@ -1543,7 +1544,7 @@ abstract class AbstractBedrockChatModel {
          * that allows them, or your own {@link MediaFetcher}.
          * <p>
          * {@link ChatModel#chatAsync(ChatRequest)} and the streaming model download with
-         * {@link MediaFetcher#fetchAsync(URI)}, so a fetcher used there must implement it.
+         * {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, so a fetcher used there must implement it.
          *
          * @param mediaFetcher the fetcher, or {@code null} to use the default one
          * @return {@code this}
