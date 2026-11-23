@@ -24,6 +24,7 @@ package dev.langchain4j.code.azure.acads;
  * without requiring actual Azure credentials or incurring costs from real service calls.
  */
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -35,6 +36,7 @@ import dev.langchain4j.code.CodeExecutionEngine;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.HashMap;
@@ -127,6 +129,25 @@ class SessionsREPLToolTest {
         assertThat(result).containsKey("result");
         assertThat(result).containsKey("stdout");
         assertThat(result).containsKey("stderr");
+    }
+
+    @Test
+    void testExecuteCodeSanitizesLongRunsOfWhitespaceAndBackticksQuickly() throws Exception {
+        setupMockHttpResponse();
+
+        String code = "print('a')" + " ".repeat(100_000) + "`".repeat(100_000) + "print('b')";
+        String input = "` \n".repeat(20_000) + "python\n" + code + "\n` ".repeat(20_000);
+
+        assertTimeoutPreemptively(Duration.ofSeconds(5), () -> sessionsREPLTool.executeCode(input));
+
+        ArgumentCaptor<HttpRequest> requestCaptor = ArgumentCaptor.forClass(HttpRequest.class);
+        verify(mockHttpClient).execute(requestCaptor.capture());
+        String sentCode = new ObjectMapper()
+                .readTree(requestCaptor.getValue().body())
+                .get("properties")
+                .get("code")
+                .asText();
+        assertThat(sentCode).isEqualTo(code);
     }
 
     /**
