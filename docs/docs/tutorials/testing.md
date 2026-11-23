@@ -21,8 +21,8 @@ This page shows how to test such an application with JUnit and AssertJ, using th
   which sources it retrieved, how often it called the model and how it ended.
 - [Judging answers with a model](#judging-answers-with-a-model): check what cannot be checked exactly, such as "says
   that the booking cannot be found", with a model as the judge.
-- [Dealing with non-determinism](#dealing-with-non-determinism): make tests with a real model reliable, with repeated
-  runs, pass rates and pinned model versions.
+- [Tests with a real model](#tests-with-a-real-model): where they fit next to the fast tests, and what a single run can
+  tell you.
 
 Start with checks that do not need a model to judge the answer, such as which tool was executed: they are cheap and
 exact. Use a judge only for what they cannot check.
@@ -457,7 +457,7 @@ void should_stream_the_answer() {
 `ignoreErrors()` only tells the `TokenStream` that it has no `onError` handler: `capture(...)` still throws when the
 stream fails.
 
-A `CompletableFuture` returned by the lambda is waited for. A Reactor `Flux` or `Mono`, or a Mutiny `Multi` or `Uni`,
+A `CompletableFuture` returned by the lambda is waited for. A Mutiny `Multi` or `Uni`, or a Reactor `Flux` or `Mono`,
 returned by the lambda is subscribed to by `capture(...)` and read to the end: return it without subscribing to it,
 and find its items in `capture.lambdaOutputItems()`.
 
@@ -524,9 +524,6 @@ Please cancel my booking MS-999
 ```
 
 A judge that is not sure (`NOT_SURE`) counts as not satisfied.
-
-Tests with a real model need the API key. Skip them when it is missing, so that a build without the key still passes,
-for example with `@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")` on the test class.
 
 ### Chat model or decision model as the judge
 
@@ -618,49 +615,21 @@ Every assertion calls the judge model, so it takes time and costs money like any
 add a [`ChatModelListener`](/tutorials/observability#chat-model-observability) to a chat judge model, or a
 `DecisionModelListener` to a decision judge model.
 
-## Dealing with non-determinism
+## Tests with a real model
 
 - **Run checks that need no judge first.** Unit tests with mocks run on every build. Tests with a real model, and
   judges, run less often, for example as integration tests: `*IT` classes, run by the Maven Failsafe plugin (add it to
   your build: the default test run does not run `*IT` classes).
-- **One run is not a verdict.** A test with a real model can pass today and fail tomorrow with the same code. For the
-  important cases, run the AI Service several times and require a pass rate. `judge.evaluate(...)` returns the
-  verdicts instead of failing:
-
-  ```java
-  int runs = 10;
-  int passed = 0;
-  for (int i = 0; i < runs; i++) {
-      String answer = assistant.chat("Can I cancel for free?");
-
-      JudgeResponse response = judge.evaluate(JudgeRequest.builder()
-              .text(answer)
-              .context(JudgeContext.from("Can I cancel for free?"))
-              .criteria(JudgeCriterion.from("says that cancellations are free up to 24 hours before pick-up"))
-              .build());
-      if (response.verdicts().get(0).isSatisfied()) {
-          passed++;
-      }
-  }
-  assertThat(passed).isGreaterThanOrEqualTo(8);
-  ```
-
-  The runs must not influence each other: an AI Service with [chat memory](/tutorials/chat-memory) must start a new
-  conversation in each run, for example with a new memory id. `evaluate(...)` still throws a `JudgeException` when the
-  judge's answer cannot be understood.
-
-- **Choose the required pass rate with a margin.** The number of passes varies between runs of the test even when
-  nothing changed. An AI Service that answers well 9 times out of 10 on average gets fewer than 9 passes out of 10 in
-  about one test run out of four, and fewer than 8 in about one out of fourteen. Require fewer passes than you usually
-  see, or run more times.
-- **Do not use a pass rate for what must never happen**, such as cancelling the booking of another customer. Check
+- **Skip them when the API key is missing**, so that a build without the key still passes, for example with
+  `@EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")` on the test class.
+- **One run is not a verdict.** A test with a real model can pass today and fail tomorrow with the same code, because
+  the model can answer differently each time. Measuring how often the answers are good, over repeated runs and many
+  inputs, is [evaluation](/tutorials/evaluation#repeated-runs).
+- **Do not rely on how often for what must never happen**, such as cancelling the booking of another customer. Check
   that in every run without a judge, for example that `cancelBooking` was not executed, or better, prevent it in your
   code.
-- **Pin the model versions** of both your application and the judge. Treat a new model version like a new version of
-  a library: run the tests and compare the pass rates before you switch. With few runs, a small difference between two
-  pass rates is usually chance.
-- **Check the judge.** Before you rely on a judge, run it on a few answers that you labelled yourself, including bad
-  ones, and see whether it agrees with you.
+- **Pin the model versions** of both your application and the judge, so that a test does not start to fail because the
+  provider pointed a model name to a newer model.
 
 ## Testing guardrails
 
