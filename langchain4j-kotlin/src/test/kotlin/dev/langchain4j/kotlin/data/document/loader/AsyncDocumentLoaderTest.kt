@@ -16,6 +16,7 @@ import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.nio.file.FileSystems
 import java.nio.file.Path
 import java.nio.file.Paths
 
@@ -73,5 +74,24 @@ internal class AsyncDocumentLoaderTest {
                         "test-file-3.banana",
                         "test-file-4.banana"
                     )
+        }
+
+    @Test
+    fun `Should loadDocuments with a relative pathMatcher`() =
+        runTest {
+            val documents =
+                loadDocuments(
+                    recursive = true,
+                    documentParser = parser,
+                    directoryPaths = listOf(Path.of("./src/test/resources/asyncDocumentLoaderTest")),
+                    pathMatcher = FileSystems.getDefault().getPathMatcher("glob:*.txt")
+                )
+
+            // relative matching: only the top-level file1.txt matches "glob:*.txt",
+            // mirroring FileSystemDocumentLoader; absolute matching would match nothing
+            documents shouldHaveSize 1
+
+            val documentNames = documents.map { it.metadata().getString("file_name") }
+            documentNames shouldContainExactly listOf("file1.txt")
         }
 }
