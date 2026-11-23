@@ -10,12 +10,14 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils.fromJson;
+import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils.providerErrorMessageFrom;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.*;
 import static java.util.Collections.emptyList;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -60,6 +62,7 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
     private String modelName;
     private String id;
     private volatile StreamingHandle streamingHandle;
+    private volatile boolean failed;
 
     final AtomicReference<SuccessfulHttpResponse> rawHttpResponse = new AtomicReference<>();
     final Queue<ServerSentEvent> rawServerSentEvents = new ConcurrentLinkedQueue<>();
@@ -83,6 +86,10 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
 
     @Override
     public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+        if (failed) {
+            return;
+        }
+
         if (streamingHandle == null) {
             streamingHandle = toStreamingHandle(context.parsingHandle());
         }
@@ -98,6 +105,17 @@ class MistralAiServerSentEventListener implements ServerSentEventListener {
                     .build();
             onCompleteResponse(handler, response);
         } else {
+            // Some OpenAI-compatible providers (vLLM, LiteLLM, OpenRouter, DeepSeek) report mid-stream
+            // failures with HTTP 200 as chunks carrying a top-level "error" object: fail the stream
+            // immediately with the provider's message/type/code instead of treating it as a chunk
+            String providerErrorMessage = providerErrorMessageFrom(data);
+            if (providerErrorMessage != null) {
+                failed = true;
+                RuntimeException error = new InternalServerException("Chat completion failed: " + providerErrorMessage);
+                withLoggingExceptions(() -> handler.onError(error));
+                return;
+            }
+
             MistralAiChatCompletionResponse chatCompletionResponse =
                     fromJson(data, MistralAiChatCompletionResponse.class);
             MistralAiChatCompletionChoice choice =
