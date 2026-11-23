@@ -27,6 +27,7 @@ import dev.langchain4j.mcp.client.transport.McpHeaderEncoding;
 import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.client.transport.McpTransportCustomizer;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.protocol.McpJsonRpcMessage;
@@ -34,6 +35,7 @@ import dev.langchain4j.spi.CapturedContext;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -90,14 +92,11 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private final Set<HttpExchange> activeExchanges = ConcurrentHashMap.newKeySet();
 
     /**
-     * Creates the transport, after every {@link StreamableHttpMcpTransportListener} was notified
-     * and had the chance to adjust the builder. {@link Builder#build()} calls this constructor.
+     * Creates the transport, after every {@link McpTransportCustomizer} had the chance to adjust a copy of the
+     * builder. {@link Builder#build()} calls this constructor.
      */
-    public StreamableHttpMcpTransport(StreamableHttpMcpTransport.Builder builder) {
-        for (StreamableHttpMcpTransportListener listener : loadFactories(StreamableHttpMcpTransportListener.class)) {
-            LOG.debug("Notifying {} of a new Streamable HTTP MCP transport", listener.getClass().getName());
-            listener.onNewTransport(builder);
-        }
+    public StreamableHttpMcpTransport(StreamableHttpMcpTransport.Builder configured) {
+        Builder builder = customized(configured);
         url = ensureNotNull(builder.url, "Missing server endpoint URL");
         logRequests = builder.logRequests;
         logResponses = builder.logResponses;
@@ -138,6 +137,19 @@ public class StreamableHttpMcpTransport implements McpTransport {
             httpClient = createDefaultHttpClient(builder, timeout);
             ownedHttpClient = httpClient instanceof AutoCloseable closeable ? closeable : null;
         }
+    }
+
+    private static Builder customized(Builder configured) {
+        Collection<McpTransportCustomizer> customizers = loadFactories(McpTransportCustomizer.class);
+        if (customizers.isEmpty()) {
+            return configured;
+        }
+        Builder builder = configured.copy();
+        for (McpTransportCustomizer customizer : customizers) {
+            LOG.debug("Calling {} for a new Streamable HTTP MCP transport", customizer.getClass().getName());
+            customizer.customize(builder);
+        }
+        return builder;
     }
 
     private static HttpClient createDefaultHttpClient(Builder builder, Duration timeout) {
@@ -1054,7 +1066,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
         /**
          * The URL of the MCP server that was set with {@link #url(String)}, or {@code null} if none was set yet.
-         * A {@link StreamableHttpMcpTransportListener} uses this to find out where the transport is going to connect.
+         * A {@link McpTransportCustomizer} uses this to find out where the transport is going to connect.
          *
          * @since 1.25.0
          */
@@ -1066,7 +1078,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         /**
          * An optional name that tells this transport apart from the others of the application, for example
          * the {@code key} of the MCP client that uses it. The transport itself does not use the name and never
-         * sends it to the server: it is there for a {@link StreamableHttpMcpTransportListener}, which reads it
+         * sends it to the server: it is there for a {@link McpTransportCustomizer}, which reads it
          * with {@link #getName()} to know which transport is being built.
          *
          * @param name the name of the transport, may be {@code null}
@@ -1241,11 +1253,31 @@ public class StreamableHttpMcpTransport implements McpTransport {
         }
 
         /**
-         * Creates the transport, after every {@link StreamableHttpMcpTransportListener} was notified
-         * and had the chance to adjust this builder.
+         * Creates the transport, after every {@link McpTransportCustomizer} had the chance to adjust a copy
+         * of this builder. This builder itself is never changed by a customizer.
          */
         public StreamableHttpMcpTransport build() {
             return new StreamableHttpMcpTransport(this);
+        }
+
+        private Builder copy() {
+            Builder copy = new Builder();
+            copy.httpClientBuilder = httpClientBuilder;
+            copy.httpClient = httpClient;
+            copy.executor = executor;
+            copy.url = url;
+            copy.name = name;
+            copy.customHeadersSupplier = customHeadersSupplier;
+            copy.timeout = timeout;
+            copy.logRequests = logRequests;
+            copy.logResponses = logResponses;
+            copy.logger = logger;
+            copy.sslContext = sslContext;
+            copy.forceHttpVersion1_1 = forceHttpVersion1_1;
+            copy.subsidiaryChannelEnabled = subsidiaryChannelEnabled;
+            copy.followRedirects = followRedirects;
+            copy.maxMessageSize = maxMessageSize;
+            return copy;
         }
     }
 }
