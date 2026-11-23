@@ -15,6 +15,7 @@ import static dev.langchain4j.model.output.FinishReason.TOOL_EXECUTION;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.media.DefaultMediaFetcher;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
@@ -860,8 +861,8 @@ class BaseGeminiChatModel {
          *         .allowNonPublicHosts("images.internal.example.com")
          *         .build();
          * }</pre>
-         * {@link GoogleAiGeminiStreamingChatModel} downloads with {@link MediaFetcher#fetchAsync(URI)}, so that it
-         * does not block the calling thread. A custom fetcher that does not implement it fails there.
+         * {@link GoogleAiGeminiStreamingChatModel} downloads with {@link MediaFetcher#fetchAsync(MediaFetchRequest)},
+         * so that it does not block the calling thread. A custom fetcher that does not implement it fails there.
          *
          * @param mediaFetcher the fetcher that downloads images, or {@code null} to use the default one.
          * @return {@code this}.

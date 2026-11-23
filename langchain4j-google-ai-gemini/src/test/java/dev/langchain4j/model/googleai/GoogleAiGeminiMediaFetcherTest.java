@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.media.FetchedMedia;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
@@ -114,12 +115,12 @@ class GoogleAiGeminiMediaFetcherTest {
         MediaFetcher mediaFetcher = new MediaFetcher() {
 
             @Override
-            public FetchedMedia fetch(URI url) {
+            public FetchedMedia fetch(MediaFetchRequest request) {
                 throw new AssertionError("fetch() must not be called");
             }
 
             @Override
-            public CompletableFuture<FetchedMedia> fetchAsync(URI url) {
+            public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
                 return download;
             }
         };
@@ -145,7 +146,7 @@ class GoogleAiGeminiMediaFetcherTest {
     void streaming_chat_model_fails_through_onError_when_media_fetcher_does_not_implement_fetchAsync() {
         MockHttpClient httpClient =
                 MockHttpClient.thatAlwaysResponds(List.of(new ServerSentEvent("message", GENERATE_CONTENT_RESPONSE)));
-        MediaFetcher syncOnlyMediaFetcher = url -> FetchedMedia.from(IMAGE_BYTES, "image/png");
+        MediaFetcher syncOnlyMediaFetcher = request -> FetchedMedia.from(IMAGE_BYTES, "image/png");
         GoogleAiGeminiStreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(httpClient))
                 .apiKey("does not matter")
@@ -167,8 +168,8 @@ class GoogleAiGeminiMediaFetcherTest {
     void streaming_chat_model_without_image_urls_does_not_use_media_fetcher() throws Exception {
         MockHttpClient httpClient =
                 MockHttpClient.thatAlwaysResponds(List.of(new ServerSentEvent("message", GENERATE_CONTENT_RESPONSE)));
-        MediaFetcher syncOnlyMediaFetcher = url -> {
-            throw new AssertionError("Unexpected download of " + url);
+        MediaFetcher syncOnlyMediaFetcher = request -> {
+            throw new AssertionError("Unexpected download of " + request.url());
         };
         GoogleAiGeminiStreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(httpClient))
@@ -291,14 +292,14 @@ class GoogleAiGeminiMediaFetcherTest {
         private final List<URI> fetchedAsync = new CopyOnWriteArrayList<>();
 
         @Override
-        public FetchedMedia fetch(URI url) {
-            fetched.add(url);
+        public FetchedMedia fetch(MediaFetchRequest request) {
+            fetched.add(request.url());
             return FetchedMedia.from(IMAGE_BYTES, "image/webp");
         }
 
         @Override
-        public CompletableFuture<FetchedMedia> fetchAsync(URI url) {
-            fetchedAsync.add(url);
+        public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
+            fetchedAsync.add(request.url());
             return CompletableFuture.completedFuture(FetchedMedia.from(IMAGE_BYTES, "image/webp"));
         }
     }

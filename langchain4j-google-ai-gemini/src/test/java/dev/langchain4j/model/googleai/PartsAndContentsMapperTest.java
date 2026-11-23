@@ -33,8 +33,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 class PartsAndContentsMapperTest {
 
-    private static final MediaFetcher NO_DOWNLOADS = url -> {
-        throw new AssertionError("Unexpected download of " + url);
+    private static final MediaFetcher NO_DOWNLOADS = request -> {
+        throw new AssertionError("Unexpected download of " + request.url());
     };
 
     @Test
@@ -871,8 +871,8 @@ class PartsAndContentsMapperTest {
         // Given
         byte[] bytes = "image bytes".getBytes(StandardCharsets.UTF_8);
         List<URI> downloaded = new ArrayList<>();
-        MediaFetcher mediaFetcher = url -> {
-            downloaded.add(url);
+        MediaFetcher mediaFetcher = request -> {
+            downloaded.add(request.url());
             return FetchedMedia.from(bytes, "image/webp");
         };
 
@@ -889,7 +889,7 @@ class PartsAndContentsMapperTest {
     @Test
     void fromContentToGPart_usesMimeTypeOfDownloadWhenUrlHasNoExtension() {
         // Given
-        MediaFetcher mediaFetcher = url -> FetchedMedia.from(new byte[] {1, 2, 3}, "image/jpeg");
+        MediaFetcher mediaFetcher = request -> FetchedMedia.from(new byte[] {1, 2, 3}, "image/jpeg");
 
         // When
         GeminiContent.GeminiPart part = PartsAndContentsMapper.fromContentToGPart(
@@ -902,7 +902,7 @@ class PartsAndContentsMapperTest {
     @Test
     void fromContentToGPart_prefersMimeTypeOfImageOverMimeTypeOfDownload() {
         // Given
-        MediaFetcher mediaFetcher = url -> FetchedMedia.from(new byte[] {1, 2, 3}, "image/jpeg");
+        MediaFetcher mediaFetcher = request -> FetchedMedia.from(new byte[] {1, 2, 3}, "image/jpeg");
         Image image = Image.builder()
                 .url("https://example.com/images?id=42")
                 .mimeType("image/gif")
@@ -935,8 +935,8 @@ class PartsAndContentsMapperTest {
     void fromMessageToGContent_downloadsImagesOfToolResultsWithMediaFetcher() {
         // Given
         List<URI> downloaded = new ArrayList<>();
-        MediaFetcher mediaFetcher = url -> {
-            downloaded.add(url);
+        MediaFetcher mediaFetcher = request -> {
+            downloaded.add(request.url());
             return FetchedMedia.from(new byte[] {1, 2, 3}, "image/png");
         };
         ToolExecutionResultMessage toolResult = ToolExecutionResultMessage.builder()

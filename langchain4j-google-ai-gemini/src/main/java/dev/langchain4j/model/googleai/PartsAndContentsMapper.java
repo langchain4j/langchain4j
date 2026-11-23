@@ -12,6 +12,7 @@ import static java.util.stream.Collectors.joining;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.media.FetchedMedia;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
@@ -175,7 +176,7 @@ final class PartsAndContentsMapper {
     }
 
     private static FetchedMedia fetch(MediaFetcher mediaFetcher, URI url) {
-        return mediaFetcher.fetch(url);
+        return mediaFetcher.fetch(MediaFetchRequest.from(url));
     }
 
     /**
