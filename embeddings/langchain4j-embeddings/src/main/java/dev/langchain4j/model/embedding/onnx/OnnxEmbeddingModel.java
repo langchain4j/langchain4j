@@ -25,6 +25,7 @@ import java.util.concurrent.Executor;
 public class OnnxEmbeddingModel extends AbstractInProcessEmbeddingModel {
 
     private final OnnxBertBiEncoder onnxBertBiEncoder;
+    private final Encoder encoder;
 
     /**
      * @param pathToModel     The path to the modelPath file (e.g., "/path/to/model.onnx")
@@ -35,7 +36,35 @@ public class OnnxEmbeddingModel extends AbstractInProcessEmbeddingModel {
      */
     public OnnxEmbeddingModel(Path pathToModel, Path pathToTokenizer, PoolingMode poolingMode) {
         super(null);
-        this.onnxBertBiEncoder = loadFromFileSystem(pathToModel, pathToTokenizer, poolingMode);
+        this.onnxBertBiEncoder = new OnnxBertBiEncoder(pathToModel, pathToTokenizer, poolingMode);
+        this.encoder = asEncoder(onnxBertBiEncoder);
+    }
+
+    /**
+     * Creates an ONNX embedding model with the selected encoder implementation.
+     *
+     * @param pathToModel     The path to the model file.
+     * @param pathToTokenizer The path to the tokenizer file.
+     * @param poolingMode     The pooling mode to use.
+     * @param encoderType     The encoder implementation to use.
+     */
+    public OnnxEmbeddingModel(
+            Path pathToModel, Path pathToTokenizer, PoolingMode poolingMode, EncoderType encoderType) {
+        super(null);
+        OnnxBertBiEncoder onnxBertBiEncoder = null;
+        Encoder encoder = null;
+        switch (ensureNotNull(encoderType, "encoderType")) {
+            case BERT -> {
+                onnxBertBiEncoder = new OnnxBertBiEncoder(pathToModel, pathToTokenizer, poolingMode);
+                encoder = asEncoder(onnxBertBiEncoder);
+            }
+            case BPE -> {
+                onnxBertBiEncoder = null;
+                encoder = asEncoder(new OnnxBpeBiEncoder(pathToModel, pathToTokenizer, poolingMode));
+            }
+        }
+        this.onnxBertBiEncoder = onnxBertBiEncoder;
+        this.encoder = encoder;
     }
 
     /**
@@ -49,6 +78,7 @@ public class OnnxEmbeddingModel extends AbstractInProcessEmbeddingModel {
     public OnnxEmbeddingModel(Path pathToModel, Path pathToTokenizer, PoolingMode poolingMode, Executor executor) {
         super(ensureNotNull(executor, "executor"));
         this.onnxBertBiEncoder = loadFromFileSystem(pathToModel, pathToTokenizer, poolingMode);
+        this.encoder = asEncoder(onnxBertBiEncoder);
     }
 
     /**
@@ -76,6 +106,30 @@ public class OnnxEmbeddingModel extends AbstractInProcessEmbeddingModel {
 
     @Override
     protected OnnxBertBiEncoder model() {
-        return onnxBertBiEncoder;
+        if (onnxBertBiEncoder != null) {
+            return onnxBertBiEncoder;
+        }
+        throw new UnsupportedOperationException(
+                "model() only returns OnnxBertBiEncoder. Use encoder() for generic access.");
+    }
+
+    @Override
+    protected Encoder encoder() {
+        return encoder;
+    }
+
+    /**
+     * Encoder implementation used by the ONNX embedding model.
+     */
+    public enum EncoderType {
+        /**
+         * BERT-style encoder using WordPiece tokenization and token type IDs.
+         */
+        BERT,
+
+        /**
+         * BPE or decoder-style encoder that does not use token type IDs.
+         */
+        BPE
     }
 }
