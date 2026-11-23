@@ -7,7 +7,9 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
@@ -92,9 +94,22 @@ public class DefaultContentInjector implements ContentInjector {
 
     protected Prompt createPrompt(ChatMessage chatMessage, List<Content> contents) {
         Map<String, Object> variables = new HashMap<>();
-        variables.put("userMessage", ((UserMessage) chatMessage).singleText());
+        variables.put("userMessage", userMessageText(chatMessage));
         variables.put("contents", format(contents));
         return promptTemplate.apply(variables);
+    }
+
+    private String userMessageText(ChatMessage chatMessage) {
+        if (chatMessage instanceof UserMessage userMessage) {
+            return userMessage.singleText();
+        }
+        if (chatMessage instanceof AiMessage aiMessage) {
+            return aiMessage.text();
+        }
+        if (chatMessage instanceof SystemMessage systemMessage) {
+            return systemMessage.text();
+        }
+        throw new IllegalArgumentException("Unsupported message type: " + chatMessage.type());
     }
 
     protected String format(List<Content> contents) {
