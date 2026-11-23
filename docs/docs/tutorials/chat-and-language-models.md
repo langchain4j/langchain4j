@@ -205,11 +205,20 @@ UserMessage userMessage = UserMessage.from(
 Depending on the LLM provider, `ImageContent` can be created either from the URL of the **remote** image (see an example above),
 or from the Base64-encoded binary data:
 ```java
-byte[] imageBytes = readBytes("/home/me/cat.jpg");
-String base64Data = Base64.getEncoder().encodeToString(imageBytes);
-ImageContent imageContent = ImageContent.from(base64Data, "image/jpg");
+ImageContent imageContent = ImageContent.from(base64Data, "image/jpeg");
+```
+
+To send an image stored in a local file, create the `ImageContent` from the file's path: the file is read
+when the content is created, and its Base64-encoded data is sent.
+```java
+ImageContent imageContent = ImageContent.from(Path.of("/home/me/cat.jpg"), "image/jpeg");
 UserMessage userMessage = UserMessage.from(imageContent);
 ```
+
+Some LLM providers accept images only as data, not as a URL. For them, LangChain4j downloads an image given by URL
+before sending the request, with a `MediaFetcher`. By default, only `http` and `https` URLs of public hosts are
+downloaded, with a timeout and a size limit, and local files are never read from a URL.
+The integrations of these providers have a `mediaFetcher(...)` option to change this.
 
 One can also specify `DetailLevel` enum (with `LOW`/`HIGH`/`AUTO` options) to control how the model processes the image.
 See more details [here](https://platform.openai.com/docs/guides/vision#low-or-high-fidelity-image-understanding).

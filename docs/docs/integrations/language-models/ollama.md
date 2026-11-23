@@ -298,6 +298,7 @@ params with the builder pattern:
 | `listeners`                | See [Chat Model Observability](https://docs.langchain4j.dev/tutorials/observability#chat-model-observability)                                                                     | `List<ChatModelListener>` |                             |
 | `supportedCapabilities`    | Set of model capabilities used by `AiServices` API (only `OllamaChatModel` supported)                                                                                             | `Set<Capability>`         | RESPONSE_FORMAT_JSON_SCHEMA |
 | `maxRetries`               | The maximum number of retries in case of API call failure.                                                                                                                        | `Integer`                 |                             |
+| `mediaFetcher`             | Downloads the images that messages refer to by URL. By default, only `http` and `https` URLs of public hosts. See below.                                                          | `MediaFetcher`            |                             |
 
 #### Usage Example
 ```java
@@ -499,6 +500,27 @@ List<ChatMessage> messages = List.of(
 ChatResponse chatResponse = ollamaChatModel.chat(ChatRequest.builder().messages(messages).build());
 
 System.out.println(chatResponse.aiMessage().text()); // "Yes" (meaning risk detected by Granite Guardian)
+```
+
+### Images given by URL
+
+Ollama accepts images only as data. When a message refers to an image by URL, for example with
+`ImageContent.from("https://example.com/cat.png")`, `OllamaChatModel` and `OllamaStreamingChatModel` download it
+before sending the request, with the `MediaFetcher` set with `mediaFetcher(...)`. By default, only `http` and `https`
+URLs of public hosts are downloaded, with a timeout and a size limit, and local files are never read from a URL. To
+send a local file, create the content from its path, for example `ImageContent.from(Path.of("cat.png"), "image/png")`.
+`OllamaStreamingChatModel` downloads the images without blocking the calling thread.
+
+To download images from your own servers, set a `DefaultMediaFetcher` that allows them:
+
+```java
+OllamaChatModel model = OllamaChatModel.builder()
+    .baseUrl("http://localhost:11434")
+    .modelName("gemma4")
+    .mediaFetcher(DefaultMediaFetcher.builder()
+        .allowNonPublicHosts("images.internal.example.com")
+        .build())
+    .build();
 ```
 
 ### Decision models

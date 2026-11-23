@@ -36,6 +36,7 @@ ChatModel model = BedrockChatModel.builder()
         .logRequests(...)
         .logResponses(...)
         .listeners(...)
+        .mediaFetcher(...)
         .defaultRequestParameters(BedrockChatRequestParameters.builder()
                 .modelName(...)
                 .temperature(...)
@@ -74,6 +75,7 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
         .logRequests(...)
         .logResponses(...)
         .listeners(...)
+        .mediaFetcher(...)
         .defaultRequestParameters(BedrockChatRequestParameters.builder()
                 .modelName(...)
                 .temperature(...)
@@ -94,6 +96,30 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
 ### Examples
 
 - [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockStreamingChatModelExample.java)
+
+## Images and PDF files given by URL
+
+Bedrock accepts images and PDF files only as data. When a message refers to one by URL, for example with
+`ImageContent.from("https://example.com/cat.png")`, `BedrockChatModel`, `BedrockStreamingChatModel` and
+`BedrockBatchChatModel` download it before sending the request, with the `MediaFetcher` set with `mediaFetcher(...)`.
+By default, only `http` and `https` URLs of public hosts are downloaded, with a timeout and a size limit, and local
+files are never read from a URL. To send a local file, create the content from its path, for example
+`ImageContent.from(Path.of("cat.png"), "image/png")` or `PdfFileContent.from(Path.of("report.pdf"))`.
+`chatAsync(...)` and `BedrockStreamingChatModel` download without blocking the calling thread.
+
+The image format is taken from the MIME type of the `ImageContent`, then from the extension of the URL, and then from
+the MIME type of the downloaded image.
+
+To download from your own servers, set a `DefaultMediaFetcher` that allows them:
+
+```java
+ChatModel model = BedrockChatModel.builder()
+        .modelId("us.amazon.nova-lite-v1:0")
+        .mediaFetcher(DefaultMediaFetcher.builder()
+                .allowNonPublicHosts("files.internal.example.com")
+                .build())
+        .build();
+```
 
 ## Amazon Bedrock Guardrails
 
@@ -208,6 +234,7 @@ BedrockBatchChatModel model = BedrockBatchChatModel.builder()
         .maxRetries(...)
         .logRequests(...)
         .logResponses(...)
+        .mediaFetcher(...)
         .build();
 ```
 

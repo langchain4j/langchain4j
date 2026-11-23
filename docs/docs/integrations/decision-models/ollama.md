@@ -153,15 +153,29 @@ In named fields, an image is replaced the same way, so that its name says what i
 all fields, so questions can refer to them, for example "Does [image 2] show the same item as
 [image 1]?". This `[image N]` convention comes from LangChain4j, not from Ollama.
 
-Images can be given as base64 data, or by an `http`, `https` or `file` URL, in which case they are downloaded or read
-by your application, on the calling thread (also for `decideAsync()`), before the request is sent. `data:` URLs are
-not supported. Other contents, such as audio, are rejected with an `UnsupportedFeatureException` before calling
-Ollama.
+Images can be given as base64 data, as a local file (for example
+`ImageContent.from(Path.of("photo.jpg"), "image/jpeg")`, which reads the file when the content is created), or by
+URL. Ollama accepts images only as data, so an image given by URL is downloaded before the request is sent, by the
+`MediaFetcher` set with `mediaFetcher(...)` on the builder. By default, only `http` and `https` URLs of public hosts
+are downloaded, with a timeout and a size limit. Other URLs, including `file:` URLs and plain paths of local files,
+are rejected with an `InvalidRequestException`. `decideAsync()` downloads the images without blocking the calling
+thread. Other contents, such as audio, are rejected with an `UnsupportedFeatureException` before calling Ollama.
 
-:::caution
-Do not pass image URLs that come from untrusted sources, such as users, tools or retrieved content: your application
-would download any `http` URL and read any local `file` URL, and send the content to Ollama. Download and check such
-images yourself, and pass them as base64 data.
+To download images from your own servers, set a `DefaultMediaFetcher` that allows them:
+
+```java
+DecisionModel decisionModel = OllamaDecisionModel.builder()
+        .baseUrl("http://localhost:11434")
+        .modelName("clef-flash")
+        .mediaFetcher(DefaultMediaFetcher.builder()
+                .allowNonPublicHosts("images.internal.example.com")
+                .build())
+        .build();
+```
+
+:::tip
+When image URLs come from users, tools or retrieved content, allow only the hosts you expect, for example with
+`DefaultMediaFetcher.builder().allowedHosts("images.example.com")`.
 :::
 
 ## Questions and answers
