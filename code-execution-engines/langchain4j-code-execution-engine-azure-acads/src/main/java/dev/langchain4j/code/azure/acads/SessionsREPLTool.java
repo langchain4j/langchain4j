@@ -6,6 +6,7 @@ import com.azure.core.credential.AccessToken;
 import com.azure.core.credential.TokenRequestContext;
 import com.azure.identity.DefaultAzureCredential;
 import com.azure.identity.DefaultAzureCredentialBuilder;
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.code.CodeExecutionEngine;
 import dev.langchain4j.http.client.HttpClient;
@@ -80,10 +81,10 @@ public class SessionsREPLTool implements CodeExecutionEngine {
     private static final String USER_AGENT = "langchain4j-azure-dynamic-sessions";
     private static final String API_VERSION = "2024-02-02-preview";
     private static final Logger log = LoggerFactory.getLogger(SessionsREPLTool.class);
-    private static final Json.JsonCodec CODEC = ProviderJson.codec(ProviderJsonSpec.builder().build());
+    private static final Json.JsonCodec CODEC =
+            ProviderJson.codec(ProviderJsonSpec.builder().build());
     private static final Json.JsonCodec PRETTY_CODEC =
             ProviderJson.codec(ProviderJsonSpec.builder().prettyPrint(true).build());
-
 
     private static final Pattern SANITIZE_PATTERN_START = Pattern.compile("^(\\s|`)*(?i:python)?\\s*");
     private static final Pattern SANITIZE_PATTERN_END = Pattern.compile("(\\s|`)*$");
@@ -204,7 +205,7 @@ public class SessionsREPLTool implements CodeExecutionEngine {
      * @return the execution result as a JSON string
      */
     @Tool(name = "sessions_REPL")
-    public String use(String input) {
+    public String use(@P(name = "input") String input) {
         Map<String, Object> response = executeCode(input);
 
         Object result = response.get("result");
