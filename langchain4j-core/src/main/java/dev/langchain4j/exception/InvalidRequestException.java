@@ -1,9 +1,13 @@
 package dev.langchain4j.exception;
 
+import dev.langchain4j.data.media.MediaFetcher;
+
 /**
  * Thrown when the model provider rejects a request because the request itself is
  * malformed or violates the provider's constraints (HTTP 4xx, excluding 401, 403,
- * 404, 408, and 429).
+ * 404, 408, and 429), or when LangChain4j rejects the request before sending it,
+ * for example because it contains a media URL that is not allowed or whose host
+ * answers with an error (see {@link MediaFetcher}).
  * <p>
  * This is a {@link NonRetriableException}: the same request will be rejected again
  * without modification. The caller must correct the request (e.g. reduce the prompt

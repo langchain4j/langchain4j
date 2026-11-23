@@ -9,6 +9,7 @@ import static java.util.Collections.unmodifiableMap;
 import static java.util.Collections.unmodifiableSet;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.data.media.DefaultMediaFetcher;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -329,6 +330,10 @@ public class Utils {
     /**
      * Reads the content as bytes from the given URL as a GET request for HTTP/HTTPS resources,
      * and from files stored on the local filesystem.
+     * <p>
+     * This method trusts its input: it reads any local file that the application can read, and downloads from any
+     * host, including internal ones. Use it only with URLs and paths that you control, never with URLs that come from
+     * end users or models. To download such URLs, use a {@link DefaultMediaFetcher}.
      *
      * @param url The URL or path to read from.
      * @return The content as bytes.
