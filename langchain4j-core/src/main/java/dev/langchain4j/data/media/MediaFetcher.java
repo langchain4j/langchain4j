@@ -25,15 +25,15 @@ import java.util.concurrent.CompletableFuture;
  * <pre>{@code
  * MediaFetcher defaultMediaFetcher = DefaultMediaFetcher.builder().build();
  *
- * MediaFetcher mediaFetcher = url -> {
- *     if ("storage.internal.example.com".equals(url.getHost())) {
- *         return FetchedMedia.from(readFromStorage(url), "image/png");
+ * MediaFetcher mediaFetcher = request -> {
+ *     if ("storage.internal.example.com".equals(request.url().getHost())) {
+ *         return FetchedMedia.from(readFromStorage(request.url()), "image/png");
  *     }
- *     return defaultMediaFetcher.fetch(url);
+ *     return defaultMediaFetcher.fetch(request);
  * };
  * }</pre>
- * A fetcher written as a lambda, like this one, implements only {@link #fetch(URI)}; asynchronous and streaming model
- * calls need {@link #fetchAsync(URI)} as well.
+ * A fetcher written as a lambda, like this one, implements only {@link #fetch(MediaFetchRequest)}; asynchronous and
+ * streaming model calls need {@link #fetchAsync(MediaFetchRequest)} as well.
  * <p>
  * Implementations are used by many threads at the same time and must be thread-safe.
  *
@@ -44,38 +44,39 @@ import java.util.concurrent.CompletableFuture;
 public interface MediaFetcher {
 
     /**
-     * Downloads the media at the given URL.
+     * Downloads the media at the URL of the given request.
      *
-     * @param url the URL of the media, for example {@code https://example.com/cat.png}.
+     * @param request the request with the URL of the media, for example {@code https://example.com/cat.png}.
      * @return the downloaded media.
      * @throws InvalidRequestException if the URL is not allowed (for example a local file), or if the host answers
      *                                 with an HTTP status other than 2xx.
      * @throws LangChain4jException    if the download fails, for example because the host cannot be reached or the
      *                                 download takes too long.
      */
-    FetchedMedia fetch(URI url);
+    FetchedMedia fetch(MediaFetchRequest request);
 
     /**
-     * Downloads the media at the given URL without blocking the calling thread. This is the non-blocking counterpart
-     * of {@link #fetch(URI)}, used by the asynchronous and streaming calls of model integrations.
+     * Downloads the media at the URL of the given request without blocking the calling thread. This is the
+     * non-blocking counterpart of {@link #fetch(MediaFetchRequest)}, used by the asynchronous and streaming calls of
+     * model integrations.
      * <p>
      * The default returns a future failed with an {@link AsyncNotSupportedException}, so that these calls fail instead
-     * of blocking a thread that must not be blocked. A fetcher whose {@link #fetch(URI)} blocks can implement this method
-     * by running {@link #fetch(URI)} on an executor of its choice:
+     * of blocking a thread that must not be blocked. A fetcher whose {@link #fetch(MediaFetchRequest)} blocks can
+     * implement this method by running {@link #fetch(MediaFetchRequest)} on an executor of its choice:
      * <pre>{@code
-     * public CompletableFuture<FetchedMedia> fetchAsync(URI url) {
-     *     return CompletableFuture.supplyAsync(() -> fetch(url), executor);
+     * public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
+     *     return CompletableFuture.supplyAsync(() -> fetch(request), executor);
      * }
      * }</pre>
      * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
-     * completes the returned future exceptionally, with the same exceptions as {@link #fetch(URI)}.
+     * completes the returned future exceptionally, with the same exceptions as {@link #fetch(MediaFetchRequest)}.
      *
-     * @param url the URL of the media, for example {@code https://example.com/cat.png}.
+     * @param request the request with the URL of the media, for example {@code https://example.com/cat.png}.
      * @return a future of the downloaded media.
      */
-    default CompletableFuture<FetchedMedia> fetchAsync(URI url) {
+    default CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
         return AsyncNotSupported.failedFuture("fetchAsync() is not implemented by " + getClass().getName()
-                + ". If fetch() blocks, implement fetchAsync() by running it on an executor of your choice,"
-                + " for example: return CompletableFuture.supplyAsync(() -> fetch(url), executor)");
+                + ". If fetch() blocks, implement fetchAsync(MediaFetchRequest) by running it on an executor of your"
+                + " choice, for example: return CompletableFuture.supplyAsync(() -> fetch(request), executor)");
     }
 }

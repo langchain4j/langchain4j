@@ -14,9 +14,10 @@ class MediaFetcherTest {
 
     @Test
     void fetchAsync_should_fail_by_default_and_explain_how_to_implement_it() {
-        MediaFetcher mediaFetcher = url -> FetchedMedia.from(new byte[1]);
+        MediaFetcher mediaFetcher = request -> FetchedMedia.from(new byte[1]);
 
-        CompletableFuture<FetchedMedia> media = mediaFetcher.fetchAsync(URI.create("https://example.com/cat.png"));
+        CompletableFuture<FetchedMedia> media =
+                mediaFetcher.fetchAsync(MediaFetchRequest.from(URI.create("https://example.com/cat.png")));
 
         assertThat(media)
                 .failsWithin(1, SECONDS)
@@ -24,7 +25,8 @@ class MediaFetcherTest {
                 .havingCause()
                 .isExactlyInstanceOf(AsyncNotSupportedException.class)
                 .withMessageStartingWith("fetchAsync() is not implemented by " + mediaFetcher.getClass().getName())
-                .withMessageContaining("CompletableFuture.supplyAsync(() -> fetch(url), executor)");
+                .withMessageContaining("implement fetchAsync(MediaFetchRequest)")
+                .withMessageContaining("CompletableFuture.supplyAsync(() -> fetch(request), executor)");
     }
 
     @Test
@@ -32,17 +34,17 @@ class MediaFetcherTest {
         MediaFetcher mediaFetcher = new MediaFetcher() {
 
             @Override
-            public FetchedMedia fetch(URI url) {
+            public FetchedMedia fetch(MediaFetchRequest request) {
                 return FetchedMedia.from(new byte[] {1, 2, 3}, "image/png");
             }
 
             @Override
-            public CompletableFuture<FetchedMedia> fetchAsync(URI url) {
-                return CompletableFuture.supplyAsync(() -> fetch(url), ForkJoinPool.commonPool());
+            public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
+                return CompletableFuture.supplyAsync(() -> fetch(request), ForkJoinPool.commonPool());
             }
         };
 
-        assertThat(mediaFetcher.fetchAsync(URI.create("https://example.com/cat.png")))
+        assertThat(mediaFetcher.fetchAsync(MediaFetchRequest.from(URI.create("https://example.com/cat.png"))))
                 .succeedsWithin(5, SECONDS)
                 .isEqualTo(FetchedMedia.from(new byte[] {1, 2, 3}, "image/png"));
     }

@@ -74,7 +74,7 @@ import org.jspecify.annotations.Nullable;
  *         .maxSizeInBytes(5 * 1024 * 1024)
  *         .build();
  *
- * FetchedMedia media = mediaFetcher.fetch(URI.create("https://images.example.com/cat.png"));
+ * FetchedMedia media = mediaFetcher.fetch(MediaFetchRequest.from(URI.create("https://images.example.com/cat.png")));
  * }</pre>
  * How addresses are checked: the fetcher resolves the host name itself and checks every address it gets. A plain
  * {@code http} request is then sent to exactly the address that was checked, so a DNS answer that changes between the
@@ -84,9 +84,9 @@ import org.jspecify.annotations.Nullable;
  * when the URLs come from end users or models, set {@link Builder#allowedHosts(String...)} where you can.
  * <p>
  * An instance is thread-safe and is meant to be shared. It starts its own threads on the first call of
- * {@link #fetch(URI)} or {@link #fetchAsync(URI)}, and creates its {@link HttpClient} for the first request that it
- * sends. The host lookups and the checks run on these threads, so {@link #fetchAsync(URI)} never blocks the calling
- * thread.
+ * {@link #fetch(MediaFetchRequest)} or {@link #fetchAsync(MediaFetchRequest)}, and creates its {@link HttpClient} for
+ * the first request that it sends. The host lookups and the checks run on these threads, so
+ * {@link #fetchAsync(MediaFetchRequest)} never blocks the calling thread.
  *
  * @since 1.25.0
  */
@@ -156,10 +156,10 @@ public final class DefaultMediaFetcher implements MediaFetcher {
     }
 
     /**
-     * Downloads the media at the given URL, checking it and every URL that a redirect leads to as described in the
-     * class documentation.
+     * Downloads the media at the URL of the given request, checking it and every URL that a redirect leads to as
+     * described in the class documentation.
      *
-     * @param url the URL of the media, for example {@code https://example.com/cat.png}.
+     * @param request the request with the URL of the media, for example {@code https://example.com/cat.png}.
      * @return the downloaded media, with the MIME type from the {@code Content-Type} header of the response.
      * @throws InvalidRequestException if the URL or a URL that a redirect leads to is not allowed, if the content is
      *                                 larger than {@link Builder#maxSizeInBytes(Integer)}, if there are more than
@@ -169,8 +169,8 @@ public final class DefaultMediaFetcher implements MediaFetcher {
      *                                 reached, or does not complete within {@link Builder#timeout(Duration)}.
      */
     @Override
-    public FetchedMedia fetch(URI url) {
-        CompletableFuture<FetchedMedia> media = fetchAsync(url);
+    public FetchedMedia fetch(MediaFetchRequest request) {
+        CompletableFuture<FetchedMedia> media = fetchAsync(request);
         try {
             return media.get();
         } catch (InterruptedException e) {
@@ -190,16 +190,19 @@ public final class DefaultMediaFetcher implements MediaFetcher {
     }
 
     /**
-     * Downloads the media at the given URL like {@link #fetch(URI)}, without blocking the calling thread: the host
-     * lookups and checks run on the fetcher's own threads. Cancelling the returned future stops the download.
+     * Downloads the media at the URL of the given request like {@link #fetch(MediaFetchRequest)}, without blocking
+     * the calling thread: the host lookups and checks run on the fetcher's own threads. Cancelling the returned future
+     * stops the download.
      *
-     * @param url the URL of the media, for example {@code https://example.com/cat.png}.
-     * @return a future of the downloaded media. It fails with the exceptions described in {@link #fetch(URI)}.
+     * @param request the request with the URL of the media, for example {@code https://example.com/cat.png}.
+     * @return a future of the downloaded media. It fails with the exceptions described in
+     *         {@link #fetch(MediaFetchRequest)}.
      */
     @Override
-    public CompletableFuture<FetchedMedia> fetchAsync(URI url) {
+    public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
         try {
-            ensureNotNull(url, "url");
+            ensureNotNull(request, "request");
+            URI url = request.url();
             Fetch fetch = new Fetch(url);
             executor().execute(() -> sendRequest(fetch, url, 0));
             return fetch.result;

@@ -9,6 +9,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.media.DefaultMediaFetcher;
 import dev.langchain4j.data.media.FetchedMedia;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import java.net.URI;
 import java.util.ArrayList;
@@ -28,8 +29,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * shared by all of them, so that its HTTP client and its threads exist only once.
  * <p>
  * {@link #prefetch(MediaFetcher, Collection)} lets their asynchronous and streaming paths download every media URL of
- * a request with {@link MediaFetcher#fetchAsync(URI)}, without blocking, and then map the request with their existing
- * synchronous code, which calls {@link MediaFetcher#fetch(URI)} of the fetcher that it returns:
+ * a request with {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, without blocking, and then map the request with
+ * their existing synchronous code, which calls {@link MediaFetcher#fetch(MediaFetchRequest)} of the fetcher that it
+ * returns:
  * <pre>{@code
  * CompletableFuture<ProviderRequest> providerRequest = MediaPrefetcher.prefetch(mediaFetcher, mediaUrls)
  *         .thenApply(prefetched -> toProviderRequest(chatRequest, prefetched));
@@ -51,15 +53,16 @@ public final class MediaPrefetcher {
     }
 
     /**
-     * Downloads the given URLs with {@link MediaFetcher#fetchAsync(URI)}, all at the same time and each distinct URL
-     * once. Without URLs, the fetcher is not called at all.
+     * Downloads the given URLs with {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, all at the same time and each
+     * distinct URL once. Without URLs, the fetcher is not called at all.
      *
      * @param mediaFetcher the fetcher that downloads the media.
      * @param urls         the URLs to download.
-     * @return a future of a fetcher that returns the downloaded media of these URLs, from {@link MediaFetcher#fetch(URI)}
-     *         and {@link MediaFetcher#fetchAsync(URI)}, and fails with an {@link IllegalStateException} for any other
-     *         URL. The future fails as soon as one download fails, with the exception of that download, and the other
-     *         downloads are then cancelled; cancelling the future cancels the downloads. This method never throws.
+     * @return a future of a fetcher that returns the downloaded media of these URLs, from
+     *         {@link MediaFetcher#fetch(MediaFetchRequest)} and {@link MediaFetcher#fetchAsync(MediaFetchRequest)},
+     *         and fails with an {@link IllegalStateException} for any other URL. The future fails as soon as one
+     *         download fails, with the exception of that download, and the other downloads are then cancelled;
+     *         cancelling the future cancels the downloads. This method never throws.
      */
     public static CompletableFuture<MediaFetcher> prefetch(MediaFetcher mediaFetcher, Collection<URI> urls) {
         try {
@@ -88,15 +91,17 @@ public final class MediaPrefetcher {
             if (result.isDone()) {
                 break;
             }
-            CompletableFuture<FetchedMedia> download =
-                    failOnThrow(mediaFetcher, "fetchAsync(URI)", () -> mediaFetcher.fetchAsync(url));
+            CompletableFuture<FetchedMedia> download = failOnThrow(
+                    mediaFetcher,
+                    "fetchAsync(MediaFetchRequest)",
+                    () -> mediaFetcher.fetchAsync(MediaFetchRequest.from(url)));
             downloads.add(download);
             download.whenComplete((media, error) -> {
                 if (error != null) {
                     result.completeExceptionally(unwrapCompletionException(error));
                 } else if (media == null) {
                     result.completeExceptionally(new IllegalStateException(
-                            mediaFetcher.getClass().getName() + ".fetchAsync(URI) completed with null"));
+                            mediaFetcher.getClass().getName() + ".fetchAsync(MediaFetchRequest) completed with null"));
                 } else {
                     fetched.put(url, media);
                     if (remaining.decrementAndGet() == 0) {
@@ -122,19 +127,20 @@ public final class MediaPrefetcher {
         }
 
         @Override
-        public FetchedMedia fetch(URI url) {
-            FetchedMedia fetched = url == null ? null : media.get(url);
+        public FetchedMedia fetch(MediaFetchRequest request) {
+            FetchedMedia fetched = request == null ? null : media.get(request.url());
             if (fetched == null) {
                 throw new IllegalStateException("A media URL"
-                        + (url == null ? "" : " of host '" + url.getHost() + "'") + " was not prefetched");
+                        + (request == null ? "" : " of host '" + request.url().getHost() + "'")
+                        + " was not prefetched");
             }
             return fetched;
         }
 
         @Override
-        public CompletableFuture<FetchedMedia> fetchAsync(URI url) {
+        public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
             try {
-                return CompletableFuture.completedFuture(fetch(url));
+                return CompletableFuture.completedFuture(fetch(request));
             } catch (RuntimeException e) {
                 return CompletableFuture.failedFuture(e);
             }

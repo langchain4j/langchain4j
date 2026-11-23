@@ -147,7 +147,7 @@ class DefaultMediaFetcherTest {
     void should_reject_urls_that_are_not_http_or_https(String url) {
         DefaultMediaFetcher fetcher = builder().allowNonPublicHosts("localhost", "example.com").build();
 
-        assertThatThrownBy(() -> fetcher.fetch(URI.create(url)))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(URI.create(url))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageStartingWith("Only http and https URLs can be fetched")
                 .hasMessageContaining("ImageContent.from(Path, String)");
@@ -164,7 +164,7 @@ class DefaultMediaFetcherTest {
                 "http:cat.png"
             })
     void should_reject_urls_without_a_valid_host(String url) {
-        assertThatThrownBy(() -> localhostAllowed().fetch(URI.create(url)))
+        assertThatThrownBy(() -> localhostAllowed().fetch(MediaFetchRequest.from(URI.create(url))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessage("The media URL has no valid host");
     }
@@ -174,11 +174,11 @@ class DefaultMediaFetcherTest {
         server = TestHttpServer.http("127.0.0.1").on("/", ok(IMAGE));
         DefaultMediaFetcher fetcher = builder().build();
 
-        assertThatThrownBy(() -> fetcher.fetch(server.url("127.0.0.1", "/cat.png")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("127.0.0.1", "/cat.png"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessage("Host '127.0.0.1' resolves to a non-public address."
                         + " If you trust it, add it to allowNonPublicHosts of the DefaultMediaFetcher");
-        assertThatThrownBy(() -> fetcher.fetch(server.url("localhost", "/cat.png")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/cat.png"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("non-public");
         assertThat(server.hits()).isZero();
@@ -189,9 +189,9 @@ class DefaultMediaFetcherTest {
         server = TestHttpServer.http("127.0.0.1").on("/", ok(IMAGE));
         DefaultMediaFetcher fetcher = localhostAllowed();
 
-        assertThat(fetcher.fetch(server.url("HTTP", "LOCALHOST", "/cat.png")).bytes())
+        assertThat(fetcher.fetch(MediaFetchRequest.from(server.url("HTTP", "LOCALHOST", "/cat.png"))).bytes())
                 .isEqualTo(IMAGE);
-        assertThatThrownBy(() -> fetcher.fetch(server.url("127.0.0.1", "/cat.png")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("127.0.0.1", "/cat.png"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("non-public");
         assertThat(server.hits()).isEqualTo(1);
@@ -203,14 +203,14 @@ class DefaultMediaFetcherTest {
         server = TestHttpServer.http("::1").on("/", ok(IMAGE));
         URI url = server.url("[::1]", "/cat.png");
 
-        assertThatThrownBy(() -> builder().build().fetch(url))
+        assertThatThrownBy(() -> builder().build().fetch(MediaFetchRequest.from(url)))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("non-public");
         assertThat(server.hits()).isZero();
 
-        assertThat(builder().allowNonPublicHosts("[::1]").build().fetch(url).bytes())
+        assertThat(builder().allowNonPublicHosts("[::1]").build().fetch(MediaFetchRequest.from(url)).bytes())
                 .isEqualTo(IMAGE);
-        assertThat(builder().allowNonPublicHosts("::1").build().fetch(url).bytes())
+        assertThat(builder().allowNonPublicHosts("::1").build().fetch(MediaFetchRequest.from(url)).bytes())
                 .isEqualTo(IMAGE);
     }
 
@@ -220,13 +220,13 @@ class DefaultMediaFetcherTest {
         server = TestHttpServer.http("127.0.0.1").on("/", ok(IMAGE));
         URI url = server.url(host, "/cat.png");
 
-        assertThatThrownBy(() -> builder().build().fetch(url))
+        assertThatThrownBy(() -> builder().build().fetch(MediaFetchRequest.from(url)))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("non-public");
         assertThat(server.hits()).isZero();
 
         // the JDK client really connects to 127.0.0.1 for this form of the address
-        assertThat(builder().allowNonPublicHosts(host).build().fetch(url).bytes())
+        assertThat(builder().allowNonPublicHosts(host).build().fetch(MediaFetchRequest.from(url)).bytes())
                 .isEqualTo(IMAGE);
     }
 
@@ -246,7 +246,7 @@ class DefaultMediaFetcherTest {
                 "http://172.16.0.1/"
             })
     void should_reject_non_public_addresses(String url) {
-        assertThatThrownBy(() -> builder().build().fetch(URI.create(url)))
+        assertThatThrownBy(() -> builder().build().fetch(MediaFetchRequest.from(URI.create(url))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("non-public");
     }
@@ -257,7 +257,8 @@ class DefaultMediaFetcherTest {
 
         assertThatThrownBy(() -> builder()
                         .build()
-                        .fetch(URI.create("http://public.example.com@127.0.0.1:" + server.port() + "/")))
+                        .fetch(MediaFetchRequest.from(
+                                URI.create("http://public.example.com@127.0.0.1:" + server.port() + "/"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("'127.0.0.1'");
         assertThat(server.hits()).isZero();
@@ -267,7 +268,7 @@ class DefaultMediaFetcherTest {
     void should_reject_a_host_when_any_of_its_addresses_is_not_public() {
         DefaultMediaFetcher fetcher = withNames(builder(), "multi.test=93.184.215.14,10.0.0.5");
 
-        assertThatThrownBy(() -> fetcher.fetch(URI.create("http://multi.test/cat.png")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(URI.create("http://multi.test/cat.png"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("Host 'multi.test' resolves to a non-public address");
     }
@@ -281,7 +282,8 @@ class DefaultMediaFetcherTest {
                 },
                 AddressClassifier::isPublic);
 
-        assertThatThrownBy(() -> fetcher.fetch(URI.create("https://unknown.example.com/cat.png")))
+        assertThatThrownBy(() ->
+                        fetcher.fetch(MediaFetchRequest.from(URI.create("https://unknown.example.com/cat.png"))))
                 .isExactlyInstanceOf(LangChain4jException.class)
                 .hasMessage("Unknown host 'unknown.example.com'")
                 .hasCauseExactlyInstanceOf(UnknownHostException.class);
@@ -289,7 +291,8 @@ class DefaultMediaFetcherTest {
 
     @Test
     void should_fail_with_a_LangChain4jException_when_the_http_client_cannot_send_the_request() {
-        assertThatThrownBy(() -> localhostAllowed().fetch(URI.create("http://localhost:99999/cat.png")))
+        assertThatThrownBy(() -> localhostAllowed()
+                        .fetch(MediaFetchRequest.from(URI.create("http://localhost:99999/cat.png"))))
                 .isExactlyInstanceOf(LangChain4jException.class)
                 .hasMessage("Failed to fetch media from host 'localhost'")
                 .hasCauseInstanceOf(IllegalArgumentException.class);
@@ -309,12 +312,12 @@ class DefaultMediaFetcherTest {
                 "evil.test",
                 "notmedia.test");
 
-        assertThat(fetcher.fetch(server.url("media.test", "/a")).bytes()).isEqualTo(IMAGE);
-        assertThat(fetcher.fetch(server.url("MEDIA.TEST.", "/a")).bytes()).isEqualTo(IMAGE);
-        assertThat(fetcher.fetch(server.url("a.cdn.test", "/a")).bytes()).isEqualTo(IMAGE);
-        assertThat(fetcher.fetch(server.url("b.a.cdn.test", "/a")).bytes()).isEqualTo(IMAGE);
+        assertThat(fetcher.fetch(MediaFetchRequest.from(server.url("media.test", "/a"))).bytes()).isEqualTo(IMAGE);
+        assertThat(fetcher.fetch(MediaFetchRequest.from(server.url("MEDIA.TEST.", "/a"))).bytes()).isEqualTo(IMAGE);
+        assertThat(fetcher.fetch(MediaFetchRequest.from(server.url("a.cdn.test", "/a"))).bytes()).isEqualTo(IMAGE);
+        assertThat(fetcher.fetch(MediaFetchRequest.from(server.url("b.a.cdn.test", "/a"))).bytes()).isEqualTo(IMAGE);
         for (String host : List.of("cdn.test", "evil.test", "notmedia.test")) {
-            assertThatThrownBy(() -> fetcher.fetch(server.url(host, "/a")))
+            assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url(host, "/a"))))
                     .isExactlyInstanceOf(InvalidRequestException.class)
                     .hasMessage("Host '" + host + "' is not in allowedHosts of the DefaultMediaFetcher");
         }
@@ -326,7 +329,7 @@ class DefaultMediaFetcherTest {
         server = TestHttpServer.http("127.0.0.1").on("/", ok(IMAGE));
         DefaultMediaFetcher fetcher = builder().allowedHosts("localhost").build();
 
-        assertThatThrownBy(() -> fetcher.fetch(server.url("localhost", "/a")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/a"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("non-public");
         assertThat(server.hits()).isZero();
@@ -338,7 +341,7 @@ class DefaultMediaFetcherTest {
         server.on("/start", redirect(server.url("evil.test", "/secret"))).on("/secret", ok(IMAGE));
         DefaultMediaFetcher fetcher = withNames(builder().allowedHosts("media.test"), "media.test", "evil.test");
 
-        assertThatThrownBy(() -> fetcher.fetch(server.url("media.test", "/start")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("media.test", "/start"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessage("Host 'evil.test' is not in allowedHosts of the DefaultMediaFetcher");
         assertThat(server.hits()).isEqualTo(1);
@@ -349,7 +352,7 @@ class DefaultMediaFetcherTest {
         server = TestHttpServer.http("127.0.0.1");
         server.on("/start", redirect(server.url("127.0.0.1", "/secret"))).on("/secret", ok(IMAGE));
 
-        assertThatThrownBy(() -> localhostAllowed().fetch(server.url("localhost", "/start")))
+        assertThatThrownBy(() -> localhostAllowed().fetch(MediaFetchRequest.from(server.url("localhost", "/start"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("Host '127.0.0.1' resolves to a non-public address");
         assertThat(server.hits()).isEqualTo(1);
@@ -363,7 +366,7 @@ class DefaultMediaFetcherTest {
                 .allowNonPublicHosts("localhost")
                 .build();
 
-        assertThatThrownBy(() -> fetcher.fetch(server.url("localhost", "/a")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/a"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("is not in allowedHosts");
         assertThat(server.hits()).isZero();
@@ -379,10 +382,10 @@ class DefaultMediaFetcherTest {
                 .on("/latest", ok("secret".getBytes(UTF_8)));
         DefaultMediaFetcher fetcher = withNames(builder(), "media.test", "internal.test=10.0.0.5");
 
-        assertThatThrownBy(() -> fetcher.fetch(server.url("media.test", "/a.png")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("media.test", "/a.png"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("Host 'internal.test' resolves to a non-public address");
-        assertThatThrownBy(() -> fetcher.fetch(server.url("media.test", "/b.png")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("media.test", "/b.png"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("Host '169.254.169.254' resolves to a non-public address");
         assertThat(server.requests)
@@ -398,7 +401,7 @@ class DefaultMediaFetcherTest {
                 .on("/absolute", redirect("//localhost:" + server.port() + "/final"))
                 .on("/final", ok(IMAGE));
 
-        assertThat(localhostAllowed().fetch(server.url("localhost", "/dir/start")).bytes())
+        assertThat(localhostAllowed().fetch(MediaFetchRequest.from(server.url("localhost", "/dir/start"))).bytes())
                 .isEqualTo(IMAGE);
         assertThat(server.requests)
                 .extracting(request -> request.requestUri().getPath())
@@ -416,7 +419,7 @@ class DefaultMediaFetcherTest {
             }
         });
 
-        assertThat(localhostAllowed().fetch(server.url("localhost", "")).bytes())
+        assertThat(localhostAllowed().fetch(MediaFetchRequest.from(server.url("localhost", ""))).bytes())
                 .isEqualTo(IMAGE);
         assertThat(server.requests.get(1).requestUri().getPath()).isEqualTo("/cat.png");
     }
@@ -427,7 +430,7 @@ class DefaultMediaFetcherTest {
         DefaultMediaFetcher fetcher = withNames(builder(), "pinned.test");
 
         // the JDK cannot resolve pinned.test, so the request reaches the server only through the checked address
-        assertThat(fetcher.fetch(server.url("pinned.test", "/cat.png?size=1")).bytes())
+        assertThat(fetcher.fetch(MediaFetchRequest.from(server.url("pinned.test", "/cat.png?size=1"))).bytes())
                 .isEqualTo(IMAGE);
 
         TestHttpServer.Request request = server.requests.get(0);
@@ -444,7 +447,7 @@ class DefaultMediaFetcherTest {
                 : new InetAddress[] {InetAddress.getByName("10.0.0.5")};
         DefaultMediaFetcher fetcher = new DefaultMediaFetcher(builder(), changingAnswers, LOCAL_SERVER_IS_PUBLIC);
 
-        assertThatThrownBy(() -> fetcher.fetch(server.url("rebind.test", "/cat.png")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("rebind.test", "/cat.png"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("Host 'rebind.test' resolves to a non-public address");
         assertThat(lookups).hasValue(2);
@@ -458,7 +461,7 @@ class DefaultMediaFetcherTest {
         DefaultMediaFetcher fetcher = new DefaultMediaFetcher(
                 builder(), resolver(Map.of("v6.test", "::1")), address -> address.isLoopbackAddress());
 
-        assertThat(fetcher.fetch(server.url("v6.test", "/cat.png")).bytes()).isEqualTo(IMAGE);
+        assertThat(fetcher.fetch(MediaFetchRequest.from(server.url("v6.test", "/cat.png"))).bytes()).isEqualTo(IMAGE);
         assertThat(server.requests.get(0).requestUri()).isEqualTo(server.url("v6.test", "/cat.png"));
     }
 
@@ -467,7 +470,7 @@ class DefaultMediaFetcherTest {
         server = TestHttpServer.http("127.0.0.1").on("/loop", redirect("/loop"));
         URI url = server.url("localhost", "/loop");
 
-        assertThatThrownBy(() -> localhostAllowed().fetch(url))
+        assertThatThrownBy(() -> localhostAllowed().fetch(MediaFetchRequest.from(url)))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessage("Host 'localhost' answered with a redirect (HTTP status 302), but maxRedirects (5) is reached");
         assertThat(server.hits()).isEqualTo(6);
@@ -477,7 +480,7 @@ class DefaultMediaFetcherTest {
                         .allowNonPublicHosts("localhost")
                         .maxRedirects(0)
                         .build()
-                        .fetch(url))
+                        .fetch(MediaFetchRequest.from(url)))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("maxRedirects (0)");
         assertThat(server.hits()).isEqualTo(1);
@@ -487,7 +490,7 @@ class DefaultMediaFetcherTest {
                         .allowNonPublicHosts("localhost")
                         .maxRedirects(2)
                         .build()
-                        .fetch(url))
+                        .fetch(MediaFetchRequest.from(url)))
                 .isExactlyInstanceOf(InvalidRequestException.class);
         assertThat(server.hits()).isEqualTo(3);
     }
@@ -500,13 +503,13 @@ class DefaultMediaFetcherTest {
                 .on("/file", redirect("file:///etc/passwd"));
         DefaultMediaFetcher fetcher = localhostAllowed();
 
-        assertThatThrownBy(() -> fetcher.fetch(server.url("localhost", "/no-location")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/no-location"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessage("Host 'localhost' answered with a redirect (HTTP status 302) without a Location header");
-        assertThatThrownBy(() -> fetcher.fetch(server.url("localhost", "/invalid")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/invalid"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessage("Host 'localhost' answered with a redirect to an invalid URL");
-        assertThatThrownBy(() -> fetcher.fetch(server.url("localhost", "/file")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/file"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("Only http and https URLs can be fetched");
     }
@@ -522,9 +525,9 @@ class DefaultMediaFetcherTest {
                 .httpClientBuilder(HttpClient.newBuilder().sslContext(TestHttpServer.clientSslContext()))
                 .build();
 
-        assertThat(fetcher.fetch(server.url("https", "localhost", "/cat.png")).bytes())
+        assertThat(fetcher.fetch(MediaFetchRequest.from(server.url("https", "localhost", "/cat.png"))).bytes())
                 .isEqualTo(IMAGE);
-        assertThatThrownBy(() -> fetcher.fetch(server.url("https", "localhost", "/downgrade")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("https", "localhost", "/downgrade"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessage("Host 'localhost' answered with a redirect from https to http, which is not allowed");
         assertThat(other.hits()).isZero();
@@ -534,7 +537,8 @@ class DefaultMediaFetcherTest {
     void should_verify_certificates() {
         server = TestHttpServer.https("127.0.0.1").on("/", ok(IMAGE));
 
-        assertThatThrownBy(() -> localhostAllowed().fetch(server.url("https", "localhost", "/cat.png")))
+        assertThatThrownBy(() -> localhostAllowed()
+                        .fetch(MediaFetchRequest.from(server.url("https", "localhost", "/cat.png"))))
                 .isExactlyInstanceOf(LangChain4jException.class)
                 .hasMessage("Failed to fetch media from host 'localhost'");
         assertThat(server.hits()).isZero();
@@ -551,11 +555,11 @@ class DefaultMediaFetcherTest {
         DefaultMediaFetcher fetcher =
                 builder().allowNonPublicHosts("localhost").maxSizeInBytes(1024).build();
 
-        assertThat(fetcher.fetch(server.url("localhost", "/exact")).bytes()).hasSize(1024);
-        assertThatThrownBy(() -> fetcher.fetch(server.url("localhost", "/declared")))
+        assertThat(fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/exact"))).bytes()).hasSize(1024);
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/declared"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessage("The media is larger than maxSizeInBytes (1024 bytes)");
-        assertThatThrownBy(() -> fetcher.fetch(server.url("localhost", "/chunked")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/chunked"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessage("The media is larger than maxSizeInBytes (1024 bytes)");
     }
@@ -569,7 +573,7 @@ class DefaultMediaFetcherTest {
                 .build();
         long start = System.nanoTime();
 
-        assertThatThrownBy(() -> fetcher.fetch(server.url("localhost", "/endless")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/endless"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("maxSizeInBytes");
 
@@ -593,7 +597,7 @@ class DefaultMediaFetcherTest {
                 .build();
         long start = System.nanoTime();
 
-        assertThatThrownBy(() -> fetcher.fetch(server.url("localhost", "/cat.png")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/cat.png"))))
                 .isExactlyInstanceOf(LangChain4jException.class)
                 .hasMessage("Fetching media from host 'localhost' did not complete within the timeout (PT0.5S)");
 
@@ -609,7 +613,7 @@ class DefaultMediaFetcherTest {
                 .build();
         long start = System.nanoTime();
 
-        assertThatThrownBy(() -> fetcher.fetch(server.url("localhost", "/cat.png")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/cat.png"))))
                 .isExactlyInstanceOf(LangChain4jException.class)
                 .hasMessageContaining("did not complete within the timeout (PT1S)");
 
@@ -626,7 +630,7 @@ class DefaultMediaFetcherTest {
                 .build();
         long start = System.nanoTime();
 
-        assertThatThrownBy(() -> fetcher.fetch(server.url("localhost", "/hop")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/hop"))))
                 .isExactlyInstanceOf(LangChain4jException.class)
                 .hasMessageContaining("did not complete within the timeout");
 
@@ -649,7 +653,8 @@ class DefaultMediaFetcherTest {
                 AddressClassifier::isPublic);
         long start = System.nanoTime();
 
-        assertThatThrownBy(() -> fetcher.fetch(URI.create("https://slow-dns.example.com/cat.png")))
+        assertThatThrownBy(() ->
+                        fetcher.fetch(MediaFetchRequest.from(URI.create("https://slow-dns.example.com/cat.png"))))
                 .isExactlyInstanceOf(LangChain4jException.class)
                 .hasMessageContaining("did not complete within the timeout (PT0.3S)");
 
@@ -666,8 +671,8 @@ class DefaultMediaFetcherTest {
                 .on("/get", ok(IMAGE));
         DefaultMediaFetcher fetcher = localhostAllowed();
 
-        fetcher.fetch(server.url("localhost", "/set"));
-        fetcher.fetch(server.url("localhost", "/get"));
+        fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/set")));
+        fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/get")));
 
         assertThat(server.requests).hasSize(3).allSatisfy(request -> {
             assertThat(request.method()).isEqualTo("GET");
@@ -697,9 +702,9 @@ class DefaultMediaFetcherTest {
         try {
             DefaultMediaFetcher fetcher = localhostAllowed();
 
-            fetcher.fetch(server.url("localhost", "/set"));
-            fetcher.fetch(server.url("localhost", "/get"));
-            assertThatThrownBy(() -> fetcher.fetch(server.url("localhost", "/auth")))
+            fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/set")));
+            fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/get")));
+            assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/auth"))))
                     .isExactlyInstanceOf(InvalidRequestException.class)
                     .hasMessage("Host 'localhost' answered with HTTP status 401");
 
@@ -727,10 +732,10 @@ class DefaultMediaFetcherTest {
             public void connectFailed(URI uri, SocketAddress address, IOException e) {}
         });
         try {
-            assertThat(localhostAllowed().fetch(server.url("localhost", "/cat.png")).bytes())
+            assertThat(localhostAllowed().fetch(MediaFetchRequest.from(server.url("localhost", "/cat.png"))).bytes())
                     .isEqualTo(IMAGE);
             assertThat(withNames(builder(), "media.test")
-                            .fetch(server.url("media.test", "/cat.png"))
+                            .fetch(MediaFetchRequest.from(server.url("media.test", "/cat.png")))
                             .bytes())
                     .isEqualTo(IMAGE);
             assertThat(other.hits()).isZero();
@@ -750,7 +755,7 @@ class DefaultMediaFetcherTest {
             ok(gzipped.toByteArray()).handle(exchange);
         });
 
-        assertThat(localhostAllowed().fetch(server.url("localhost", "/cat.png")).bytes())
+        assertThat(localhostAllowed().fetch(MediaFetchRequest.from(server.url("localhost", "/cat.png"))).bytes())
                 .isEqualTo(gzipped.toByteArray());
     }
 
@@ -759,7 +764,7 @@ class DefaultMediaFetcherTest {
     void should_reject_responses_that_are_not_successful(int status) {
         server = TestHttpServer.http("127.0.0.1").on("/", TestHttpServer.status(status));
 
-        assertThatThrownBy(() -> localhostAllowed().fetch(server.url("localhost", "/cat.png")))
+        assertThatThrownBy(() -> localhostAllowed().fetch(MediaFetchRequest.from(server.url("localhost", "/cat.png"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessage("Host 'localhost' answered with HTTP status " + status);
     }
@@ -772,16 +777,17 @@ class DefaultMediaFetcherTest {
                 .on("/none", ok(IMAGE));
         DefaultMediaFetcher fetcher = localhostAllowed();
 
-        assertThat(fetcher.fetch(server.url("localhost", "/png"))).isEqualTo(FetchedMedia.from(IMAGE, "image/png"));
-        assertThat(fetcher.fetch(server.url("localhost", "/blank")).mimeType()).isNull();
-        assertThat(fetcher.fetch(server.url("localhost", "/none")).mimeType()).isNull();
+        assertThat(fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/png"))))
+                .isEqualTo(FetchedMedia.from(IMAGE, "image/png"));
+        assertThat(fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/blank"))).mimeType()).isNull();
+        assertThat(fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/none"))).mimeType()).isNull();
     }
 
     @Test
     void should_fetch_empty_content() {
         server = TestHttpServer.http("127.0.0.1").on("/", ok(new byte[0]));
 
-        assertThat(localhostAllowed().fetch(server.url("localhost", "/empty")).bytes())
+        assertThat(localhostAllowed().fetch(MediaFetchRequest.from(server.url("localhost", "/empty"))).bytes())
                 .isEmpty();
     }
 
@@ -794,7 +800,7 @@ class DefaultMediaFetcherTest {
         DefaultMediaFetcher fetcher =
                 withNames(builder().httpClientBuilder(HttpClient.newBuilder().proxy(proxy)), "media.test");
 
-        assertThat(fetcher.fetch(URI.create("http://media.test/cat.png")).bytes())
+        assertThat(fetcher.fetch(MediaFetchRequest.from(URI.create("http://media.test/cat.png"))).bytes())
                 .isEqualTo("from-proxy".getBytes(UTF_8));
         assertThat(other.requests.get(0).requestUri()).isEqualTo(URI.create("http://media.test/cat.png"));
         assertThat(fetcher.httpClient().proxy()).containsSame(proxy);
@@ -808,7 +814,8 @@ class DefaultMediaFetcherTest {
                         .proxy(ProxySelector.of(new InetSocketAddress("127.0.0.1", other.port()))))
                 .build();
 
-        assertThatThrownBy(() -> fetcher.fetch(URI.create("http://169.254.169.254/latest/meta-data/")))
+        assertThatThrownBy(() ->
+                        fetcher.fetch(MediaFetchRequest.from(URI.create("http://169.254.169.254/latest/meta-data/"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("non-public");
         assertThat(other.hits()).isZero();
@@ -823,10 +830,11 @@ class DefaultMediaFetcherTest {
         DefaultMediaFetcher fetcher = withNames(builder().httpClientBuilder(httpClientBuilder), "media.test");
         DefaultMediaFetcher secondFetcher = withNames(builder().httpClientBuilder(httpClientBuilder), "other.test");
 
-        assertThat(fetcher.fetch(server.url("media.test", "/cat.png")).bytes()).isEqualTo(IMAGE);
-        assertThat(secondFetcher.fetch(server.url("other.test", "/cat.png")).bytes())
+        assertThat(fetcher.fetch(MediaFetchRequest.from(server.url("media.test", "/cat.png"))).bytes())
                 .isEqualTo(IMAGE);
-        assertThatThrownBy(() -> fetcher.fetch(server.url("media.test", "/redirect")))
+        assertThat(secondFetcher.fetch(MediaFetchRequest.from(server.url("other.test", "/cat.png"))).bytes())
+                .isEqualTo(IMAGE);
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(server.url("media.test", "/redirect"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("Host '169.254.169.254' resolves to a non-public address");
         assertThat(fetcher.httpClient().followRedirects()).isEqualTo(HttpClient.Redirect.NEVER);
@@ -840,11 +848,11 @@ class DefaultMediaFetcherTest {
         DefaultMediaFetcher fetcher = localhostAllowed();
         assertThat(fetcher.isHttpClientCreated()).isFalse();
 
-        assertThatThrownBy(() -> fetcher.fetch(URI.create("file:///etc/passwd")))
+        assertThatThrownBy(() -> fetcher.fetch(MediaFetchRequest.from(URI.create("file:///etc/passwd"))))
                 .isExactlyInstanceOf(InvalidRequestException.class);
         assertThat(fetcher.isHttpClientCreated()).isFalse();
 
-        fetcher.fetch(server.url("localhost", "/cat.png"));
+        fetcher.fetch(MediaFetchRequest.from(server.url("localhost", "/cat.png")));
         assertThat(fetcher.isHttpClientCreated()).isTrue();
     }
 
@@ -865,22 +873,22 @@ class DefaultMediaFetcherTest {
 
         assertFailsWith(fetcher.fetchAsync(null))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .withMessageContaining("url");
-        assertFailsWith(fetcher.fetchAsync(URI.create("file:///etc/passwd")))
+                .withMessage("request cannot be null");
+        assertFailsWith(fetcher.fetchAsync(MediaFetchRequest.from(URI.create("file:///etc/passwd"))))
                 .isExactlyInstanceOf(InvalidRequestException.class);
-        assertFailsWith(fetcher.fetchAsync(server.url("127.0.0.1", "/cat.png")))
+        assertFailsWith(fetcher.fetchAsync(MediaFetchRequest.from(server.url("127.0.0.1", "/cat.png"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .withMessageContaining("non-public");
-        assertFailsWith(fetcher.fetchAsync(server.url("localhost", "/big")))
+        assertFailsWith(fetcher.fetchAsync(MediaFetchRequest.from(server.url("localhost", "/big"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .withMessageContaining("maxSizeInBytes");
-        assertFailsWith(fetcher.fetchAsync(server.url("localhost", "/missing")))
+        assertFailsWith(fetcher.fetchAsync(MediaFetchRequest.from(server.url("localhost", "/missing"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .withMessageContaining("404");
-        assertFailsWith(fetcher.fetchAsync(server.url("localhost", "/slow")))
+        assertFailsWith(fetcher.fetchAsync(MediaFetchRequest.from(server.url("localhost", "/slow"))))
                 .isExactlyInstanceOf(LangChain4jException.class)
                 .withMessageContaining("timeout");
-        assertThat(fetcher.fetchAsync(server.url("localhost", "/cat.png")))
+        assertThat(fetcher.fetchAsync(MediaFetchRequest.from(server.url("localhost", "/cat.png"))))
                 .succeedsWithin(10, SECONDS)
                 .isEqualTo(FetchedMedia.from(IMAGE));
     }
@@ -904,7 +912,8 @@ class DefaultMediaFetcherTest {
                 LOCAL_SERVER_IS_PUBLIC);
         long start = System.nanoTime();
 
-        CompletableFuture<FetchedMedia> media = fetcher.fetchAsync(server.url("slow-dns.test", "/cat.png"));
+        CompletableFuture<FetchedMedia> media =
+                fetcher.fetchAsync(MediaFetchRequest.from(server.url("slow-dns.test", "/cat.png")));
 
         assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(1));
         assertThat(media).isNotDone();
@@ -920,7 +929,7 @@ class DefaultMediaFetcherTest {
         server.on("/a.png", redirect(server.url("internal.test", "/secret"))).on("/secret", ok(IMAGE));
         DefaultMediaFetcher fetcher = withNames(builder(), "media.test", "internal.test=10.0.0.5");
 
-        assertFailsWith(fetcher.fetchAsync(server.url("media.test", "/a.png")))
+        assertFailsWith(fetcher.fetchAsync(MediaFetchRequest.from(server.url("media.test", "/a.png"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .withMessageContaining("Host 'internal.test' resolves to a non-public address");
         assertThat(server.hits()).isEqualTo(1);
@@ -929,7 +938,8 @@ class DefaultMediaFetcherTest {
     @Test
     void fetchAsync_should_stop_the_download_when_the_future_is_cancelled() throws Exception {
         server = TestHttpServer.http("127.0.0.1").on("/slow", trickle(50, 100_000));
-        CompletableFuture<FetchedMedia> media = localhostAllowed().fetchAsync(server.url("localhost", "/slow"));
+        CompletableFuture<FetchedMedia> media =
+                localhostAllowed().fetchAsync(MediaFetchRequest.from(server.url("localhost", "/slow")));
         for (int i = 0; i < 100 && server.hits() == 0; i++) {
             Thread.sleep(50);
         }

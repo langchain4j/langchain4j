@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.media.DefaultMediaFetcher;
 import dev.langchain4j.data.media.FetchedMedia;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.InvalidRequestException;
@@ -42,12 +43,13 @@ class MediaPrefetcherTest {
         }
 
         @Override
-        public FetchedMedia fetch(URI url) {
+        public FetchedMedia fetch(MediaFetchRequest request) {
             throw new AssertionError("prefetch must not call fetch()");
         }
 
         @Override
-        public CompletableFuture<FetchedMedia> fetchAsync(URI url) {
+        public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
+            URI url = request.url();
             urls.add(url);
             CompletableFuture<FetchedMedia> future = answer.apply(url);
             if (future != null) {
@@ -77,9 +79,9 @@ class MediaPrefetcherTest {
                 .join();
 
         assertThat(fetcher.urls).containsExactlyInAnyOrder(CAT, DOG, BIRD);
-        assertThat(prefetched.fetch(CAT)).isEqualTo(media(CAT));
-        assertThat(prefetched.fetch(DOG)).isEqualTo(media(DOG));
-        assertThat(prefetched.fetchAsync(BIRD)).isCompletedWithValue(media(BIRD));
+        assertThat(prefetched.fetch(MediaFetchRequest.from(CAT))).isEqualTo(media(CAT));
+        assertThat(prefetched.fetch(MediaFetchRequest.from(DOG))).isEqualTo(media(DOG));
+        assertThat(prefetched.fetchAsync(MediaFetchRequest.from(BIRD))).isCompletedWithValue(media(BIRD));
         assertThat(fetcher.urls).hasSize(3);
     }
 
@@ -89,29 +91,31 @@ class MediaPrefetcherTest {
                 new RecordingMediaFetcher(url -> CompletableFuture.completedFuture(media(url)));
         MediaFetcher prefetched = MediaPrefetcher.prefetch(fetcher, List.of(CAT)).join();
 
-        assertThatThrownBy(() -> prefetched.fetch(BIRD))
+        assertThatThrownBy(() -> prefetched.fetch(MediaFetchRequest.from(BIRD)))
                 .isExactlyInstanceOf(IllegalStateException.class)
                 .hasMessage("A media URL of host 'birds.example.com' was not prefetched");
         assertThatThrownBy(() -> prefetched.fetch(null))
                 .isExactlyInstanceOf(IllegalStateException.class)
                 .hasMessage("A media URL was not prefetched");
-        assertFailsWith(prefetched.fetchAsync(BIRD)).isExactlyInstanceOf(IllegalStateException.class);
+        assertFailsWith(prefetched.fetchAsync(MediaFetchRequest.from(BIRD)))
+                .isExactlyInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void should_not_call_the_fetcher_without_urls() {
-        MediaFetcher syncOnly = url -> {
+        MediaFetcher syncOnly = request -> {
             throw new AssertionError("must not be called");
         };
 
         MediaFetcher prefetched = MediaPrefetcher.prefetch(syncOnly, List.of()).join();
 
-        assertThatThrownBy(() -> prefetched.fetch(CAT)).isExactlyInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> prefetched.fetch(MediaFetchRequest.from(CAT)))
+                .isExactlyInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void should_fail_with_AsyncNotSupportedException_for_a_fetcher_without_fetchAsync() {
-        MediaFetcher syncOnly = url -> FetchedMedia.from(new byte[1]);
+        MediaFetcher syncOnly = request -> FetchedMedia.from(new byte[1]);
 
         assertFailsWith(MediaPrefetcher.prefetch(syncOnly, List.of(CAT)))
                 .isExactlyInstanceOf(AsyncNotSupportedException.class)
@@ -159,7 +163,7 @@ class MediaPrefetcherTest {
 
     @Test
     void should_never_throw() {
-        MediaFetcher fetcher = url -> FetchedMedia.from(new byte[1]);
+        MediaFetcher fetcher = request -> FetchedMedia.from(new byte[1]);
 
         assertFailsWith(MediaPrefetcher.prefetch(null, List.of(CAT)))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
@@ -185,10 +189,11 @@ class MediaPrefetcherTest {
         assertFailsWith(MediaPrefetcher.prefetch(throwing, List.of(CAT))).isSameAs(thrown);
         assertFailsWith(MediaPrefetcher.prefetch(returningNull, List.of(CAT)))
                 .isExactlyInstanceOf(IllegalStateException.class)
-                .withMessage(RecordingMediaFetcher.class.getName() + ".fetchAsync(URI) returned null");
+                .withMessage(RecordingMediaFetcher.class.getName() + ".fetchAsync(MediaFetchRequest) returned null");
         assertFailsWith(MediaPrefetcher.prefetch(completingWithNull, List.of(CAT)))
                 .isExactlyInstanceOf(IllegalStateException.class)
-                .withMessage(RecordingMediaFetcher.class.getName() + ".fetchAsync(URI) completed with null");
+                .withMessage(
+                        RecordingMediaFetcher.class.getName() + ".fetchAsync(MediaFetchRequest) completed with null");
     }
 
     @Test
