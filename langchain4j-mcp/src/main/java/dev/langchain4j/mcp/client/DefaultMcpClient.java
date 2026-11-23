@@ -328,7 +328,7 @@ public class DefaultMcpClient implements McpClient {
         }
     }
 
-    private static boolean isModernErrorCode(int code) {
+    private static boolean isModernErrorCode(long code) {
         return code == -32022 || code == -32021 || code == -32020;
     }
 

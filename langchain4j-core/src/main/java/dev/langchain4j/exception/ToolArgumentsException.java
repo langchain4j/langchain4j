@@ -8,7 +8,7 @@ package dev.langchain4j.exception;
  */
 public class ToolArgumentsException extends LangChain4jException {
 
-    private final Integer errorCode;
+    private final Long errorCode;
 
     public ToolArgumentsException(String message) {
         this(message, (Integer) null);
@@ -18,7 +18,7 @@ public class ToolArgumentsException extends LangChain4jException {
         this(cause, null);
     }
 
-    public ToolArgumentsException(String message, Integer errorCode) {
+    public ToolArgumentsException(String message, Long errorCode) {
         this(new RuntimeException(message), errorCode);
     }
 
@@ -26,17 +26,17 @@ public class ToolArgumentsException extends LangChain4jException {
         this(message, cause, null);
     }
 
-    public ToolArgumentsException(Throwable cause, Integer errorCode) {
+    public ToolArgumentsException(Throwable cause, Long errorCode) {
         super(cause);
         this.errorCode = errorCode;
     }
 
-    public ToolArgumentsException(String message, Throwable cause, Integer errorCode) {
+    public ToolArgumentsException(String message, Throwable cause, Long errorCode) {
         super(message, cause);
         this.errorCode = errorCode;
     }
 
-    public Integer errorCode() {
+    public Long errorCode() {
         return errorCode;
     }
 }
