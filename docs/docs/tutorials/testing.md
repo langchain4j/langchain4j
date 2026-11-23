@@ -315,9 +315,8 @@ void should_cancel_the_booking() {
 }
 ```
 
-`capture(...)` works with every method of an AI Service created with `AiServices`, also with the AI Services of the
-Spring Boot starter, whatever it returns: `capture.output()` is what the AI Service produced, and
-`capture.outputText()` its text. These shortcuts, and `assertThat(capture)`, need exactly one AI Service
+`capture(...)` works with every method of an AI Service created with `AiServices`, whatever it returns:
+`capture.output()` is what the AI Service produced, and `capture.outputText()` its text. These shortcuts, and `assertThat(capture)`, need exactly one AI Service
 call in the lambda. When there are several, pick one with `capture.invocation(Assistant.class)` or
 `capture.invocations()`.
 
@@ -455,53 +454,17 @@ returned by the lambda is subscribed to by `capture(...)` and read to the end: r
 and find its items in `capture.lambdaOutputItems()`.
 
 `capture(...)` captures the AI Services called on the thread that runs the lambda, and those they call in turn, for
-example from a tool. A request sent with Spring's `MockMvc` runs on that thread too. AI Services called on other
-threads are not captured, for example by an HTTP request to a running server or by an `@Async` method. That way, tests
+example from a tool. AI Services called on other threads are not captured, for example by an HTTP request to a running server or by an `@Async` method. That way, tests
 that run in parallel do not see each other's AI Services. `capture(...)` blocks until the AI Services have finished,
 so call it on the test thread, never on an event-loop thread. See the
 [Javadoc](https://docs.langchain4j.dev/apidocs/dev/langchain4j/test/service/AiServiceCapture.html) for the details.
 
-## In Spring Boot and Quarkus
+## In Quarkus and Spring Boot
 
-In a Spring Boot test of an AI Service of the
-[Spring Boot starter](/tutorials/spring-boot-integration#spring-boot-starter-for-declarative-ai-services) (an
-`Assistant` annotated with `@AiService`), replace the model bean with `@TestBean` (Spring Framework 6.2 or later):
-
-```java
-@SpringBootTest
-class AssistantTest {
-
-    @TestBean
-    ChatModel chatModel;
-
-    static ChatModel chatModel() {
-        return MockChatModel.thatResponds("Hello!").thenRepeats();
-    }
-
-    @Autowired
-    Assistant assistant;
-
-    @Test
-    void should_greet() {
-        AiServiceCapture capture = capture(() -> assistant.chat("Hi"));
-
-        assertThat(capture.outputText()).isEqualTo("Hello!");
-        assertThat(capture.lastRequest()).hasLastUserMessageContaining("Hi");
-    }
-}
-```
-
-- Give the field the type of the model interface, here `ChatModel`: a field of type `MockChatModel` adds a second
-  model bean instead of replacing the existing one. If your application has several model beans, name the one to
-  replace, for example `@TestBean(name = "openAiChatModel")`.
-- Spring creates the mock once per Spring context, which it usually shares between the tests of a class. So the
-  script ends with `thenRepeats()`, and the mock's `requests()` hold the requests of all these tests. `capture(...)`
-  only sees the requests of the current test, as above. To answer differently in each test, compute the answer from
-  the request (`thatResponds(Function<ChatRequest, AiMessage>)`), or get a new context with a new mock with
-  `@DirtiesContext`.
-
-For Quarkus, see the
-[testing guide of Quarkus LangChain4j](https://docs.quarkiverse.io/quarkus-langchain4j/dev/testing.html).
+- In a Quarkus application, see the
+  [testing guide of Quarkus LangChain4j](https://docs.quarkiverse.io/quarkus-langchain4j/dev/testing.html).
+- In a Spring Boot application, see [Testing](/tutorials/spring-boot-integration#testing) on the Spring Boot
+  Integration page.
 
 ## Judging answers with a model
 
