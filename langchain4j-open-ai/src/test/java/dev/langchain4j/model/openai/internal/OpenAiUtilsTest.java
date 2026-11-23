@@ -275,6 +275,23 @@ class OpenAiUtilsTest {
     }
 
     @Test
+    void should_return_empty_text_when_content_is_empty() {
+        // given
+        ChatCompletionResponse response = ChatCompletionResponse.builder()
+                .choices(singletonList(ChatCompletionChoice.builder()
+                        .message(AssistantMessage.builder().content("").build())
+                        .build()))
+                .build();
+
+        // when
+        AiMessage aiMessage = aiMessageFrom(response);
+
+        // then
+        assertThat(aiMessage.text()).isEmpty();
+        assertThat(aiMessage.toolExecutionRequests()).isEmpty();
+    }
+
+    @Test
     void should_throw_when_choices_is_null() {
         // given
         ChatCompletionResponse response =
