@@ -1,0 +1,22 @@
+{
+  "type": "response.done",
+  "event_id": "event_1",
+  "response": {
+    "id": "resp_1",
+    "status": "completed",
+    "output": [
+      {
+        "type": "function_call",
+        "name": "get_weather",
+        "arguments": "{\"city\":\"SF\"}",
+        "call_id": "call_weather"
+      },
+      {
+        "type": "function_call",
+        "name": "ping",
+        "arguments": "{}",
+        "call_id": "call_ping"
+      }
+    ]
+  }
+}
