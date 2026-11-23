@@ -1,5 +1,6 @@
 package dev.langchain4j.rag.content.injector;
 
+import static dev.langchain4j.internal.RagMessageUtils.findSingleTextInMultimodalMessage;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
@@ -82,8 +83,14 @@ public class DefaultContentInjector implements ContentInjector {
 
         Prompt prompt = createPrompt(chatMessage, contents);
         if (chatMessage instanceof UserMessage userMessage) {
+            TextContent augmentedText = TextContent.from(prompt.text());
             return userMessage.toBuilder()
-                    .contents(List.of(TextContent.from(prompt.text())))
+                    .contents(
+                            findSingleTextInMultimodalMessage(userMessage).isPresent()
+                                    ? userMessage.contents().stream()
+                                            .map(part -> part instanceof TextContent ? augmentedText : part)
+                                            .toList()
+                                    : List.of(augmentedText))
                     .build();
         } else {
             return prompt.toUserMessage();
@@ -91,6 +98,11 @@ public class DefaultContentInjector implements ContentInjector {
     }
 
     protected Prompt createPrompt(ChatMessage chatMessage, List<Content> contents) {
+        if (chatMessage instanceof UserMessage userMessage) {
+            chatMessage = findSingleTextInMultimodalMessage(userMessage)
+                    .map(UserMessage::from)
+                    .orElse(userMessage);
+        }
         Map<String, Object> variables = new HashMap<>();
         variables.put("userMessage", ((UserMessage) chatMessage).singleText());
         variables.put("contents", format(contents));

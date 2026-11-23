@@ -16,10 +16,10 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.query.Metadata;
 import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.test.mock.MockChatModel;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
@@ -59,9 +59,7 @@ class CompressingQueryTransformerTest {
         // then
         assertThat(queries).containsExactly(Query.from(expectedCompressedQuery, metadata));
 
-        assertThat(userMessageText(model))
-                .isEqualTo(
-                        """
+        assertThat(userMessageText(model)).isEqualTo("""
                 Read and understand the conversation between the User and the AI. \
                 Then, analyze the new query from the User. \
                 Identify all relevant details, terms, and context from both the conversation \
@@ -82,8 +80,11 @@ class CompressingQueryTransformerTest {
     void transformAsync_should_compress_query_and_chat_memory_over_chatAsync() throws Exception {
 
         SystemMessage systemMessage = SystemMessage.from("Be polite");
-        List<ChatMessage> chatMemory =
-                asList(UserMessage.from("Tell me about Klaus Heisler"), AiMessage.from("He is a cool guy"));
+        List<ChatMessage> chatMemory = asList(
+                UserMessage.from(
+                        ImageContent.from("https://example.com/klaus-heisler.png"),
+                        TextContent.from("Tell me about Klaus Heisler")),
+                AiMessage.from("He is a cool guy"));
         UserMessage userMessage = UserMessage.from("How old is he?");
         Metadata metadata = Metadata.from(userMessage, systemMessage, "default", chatMemory);
         Query query = Query.from(userMessage.singleText(), metadata);
@@ -94,6 +95,7 @@ class CompressingQueryTransformerTest {
 
         assertThat(transformer.transformAsync(query).get(5, SECONDS))
                 .containsExactly(Query.from(expectedCompressedQuery, metadata));
+        assertThat(userMessageText(model)).contains("User: Tell me about Klaus Heisler");
     }
 
     @Test
@@ -101,9 +103,7 @@ class CompressingQueryTransformerTest {
 
         SystemMessage systemMessage = SystemMessage.from("Be polite");
         List<ChatMessage> chatMemory = asList(
-                UserMessage.from(
-                        TextContent.from("Who is on this picture?"),
-                        ImageContent.from("https://example.com/klaus-heisler.png")),
+                UserMessage.from(ImageContent.from("https://example.com/klaus-heisler.png")),
                 AiMessage.from("Klaus Heisler"));
         UserMessage userMessage = UserMessage.from("How old is he?");
         Metadata metadata = Metadata.from(userMessage, systemMessage, "default", chatMemory);
@@ -206,9 +206,7 @@ class CompressingQueryTransformerTest {
         // then
         assertThat(queries).containsExactly(Query.from(expectedCompressedQuery, metadata));
 
-        assertThat(userMessageText(model))
-                .isEqualTo(
-                        """
+        assertThat(userMessageText(model)).isEqualTo("""
                 Given the following conversation: \
                 User: Tell me about Klaus Heisler
                 AI: He is a cool guy \
@@ -243,9 +241,7 @@ class CompressingQueryTransformerTest {
         // then
         assertThat(queries).containsExactly(Query.from(expectedCompressedQuery, metadata));
 
-        assertThat(userMessageText(model))
-                .isEqualTo(
-                        """
+        assertThat(userMessageText(model)).isEqualTo("""
                 Given the following conversation: \
                 User: Tell me about Klaus Heisler
                 AI: He is a cool guy \
