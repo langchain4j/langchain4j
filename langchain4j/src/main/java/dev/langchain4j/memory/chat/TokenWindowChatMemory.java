@@ -56,6 +56,12 @@ public class TokenWindowChatMemory implements ChatMemory {
     private final ChatMemoryStore store;
     private final boolean alwaysKeepSystemMessageFirst;
 
+    // The list most recently written to the store and the maxTokens it was windowed with.
+    // A list written by this memory is never mutated in place afterwards, so as long as the store
+    // still returns that same list and the window has not shrunk, windowing it again is a no-op.
+    private List<ChatMessage> lastWrittenMessages;
+    private int lastWrittenMaxTokens;
+
     private TokenWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
         this.maxTokensProvider = ensureNotNull(builder.maxTokensProvider, "maxTokensProvider");
@@ -72,21 +78,30 @@ public class TokenWindowChatMemory implements ChatMemory {
 
     @Override
     public void add(ChatMessage message) {
-        List<ChatMessage> messages = messages();
+        List<ChatMessage> stored = store.getMessages(id);
+        Integer maxTokens = maxTokensProvider.apply(id);
+        ensureGreaterThanZero(maxTokens, "maxTokens");
+        List<ChatMessage> messages = windowedIfNeeded(stored, maxTokens);
         if (appendMessage(messages, message)) {
             store.updateMessages(id, messages);
+            lastWrittenMessages = messages;
+            lastWrittenMaxTokens = maxTokens;
         }
     }
 
     @Override
     public CompletableFuture<Void> addAsync(List<ChatMessage> messagesToAdd) {
         return storedMessagesAsync().thenCompose(stored -> {
-            List<ChatMessage> messages = windowed(stored);
+            Integer maxTokens = maxTokensProvider.apply(id);
+            ensureGreaterThanZero(maxTokens, "maxTokens");
+            List<ChatMessage> messages = windowedIfNeeded(stored, maxTokens);
             boolean changed = false;
             for (ChatMessage message : messagesToAdd) {
                 changed |= appendMessage(messages, message);
             }
             if (changed) {
+                lastWrittenMessages = messages;
+                lastWrittenMaxTokens = maxTokens;
                 return updateStoredMessagesAsync(messages);
             }
             return CompletableFuture.completedFuture(null);
@@ -124,6 +139,18 @@ public class TokenWindowChatMemory implements ChatMemory {
         return true;
     }
 
+    /**
+     * Windows the stored messages, unless windowing is known to be a no-op: the store still returns
+     * the list most recently written by this memory (already windowed, and never mutated in place)
+     * and the window has not shrunk since. Skipping it avoids estimating all messages once more.
+     */
+    private List<ChatMessage> windowedIfNeeded(List<ChatMessage> stored, int maxTokens) {
+        if (stored == lastWrittenMessages && maxTokens >= lastWrittenMaxTokens) {
+            return new LinkedList<>(stored);
+        }
+        return windowed(stored, maxTokens);
+    }
+
     @Override
     public void set(Iterable<ChatMessage> iter) {
         if (iter instanceof List) {
@@ -141,6 +168,8 @@ public class TokenWindowChatMemory implements ChatMemory {
         messages = new ArrayList<>(messages);
         ensureCapacity(messages, maxTokens, tokenCountEstimator);
         store.updateMessages(id, messages);
+        lastWrittenMessages = messages;
+        lastWrittenMaxTokens = maxTokens;
     }
 
     @Override
@@ -150,18 +179,27 @@ public class TokenWindowChatMemory implements ChatMemory {
             ensureGreaterThanZero(maxTokens, "maxTokens");
             List<ChatMessage> windowed = new ArrayList<>(messages);
             ensureCapacity(windowed, maxTokens, tokenCountEstimator);
+            lastWrittenMessages = windowed;
+            lastWrittenMaxTokens = maxTokens;
             return updateStoredMessagesAsync(windowed);
         });
     }
 
     @Override
     public List<ChatMessage> messages() {
-        return windowed(store.getMessages(id));
+        List<ChatMessage> stored = store.getMessages(id);
+        Integer maxTokens = maxTokensProvider.apply(id);
+        ensureGreaterThanZero(maxTokens, "maxTokens");
+        return windowedIfNeeded(stored, maxTokens);
     }
 
     @Override
     public CompletableFuture<List<ChatMessage>> messagesAsync() {
-        return storedMessagesAsync().thenApply(this::windowed);
+        return storedMessagesAsync().thenApply(stored -> {
+            Integer maxTokens = maxTokensProvider.apply(id);
+            ensureGreaterThanZero(maxTokens, "maxTokens");
+            return windowedIfNeeded(stored, maxTokens);
+        });
     }
 
     private CompletableFuture<List<ChatMessage>> storedMessagesAsync() {
@@ -172,9 +210,7 @@ public class TokenWindowChatMemory implements ChatMemory {
         return failOnThrow(store, "updateMessagesAsync(Object, List)", () -> store.updateMessagesAsync(id, messages));
     }
 
-    private List<ChatMessage> windowed(List<ChatMessage> stored) {
-        Integer maxTokens = maxTokensProvider.apply(id);
-        ensureGreaterThanZero(maxTokens, "maxTokens");
+    private List<ChatMessage> windowed(List<ChatMessage> stored, int maxTokens) {
         List<ChatMessage> messages = new LinkedList<>(stored);
         ensureCapacity(messages, maxTokens, tokenCountEstimator);
         return messages;
@@ -215,6 +251,8 @@ public class TokenWindowChatMemory implements ChatMemory {
 
     @Override
     public void clear() {
+        lastWrittenMessages = null;
+        lastWrittenMaxTokens = 0;
         store.deleteMessages(id);
     }
 
