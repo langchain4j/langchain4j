@@ -20,7 +20,7 @@ Evaluation measures how good the answers are.
 | When | While you develop and on every build | When something that affects the answers changes, and on data from real use |
 | Model | Mostly a mock, a real model in a few integration tests | The real model of your application |
 | Data | A few cases you write | Many realistic inputs, often from real use |
-| Result | Pass or fail | Scores and pass rates, compared over time |
+| Result | Pass or fail for each behavior you check, with a real model sometimes over repeated runs of one case | Scores and pass rates over many realistic inputs, compared over time |
 | Cost | Mostly fast and cheap | Slower, and every model call costs money |
 
 Start with testing: it is useful from the first day of a project. Evaluation becomes important as your application
@@ -29,8 +29,9 @@ gets closer to production and real users.
 ## Tools
 
 The [judges](/tutorials/testing#judging-answers-with-a-model) of the `langchain4j-test` module check an answer against
-criteria written in natural language. `Judge.evaluate(...)` returns their verdicts as values, so you can also use them
-to score answers in an evaluation.
+criteria written in natural language. [`Judge.evaluate(...)`](/tutorials/testing#dealing-with-non-determinism) returns
+their verdicts as values (`JudgeResponse.verdicts()`), so you can also use them to score answers in an evaluation.
+Judging an answer this way adds at least one request to the judge model for each answer.
 
 In a Quarkus application, Quarkus LangChain4j has its own evaluation support: see
 [Testing AI-Infused Applications](https://docs.quarkiverse.io/quarkus-langchain4j/dev/testing.html).
