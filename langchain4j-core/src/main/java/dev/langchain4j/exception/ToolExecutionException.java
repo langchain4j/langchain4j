@@ -7,7 +7,7 @@ package dev.langchain4j.exception;
  */
 public class ToolExecutionException extends LangChain4jException {
 
-    private final Integer errorCode;
+    private final Long errorCode;
 
     public ToolExecutionException(String message) {
         this(message, (Integer) null);
@@ -17,7 +17,7 @@ public class ToolExecutionException extends LangChain4jException {
         this(cause, null);
     }
 
-    public ToolExecutionException(String message, Integer errorCode) {
+    public ToolExecutionException(String message, Long errorCode) {
         this(new RuntimeException(message), errorCode);
     }
 
@@ -25,17 +25,17 @@ public class ToolExecutionException extends LangChain4jException {
         this(message, cause, null);
     }
 
-    public ToolExecutionException(Throwable cause, Integer errorCode) {
+    public ToolExecutionException(Throwable cause, Long errorCode) {
         super(cause);
         this.errorCode = errorCode;
     }
 
-    public ToolExecutionException(String message, Throwable cause, Integer errorCode) {
+    public ToolExecutionException(String message, Throwable cause, Long errorCode) {
         super(message, cause);
         this.errorCode = errorCode;
     }
 
-    public Integer errorCode() {
+    public Long errorCode() {
         return errorCode;
     }
 }
