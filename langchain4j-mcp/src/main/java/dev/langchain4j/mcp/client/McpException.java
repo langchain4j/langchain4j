@@ -10,11 +10,11 @@ import org.jspecify.annotations.Nullable;
  */
 public class McpException extends LangChain4jException {
 
-    private final int errorCode;
+    private final long errorCode;
     private final String errorMessage;
     private final @Nullable String errorDataAsJson;
 
-    public McpException(int errorCode, String errorMessage) {
+    public McpException(long errorCode, String errorMessage) {
         this(errorCode, errorMessage, (String) null);
     }
 
@@ -22,18 +22,18 @@ public class McpException extends LangChain4jException {
      * Creates an exception carrying the JSON-RPC {@code error.data} member as JSON text, or no data
      * when {@code errorDataAsJson} is null.
      */
-    public static McpException withErrorData(int errorCode, String errorMessage, @Nullable String errorDataAsJson) {
+    public static McpException withErrorData(long errorCode, String errorMessage, @Nullable String errorDataAsJson) {
         return new McpException(errorCode, errorMessage, errorDataAsJson);
     }
 
-    private McpException(int errorCode, String errorMessage, @Nullable String errorDataAsJson) {
+    private McpException(long errorCode, String errorMessage, @Nullable String errorDataAsJson) {
         super("Code: %d, message: %s".formatted(errorCode, errorMessage));
         this.errorCode = errorCode;
         this.errorMessage = errorMessage;
         this.errorDataAsJson = errorDataAsJson;
     }
 
-    public int errorCode() {
+    public long errorCode() {
         return errorCode;
     }
 
