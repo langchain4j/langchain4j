@@ -12,7 +12,7 @@ A Google Cloud Storage (GCS) document loader that allows you to load documents f
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-document-loader-google-cloud-storage</artifactId>
-    <version>1.23.0-beta33</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 

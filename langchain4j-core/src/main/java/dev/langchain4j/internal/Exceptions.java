@@ -65,6 +65,17 @@ public class Exceptions {
         return current;
     }
 
+    /**
+     * Sets the interrupt flag of the current thread again if {@code throwable} is an {@link InterruptedException}, so
+     * that catching it as a {@link Throwable} (for example one thrown without being declared) does not lose the
+     * interrupt.
+     */
+    public static void restoreInterruptIfInterrupted(Throwable throwable) {
+        if (throwable instanceof InterruptedException) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
     public static Throwable unwrapRuntimeException(Exception e) {
         if (e.getClass() == RuntimeException.class && e.getCause() != null) {
             // when a checked exception is wrapped into a bare RuntimeException, so that callers see

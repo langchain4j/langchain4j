@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
@@ -45,7 +46,7 @@ import org.slf4j.Logger;
  * or a conversation (a list of {@link dev.langchain4j.data.message.ChatMessage}s), see
  * {@link dev.langchain4j.model.decision.request.DecisionRequest}. Images can be base64 data, {@code data:} URLs or
  * publicly accessible {@code http(s)} URLs. The image detail levels {@code LOW}, {@code HIGH} and {@code AUTO} are
- * supported.
+ * supported; an image created without a detail level is sent without one, so OpenAI's default applies.
  * <p>
  * A conversation is sent as a JSON transcript in a user message, followed by its images.
  * <p>
@@ -97,13 +98,15 @@ public class OpenAiDecisionModel implements DecisionModel {
 
     @Override
     public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
-        DecisionCreateRequest openAiRequest = DecisionMapper.toOpenAiRequest(request);
-        CompletableFuture<ParsedAndRawResponse<DecisionCreateResponse>> responseFuture =
-                withRetryMappingExceptionsAsync(() -> client.decision(openAiRequest).executeRawAsync(), maxRetries);
-        CompletableFuture<DecisionResponse> result = responseFuture.thenApply(
-                response -> DecisionMapper.toDecisionResponse(response.parsedResponse(), request));
-        propagateCancellation(result, responseFuture);
-        return result;
+        return failOnThrow(() -> {
+            DecisionCreateRequest openAiRequest = DecisionMapper.toOpenAiRequest(request);
+            CompletableFuture<ParsedAndRawResponse<DecisionCreateResponse>> responseFuture =
+                    withRetryMappingExceptionsAsync(() -> client.decision(openAiRequest).executeRawAsync(), maxRetries);
+            CompletableFuture<DecisionResponse> result = responseFuture.thenApply(
+                    response -> DecisionMapper.toDecisionResponse(response.parsedResponse(), request));
+            propagateCancellation(result, responseFuture);
+            return result;
+        });
     }
 
     @Override

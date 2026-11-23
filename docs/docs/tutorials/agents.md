@@ -947,6 +947,8 @@ UntypedAgent transferWorkflow = AgenticServices.sequenceBuilder()
 
 If `notificationAgent` throws an exception, the tools invoked by `creditAgent` and `debitAgent` that have `@CompensateFor` methods will be compensated in reverse chronological order (last executed first).
 
+A failing tool also starts the compensation, as soon as it fails: whether its error is sent to the LLM, or it fails the agent (for example with `ToolExecutionErrorHandler.failInvocation()`). This happens before the [error handler](#error-handling) of the agentic system decides how to go on, so the tools stay rolled back even if the error handler recovers with `ErrorRecoveryResult.retry()` or `ErrorRecoveryResult.result(...)`. When the error is sent to the LLM, no error handler runs: the agent and the agentic system go on, also to a successful end, with those tools rolled back. For example, if a tool of an agent fails, its error is sent to the LLM, and the LLM then calls that tool again with success, the tool calls with a `@CompensateFor` method that all agents (including this one) made before the failure are undone right away, and the workflow goes on. A retried agent runs again, but the agents that ran before it are not run again, so their tools are not called again.
+
 Tools without a `@CompensateFor` annotation are simply skipped during compensation.
 
 Compensating actions are defined on tool classes using `@CompensateFor`, the same annotation used for per-agent tool compensation:
@@ -1157,7 +1159,7 @@ so it will reveal the nested sequence of agents invocations necessary to generat
 
 ```
 AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finishTime=2026-03-18T17:27:38.683498783, duration=10584 ms, tokens=0, inputs={topic=dragons and wiz..., style=comedy}, output=In a realm wher...}
-|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.23.0287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.24.0287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
 |=> AgentInvocation{agent=reviewLoop, startTime=2026-03-18T17:27:31.035952285, finishTime=2026-03-18T17:27:38.683438433, duration=7647 ms, tokens=0, inputs={score=0.8, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
     |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-03-18T17:27:31.036155107, finishTime=2026-03-18T17:27:31.671478699, duration=635 ms, tokens=152, inputs={style=comedy, story=In a realm wher...}, output=0.2}
     |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-03-18T17:27:31.671711250, finishTime=2026-03-18T17:27:38.182881941, duration=6511 ms, tokens=491, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
@@ -1728,7 +1730,7 @@ AgentInvocation{agentName='withdraw', arguments={user=Mario, amount=115.0}}
 
 AgentInvocation{agentName='credit', arguments={user=Georgios, amount=115.0}}
 
-AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.23.0 USD. The conversion rate was 1.15 EUR to USD.}}
+AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.24.0 USD. The conversion rate was 1.15 EUR to USD.}}
 ```
 
 The last invocation is a special one that signals the supervisor believes the task has been completed, and returns as a response a summary of all the operations performed.

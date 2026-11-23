@@ -1,6 +1,8 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.ModelProvider.GOOGLE_GENAI;
+import static dev.langchain4j.model.google.genai.GoogleGenAiClientFactory.DEFAULT_TIMEOUT;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
@@ -14,6 +16,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Google GenAI implementation of {@link ModelCatalog}.
@@ -41,9 +44,10 @@ public class GoogleGenAiModelCatalog implements ModelCatalog {
                         builder.credentials,
                         builder.projectId,
                         builder.location,
-                        builder.timeout,
+                        getOrDefault(builder.timeout, DEFAULT_TIMEOUT),
                         builder.customHeaders,
-                        builder.apiEndpoint);
+                        builder.apiEndpoint,
+                        builder.apiVersion);
     }
 
     public static Builder builder() {
@@ -99,6 +103,8 @@ public class GoogleGenAiModelCatalog implements ModelCatalog {
                 builder.type(ModelType.CHAT);
             } else if (actions.contains("embedContent")) {
                 builder.type(ModelType.EMBEDDING);
+            } else if (actions.contains("createDecision")) {
+                builder.type(ModelType.OTHER);
             }
         }
 
@@ -113,6 +119,7 @@ public class GoogleGenAiModelCatalog implements ModelCatalog {
         private String location;
         private Duration timeout;
         private String apiEndpoint;
+        private @Nullable String apiVersion;
         private Map<String, String> customHeaders;
         private Client client;
 
@@ -136,6 +143,15 @@ public class GoogleGenAiModelCatalog implements ModelCatalog {
             return this;
         }
 
+        /**
+         * Sets the timeout of each HTTP request to the Google GenAI API.
+         * It limits the whole request: connecting, waiting for the server and receiving the response.
+         * Defaults to 20 minutes.
+         * Ignored when {@link #client(Client)} is set.
+         *
+         * @param timeout the timeout
+         * @return {@code this}
+         */
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -143,6 +159,17 @@ public class GoogleGenAiModelCatalog implements ModelCatalog {
 
         public Builder apiEndpoint(String apiEndpoint) {
             this.apiEndpoint = apiEndpoint;
+            return this;
+        }
+
+        /**
+         * The version of the API to call, for example {@code v1beta} or {@code v1}. When not set ({@code null}), the
+         * version set in the {@code GOOGLE_GENAI_API_VERSION} environment variable is used, otherwise {@code v1beta}
+         * on the Gemini Developer API and the default of the Google GenAI SDK on Vertex AI. Ignored when a client is
+         * set with {@code client(...)}.
+         */
+        public Builder apiVersion(@Nullable String apiVersion) {
+            this.apiVersion = apiVersion;
             return this;
         }
 

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.anthropic;
 
+import static dev.langchain4j.internal.InternalFlowUtils.failPublisherOnThrow;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
@@ -932,10 +933,14 @@ public class AnthropicStreamingChatModel implements StreamingChatModel {
 
     @Override
     public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
-        AnthropicChatRequestParameters parameters = (AnthropicChatRequestParameters) chatRequest.parameters();
-        AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
-        AnthropicCreateMessageOptions options = toOptions(parameters);
-        return client.createMessagePublisher(anthropicRequest, options, streamingBufferSize);
+        return failPublisherOnThrow(
+                client, "createMessagePublisher(AnthropicCreateMessageRequest, AnthropicCreateMessageOptions, int)", () -> {
+                    AnthropicChatRequestParameters parameters =
+                            (AnthropicChatRequestParameters) chatRequest.parameters();
+                    AnthropicCreateMessageRequest anthropicRequest = toAnthropicRequest(chatRequest, parameters);
+                    AnthropicCreateMessageOptions options = toOptions(parameters);
+                    return client.createMessagePublisher(anthropicRequest, options, streamingBufferSize);
+                });
     }
 
     private AnthropicCreateMessageRequest toAnthropicRequest(

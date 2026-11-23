@@ -43,7 +43,7 @@ Built on the `MilvusClientV2` API of the Milvus Java SDK. Supports dense vector 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-milvus-v2</artifactId>
-    <version>1.23.0-beta33</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 
@@ -171,7 +171,7 @@ Built on the older `MilvusServiceClient` (v1) API of the Milvus Java SDK. Suppor
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-milvus</artifactId>
-    <version>1.23.0-beta33</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 

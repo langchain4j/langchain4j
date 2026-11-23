@@ -3,6 +3,7 @@ package dev.langchain4j.model.google.genai;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.model.catalog.ModelDescription;
+import dev.langchain4j.model.catalog.ModelType;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -23,5 +24,10 @@ class GoogleGenAiModelCatalogIT {
 
         boolean foundGeminiFlash = models.stream().anyMatch(m -> m.name().contains("gemini-3.8-flash"));
         assertThat(foundGeminiFlash).isTrue();
+
+        assertThat(models).anySatisfy(m -> {
+            assertThat(m.name()).contains("gemini-decision-1");
+            assertThat(m.type()).isEqualTo(ModelType.OTHER);
+        });
     }
 }

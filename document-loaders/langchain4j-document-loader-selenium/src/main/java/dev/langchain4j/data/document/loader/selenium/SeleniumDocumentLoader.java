@@ -1,5 +1,6 @@
 package dev.langchain4j.data.document.loader.selenium;
 
+import static dev.langchain4j.internal.SecretMasking.withoutCredentials;
 import static java.util.Objects.requireNonNull;
 
 import dev.langchain4j.data.document.Document;
@@ -67,7 +68,8 @@ public class SeleniumDocumentLoader implements AutoCloseable {
      */
     public Document load(String url, DocumentParser documentParser) {
         requireNonNull(documentParser, "documentParser must not be null");
-        logger.info("Loading document from URL: {}", url);
+        requireNonNull(url, "url must not be null");
+        logger.info("Loading document from URL: {}", withoutCredentials(url));
         String pageContent = pageContent(url);
         Document parsedDocument =
                 documentParser.parse(new ByteArrayInputStream(pageContent.getBytes(StandardCharsets.UTF_8)));
@@ -105,21 +107,22 @@ public class SeleniumDocumentLoader implements AutoCloseable {
      */
     public String pageContent(String url) {
         requireNonNull(url, "url must not be null");
+        String urlToLog = withoutCredentials(url);
 
         try {
-            logger.info("Navigating to URL: {}", url);
+            logger.info("Navigating to URL: {}", urlToLog);
             webDriver.get(url);
 
-            logger.debug("Waiting for page to load: {}", url);
+            logger.debug("Waiting for page to load: {}", urlToLog);
             WebDriverWait wait = new WebDriverWait(webDriver, timeout);
 
-            logger.debug("Waiting webpage fully loaded: {}", url);
+            logger.debug("Waiting webpage fully loaded: {}", urlToLog);
             wait.until(pageReadyCondition);
 
             return webDriver.getPageSource();
         } catch (Exception e) {
-            logger.error("Failed to load document from URL: {}", url, e);
-            throw new RuntimeException("Failed to load document from URL: " + url, e);
+            logger.error("Failed to load document from URL: {}", urlToLog, e);
+            throw new RuntimeException("Failed to load document from URL: " + urlToLog, e);
         }
     }
 

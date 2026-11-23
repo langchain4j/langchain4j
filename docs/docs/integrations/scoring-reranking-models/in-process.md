@@ -14,6 +14,13 @@ Information on how to convert models into ONNX format can be found [here](https:
 
 Many models already converted to ONNX format are available [here](https://huggingface.co/Xenova).
 
+:::warning
+**Load only model files you trust.**
+An ONNX model file is not just data: ONNX runtime parses it with native code,
+and a crafted model file can exploit flaws in the runtime, for example to read other files on your machine or to crash the JVM.
+Use models from sources you trust, or models you converted yourself.
+:::
+
 ### Usage
 
 By default, scoring (reranking) model uses the CPU. 
@@ -21,7 +28,7 @@ By default, scoring (reranking) model uses the CPU.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-onnx-scoring</artifactId>
-    <version>1.23.0-beta33</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 ```java
@@ -49,7 +56,7 @@ If you want to use the GPU, `onnxruntime_gpu` version can be found
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-onnx-scoring</artifactId>
-    <version>1.23.0-beta33</version>
+    <version>1.24.0-beta34</version>
     <exclusions>
         <exclusion>
             <groupId>com.microsoft.onnxruntime</groupId>

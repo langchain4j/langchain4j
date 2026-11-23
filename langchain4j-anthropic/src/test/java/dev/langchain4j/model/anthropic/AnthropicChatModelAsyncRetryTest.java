@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -113,5 +114,31 @@ class AnthropicChatModelAsyncRetryTest {
         assertThatThrownBy(() -> model.chatAsync(request()).get(10, SECONDS))
                 .hasCauseInstanceOf(AuthenticationException.class);
         assertThat(calls).hasValue(1);
+    }
+
+    @Test
+    void doChatAsync_reports_an_unsupported_parameter_through_the_future_without_calling_the_api() {
+        AtomicInteger calls = new AtomicInteger();
+        ChatModel model = model(
+                httpClient(() -> {
+                    calls.incrementAndGet();
+                    return CompletableFuture.completedFuture(okResponse());
+                }),
+                0);
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("hi"))
+                .parameters(AnthropicChatRequestParameters.builder()
+                        .frequencyPenalty(0.5)
+                        .build())
+                .build();
+
+        CompletableFuture<ChatResponse> future = model.doChatAsync(request);
+
+        assertThat(future)
+                .failsWithin(10, SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(UnsupportedFeatureException.class);
+        assertThat(calls).hasValue(0);
     }
 }

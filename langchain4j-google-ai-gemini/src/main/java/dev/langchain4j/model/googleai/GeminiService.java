@@ -21,6 +21,7 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -44,6 +45,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -205,6 +207,14 @@ class GeminiService {
     Void deleteCachedContent(String name) {
         String url = String.format("%s/%s", baseUrl, name);
         return sendRequest(url, apiKey, null, Void.class, DELETE);
+    }
+
+    SuccessfulHttpResponse decide(GeminiDecisionRequest request) {
+        return httpClient.execute(buildHttpRequest(baseUrl + "/decisions", apiKey, request, POST));
+    }
+
+    CompletableFuture<SuccessfulHttpResponse> decideAsync(GeminiDecisionRequest request) {
+        return httpClient.executeAsync(buildHttpRequest(baseUrl + "/decisions", apiKey, request, POST));
     }
 
     void generateContentStream(

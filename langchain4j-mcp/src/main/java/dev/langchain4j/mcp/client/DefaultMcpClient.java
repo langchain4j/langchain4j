@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -794,13 +795,13 @@ public class DefaultMcpClient implements McpClient {
     @Override
     public CompletableFuture<ToolExecutionResult> executeToolAsync(
             ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
+        return failOnThrow(() -> doExecuteToolAsync(executionRequest, invocationContext));
+    }
+
+    private CompletableFuture<ToolExecutionResult> doExecuteToolAsync(
+            ToolExecutionRequest executionRequest, InvocationContext invocationContext) {
         assertNotClosed();
-        Map<String, Object> arguments;
-        try {
-            arguments = parseToolArguments(executionRequest);
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+        Map<String, Object> arguments = parseToolArguments(executionRequest);
         long operationId = idGenerator.getAndIncrement();
         String progressToken = progressHandler != null ? String.valueOf(operationId) : null;
         McpCallToolRequest operation =

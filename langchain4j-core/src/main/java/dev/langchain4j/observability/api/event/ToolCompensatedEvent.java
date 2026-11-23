@@ -1,6 +1,7 @@
 package dev.langchain4j.observability.api.event;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
@@ -8,12 +9,14 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.event.DefaultToolCompensatedEvent;
 
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
- * Invoked after a successfully-executed tool is compensated (rolled back) - for example when another tool in the
- * same round failed, or when the invocation was cancelled. It carries the tool that was rolled back, its original
- * (successful) result, and the {@link CompensationReason}. Like {@link ToolExecutedEvent}, it can be invoked
- * multiple times within a single AI Service invocation.
+ * Invoked after the compensating action of a successfully-executed tool has run to roll the tool back - for example
+ * because another tool failed, or because the invocation was cancelled. It carries the tool that was rolled back, its
+ * original (successful) result, and the {@link CompensationReason}. It is invoked also when the compensating action
+ * failed: then {@link #compensationError()} returns its error, and the effects of the tool may still be in place.
+ * Like {@link ToolExecutedEvent}, it can be invoked multiple times within a single AI Service invocation.
  *
  * @since 1.20.0
  */
@@ -49,6 +52,23 @@ public interface ToolCompensatedEvent extends AiServiceEvent {
     CompensationReason reason();
 
     /**
+     * Returns the error of the compensating action, when it failed: the exception the compensating method threw, or
+     * the error its returned asynchronous result (for example a {@code CompletableFuture}) completed with. When this
+     * is not {@code null}, the tool could not be rolled back, and its effects may still be in place.
+     *
+     * @return the error of the compensating action, or {@code null} when the tool was rolled back successfully.
+     * @throws UnsupportedOperationException if the integration that created this event does not report it. Events
+     *                                       built with {@link #builder()} always report it.
+     * @since 1.25.0
+     */
+    @Experimental
+    default @Nullable Throwable compensationError() {
+        throw new UnsupportedOperationException(
+                "This ToolCompensatedEvent does not report whether the compensating action failed: "
+                        + "the integration that created it does not set it");
+    }
+
+    /**
      * Creates a new builder instance for constructing a {@link ToolCompensatedEvent}.
      */
     static ToolCompensatedEventBuilder builder() {
@@ -71,17 +91,27 @@ public interface ToolCompensatedEvent extends AiServiceEvent {
         private String resultText;
         private List<Content> resultContents;
         private CompensationReason reason;
+        private @Nullable Throwable compensationError;
+        private boolean compensationErrorSet;
 
         protected ToolCompensatedEventBuilder() {}
 
         /**
-         * Creates a builder initialized from an existing {@link ToolCompensatedEvent}.
+         * Creates a builder initialized from an existing {@link ToolCompensatedEvent}. When the event does not report
+         * {@link ToolCompensatedEvent#compensationError()} (it throws {@link UnsupportedOperationException}), the
+         * builder copies everything else, and {@link #build()} fails until {@link #compensationError(Throwable)} is
+         * called.
          */
         protected ToolCompensatedEventBuilder(ToolCompensatedEvent src) {
             super(src);
             request(src.request());
             resultContents(src.resultContents());
             reason(src.reason());
+            try {
+                compensationError(src.compensationError());
+            } catch (UnsupportedOperationException notReported) {
+                // left unset: build() fails until compensationError(...) is called
+            }
         }
 
         /**
@@ -120,6 +150,19 @@ public interface ToolCompensatedEvent extends AiServiceEvent {
             return this;
         }
 
+        /**
+         * Sets the error of the compensating action: {@code null} when the tool was rolled back successfully,
+         * otherwise the exception the compensating action failed with. Required: {@link #build()} fails when it was
+         * not called, also when the tool was rolled back successfully.
+         * @since 1.25.0
+         */
+        @Experimental
+        public ToolCompensatedEventBuilder compensationError(@Nullable Throwable compensationError) {
+            this.compensationError = compensationError;
+            this.compensationErrorSet = true;
+            return this;
+        }
+
         public ToolExecutionRequest request() {
             return request;
         }
@@ -136,6 +179,24 @@ public interface ToolCompensatedEvent extends AiServiceEvent {
             return reason;
         }
 
+        /**
+         * @since 1.25.0
+         */
+        @Experimental
+        public @Nullable Throwable compensationError() {
+            return compensationError;
+        }
+
+        /**
+         * Returns whether {@link #compensationError(Throwable)} was called, also when it was called with {@code null}.
+         * Used by {@link DefaultToolCompensatedEvent} to check that it was called.
+         * @since 1.25.0
+         */
+        @Internal
+        public boolean isCompensationErrorSet() {
+            return compensationErrorSet;
+        }
+
         @Override
         public ToolCompensatedEventBuilder invocationContext(InvocationContext invocationContext) {
             return (ToolCompensatedEventBuilder) super.invocationContext(invocationContext);
@@ -144,7 +205,8 @@ public interface ToolCompensatedEvent extends AiServiceEvent {
         /**
          * Builds a {@link ToolCompensatedEvent}.
          *
-         * @throws IllegalArgumentException if neither or both of {@code resultText} and {@code resultContents} are set.
+         * @throws IllegalArgumentException if neither or both of {@code resultText} and {@code resultContents} are set,
+         *                                  or if {@link #compensationError(Throwable)} was not called.
          */
         public ToolCompensatedEvent build() {
             return new DefaultToolCompensatedEvent(this);

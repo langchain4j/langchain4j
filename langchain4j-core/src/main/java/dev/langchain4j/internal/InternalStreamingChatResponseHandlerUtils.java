@@ -21,6 +21,40 @@ public class InternalStreamingChatResponseHandlerUtils {
 
     private static final Logger log = LoggerFactory.getLogger(InternalStreamingChatResponseHandlerUtils.class);
 
+    /**
+     * Logs a failure that is not reported to a handler, because the handler already received the complete response
+     * or an error.
+     */
+    public static void logIgnoredError(Throwable error) {
+        log.warn(
+                "Ignoring a failure after the StreamingChatResponseHandler already received the complete response or an error",
+                error);
+    }
+
+    /**
+     * Logs an exception thrown by {@link StreamingChatResponseHandler#onError(Throwable)} on another thread than the
+     * one that called {@code chat(...)}, or after {@code chat(...)} returned: nobody could catch it there.
+     */
+    public static void logOnErrorFailure(Throwable onErrorFailure) {
+        log.warn(
+                "An exception occurred during the invocation of StreamingChatResponseHandler.onError() "
+                        + "on another thread or after chat(...) returned. This exception has been ignored.",
+                onErrorFailure);
+    }
+
+    /**
+     * Runs the given notification of listeners, and logs whatever it throws, including an {@link Error}, so that a
+     * failing listener does not stop the failure from reaching the handler.
+     */
+    public static void notifyListenersIgnoringFailures(Runnable notification) {
+        try {
+            notification.run();
+        } catch (Throwable e) {
+            Exceptions.restoreInterruptIfInterrupted(e);
+            log.warn("An exception occurred while notifying the chat model listeners. This exception has been ignored.", e);
+        }
+    }
+
     public static void withLoggingExceptions(Runnable runnable) {
         try {
             runnable.run();
