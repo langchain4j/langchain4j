@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.InternalFlowUtils.failPublisherOnThrow;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
@@ -32,6 +33,7 @@ import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow.Publisher;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -94,15 +96,15 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         validate(chatRequest.parameters());
-        ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(chatRequest);
-        streamTo(converseStreamRequest, handler);
+        validateTotalCachePoints(chatRequest);
+        prefetchMediaAndStreamTo(chatRequest, handler);
     }
 
     @Override
     public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
         return failPublisherOnThrow(() -> {
             validate(chatRequest.parameters());
-            ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(chatRequest);
+            validateTotalCachePoints(chatRequest);
 
             TubeConfiguration config = new TubeConfiguration()
                     .withBackpressureStrategy(BackpressureStrategy.BUFFER)
@@ -110,10 +112,32 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
 
             return ZeroPublisher.create(config, tube -> {
                 TubeBackedStreamingChatResponseHandler bridge = new TubeBackedStreamingChatResponseHandler(tube);
-                tube.whenTerminates(bridge::cancelUpstream);
-                streamTo(converseStreamRequest, bridge);
+                CompletableFuture<Void> terminated = new CompletableFuture<>();
+                tube.whenTerminates(() -> {
+                    terminated.complete(null);
+                    bridge.cancelUpstream();
+                });
+                CompletableFuture<MediaDownloads> media = prefetchMediaAndStreamTo(chatRequest, bridge);
+                terminated.thenRun(() -> media.cancel(true));
             });
         });
+    }
+
+    private CompletableFuture<MediaDownloads> prefetchMediaAndStreamTo(
+            ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        CompletableFuture<MediaDownloads> media = prefetchMedia(chatRequest.messages());
+        media.whenComplete((downloads, error) -> {
+            if (error != null) {
+                withLoggingExceptions(() -> handler.onError(unwrapCompletionException(error)));
+                return;
+            }
+            try {
+                streamTo(buildConverseStreamRequest(chatRequest, downloads), handler);
+            } catch (Throwable e) {
+                withLoggingExceptions(() -> handler.onError(e));
+            }
+        });
+        return media;
     }
 
     private void streamTo(ConverseStreamRequest converseStreamRequest, StreamingChatResponseHandler targetHandler) {
@@ -241,7 +265,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
         return defaultRequestParameters;
     }
 
-    private ConverseStreamRequest buildConverseStreamRequest(ChatRequest chatRequest) {
+    private ConverseStreamRequest buildConverseStreamRequest(ChatRequest chatRequest, MediaDownloads media) {
         BedrockChatRequestParameters parameters = (BedrockChatRequestParameters) chatRequest.parameters();
 
         BedrockCachePointPlacement cachePointPlacement = parameters.cachePointPlacement();
@@ -251,17 +275,12 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                 bedrockGuardrailConfiguration == null ? null : bedrockGuardrailConfiguration.guardContentPlacement();
         BedrockServiceTier bedrockServiceTier = parameters.serviceTier();
 
-        // Validate total cache points don't exceed AWS limit
-        boolean hasTools = chatRequest.toolSpecifications() != null
-                && !chatRequest.toolSpecifications().isEmpty();
-        validateTotalCachePoints(chatRequest.messages(), cachePointPlacement, hasTools);
-
         return ConverseStreamRequest.builder()
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
                 .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement, cacheTtl))
                 .messages(extractRegularMessages(
-                        chatRequest.messages(), cachePointPlacement, cacheTtl, guardContentPlacement))
+                        chatRequest.messages(), cachePointPlacement, cacheTtl, guardContentPlacement, media))
                 .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement, cacheTtl))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
                 .guardrailConfig(guardrailStreamConfigFrom(bedrockGuardrailConfiguration))

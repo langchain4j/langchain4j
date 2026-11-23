@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertAdditionalModelRequestFields;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertJsonObjectSchemaToDocument;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
@@ -22,9 +21,14 @@ import static java.util.Objects.nonNull;
 import static software.amazon.awssdk.core.SdkBytes.fromByteArray;
 import static software.amazon.awssdk.services.bedrockruntime.model.OutputFormatType.JSON_SCHEMA;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.media.DefaultMediaFetcher;
+import dev.langchain4j.data.media.FetchedMedia;
+import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -36,7 +40,9 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.chat.Capability;
+import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -50,6 +56,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.net.URI;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -61,8 +68,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
@@ -150,6 +159,7 @@ abstract class AbstractBedrockChatModel {
     protected final List<ChatModelListener> listeners;
     protected final Set<Capability> supportedCapabilities;
     protected final Supplier<Map<String, String>> customHeadersSupplier;
+    final MediaFetcher mediaFetcher;
 
     protected AbstractBedrockChatModel(AbstractBuilder<?> builder) {
         this.region = getOrDefault(builder.region, Region.US_EAST_1);
@@ -159,6 +169,7 @@ abstract class AbstractBedrockChatModel {
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
         this.customHeadersSupplier = builder.customHeadersSupplier;
+        this.mediaFetcher = getOrDefault(builder.mediaFetcher, MediaPrefetcher.defaultMediaFetcher());
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -285,6 +296,16 @@ abstract class AbstractBedrockChatModel {
             BedrockCachePointPlacement cachePointPlacement,
             CacheTTL cacheTtl,
             BedrockGuardContentPlacement guardContentPlacement) {
+        return extractRegularMessages(
+                messages, cachePointPlacement, cacheTtl, guardContentPlacement, new MediaDownloads(mediaFetcher));
+    }
+
+    List<Message> extractRegularMessages(
+            List<ChatMessage> messages,
+            BedrockCachePointPlacement cachePointPlacement,
+            CacheTTL cacheTtl,
+            BedrockGuardContentPlacement guardContentPlacement,
+            MediaDownloads media) {
         if (messages == null) {
             return new ArrayList<>();
         }
@@ -305,7 +326,8 @@ abstract class AbstractBedrockChatModel {
             }
         }
 
-        boolean shouldUseGuardContent = shouldUseGuardContent(messages, guardContentPlacement, lastUserMessageIndex);
+        boolean shouldUseGuardContent =
+                shouldUseGuardContent(messages, guardContentPlacement, lastUserMessageIndex, media);
 
         for (int i = 0; i < messages.size(); i++) {
             ChatMessage msg = messages.get(i);
@@ -313,13 +335,13 @@ abstract class AbstractBedrockChatModel {
                 continue; // Skip null messages gracefully
             }
             if (msg instanceof ToolExecutionResultMessage toolResult) {
-                handleToolResult(toolResult, currentBlocks, bedrockMessages, i, messages);
+                handleToolResult(toolResult, currentBlocks, bedrockMessages, i, messages, media);
             } else if ((msg instanceof UserMessage) || (msg instanceof AiMessage)) {
                 boolean shouldApplyGuardContent = shouldUseGuardContent
                         && shouldApplyGuardContent(msg, guardContentPlacement, i, lastUserMessageIndex);
                 Message bedrockMessage = shouldApplyGuardContent
-                        ? createGuardedUserMessage((UserMessage) msg)
-                        : convertToBedRockMessage(msg);
+                        ? createGuardedUserMessage((UserMessage) msg, media)
+                        : convertToBedRockMessage(msg, media);
 
                 boolean shouldAddCachePoint = false;
 
@@ -354,12 +376,16 @@ abstract class AbstractBedrockChatModel {
     }
 
     private boolean shouldUseGuardContent(
-            List<ChatMessage> messages, BedrockGuardContentPlacement guardContentPlacement, int lastUserMessageIndex) {
+            List<ChatMessage> messages,
+            BedrockGuardContentPlacement guardContentPlacement,
+            int lastUserMessageIndex,
+            MediaDownloads media) {
         if (guardContentPlacement == null) {
             return false;
         }
 
-        String fallbackReason = guardContentFallbackReason(messages, guardContentPlacement, lastUserMessageIndex);
+        String fallbackReason =
+                guardContentFallbackReason(messages, guardContentPlacement, lastUserMessageIndex, media);
         if (fallbackReason != null) {
             log.warn(fallbackReason);
             return false;
@@ -368,7 +394,10 @@ abstract class AbstractBedrockChatModel {
     }
 
     private String guardContentFallbackReason(
-            List<ChatMessage> messages, BedrockGuardContentPlacement guardContentPlacement, int lastUserMessageIndex) {
+            List<ChatMessage> messages,
+            BedrockGuardContentPlacement guardContentPlacement,
+            int lastUserMessageIndex,
+            MediaDownloads media) {
         if (guardContentPlacement == null || messages == null) {
             return null;
         }
@@ -377,7 +406,8 @@ abstract class AbstractBedrockChatModel {
             ChatMessage message = messages.get(i);
             // Avoid partial selective guarding; regular content lets Bedrock apply guardrailConfig to all messages.
             if (shouldApplyGuardContent(message, guardContentPlacement, i, lastUserMessageIndex)) {
-                String unsupportedContentReason = unsupportedGuardContentReason(((UserMessage) message).contents());
+                String unsupportedContentReason =
+                        unsupportedGuardContentReason(((UserMessage) message).contents(), media);
                 if (unsupportedContentReason != null) {
                     return String.format(
                             "BedrockGuardContentPlacement.%s is configured but ignored because selected user "
@@ -390,13 +420,13 @@ abstract class AbstractBedrockChatModel {
         return null;
     }
 
-    private String unsupportedGuardContentReason(List<Content> contents) {
+    private String unsupportedGuardContentReason(List<Content> contents, MediaDownloads media) {
         if (isNullOrEmpty(contents)) {
             return null;
         }
 
         for (Content content : contents) {
-            String unsupportedContentReason = unsupportedGuardContentReason(content);
+            String unsupportedContentReason = unsupportedGuardContentReason(content, media);
             if (unsupportedContentReason != null) {
                 return unsupportedContentReason;
             }
@@ -405,7 +435,7 @@ abstract class AbstractBedrockChatModel {
         return null;
     }
 
-    private String unsupportedGuardContentReason(Content content) {
+    private String unsupportedGuardContentReason(Content content, MediaDownloads media) {
         if (content == null) {
             return "null content";
         }
@@ -413,7 +443,7 @@ abstract class AbstractBedrockChatModel {
             return null;
         }
         if (content instanceof ImageContent imageContent) {
-            String imgFormat = extractAndValidateFormat(imageContent.image());
+            String imgFormat = imageFormat(imageContent.image(), media);
             if (isGuardContentImageFormatSupported(imgFormat)) {
                 return null;
             }
@@ -443,7 +473,18 @@ abstract class AbstractBedrockChatModel {
             List<Message> bedrockMessages,
             int currentIndex,
             List<ChatMessage> allMessages) {
-        blocks.add(createToolResultBlock(toolResult));
+        handleToolResult(
+                toolResult, blocks, bedrockMessages, currentIndex, allMessages, new MediaDownloads(mediaFetcher));
+    }
+
+    private void handleToolResult(
+            ToolExecutionResultMessage toolResult,
+            List<ContentBlock> blocks,
+            List<Message> bedrockMessages,
+            int currentIndex,
+            List<ChatMessage> allMessages,
+            MediaDownloads media) {
+        blocks.add(createToolResultBlock(toolResult, media));
 
         boolean isLastOrNextIsNotToolResult = currentIndex + 1 >= allMessages.size()
                 || !(allMessages.get(currentIndex + 1) instanceof ToolExecutionResultMessage);
@@ -458,6 +499,10 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected ContentBlock createToolResultBlock(ToolExecutionResultMessage toolResult) {
+        return createToolResultBlock(toolResult, new MediaDownloads(mediaFetcher));
+    }
+
+    private ContentBlock createToolResultBlock(ToolExecutionResultMessage toolResult, MediaDownloads media) {
         if (toolResult.hasSingleText()) {
             return ContentBlock.builder()
                     .toolResult(ToolResultBlock.builder()
@@ -476,16 +521,11 @@ abstract class AbstractBedrockChatModel {
                         .text(textContent.text())
                         .build());
             } else if (content instanceof ImageContent imageContent) {
-                SdkBytes bytes = fromByteArray(
-                        nonNull(imageContent.image().base64Data())
-                                ? Base64.getDecoder()
-                                        .decode(imageContent.image().base64Data())
-                                : readBytes(String.valueOf(imageContent.image().url())));
-                String imgFormat = extractAndValidateFormat(imageContent.image());
+                BedrockImage image = bedrockImage(imageContent.image(), media);
                 contentBlocks.add(ToolResultContentBlock.builder()
                         .image(ImageBlock.builder()
-                                .format(imgFormat)
-                                .source(ImageSource.builder().bytes(bytes).build())
+                                .format(image.format())
+                                .source(ImageSource.builder().bytes(image.bytes()).build())
                                 .build())
                         .build());
             } else {
@@ -502,8 +542,12 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected Message convertToBedRockMessage(ChatMessage message) {
+        return convertToBedRockMessage(message, new MediaDownloads(mediaFetcher));
+    }
+
+    private Message convertToBedRockMessage(ChatMessage message, MediaDownloads media) {
         if (message instanceof UserMessage userMsg) {
-            return createUserMessage(userMsg);
+            return createUserMessage(userMsg, media);
         } else if (message instanceof AiMessage aiMsg) {
             return createAiMessage(aiMsg);
         }
@@ -511,16 +555,20 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected Message createUserMessage(UserMessage message) {
+        return createUserMessage(message, new MediaDownloads(mediaFetcher));
+    }
+
+    private Message createUserMessage(UserMessage message, MediaDownloads media) {
         return Message.builder()
                 .role(ConversationRole.USER)
-                .content(convertContents(message.contents()))
+                .content(convertContents(message.contents(), media))
                 .build();
     }
 
-    private Message createGuardedUserMessage(UserMessage message) {
+    private Message createGuardedUserMessage(UserMessage message, MediaDownloads media) {
         return Message.builder()
                 .role(ConversationRole.USER)
-                .content(convertContentsWithGuardContent(message.contents()))
+                .content(convertContentsWithGuardContent(message.contents(), media))
                 .build();
     }
 
@@ -566,22 +614,34 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected List<ContentBlock> convertContents(List<Content> contents) {
-        if (isNullOrEmpty(contents)) {
-            return emptyList();
-        }
-
-        return contents.stream().map(this::convertContent).toList();
+        return convertContents(contents, new MediaDownloads(mediaFetcher));
     }
 
-    private List<ContentBlock> convertContentsWithGuardContent(List<Content> contents) {
+    private List<ContentBlock> convertContents(List<Content> contents, MediaDownloads media) {
         if (isNullOrEmpty(contents)) {
             return emptyList();
         }
 
-        return contents.stream().map(this::convertContentWithGuardContent).toList();
+        return contents.stream()
+                .map(content -> convertContent(content, media))
+                .toList();
+    }
+
+    private List<ContentBlock> convertContentsWithGuardContent(List<Content> contents, MediaDownloads media) {
+        if (isNullOrEmpty(contents)) {
+            return emptyList();
+        }
+
+        return contents.stream()
+                .map(content -> convertContentWithGuardContent(content, media))
+                .toList();
     }
 
     protected ContentBlock convertContent(Content content) {
+        return convertContent(content, new MediaDownloads(mediaFetcher));
+    }
+
+    private ContentBlock convertContent(Content content, MediaDownloads media) {
         if (content instanceof TextContent text) {
             return ContentBlock.builder().text(text.text()).build();
         } else if (content instanceof PdfFileContent pdfFileContent) {
@@ -589,7 +649,7 @@ abstract class AbstractBedrockChatModel {
                     nonNull(pdfFileContent.pdfFile().base64Data())
                             ? Base64.getDecoder()
                                     .decode(pdfFileContent.pdfFile().base64Data())
-                            : readBytes(String.valueOf(pdfFileContent.pdfFile().url())));
+                            : media.fetch(pdfFileContent.pdfFile().url()).bytes());
             return ContentBlock.builder()
                     .document(DocumentBlock.builder()
                             .format(DocumentFormat.PDF)
@@ -599,12 +659,12 @@ abstract class AbstractBedrockChatModel {
                             .build())
                     .build();
         } else if (content instanceof ImageContent image) {
-            return createImageBlock(image);
+            return createImageBlock(image, media);
         }
         throw new IllegalArgumentException("Unsupported content type: " + content.getClass());
     }
 
-    private ContentBlock convertContentWithGuardContent(Content content) {
+    private ContentBlock convertContentWithGuardContent(Content content, MediaDownloads media) {
         if (content instanceof TextContent text) {
             return ContentBlock.builder()
                     .guardContent(GuardrailConverseContentBlock.builder()
@@ -614,44 +674,90 @@ abstract class AbstractBedrockChatModel {
                             .build())
                     .build();
         } else if (content instanceof ImageContent image) {
-            return createGuardedImageBlock(image);
+            return createGuardedImageBlock(image, media);
         }
 
-        return convertContent(content);
+        return convertContent(content, media);
     }
 
     protected ContentBlock createImageBlock(ImageContent imageContent) {
-        final SdkBytes bytes = imageBytes(imageContent);
-        final String imgFormat = extractAndValidateFormat(imageContent.image());
+        return createImageBlock(imageContent, new MediaDownloads(mediaFetcher));
+    }
+
+    private ContentBlock createImageBlock(ImageContent imageContent, MediaDownloads media) {
+        final BedrockImage image = bedrockImage(imageContent.image(), media);
         return ContentBlock.builder()
                 .image(ImageBlock.builder()
-                        .format(imgFormat)
-                        .source(ImageSource.builder().bytes(bytes).build())
+                        .format(image.format())
+                        .source(ImageSource.builder().bytes(image.bytes()).build())
                         .build())
                 .build();
     }
 
-    private static SdkBytes imageBytes(ImageContent imageContent) {
-        return fromByteArray(
-                nonNull(imageContent.image().base64Data())
-                        ? Base64.getDecoder().decode(imageContent.image().base64Data())
-                        : readBytes(String.valueOf(imageContent.image().url())));
-    }
-
-    private ContentBlock createGuardedImageBlock(ImageContent imageContent) {
-        final SdkBytes bytes = imageBytes(imageContent);
-        final String imgFormat = extractAndValidateFormat(imageContent.image());
+    private ContentBlock createGuardedImageBlock(ImageContent imageContent, MediaDownloads media) {
+        final BedrockImage image = bedrockImage(imageContent.image(), media);
 
         return ContentBlock.builder()
                 .guardContent(GuardrailConverseContentBlock.builder()
                         .image(GuardrailConverseImageBlock.builder()
-                                .format(guardContentImageFormat(imgFormat, imageContent))
+                                .format(guardContentImageFormat(image.format(), imageContent))
                                 .source(GuardrailConverseImageSource.builder()
-                                        .bytes(bytes)
+                                        .bytes(image.bytes())
                                         .build())
                                 .build())
                         .build())
                 .build();
+    }
+
+    private record BedrockImage(SdkBytes bytes, String format) {}
+
+    private static BedrockImage bedrockImage(Image image, MediaDownloads media) {
+        if (nonNull(image.base64Data())) {
+            return new BedrockImage(
+                    fromByteArray(Base64.getDecoder().decode(image.base64Data())), extractAndValidateFormat(image));
+        }
+        FetchedMedia fetched = media.fetch(image.url());
+        return new BedrockImage(fromByteArray(fetched.bytes()), extractAndValidateFormat(image, fetched.mimeType()));
+    }
+
+    private static String imageFormat(Image image, MediaDownloads media) {
+        if (nonNull(image.base64Data())) {
+            return extractAndValidateFormat(image);
+        }
+        return extractAndValidateFormat(image, media.fetch(image.url()).mimeType());
+    }
+
+    /**
+     * Downloads, with {@link MediaFetcher#fetchAsync(URI)}, every image and PDF file that the messages refer to by
+     * URL and that {@link #extractRegularMessages(List, BedrockCachePointPlacement, CacheTTL,
+     * BedrockGuardContentPlacement, MediaDownloads)} would download.
+     */
+    CompletableFuture<MediaDownloads> prefetchMedia(List<ChatMessage> messages) {
+        List<URI> urls = new ArrayList<>();
+        for (ChatMessage message : messages) {
+            if (message instanceof UserMessage userMessage) {
+                for (Content content : userMessage.contents()) {
+                    if (content instanceof ImageContent imageContent) {
+                        addUrlToFetch(urls, imageContent.image().base64Data(), imageContent.image().url());
+                    } else if (content instanceof PdfFileContent pdfFileContent) {
+                        addUrlToFetch(urls, pdfFileContent.pdfFile().base64Data(), pdfFileContent.pdfFile().url());
+                    }
+                }
+            } else if (message instanceof ToolExecutionResultMessage toolResult && !toolResult.hasSingleText()) {
+                for (Content content : toolResult.contents()) {
+                    if (content instanceof ImageContent imageContent) {
+                        addUrlToFetch(urls, imageContent.image().base64Data(), imageContent.image().url());
+                    }
+                }
+            }
+        }
+        return MediaDownloads.prefetch(mediaFetcher, urls);
+    }
+
+    private static void addUrlToFetch(List<URI> urls, @Nullable String base64Data, @Nullable URI url) {
+        if (base64Data == null && url != null) {
+            urls.add(url);
+        }
     }
 
     private GuardrailConverseImageFormat guardContentImageFormat(String imgFormat, ImageContent imageContent) {
@@ -744,6 +850,20 @@ abstract class AbstractBedrockChatModel {
                             + MAX_CACHE_POINTS_PER_REQUEST + " per request. "
                             + "Reduce cache points in BedrockSystemMessage or adjust BedrockCachePointPlacement settings.");
         }
+    }
+
+    /**
+     * Validates that the total number of cache points of the request does not exceed the AWS Bedrock limit of 4 per
+     * request.
+     *
+     * @param chatRequest the chat request, with its {@link BedrockChatRequestParameters}
+     * @throws IllegalArgumentException if total cache points exceed 4
+     */
+    void validateTotalCachePoints(ChatRequest chatRequest) {
+        BedrockChatRequestParameters parameters = (BedrockChatRequestParameters) chatRequest.parameters();
+        boolean hasTools = chatRequest.toolSpecifications() != null
+                && !chatRequest.toolSpecifications().isEmpty();
+        validateTotalCachePoints(chatRequest.messages(), parameters.cachePointPlacement(), hasTools);
     }
 
     /**
@@ -1284,6 +1404,7 @@ abstract class AbstractBedrockChatModel {
         protected List<ChatModelListener> listeners;
         protected Set<Capability> supportedCapabilities;
         protected Supplier<Map<String, String>> customHeadersSupplier;
+        protected MediaFetcher mediaFetcher;
 
         @SuppressWarnings("unchecked")
         public T self() {
@@ -1407,6 +1528,30 @@ abstract class AbstractBedrockChatModel {
 
         public T customHeaders(Supplier<Map<String, String>> customHeadersSupplier) {
             this.customHeadersSupplier = customHeadersSupplier;
+            return self();
+        }
+
+        /**
+         * Sets the {@link MediaFetcher} that downloads the images and PDF files that messages refer to by URL, for
+         * example an {@link ImageContent} created with {@link ImageContent#from(URI)}. Bedrock accepts them only as
+         * content, so they are downloaded before the request is sent.
+         * <p>
+         * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
+         * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To send
+         * a local file, read it when you create the content, for example with {@link ImageContent#from(Path, String)}
+         * or {@link PdfFileContent#from(Path)}. To download from your own servers, use a {@link DefaultMediaFetcher}
+         * that allows them, or your own {@link MediaFetcher}.
+         * <p>
+         * {@link ChatModel#chatAsync(ChatRequest)} and the streaming model download with
+         * {@link MediaFetcher#fetchAsync(URI)}, so a fetcher used there must implement it.
+         *
+         * @param mediaFetcher the fetcher, or {@code null} to use the default one
+         * @return {@code this}
+         * @since 1.25.0
+         */
+        @Experimental
+        public T mediaFetcher(@Nullable MediaFetcher mediaFetcher) {
+            this.mediaFetcher = mediaFetcher;
             return self();
         }
     }
