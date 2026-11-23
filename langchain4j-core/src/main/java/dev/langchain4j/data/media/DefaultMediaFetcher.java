@@ -263,7 +263,8 @@ public final class DefaultMediaFetcher implements MediaFetcher {
             throw new InvalidRequestException("Only http and https URLs can be fetched, but got "
                     + (scheme == null ? "a URL without a scheme" : "a URL with the scheme '" + scheme + "'")
                     + ". To send a local file, read it yourself with ImageContent.from(Path, String), "
-                    + "PdfFileContent.from(Path), AudioContent.from(Path, String) or VideoContent.from(Path, String)");
+                    + "PdfFileContent.from(Path), AudioContent.from(Path, String) or VideoContent.from(Path, String), "
+                    + "or for an image model with Image.builder().base64Data(...)");
         }
         String host = url.getHost();
         if (host == null || host.isEmpty()) {

@@ -153,7 +153,8 @@ class DefaultMediaFetcherTest {
                 .hasMessageContaining("ImageContent.from(Path, String)")
                 .hasMessageContaining("PdfFileContent.from(Path)")
                 .hasMessageContaining("AudioContent.from(Path, String)")
-                .hasMessageContaining("VideoContent.from(Path, String)");
+                .hasMessageContaining("VideoContent.from(Path, String)")
+                .hasMessageContaining("Image.builder().base64Data(...)");
     }
 
     @ParameterizedTest
