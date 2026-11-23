@@ -158,8 +158,7 @@ and a warning is logged. The same default applies when the request contains no u
 
 `BedrockBatchChatModel` implements the core `BatchChatModel` interface on top of the Bedrock
 [batch inference API](https://docs.aws.amazon.com/bedrock/latest/userguide/batch-inference.html), which processes
-many chat requests asynchronously at a lower price than on-demand inference for supported models. See
-[Batch Processing](/tutorials/batch-processing) for how batching works in LangChain4j.
+many chat requests asynchronously at a lower price than on-demand inference for supported models.
 
 Requests are written as a JSONL file to S3, a model invocation job is submitted, and the results are read back from
 the S3 output location. It requires an S3 bucket in the same region as the job and a
