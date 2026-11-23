@@ -26,11 +26,16 @@ import com.google.cloud.vertexai.api.ToolConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import com.google.cloud.vertexai.generativeai.ResponseHandler;
 import com.google.common.annotations.VisibleForTesting;
+import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.media.DefaultMediaFetcher;
+import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
+import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -44,6 +49,8 @@ import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.vertexai.gemini.spi.VertexAiGeminiChatModelBuilderFactory;
 import java.io.Closeable;
+import java.net.URI;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -51,6 +58,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -98,6 +106,8 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
     private final Set<Capability> supportedCapabilities;
 
     private final Map<String, String> labels;
+
+    private final MediaFetcher mediaFetcher;
 
     public VertexAiGeminiChatModel(VertexAiGeminiChatModelBuilder builder) {
         ensureNotBlank(builder.modelName, "modelName");
@@ -216,6 +226,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
         this.labels = copy(builder.labels);
+        this.mediaFetcher = getOrDefault(builder.mediaFetcher, MediaPrefetcher::defaultMediaFetcher);
     }
 
     /**
@@ -346,6 +357,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         this.listeners = listeners == null ? emptyList() : new ArrayList<>(listeners);
         this.supportedCapabilities = copy(supportedCapabilities);
         this.labels = Collections.emptyMap();
+        this.mediaFetcher = MediaPrefetcher.defaultMediaFetcher();
     }
 
     public VertexAiGeminiChatModel(GenerativeModel generativeModel, GenerationConfig generationConfig) {
@@ -387,6 +399,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         this.listeners = copy(listeners);
         this.supportedCapabilities = Set.of();
         this.labels = Collections.emptyMap();
+        this.mediaFetcher = MediaPrefetcher.defaultMediaFetcher();
     }
 
     @Override
@@ -458,7 +471,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
                 .withToolConfig(this.toolConfig);
 
         ContentsMapper.InstructionAndContent instructionAndContent =
-                ContentsMapper.splitInstructionAndContent(messages);
+                ContentsMapper.splitInstructionAndContent(messages, mediaFetcher);
 
         if (instructionAndContent.systemInstruction != null) {
             model = model.withSystemInstruction(instructionAndContent.systemInstruction);
@@ -626,6 +639,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
         private GoogleCredentials credentials;
         private String apiEndpoint;
         private Map<String, String> labels;
+        private @Nullable MediaFetcher mediaFetcher;
 
         public VertexAiGeminiChatModelBuilder() {
             // This is public so it can be extended
@@ -780,6 +794,32 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
          */
         public VertexAiGeminiChatModelBuilder labels(Map<String, String> labels) {
             this.labels = labels;
+            return this;
+        }
+
+        /**
+         * Sets the {@link MediaFetcher} that downloads media given by a URL, for example an image created with
+         * {@link ImageContent#from(URI)}. Gemini receives images, audio, video and PDF files as content, so media
+         * given by a URL is downloaded before the request is sent. Cloud Storage URLs ({@code gs://...}) are not
+         * downloaded: they are passed on to Gemini.
+         * <p>
+         * When not set, a {@link DefaultMediaFetcher} with the default settings is used: it downloads only
+         * {@code http} and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local
+         * files. To send a local file, read it yourself, for example with {@link ImageContent#from(Path, String)}.
+         * To download media from your own servers, or to change the limits, configure a {@link DefaultMediaFetcher}
+         * and set it here:
+         * <pre>{@code
+         * MediaFetcher mediaFetcher = DefaultMediaFetcher.builder()
+         *         .allowNonPublicHosts("media.internal.example.com")
+         *         .build();
+         * }</pre>
+         *
+         * @param mediaFetcher the fetcher that downloads media, or {@code null} to use the default one.
+         * @return {@code this}.
+         */
+        @Experimental
+        public VertexAiGeminiChatModelBuilder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {
+            this.mediaFetcher = mediaFetcher;
             return this;
         }
 

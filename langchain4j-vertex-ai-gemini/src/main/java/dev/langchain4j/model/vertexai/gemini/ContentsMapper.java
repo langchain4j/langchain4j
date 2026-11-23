@@ -2,6 +2,7 @@ package dev.langchain4j.model.vertexai.gemini;
 
 import com.google.cloud.vertexai.api.Content;
 import com.google.cloud.vertexai.api.Part;
+import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
@@ -27,7 +28,7 @@ class ContentsMapper {
         }
     }
 
-    static InstructionAndContent splitInstructionAndContent(List<ChatMessage> messages) {
+    static InstructionAndContent splitInstructionAndContent(List<ChatMessage> messages, MediaFetcher mediaFetcher) {
         InstructionAndContent instructionAndContent = new InstructionAndContent();
         List<Part> sysInstructionParts = new ArrayList<>();
 
@@ -42,10 +43,11 @@ class ContentsMapper {
                 if (isLastMessage) {
                     // if there's no accumulated tool results, add it right away to the list of messages
                     if (executionResultMessages.isEmpty()) {
-                        instructionAndContent.contents.add(createContent(message));
+                        instructionAndContent.contents.add(createContent(message, mediaFetcher));
                     } else { // otherwise add to the list, and create the new user message with all the tool results
                         executionResultMessages.add(toolResult);
-                        instructionAndContent.contents.add(createToolExecutionResultContent(executionResultMessages));
+                        instructionAndContent.contents.add(
+                            createToolExecutionResultContent(executionResultMessages, mediaFetcher));
                     }
                 } else { // not the last message, so just accumulate the new tool result
                     executionResultMessages.add(toolResult);
@@ -54,15 +56,16 @@ class ContentsMapper {
                 // if we're done with tool results and encounter a new user or AI message
                 // then bundle all the tool results into a new user message
                 if (!executionResultMessages.isEmpty()) {
-                    instructionAndContent.contents.add(createToolExecutionResultContent(executionResultMessages));
+                    instructionAndContent.contents.add(
+                        createToolExecutionResultContent(executionResultMessages, mediaFetcher));
                     executionResultMessages = new ArrayList<>();
                 }
 
                 // directly add user and AI messages to the list
                 if (message instanceof UserMessage || message instanceof AiMessage) {
-                    instructionAndContent.contents.add(createContent(message));
+                    instructionAndContent.contents.add(createContent(message, mediaFetcher));
                 } else if (message instanceof SystemMessage) { // save system messages separately
-                    sysInstructionParts.addAll(PartsMapper.map(message));
+                    sysInstructionParts.addAll(PartsMapper.map(message, mediaFetcher));
                 }
             }
         }
@@ -79,21 +82,22 @@ class ContentsMapper {
     }
 
     // transform a LangChain4j ChatMessage into a Gemini Content
-    private static Content createContent(ChatMessage message) {
+    private static Content createContent(ChatMessage message, MediaFetcher mediaFetcher) {
         return Content.newBuilder()
             .setRole(RoleMapper.map(message.type()))
-            .addAllParts(PartsMapper.map(message))
+            .addAllParts(PartsMapper.map(message, mediaFetcher))
             .build();
     }
 
     // transform a list of LangChain4j tool execution results
     // into a user message made of multiple Gemini Parts
-    private static Content createToolExecutionResultContent(List<ToolExecutionResultMessage> executionResultMessages) {
+    private static Content createToolExecutionResultContent(
+        List<ToolExecutionResultMessage> executionResultMessages, MediaFetcher mediaFetcher) {
         return Content.newBuilder()
             .setRole(RoleMapper.map(ChatMessageType.TOOL_EXECUTION_RESULT))
             .addAllParts(
                 executionResultMessages.stream()
-                    .map(PartsMapper::map)
+                    .map(message -> PartsMapper.map(message, mediaFetcher))
                     .flatMap(List::stream)
                     .collect(Collectors.toList()))
             .build();
