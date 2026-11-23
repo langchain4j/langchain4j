@@ -572,7 +572,47 @@ For more details about the `langchain4j-observation` library, please check the [
 
 ## Testing
 
-- [An example of integration testing for a Customer Support Agent](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentIT.java)
+The [Testing](/tutorials/testing) tutorial shows how to test AI Services with the model mocks, `capture(...)` and the
+judges of `langchain4j-test`. All of it works in a Spring Boot test too.
+
+To test an AI Service of the [starter](#spring-boot-starter-for-declarative-ai-services) (here an `Assistant` annotated
+with `@AiService`) without calling a real model, replace the model bean with a mock of `langchain4j-test`, using
+`@TestBean` (Spring Framework 6.2 or later):
+
+```java
+@SpringBootTest
+class AssistantTest {
+
+    @TestBean
+    ChatModel chatModel;
+
+    static ChatModel chatModel() {
+        return MockChatModel.thatResponds("Hello!").thenRepeats();
+    }
+
+    @Autowired
+    Assistant assistant;
+
+    @Test
+    void should_greet() {
+        AiServiceCapture capture = capture(() -> assistant.chat("Hi"));
+
+        assertThat(capture.outputText()).isEqualTo("Hello!");
+        assertThat(capture.lastRequest()).hasLastUserMessageContaining("Hi");
+    }
+}
+```
+
+- Give the field the type of the model interface, here `ChatModel`: a field of type `MockChatModel` adds a second
+  model bean instead of replacing the existing one. If your application has several model beans, name the one to
+  replace, for example `@TestBean(name = "openAiChatModel")`.
+- Spring creates the mock once per Spring context, which it usually shares between the tests of a class. So the
+  script ends with `thenRepeats()`, and the mock's `requests()` hold the requests of all these tests. `capture(...)`
+  only sees the requests of the current test, as above. To answer differently in each test, compute the answer from
+  the request (`thatResponds(Function<ChatRequest, AiMessage>)`), or get a new context with a new mock with
+  `@DirtiesContext`.
+- A request sent with `MockMvc` runs your controller on the test thread, so `capture(...)` also captures the AI
+  Services that the controller calls.
 
 ## Supported versions
 
