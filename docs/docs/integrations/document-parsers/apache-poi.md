@@ -16,6 +16,14 @@ sidebar_position: 3
 ```
 
 
+## Highly compressed files
+
+Apache POI rejects highly compressed files with a check of the compression ratio.
+When Apache Tika's OOXML parser is loaded in the same JVM (for example through `langchain4j-document-parser-apache-tika` or Easy RAG),
+Tika turns this check off for the whole JVM, which also affects `ApachePoiDocumentParser`.
+To parse documents from untrusted sources, parse them in a separate process or in a JVM with a bounded heap.
+
+
 ## APIs
 
 - `ApachePoiDocumentParser`

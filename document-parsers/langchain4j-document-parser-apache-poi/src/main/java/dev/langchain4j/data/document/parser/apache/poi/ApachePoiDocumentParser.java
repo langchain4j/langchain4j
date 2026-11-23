@@ -17,6 +17,11 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
  * This parser supports various file formats, including doc, docx, ppt, pptx, xls, and xlsx.
  * For detailed information on supported formats,
  * please refer to the <a href="https://poi.apache.org/">official Apache POI website</a>.
+ * <p>
+ * Apache POI rejects highly compressed files with a check of the compression ratio. When Apache Tika's OOXML parser is
+ * loaded in the same JVM (for example through {@code langchain4j-document-parser-apache-tika} or Easy RAG), Tika turns
+ * this check off for the whole JVM, which also affects this parser. To parse documents from untrusted sources, parse
+ * them in a separate process or in a JVM with a bounded heap.
  */
 public class ApachePoiDocumentParser implements DocumentParser {
 

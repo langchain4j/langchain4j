@@ -83,6 +83,9 @@ DocumentParser parser = ApacheTikaDocumentParser.builder()
 ```
 
 The `ForkParser` starts child JVMs and reuses them for the next documents. Close it when you no longer need it.
+
+Note that Tika turns off Apache POI's check of the compression ratio for the whole JVM when its OOXML parser is loaded.
+This also affects `ApachePoiDocumentParser` in the same JVM.
 Running the whole application in a JVM with a bounded heap (`-Xmx`) also keeps one document from
 taking all the memory of the machine.
 
