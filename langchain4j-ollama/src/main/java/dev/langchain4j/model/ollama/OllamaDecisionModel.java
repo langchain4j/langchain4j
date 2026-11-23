@@ -10,6 +10,7 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.media.DefaultMediaFetcher;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -295,8 +296,8 @@ public class OllamaDecisionModel implements DecisionModel {
          * To download from your own servers, use a {@link DefaultMediaFetcher} that allows them, or your own
          * {@link MediaFetcher}.
          * <p>
-         * {@link OllamaDecisionModel#decideAsync(DecisionRequest)} downloads with {@link MediaFetcher#fetchAsync(URI)},
-         * so a fetcher used with it must implement it.
+         * {@link OllamaDecisionModel#decideAsync(DecisionRequest)} downloads with
+         * {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, so a fetcher used with it must implement it.
          *
          * @param mediaFetcher the fetcher, or {@code null} to use the default one
          * @return {@code this}

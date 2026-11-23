@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.data.media.FetchedMedia;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
@@ -42,7 +43,7 @@ class OllamaMediaFetcherTest {
     private static final byte[] IMAGE_BYTES = {1, 2, 3};
     private static final String IMAGE_BASE64 = Base64.getEncoder().encodeToString(IMAGE_BYTES);
 
-    private static final MediaFetcher SYNC_ONLY_FETCHER = url -> FetchedMedia.from(IMAGE_BYTES, "image/png");
+    private static final MediaFetcher SYNC_ONLY_FETCHER = request -> FetchedMedia.from(IMAGE_BYTES, "image/png");
 
     private static final String CHAT_RESPONSE =
             "{\"model\":\"llava\",\"message\":{\"role\":\"assistant\",\"content\":\"a cat\"},\"done\":true,"
@@ -302,8 +303,8 @@ class OllamaMediaFetcherTest {
     }
 
     /**
-     * Returns {@link #IMAGE_BYTES} for every URL and records whether it was asked with {@link #fetch(URI)} or
-     * {@link #fetchAsync(URI)}.
+     * Returns {@link #IMAGE_BYTES} for every URL and records whether it was asked with
+     * {@link #fetch(MediaFetchRequest)} or {@link #fetchAsync(MediaFetchRequest)}.
      */
     private static class RecordingMediaFetcher implements MediaFetcher {
 
@@ -311,14 +312,14 @@ class OllamaMediaFetcherTest {
         final List<URI> fetchedAsync = new CopyOnWriteArrayList<>();
 
         @Override
-        public FetchedMedia fetch(URI url) {
-            fetched.add(url);
+        public FetchedMedia fetch(MediaFetchRequest request) {
+            fetched.add(request.url());
             return FetchedMedia.from(IMAGE_BYTES, "image/png");
         }
 
         @Override
-        public CompletableFuture<FetchedMedia> fetchAsync(URI url) {
-            fetchedAsync.add(url);
+        public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
+            fetchedAsync.add(request.url());
             return CompletableFuture.supplyAsync(() -> FetchedMedia.from(IMAGE_BYTES, "image/png"));
         }
     }

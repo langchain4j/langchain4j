@@ -15,8 +15,8 @@ import org.junit.jupiter.api.Test;
 
 class InternalOllamaHelperTest {
 
-    private static final MediaFetcher NO_DOWNLOADS = url -> {
-        throw new AssertionError("Unexpected download of " + url);
+    private static final MediaFetcher NO_DOWNLOADS = request -> {
+        throw new AssertionError("Unexpected download of " + request.url());
     };
 
     @Test

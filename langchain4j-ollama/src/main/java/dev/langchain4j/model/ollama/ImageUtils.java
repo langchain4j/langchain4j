@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.internal.MediaPrefetcher;
@@ -32,12 +33,12 @@ class ImageUtils {
         if (!isNullOrEmpty(image.base64Data())) {
             return image.base64Data();
         }
-        return Base64.getEncoder().encodeToString(mediaFetcher.fetch(image.url()).bytes());
+        return Base64.getEncoder().encodeToString(mediaFetcher.fetch(MediaFetchRequest.from(image.url())).bytes());
     }
 
     /**
-     * Downloads, with {@link MediaFetcher#fetchAsync(URI)}, the images that {@link #base64Image(Image, MediaFetcher)}
-     * would download.
+     * Downloads, with {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, the images that
+     * {@link #base64Image(Image, MediaFetcher)} would download.
      *
      * @return a future of a fetcher that returns the downloaded images; it never throws.
      */

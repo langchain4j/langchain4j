@@ -6,6 +6,7 @@ import static java.util.Arrays.asList;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.media.DefaultMediaFetcher;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ImageContent;
@@ -354,8 +355,8 @@ abstract class OllamaBaseChatModel {
          * To download from your own servers, use a {@link DefaultMediaFetcher} that allows them, or your own
          * {@link MediaFetcher}.
          * <p>
-         * {@link OllamaStreamingChatModel} downloads with {@link MediaFetcher#fetchAsync(URI)}, so a fetcher used there
-         * must implement it.
+         * {@link OllamaStreamingChatModel} downloads with {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, so a
+         * fetcher used there must implement it.
          *
          * @param mediaFetcher the fetcher, or {@code null} to use the default one
          * @return {@code this}
