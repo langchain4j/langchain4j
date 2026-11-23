@@ -9,6 +9,7 @@ import static dev.langchain4j.internal.Utils.generateUUIDFrom;
 import static java.lang.reflect.Modifier.isStatic;
 import static java.util.Arrays.stream;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import dev.langchain4j.Internal;
@@ -260,9 +261,12 @@ public class JsonSchemaElementUtils {
 
         Map<String, JsonSchemaElement> properties = new LinkedHashMap<>();
         List<String> required = new ArrayList<>();
-        for (Field field : type.getDeclaredFields()) {
+        for (Field field : fieldsIncludingInherited(type)) {
             String fieldName = field.getName();
             if (isStatic(field.getModifiers()) || fieldName.equals("__$hits$__") || fieldName.startsWith("this$")) {
+                continue;
+            }
+            if (field.isAnnotationPresent(JsonIgnore.class)) {
                 continue;
             }
             if (isRequired(field, areSubFieldsRequiredByDefault)) {
@@ -294,6 +298,22 @@ public class JsonSchemaElementUtils {
         }
 
         return builder.build();
+    }
+
+    private static List<Field> fieldsIncludingInherited(Class<?> type) {
+        List<Class<?>> hierarchy = new ArrayList<>();
+        for (Class<?> current = type; current != null && current != Object.class; current = current.getSuperclass()) {
+            hierarchy.add(current);
+        }
+
+        Map<String, Field> fields = new LinkedHashMap<>();
+        for (int i = hierarchy.size() - 1; i >= 0; i--) {
+            for (Field field : hierarchy.get(i).getDeclaredFields()) {
+                // A field redeclared in a subclass shadows the inherited one.
+                fields.put(field.getName(), field);
+            }
+        }
+        return List.copyOf(fields.values());
     }
 
     private static boolean isRequired(Field field, boolean defaultValue) {
