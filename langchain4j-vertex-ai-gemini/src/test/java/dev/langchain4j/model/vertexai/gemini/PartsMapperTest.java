@@ -37,13 +37,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PartsMapperTest {
 
-    private static final MediaFetcher NO_DOWNLOADS = url -> {
-        throw new AssertionError("Unexpected download of " + url);
+    private static final MediaFetcher NO_DOWNLOADS = request -> {
+        throw new AssertionError("Unexpected download of " + request.url());
     };
 
     private static final String IMAGE_URL = "https://example.com/test-image.jpg";
 
-    private static final MediaFetcher MEDIA_FETCHER = url -> FetchedMedia.from(new byte[]{1, 2, 3}, "image/webp");
+    private static final MediaFetcher MEDIA_FETCHER = request -> FetchedMedia.from(new byte[]{1, 2, 3}, "image/webp");
 
     @TempDir
     static Path tempDir;
@@ -105,7 +105,7 @@ class PartsMapperTest {
 
         // given
         ImageContent imageContent = ImageContent.from("https://example.com/images?id=42");
-        MediaFetcher mediaFetcher = url -> FetchedMedia.from(new byte[]{1, 2, 3});
+        MediaFetcher mediaFetcher = request -> FetchedMedia.from(new byte[]{1, 2, 3});
 
         // when-then
         assertThatThrownBy(() -> PartsMapper.map(imageContent, mediaFetcher))
@@ -268,8 +268,8 @@ class PartsMapperTest {
         URI mp3url = URI.create("https://storage.googleapis.com/cloud-samples-data/generative-ai/audio/pixel.mp3");
         Audio mp3UrlAudio = Audio.builder().url(mp3url).mimeType("audio/mp3").build();
         List<URI> downloaded = new ArrayList<>();
-        MediaFetcher mediaFetcher = url -> {
-            downloaded.add(url);
+        MediaFetcher mediaFetcher = request -> {
+            downloaded.add(request.url());
             return FetchedMedia.from(new byte[]{1, 2, 3}, "audio/mpeg");
         };
 

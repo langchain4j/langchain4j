@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import com.google.cloud.vertexai.api.GenerationConfig;
 import com.google.cloud.vertexai.generativeai.GenerativeModel;
 import dev.langchain4j.data.media.FetchedMedia;
+import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
@@ -45,8 +46,8 @@ class VertexAiGeminiMediaFetcherTest {
                 .project("does-not-matter")
                 .location("does-not-matter")
                 .modelName("does-not-matter")
-                .mediaFetcher(url -> {
-                    fetched.add(url);
+                .mediaFetcher(request -> {
+                    fetched.add(request.url());
                     throw stop;
                 })
                 .build();
@@ -78,13 +79,13 @@ class VertexAiGeminiMediaFetcherTest {
                 .mediaFetcher(new MediaFetcher() {
 
                     @Override
-                    public FetchedMedia fetch(URI url) {
+                    public FetchedMedia fetch(MediaFetchRequest request) {
                         throw new AssertionError("fetch() must not be called");
                     }
 
                     @Override
-                    public CompletableFuture<FetchedMedia> fetchAsync(URI url) {
-                        fetchedAsync.add(url);
+                    public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
+                        fetchedAsync.add(request.url());
                         return download;
                     }
                 })
@@ -102,7 +103,7 @@ class VertexAiGeminiMediaFetcherTest {
 
     @Test
     void streaming_chat_model_fails_through_onError_when_media_fetcher_does_not_implement_fetchAsync() {
-        MediaFetcher syncOnlyMediaFetcher = url -> FetchedMedia.from(new byte[] {1, 2, 3}, "image/png");
+        MediaFetcher syncOnlyMediaFetcher = request -> FetchedMedia.from(new byte[] {1, 2, 3}, "image/png");
         VertexAiGeminiStreamingChatModel model = VertexAiGeminiStreamingChatModel.builder()
                 .project("does-not-matter")
                 .location("does-not-matter")
