@@ -234,6 +234,34 @@ ChatResponse response = model.chat(userMessage);
 The URL can be a web URL, or can point at a file stored in Google Cloud Storage buckets,
 like `gs://my-bucket/my-image.png`.
 
+Gemini receives media as content, so LangChain4j downloads web URLs before it sends the request.
+Cloud Storage URLs are passed on to Gemini as they are.
+By default, only `http` and `https` URLs of public hosts are downloaded, with a timeout and a size limit,
+and local files given as URLs are never read.
+To send a local file, read it with `ImageContent.from(Path, String)`, `PdfFileContent.from(Path)`,
+`AudioContent.from(Path, String)` or `VideoContent.from(Path, String)`:
+
+```java
+UserMessage userMessage = UserMessage.from(
+        ImageContent.from(Paths.get("cat.png"), "image/png"),
+        TextContent.from("What do you see? Reply in one word.")
+);
+```
+
+To download media from your own servers, or to change the limits, set a `MediaFetcher` on the model builder
+(`VertexAiGeminiStreamingChatModel` has the same option):
+
+```java
+ChatModel model = VertexAiGeminiChatModel.builder()
+        .project(PROJECT_ID)
+        .location(LOCATION)
+        .modelName(MODEL_NAME)
+        .mediaFetcher(DefaultMediaFetcher.builder()
+                .allowNonPublicHosts("media.internal.example.com")
+                .build())
+        .build();
+```
+
 You can also pass the content of an image as Base64 encoded string:
 
 ```java
@@ -256,7 +284,7 @@ var model = VertexAiGeminiChatModel.builder()
     .build();
 
 UserMessage message = UserMessage.from(
-    PdfFileContent.from(Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
+    PdfFileContent.from(Paths.get("src/test/resources/gemini-doc-snapshot.pdf")),
     TextContent.from("Provide a summary of the document")
 );
 

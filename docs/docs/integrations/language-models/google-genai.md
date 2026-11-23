@@ -859,6 +859,27 @@ ChatResponse response = gemini.chat(ChatRequest.builder()
     .build());
 ```
 
+Media given by a URL is downloaded by LangChain4j and sent to Gemini as content,
+except Cloud Storage URLs (`gs://...`), which are passed on to Gemini as they are.
+By default, only `http` and `https` URLs of public hosts are downloaded, with a timeout and a size limit,
+and local files given as URLs are never read.
+To send a local file, read it with `ImageContent.from(Path, String)`, `PdfFileContent.from(Path)`,
+`AudioContent.from(Path, String)` or `VideoContent.from(Path, String)`.
+To download media from your own servers, or to change the limits, set a `MediaFetcher` on the model builder:
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .mediaFetcher(DefaultMediaFetcher.builder()
+        .allowNonPublicHosts("media.internal.example.com")
+        .build())
+    .build();
+```
+
+`GoogleGenAiStreamingChatModel`, `GoogleGenAiBatchChatModel`, `GoogleGenAiTokenCountEstimator`
+and `GoogleGenAiCaches` have the same option.
+
 ## Audio Transcription
 
 Models built for speech recognition, such as `gemini-3.5-transcribe`, turn audio into text.

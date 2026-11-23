@@ -700,6 +700,26 @@ ChatResponse response = gemini.chat(
 );
 ```
 
+An image can also be given by an `http` or `https` URL, for example with
+`ImageContent.from("https://example.com/cat.png")`.
+Gemini receives images as content, so LangChain4j downloads such URLs before it sends the request.
+Other media URLs (of videos, audio and PDF files, and image URLs with another scheme) are passed on to Gemini as they are.
+By default, only URLs of public hosts are downloaded, with a timeout and a size limit.
+To download images from your own servers, or to change the limits, set a `MediaFetcher` on the model builder:
+
+```java
+ChatModel gemini = GoogleAiGeminiChatModel.builder()
+    .apiKey(System.getenv("GEMINI_AI_KEY"))
+    .modelName("gemini-2.5-flash")
+    .mediaFetcher(DefaultMediaFetcher.builder()
+        .allowNonPublicHosts("images.internal.example.com")
+        .build())
+    .build();
+```
+
+`GoogleAiGeminiStreamingChatModel`, `GoogleAiGeminiBatchChatModel`, `GoogleAiGeminiTokenCountEstimator`
+and `GeminiCaches` have the same option.
+
 ### Image Generation Output
 
 Some Gemini models (such as `gemini-2.5-flash-image`) can generate images as part of their response. When images are generated, they are stored in the `AiMessage` attributes and can be accessed using the `GeneratedImageHelper` utility class.
