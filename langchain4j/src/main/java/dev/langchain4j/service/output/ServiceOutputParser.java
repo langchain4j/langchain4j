@@ -2,6 +2,7 @@ package dev.langchain4j.service.output;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.service.TypeUtils.getRawClass;
+import static dev.langchain4j.service.TypeUtils.isReturnedAsIs;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
 import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterType;
 import static dev.langchain4j.service.TypeUtils.typeHasRawClass;
@@ -12,7 +13,6 @@ import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.Result;
-import dev.langchain4j.service.TokenStream;
 import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.Optional;
@@ -87,7 +87,7 @@ public class ServiceOutputParser {
         Class<?> rawClass = getRawClass(returnType);
         Class<?> typeArgumentClass = resolveFirstGenericParameterClass(returnType);
 
-        if (schemaNotRequired(rawClass)) {
+        if (schemaNotRequired(returnType)) {
             return Optional.empty();
         }
 
@@ -108,7 +108,7 @@ public class ServiceOutputParser {
         Class<?> rawClass = getRawClass(returnType);
         Class<?> typeArgumentClass = resolveFirstGenericParameterClass(returnType);
 
-        if (schemaNotRequired(rawClass)) {
+        if (schemaNotRequired(returnType)) {
             return "";
         }
 
@@ -120,24 +120,12 @@ public class ServiceOutputParser {
         return formatInstructions;
     }
 
-    /**
-     * Whether the given raw class is a LangChain4j type (e.g. {@link ChatResponse}) that AI Services
-     * take from the model response themselves, without asking the LLM to produce it.
-     * For such types, no output format instructions and no JSON schema are sent to the LLM.
-     * Image return types are detected separately.
-     */
-    public static boolean isReturnedAsIs(Class<?> type) {
-        return type == AiMessage.class
-                || type == ChatResponse.class
-                || type == Response.class
-                || type == TokenStream.class;
-    }
-
-    private static boolean schemaNotRequired(Class<?> type) {
+    private static boolean schemaNotRequired(Type type) {
+        Class<?> rawClass = getRawClass(type);
         return isReturnedAsIs(type)
-                || type == String.class
-                || type == Map.class
-                || type == void.class
-                || type == Void.class;
+                || rawClass == String.class
+                || rawClass == Map.class
+                || rawClass == void.class
+                || rawClass == Void.class;
     }
 }

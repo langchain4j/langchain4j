@@ -1,16 +1,15 @@
 package dev.langchain4j.service.output;
 
+import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
+import static dev.langchain4j.service.TypeUtils.getRawClass;
+import static dev.langchain4j.service.TypeUtils.isReturnedAsIs;
+import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
+
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
-
 import java.lang.reflect.Type;
 import java.util.LinkedHashMap;
 import java.util.Optional;
-
-import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonObjectOrReferenceSchemaFrom;
-import static dev.langchain4j.service.TypeUtils.getRawClass;
-import static dev.langchain4j.service.TypeUtils.resolveFirstGenericParameterClass;
-import static dev.langchain4j.service.output.ServiceOutputParser.isReturnedAsIs;
 
 public class JsonSchemas {
 
@@ -47,7 +46,7 @@ public class JsonSchemas {
         Class<?> rawClass = getRawClass(returnType);
         Class<?> typeArgumentClass = resolveFirstGenericParameterClass(returnType);
 
-        if (rawClass == String.class || isReturnedAsIs(rawClass)) {
+        if (rawClass == String.class || isReturnedAsIs(returnType)) {
             return false;
         }
 
