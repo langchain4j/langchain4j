@@ -63,10 +63,13 @@ class ToolExecutionHelper {
         McpErrorResponse.Error error =
                 McpJson.deserialize(response, McpErrorResponse.class).getError();
         if (error != null) {
+            Integer errorCode = (error.getCode() >= Integer.MIN_VALUE && error.getCode() <= Integer.MAX_VALUE)
+                    ? (int) error.getCode()
+                    : null;
             if (error.getCode() == ERROR_CODE_INVALID_PARAMETERS) {
-                throw new ToolArgumentsException(error.getMessage(), error.getCode());
+                throw new ToolArgumentsException(error.getMessage(), errorCode);
             }
-            throw new ToolExecutionException(error.getMessage(), error.getCode());
+            throw new ToolExecutionException(error.getMessage(), errorCode);
         }
 
         throw new RuntimeException("Result contains neither 'result' nor 'error' element: " + response);
@@ -156,5 +159,4 @@ class ToolExecutionHelper {
         }
         return "";
     }
-
 }
