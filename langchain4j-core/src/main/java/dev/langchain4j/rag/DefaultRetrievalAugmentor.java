@@ -36,6 +36,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -232,6 +234,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                     }
                 });
         } catch (Throwable t) {
+            restoreInterruptIfInterrupted(t);
             result.completeExceptionally(t);
         }
         return result;
@@ -288,12 +291,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
      */
     private <T> CompletableFuture<T> nativeOrOffload(
             Query query, Supplier<CompletableFuture<T>> asyncCall, Supplier<T> blockingCall) {
-        CompletableFuture<T> async;
-        try {
-            async = CurrentInvocation.callWith(invocationContextOf(query), asyncCall);
-        } catch (Throwable t) {
-            async = CompletableFuture.failedFuture(t);
-        }
+        CompletableFuture<T> async = failOnThrow(() -> CurrentInvocation.callWith(invocationContextOf(query), asyncCall));
         CompletableFuture<T> result = async.exceptionallyCompose(error -> {
             Throwable cause = unwrapCompletionException(error);
             if (cause instanceof AsyncNotSupportedException) {
@@ -304,7 +302,7 @@ public class DefaultRetrievalAugmentor implements RetrievalAugmentor {
                                     DefaultExecutorProvider.getDefaultExecutor(), invocationContextOf(query)));
                 }
                 return CompletableFuture.failedFuture(new UnsupportedFeatureException(cause.getMessage()
-                        + " The RAG pipeline is not fully asynchronous. Either use async-capable components, or build"
+                        + ". The RAG pipeline is not fully asynchronous. Either use async-capable components, or build"
                         + " this DefaultRetrievalAugmentor with offloadBlocking(true) to offload the blocking stage to"
                         + " the configured executor."));
             }

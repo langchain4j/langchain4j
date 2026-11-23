@@ -20,6 +20,7 @@ import dev.langchain4j.invocation.InvocationContext;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -916,6 +917,32 @@ class DefaultToolExecutorTest implements WithAssertions {
         assertThatExceptionOfType(ToolArgumentsException.class)
                 .isThrownBy(() -> executor.execute(request, "DEFAULT"))
                 .withCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void executeAsync_should_return_a_failed_future_for_invalid_arguments() throws Exception {
+        Method method = getClass().getMethod("primitiveTool", String.class, int.class, int.class);
+        DefaultToolExecutor executor = DefaultToolExecutor.builder()
+                .object(this)
+                .originalMethod(method)
+                .methodToInvoke(method)
+                .wrapToolArgumentsExceptions(true)
+                .build();
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("primitiveTool")
+                .arguments("{ \"arg0\": \"/tmp/foo.txt\" }")
+                .build();
+
+        CompletableFuture<ToolExecutionResult> future = executor.executeAsync(
+                request, InvocationContext.builder().chatMemoryId("DEFAULT").build());
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(ToolArgumentsException.class);
     }
 
     static class ToolWithException {

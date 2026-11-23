@@ -1,5 +1,6 @@
 package dev.langchain4j.model.cohere;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
@@ -153,28 +154,29 @@ public class CohereScoringModel implements ScoringModel {
      */
     @Override
     public CompletableFuture<ScoringResponse> doScoreAsync(ScoringRequest scoringRequest) {
-
-        RerankRequest request = RerankRequest.builder()
-                .model(getOrDefault(scoringRequest.modelName(), modelName))
-                .query(scoringRequest.query())
-                .documents(scoringRequest.documents())
-                .build();
-
-        CompletableFuture<RerankResponse> rerankFuture =
-                withRetryMappingExceptionsAsync(() -> client.rerankAsync(request), maxRetries);
-        CompletableFuture<ScoringResponse> result = rerankFuture.thenApply(response -> {
-            List<Double> scores = response.getResults().stream()
-                    .sorted(comparingInt(Result::getIndex))
-                    .map(Result::getRelevanceScore)
-                    .collect(toList());
-            return ScoringResponse.builder()
-                    .scores(scores)
-                    .modelName(getOrDefault(scoringRequest.modelName(), modelName))
-                    .tokenUsage(new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()))
+        return failOnThrow(() -> {
+            RerankRequest request = RerankRequest.builder()
+                    .model(getOrDefault(scoringRequest.modelName(), modelName))
+                    .query(scoringRequest.query())
+                    .documents(scoringRequest.documents())
                     .build();
+
+            CompletableFuture<RerankResponse> rerankFuture =
+                    withRetryMappingExceptionsAsync(() -> client.rerankAsync(request), maxRetries);
+            CompletableFuture<ScoringResponse> result = rerankFuture.thenApply(response -> {
+                List<Double> scores = response.getResults().stream()
+                        .sorted(comparingInt(Result::getIndex))
+                        .map(Result::getRelevanceScore)
+                        .collect(toList());
+                return ScoringResponse.builder()
+                        .scores(scores)
+                        .modelName(getOrDefault(scoringRequest.modelName(), modelName))
+                        .tokenUsage(new TokenUsage(response.getMeta().getBilledUnits().getSearchUnits()))
+                        .build();
+            });
+            propagateCancellation(result, rerankFuture);
+            return result;
         });
-        propagateCancellation(result, rerankFuture);
-        return result;
     }
 
     public static class CohereScoringModelBuilder {

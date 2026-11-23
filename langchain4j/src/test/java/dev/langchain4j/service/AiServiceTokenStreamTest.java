@@ -4,10 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.invocation.InvocationParameters;
@@ -25,9 +28,11 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.BeforeEach;
@@ -294,6 +299,31 @@ class AiServiceTokenStreamTest {
         assertThatThrownBy(() -> tokenStream.start())
                 .isExactlyInstanceOf(IllegalConfigurationException.class)
                 .hasMessage("onIntermediateResponse can be invoked on TokenStream at most 1 time");
+    }
+
+    interface Assistant {
+
+        TokenStream chat(String message);
+    }
+
+    @Test
+    void start_with_ignoreErrors_should_neither_throw_nor_call_another_callback_when_the_model_throws() {
+        MockStreamingChatModel model = spy(MockStreamingChatModel.thatResponds("Hi"));
+        doThrow(new UnsupportedFeatureException("'topK' parameter is not supported"))
+                .when(model)
+                .doChat(any(ChatRequest.class), any(StreamingChatResponseHandler.class));
+        Assistant assistant =
+                AiServices.builder(Assistant.class).streamingChatModel(model).build();
+        List<Object> callbacks = new CopyOnWriteArrayList<>();
+        TokenStream tokenStream = assistant
+                .chat("Hello")
+                .onPartialResponse(callbacks::add)
+                .onCompleteResponse(callbacks::add)
+                .ignoreErrors();
+
+        assertThatNoException().isThrownBy(tokenStream::start);
+
+        assertThat(callbacks).isEmpty();
     }
 
     private AiServiceTokenStream setupAiServiceTokenStream() {
