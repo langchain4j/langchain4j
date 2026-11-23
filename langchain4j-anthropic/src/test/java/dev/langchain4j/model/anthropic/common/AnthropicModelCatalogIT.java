@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.anthropic.AnthropicModelCatalog;
+import dev.langchain4j.model.anthropic.AnthropicModelLifecycle;
 import dev.langchain4j.model.catalog.AbstractModelCatalogIT;
 import dev.langchain4j.model.catalog.ModelCatalog;
 import dev.langchain4j.model.catalog.ModelDescription;
@@ -55,5 +56,22 @@ class AnthropicModelCatalogIT extends AbstractModelCatalogIT {
 
         assertThat(models).isNotEmpty();
         assertThat(models).anyMatch(m -> m.maxOutputTokens() != null && m.maxOutputTokens() > 0);
+    }
+
+    @Test
+    void should_list_only_models_of_requested_lifecycle() {
+        ModelCatalog catalog = AnthropicModelCatalog.builder()
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .lifecycles(AnthropicModelLifecycle.ACTIVE)
+                .build();
+
+        List<ModelDescription> activeModels = catalog.listModels();
+
+        assertThat(activeModels).isNotEmpty();
+        assertThat(activeModels)
+                .extracting(ModelDescription::name)
+                .isSubsetOf(createModelCatalog().listModels().stream()
+                        .map(ModelDescription::name)
+                        .toList());
     }
 }
