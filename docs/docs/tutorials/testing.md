@@ -114,7 +114,7 @@ class BookingTools {
     @Tool("Cancels the booking with the given booking number")
     String cancelBooking(String bookingNumber) {
         if (!bookings.contains(bookingNumber)) {
-            throw new IllegalArgumentException("Booking " + bookingNumber + " not found");
+            throw ToolErrorVisibleToLlm.from("Booking " + bookingNumber + " not found");
         }
         cancelledBookings.add(bookingNumber);
         return "Booking " + bookingNumber + " is cancelled";
@@ -389,8 +389,15 @@ In your own tests, use the content retriever of your application, so that the te
 
 ### Failures
 
-By default, when a tool throws an exception, the AI Service sends the error to the model, which can then answer, so
-the invocation succeeds. Check the failed tool execution:
+What happens when a tool throws an exception depends on the tool execution error handler of the AI Service (see
+[Error Handling](/tutorials/tools#error-handling)). Configure it explicitly, for example with
+`ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()`: an exception that implements `ToolErrorVisibleToLlm`,
+like the one `cancelBooking` throws for an unknown booking, is sent to the model, which can then answer, so the
+invocation succeeds. Any other exception fails the invocation. Without a configured handler, synchronous and
+`TokenStream` methods send the message of every exception to the model, which can expose internal details of your
+application (see [Handling Tool Execution Errors](/tutorials/tools#handling-tool-execution-errors)).
+
+Check the failed tool execution:
 
 ```java
 @Test
@@ -401,6 +408,7 @@ void should_not_cancel_an_unknown_booking() {
     Assistant assistant = AiServices.builder(Assistant.class)
             .chatModel(model)
             .tools(new BookingTools("MS-777"))
+            .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm())
             .build();
 
     AiServiceCapture capture = capture(() -> assistant.chat("Please cancel my booking MS-999"));
