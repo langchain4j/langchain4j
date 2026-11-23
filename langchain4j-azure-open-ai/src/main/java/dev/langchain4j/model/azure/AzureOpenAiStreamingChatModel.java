@@ -105,6 +105,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
     private final boolean strictJsonSchema;
     private final Integer maxCompletionTokens;
     private final ReasoningEffortValue reasoningEffort;
+    private final boolean honorImageDetailLevel;
 
     private final List<ChatModelListener> listeners;
     private final Set<Capability> supportedCapabilities;
@@ -184,6 +185,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         this.strictJsonSchema = getOrDefault(builder.strictJsonSchema, false);
         this.maxCompletionTokens = builder.maxCompletionTokens;
         this.reasoningEffort = builder.reasoningEffort;
+        this.honorImageDetailLevel = getOrDefault(builder.honorImageDetailLevel, false);
 
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
@@ -204,7 +206,8 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         ChatRequestParameters parameters = request.parameters();
         validate(parameters);
 
-        ChatCompletionsOptions options = new ChatCompletionsOptions(toOpenAiMessages(request.messages()))
+        ChatCompletionsOptions options = new ChatCompletionsOptions(
+                        toOpenAiMessages(request.messages(), honorImageDetailLevel))
                 .setModel(parameters.modelName())
                 .setTemperature(parameters.temperature())
                 .setTopP(parameters.topP())
@@ -392,6 +395,7 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
         private Map<String, String> customHeaders;
         private Set<Capability> supportedCapabilities;
         private ReasoningEffortValue reasoningEffort;
+        private Boolean honorImageDetailLevel;
 
         public Builder defaultRequestParameters(ChatRequestParameters parameters) {
             this.defaultRequestParameters = parameters;
@@ -609,6 +613,17 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         public Builder reasoningEffort(ReasoningEffortValue reasoningEffort) {
             this.reasoningEffort = reasoningEffort;
+            return this;
+        }
+
+        /**
+         * Whether to pass image detail levels to Azure OpenAI. Disabled by default to preserve existing behavior.
+         *
+         * @param honorImageDetailLevel whether to honor image detail levels
+         * @return builder
+         */
+        public Builder honorImageDetailLevel(Boolean honorImageDetailLevel) {
+            this.honorImageDetailLevel = honorImageDetailLevel;
             return this;
         }
 
