@@ -24,6 +24,10 @@ import dev.langchain4j.observability.api.listener.ToolCompensatedEventListener;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.test.mock.MockChatModel;
+import java.time.Duration;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CountDownLatch;
+import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -535,5 +539,57 @@ class ToolGuardrailCompensationTest {
         assertThat(run.compensatedEvents)
                 .singleElement()
                 .satisfies(event -> assertThat(event.compensationError()).hasMessage("rollback failed"));
+    }
+
+    // ---------- cancellation ----------
+
+    @Test
+    void a_cancellation_cancels_an_output_validation_in_flight_and_rolls_back_the_tool_that_ran()
+            throws InterruptedException {
+        var bank = new Bank();
+        var model = modelCalling("credit");
+        var validations = new CopyOnWriteArrayList<CompletableFuture<ToolOutputGuardrailResult>>();
+        var validating = new CountDownLatch(1);
+        var compensated = new CompletableFuture<ToolCompensatedEvent>();
+        ToolOutputGuardrail neverCompleting = new ToolOutputGuardrail() {
+
+            @Override
+            public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
+                throw new UnsupportedOperationException("validated asynchronously only");
+            }
+
+            @Override
+            public CompletableFuture<ToolOutputGuardrailResult> validateAsync(ToolOutputGuardrailRequest request) {
+                var validation = new CompletableFuture<ToolOutputGuardrailResult>();
+                validations.add(validation);
+                validating.countDown();
+                return validation;
+            }
+        };
+        var assistant = AiServices.builder(FutureAssistant.class)
+                .chatModel(model)
+                .tools(bank)
+                .compensateOnToolErrors(true)
+                .toolOutputGuardrails(neverCompleting)
+                .registerListener((ToolCompensatedEventListener) compensated::complete)
+                .build();
+
+        var answer = assistant.chat("hello");
+        assertThat(validating.await(10, TimeUnit.SECONDS)).isTrue();
+        answer.cancel(true);
+
+        assertThat(validations)
+                .singleElement()
+                .satisfies(validation -> assertThat(validation)
+                        .failsWithin(Duration.ofSeconds(10))
+                        .withThrowableThat()
+                        .isInstanceOf(CancellationException.class));
+        assertThat(compensated)
+                .succeedsWithin(Duration.ofSeconds(10))
+                .returns("credit", event -> event.request().name())
+                .returns(CompensationReason.INVOCATION_CANCELLED, ToolCompensatedEvent::reason);
+        assertThat(bank.log).containsExactly("credit", "uncredit");
+        assertThat(bank.compensatedResults).containsEntry("credit", "credited");
+        assertThat(model.requests()).hasSize(1);
     }
 }

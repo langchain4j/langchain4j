@@ -303,7 +303,8 @@ public final class ToolRound {
     /**
      * Non-blocking counterpart of {@link #execute(ToolExecutionRequest, Function, Function)}. Nothing is thrown: a
      * fatal guardrail failure, or a failure of {@code tool}, fails the returned future. Once the round is canceled, no
-     * tool is started any more, and a call whose input guardrails are in flight is canceled.
+     * tool is started any more, and a call whose input guardrails are in flight is canceled. A call whose tool has
+     * started is canceled when its tool ends, so that output guardrails in flight do not hold up the rollback.
      *
      * @param call           the call of the LLM
      * @param tool           starts the tool for a request (the call, or the call as the input guardrails rewrote
@@ -321,6 +322,8 @@ public final class ToolRound {
 
         Thread startingThread = Thread.currentThread();
         AtomicBoolean starting = new AtomicBoolean(true);
+        // completes when the tool of the call has ended, or will not run because the round was canceled
+        var toolEnded = new CompletableFuture<Void>();
         Function<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> recordingTool = request -> {
             // recorded before checking the cancellation, so that a cancellation either sees the tool as started (and
             // lets it run to completion) or stops it here
@@ -328,6 +331,7 @@ public final class ToolRound {
             CompletableFuture<ToolExecutionResult> recorded;
             if (isCancelled()) {
                 recorded = CompletableFuture.failedFuture(new CancellationException());
+                toolEnded.complete(null);
             } else {
                 // an input guardrail that completed on another thread must not run the tool on that thread
                 boolean onStartingThread = starting.get() && Thread.currentThread() == startingThread;
@@ -339,6 +343,8 @@ public final class ToolRound {
                     return result;
                 });
                 propagateCancellation(recorded, toolResult);
+                // after the result of the tool is recorded, which is all that its rollback needs
+                recorded.whenComplete((ignored, error) -> toolEnded.complete(null));
             }
             return recorded;
         };
@@ -361,7 +367,7 @@ public final class ToolRound {
                             argumentsError.apply(argumentsException).thenApply(result -> unguarded(call, result)))
                     .orElseGet(() -> CompletableFuture.failedFuture(error)));
             propagateCancellation(execution, guarded);
-            cancelBeforeToolStarts(call, execution);
+            cancelUnlessToolRuns(call, execution, toolEnded);
         }
         starting.set(false);
         return track(call, execution);
@@ -439,15 +445,20 @@ public final class ToolRound {
     }
 
     /**
-     * Cancels an execution whose input guardrails are in flight when the round is canceled. Once the tool has started,
-     * the execution runs to completion (a tool is never interrupted), so that its result is known and a compensable
-     * tool can be rolled back.
+     * Cancels an execution when the round is canceled, unless its tool is running: at once if the tool has not started
+     * (its input guardrails may be in flight), otherwise when the tool ends (its output guardrails may be in flight). A
+     * tool is never interrupted, so that its result is known and a compensable tool can be rolled back. The rollback
+     * needs the result of the tool, not what its output guardrails make of it, so it does not wait for them.
      */
-    private void cancelBeforeToolStarts(ToolExecutionRequest call, CompletableFuture<?> execution) {
+    private void cancelUnlessToolRuns(
+            ToolExecutionRequest call, CompletableFuture<?> execution, CompletableFuture<Void> toolEnded) {
         if (cancellation != null) {
             cancellation.whenComplete((ignored, error) -> {
-                if (cancellation.isCancelled() && !startedRequests.containsKey(call)) {
-                    execution.cancel(true);
+                if (cancellation.isCancelled()) {
+                    var cancelable = startedRequests.containsKey(call)
+                            ? toolEnded
+                            : CompletableFuture.<Void>completedFuture(null);
+                    cancelable.whenComplete((ignoredResult, ignoredError) -> execution.cancel(true));
                 }
             });
         }

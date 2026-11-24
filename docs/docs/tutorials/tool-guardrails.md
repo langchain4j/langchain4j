@@ -607,6 +607,12 @@ A guardrail that does not implement `validateAsync` fails the invocation with an
 wrapped in a fatal `ToolInputGuardrailException` or `ToolOutputGuardrailException`. For an output guardrail, this
 happens when the tool has already run. A `TokenStream` uses the blocking `validate`.
 
+When the invocation is canceled (see [Compensating Tool Actions](/tutorials/tools#compensating-tool-actions)), the
+futures of the tool guardrails that are still running are canceled: those of the input guardrails at once, so that
+the tool does not start, and those of the output guardrails once the tool has finished. A running tool is not
+interrupted. The rollback of a tool that ran successfully does not wait for its output guardrails, and its
+compensating action receives the result of the tool as it ran.
+
 ## Unit Testing Tool Guardrails
 
 A tool guardrail is a plain object, so it can be tested by calling `validate` with a request that you build:

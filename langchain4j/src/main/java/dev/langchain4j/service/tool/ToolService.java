@@ -2594,7 +2594,8 @@ public class ToolService {
     /**
      * As {@link #startRound(ToolServiceContext, InvocationContext, AiServiceListenerRegistrar)}, for a round that stops
      * when {@code cancellation} is canceled: no tool is started any more, and a call whose input guardrails are in
-     * flight is canceled. A tool that has started is not interrupted.
+     * flight is canceled. A tool that has started is not interrupted: its call is canceled when the tool ends, so that
+     * output guardrails in flight do not hold up the rollback.
      *
      * @param cancellation canceled when the invocation is canceled; may be {@code null}
      */

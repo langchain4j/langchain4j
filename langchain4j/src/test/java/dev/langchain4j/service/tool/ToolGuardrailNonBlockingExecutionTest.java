@@ -2,6 +2,8 @@ package dev.langchain4j.service.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.CompensateFor;
+import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
@@ -20,8 +22,11 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.observability.api.event.CompensationReason;
+import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.observability.api.event.ToolInputGuardrailExecutedEvent;
+import dev.langchain4j.observability.api.listener.ToolCompensatedEventListener;
 import dev.langchain4j.observability.api.listener.ToolExecutedEventListener;
 import dev.langchain4j.observability.api.listener.ToolInputGuardrailExecutedListener;
 import dev.langchain4j.service.AiServiceStreamingEvent;
@@ -708,6 +713,101 @@ class ToolGuardrailNonBlockingExecutionTest {
                         .withThrowableThat()
                         .isInstanceOf(CancellationException.class));
         assertThat(tool.receivedArguments).isEmpty();
+        assertThat(model.requests()).hasSize(1);
+    }
+
+    /** A compensable tool. */
+    public static class Ledger {
+
+        final List<String> log = new CopyOnWriteArrayList<>();
+        final List<String> compensatedResults = new CopyOnWriteArrayList<>();
+
+        @Tool
+        String credit(String name) {
+            log.add("credit");
+            return "credited";
+        }
+
+        @CompensateFor("credit")
+        void uncredit(ToolExecution execution) {
+            log.add("uncredit");
+            compensatedResults.add(execution.result());
+        }
+    }
+
+    /** An output guardrail whose validation stays in flight until it is canceled. */
+    private static final class PendingOutputGuardrail implements ToolOutputGuardrail {
+
+        final List<CompletableFuture<ToolOutputGuardrailResult>> pending = new CopyOnWriteArrayList<>();
+        final CountDownLatch entered = new CountDownLatch(1);
+
+        @Override
+        public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
+            throw new UnsupportedOperationException("validated asynchronously only");
+        }
+
+        @Override
+        public CompletableFuture<ToolOutputGuardrailResult> validateAsync(ToolOutputGuardrailRequest request) {
+            var future = new CompletableFuture<ToolOutputGuardrailResult>();
+            pending.add(future);
+            entered.countDown();
+            return future;
+        }
+    }
+
+    @Test
+    void canceling_a_reactive_invocation_cancels_an_output_validation_in_flight_and_rolls_back_the_tool()
+            throws InterruptedException {
+        var guardrail = new PendingOutputGuardrail();
+        var ledger = new Ledger();
+        var compensated = new CompletableFuture<ToolCompensatedEvent>();
+        var credit = ToolExecutionRequest.builder()
+                .id("1")
+                .name("credit")
+                .arguments("{\"arg0\": \"Mario\"}")
+                .build();
+        var model = MockStreamingChatModel.thatResponds(AiMessage.from(credit), AiMessage.from("done"));
+        var assistant = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(model)
+                .tools(ledger)
+                .compensateOnToolErrors(true)
+                .toolOutputGuardrails(guardrail)
+                .registerListener((ToolCompensatedEventListener) compensated::complete)
+                .build();
+        var subscription = new CompletableFuture<Flow.Subscription>();
+
+        assistant.chat("hello").subscribe(new Flow.Subscriber<>() {
+            @Override
+            public void onSubscribe(Flow.Subscription s) {
+                subscription.complete(s);
+                s.request(Long.MAX_VALUE);
+            }
+
+            @Override
+            public void onNext(AiServiceStreamingEvent event) {}
+
+            @Override
+            public void onError(Throwable error) {}
+
+            @Override
+            public void onComplete() {}
+        });
+        assertThat(guardrail.entered.await(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS))
+                .isTrue();
+        subscription.join().cancel();
+
+        assertThat(guardrail.pending)
+                .singleElement()
+                .satisfies(future -> assertThat(future)
+                        .failsWithin(TIMEOUT)
+                        .withThrowableThat()
+                        .isInstanceOf(CancellationException.class));
+        assertThat(compensated)
+                .succeedsWithin(TIMEOUT)
+                .returns("credit", event -> event.request().name())
+                .returns(CompensationReason.INVOCATION_CANCELLED, ToolCompensatedEvent::reason);
+        assertThat(ledger.log).containsExactly("credit", "uncredit");
+        assertThat(ledger.compensatedResults).containsExactly("credited");
         assertThat(model.requests()).hasSize(1);
     }
 

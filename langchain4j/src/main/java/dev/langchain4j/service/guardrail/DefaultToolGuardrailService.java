@@ -101,8 +101,8 @@ final class DefaultToolGuardrailService implements ToolGuardrailService {
 
     private static <P extends GuardrailRequest<P>, R extends GuardrailResult<R>> CompletableFuture<R> executeAsync(
             Optional<? extends GuardrailExecutor<?, P, R, ?, ?>> executor, P request, R noGuardrailsResult) {
-        // a null future of an executor fails the future of failOnThrow instead of passing as "no guardrails"
-        return executor.<CompletableFuture<R>>map(it -> it.executeAsync(request))
+        // failOnThrow turns a null future of an executor into a failed one, so it cannot pass as "no guardrails"
+        return executor.map(it -> failOnThrow(it, "executeAsync(GuardrailRequest)", () -> it.executeAsync(request)))
                 .orElseGet(() -> CompletableFuture.completedFuture(noGuardrailsResult));
     }
 
