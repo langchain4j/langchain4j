@@ -23,11 +23,12 @@ class ImageUtils {
     }
 
     static String base64Image(Image image) {
-
         if (image.base64Data() != null && !image.base64Data().isEmpty()) {
             return image.base64Data();
-        } else {
-            throw new UnsupportedFeatureException(IMAGE_URL_NOT_SUPPORTED);
         }
+        if (image.url() == null) {
+            throw new IllegalArgumentException("The image has neither base64 data nor a URL");
+        }
+        throw new UnsupportedFeatureException(IMAGE_URL_NOT_SUPPORTED);
     }
 }

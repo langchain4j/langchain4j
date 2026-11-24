@@ -4,6 +4,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
@@ -52,6 +53,26 @@ class OllamaImageUrlTest {
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessage(ImageUtils.IMAGE_URL_NOT_SUPPORTED)
                 .hasMessageNotContaining(url);
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void chat_should_reject_images_with_neither_base64_data_nor_a_url() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(CHAT_RESPONSE));
+        ChatModel model = OllamaChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .baseUrl("http://localhost:11434")
+                .modelName("llava")
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> model.chat(UserMessage.from(
+                        TextContent.from("What is this?"),
+                        ImageContent.from(Image.builder().mimeType("image/png").build()))))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The image has neither base64 data nor a URL");
         assertThat(httpClient.requests()).isEmpty();
     }
 

@@ -11,6 +11,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 import static java.time.Duration.ofSeconds;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -163,9 +164,8 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @MethodSource("modelsSupportingImageInputs")
     @DisabledIf("supportsSingleImageInputAsPublicURL")
     protected void should_fail_if_images_as_public_URLs_are_not_supported(StreamingChatModel model) {
-        if (model instanceof OpenAiStreamingChatModel) {
-            return; // not checked here: the OpenAI integration passes the URL on to Ollama
-        }
+        assumeFalse(
+                model instanceof OpenAiStreamingChatModel, "not checked here: the OpenAI integration passes the URL on to Ollama");
         super.should_fail_if_images_as_public_URLs_are_not_supported(model);
     }
 

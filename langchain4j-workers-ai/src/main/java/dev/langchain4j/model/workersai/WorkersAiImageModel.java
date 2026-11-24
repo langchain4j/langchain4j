@@ -194,7 +194,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
     public Response<Image> edit(Image image, String prompt) {
         ensureNotBlank(prompt, "Prompt");
         ensureNotNull(image, "Image");
-        return new Response<>(convertAsImage(executeQuery(prompt, null, image)), null, FinishReason.STOP);
+        return new Response<>(convertAsImage(executeQuery(prompt, image, null)), null, FinishReason.STOP);
     }
 
     /** {@inheritDoc} */
@@ -202,7 +202,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
         ensureNotBlank(prompt, "Prompt");
         ensureNotNull(image, "Image");
         ensureNotNull(mask, "Mask");
-        return new Response<>(convertAsImage(executeQuery(prompt, mask, image)), null, FinishReason.STOP);
+        return new Response<>(convertAsImage(executeQuery(prompt, image, mask)), null, FinishReason.STOP);
     }
 
     /**
@@ -257,6 +257,10 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
 
     /**
      * Convert an image into a array of number, supposedly the Pixels.
+     * <p>
+     * This method reads the image from the given URL, including local {@code file:} URLs. Use it only with URLs that
+     * you control, never with URLs that come from end users or models.
+     *
      * @param imageUrl
      *      current image URL
      * @return

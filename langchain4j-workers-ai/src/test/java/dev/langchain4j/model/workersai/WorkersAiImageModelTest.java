@@ -18,7 +18,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
@@ -43,7 +42,7 @@ class WorkersAiImageModelTest {
 
         model.edit(base64Image(png(RED, RED)), base64Image(png(BLUE, BLUE)), "a cat");
 
-        assertThat(sentPixels()).containsExactlyInAnyOrder(List.of(RED, RED), List.of(BLUE, BLUE));
+        assertThat(sentBody()).containsEntry("image", List.of(RED, RED)).containsEntry("mask", List.of(BLUE, BLUE));
     }
 
     @Test
@@ -52,7 +51,9 @@ class WorkersAiImageModelTest {
 
         model.edit(base64Image(png(RED, BLUE)), "a cat");
 
-        assertThat(sentPixels()).containsExactly(List.of(RED, BLUE));
+        Map<String, Object> body = sentBody();
+        assertThat(body).containsEntry("image", List.of(RED, BLUE));
+        assertThat(body.get("mask")).isNull();
     }
 
     @ParameterizedTest
@@ -95,7 +96,7 @@ class WorkersAiImageModelTest {
 
         model.edit(base64Image(image(format)), "a cat");
 
-        assertThat(sentPixels()).singleElement().asList().hasSize(4);
+        assertThat(sentBody().get("image")).asList().hasSize(4);
     }
 
     @Test
@@ -129,7 +130,7 @@ class WorkersAiImageModelTest {
 
         model.edit(base64Image(png(new int[2048 * 2048], 2048)), "a cat");
 
-        assertThat(httpClient.requests()).hasSize(1);
+        assertThat(sentBody().get("image")).asList().hasSize(2048 * 2048);
     }
 
     @Test
@@ -165,15 +166,8 @@ class WorkersAiImageModelTest {
     }
 
     @SuppressWarnings("unchecked")
-    private List<List<Integer>> sentPixels() {
-        Map<String, Object> body = Json.fromJson(httpClient.request().body(), Map.class);
-        List<List<Integer>> pixels = new ArrayList<>();
-        for (String field : List.of("image", "mask")) {
-            if (body.get(field) != null) {
-                pixels.add((List<Integer>) body.get(field));
-            }
-        }
-        return pixels;
+    private Map<String, Object> sentBody() {
+        return Json.fromJson(httpClient.request().body(), Map.class);
     }
 
     private static Image base64Image(byte[] bytes) {
