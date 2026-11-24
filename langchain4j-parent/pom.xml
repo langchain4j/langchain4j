@@ -46,8 +46,6 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.build.outputTimestamp>1795018226</project.build.outputTimestamp>
         <argLine></argLine>
-        <!-- Since failsafe 3.6, -DskipTests no longer skips integration tests. This makes it skip them again. -->
-        <skipITs>${skipTests}</skipITs>
         <!-- Dependency Versions -->
         <dokka.version>2.1.0-Beta</dokka.version>
         <ai-mocks.version>0.4.6</ai-mocks.version>
@@ -960,6 +958,19 @@
     </build>
 
     <profiles>
+
+        <profile>
+            <!-- Since failsafe 3.6, -DskipTests no longer skips integration tests. This makes it skip them again. -->
+            <id>skip-its-with-skip-tests</id>
+            <activation>
+                <property>
+                    <name>skipTests</name>
+                </property>
+            </activation>
+            <properties>
+                <skipITs>${skipTests}</skipITs>
+            </properties>
+        </profile>
 
         <profile>
             <id>sign</id>
