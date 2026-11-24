@@ -198,8 +198,6 @@ public class TokenWindowChatMemory implements ChatMemory {
             }
 
             ChatMessage evictedMessage = messages.remove(messageToEvictIndex);
-            int tokenCountOfEvictedMessage = estimator.estimateTokenCountInMessage(evictedMessage);
-            currentTokenCount -= tokenCountOfEvictedMessage;
 
             if (evictedMessage instanceof AiMessage aiMessage && aiMessage.hasToolExecutionRequests()) {
                 while (messages.size() > messageToEvictIndex
@@ -207,9 +205,9 @@ public class TokenWindowChatMemory implements ChatMemory {
                     // Some LLMs (e.g. OpenAI) prohibit ToolExecutionResultMessage(s) without corresponding AiMessage,
                     // so we have to automatically evict orphan ToolExecutionResultMessage(s) if AiMessage was evicted
                     ChatMessage orphanToolExecutionResultMessage = messages.remove(messageToEvictIndex);
-                    currentTokenCount -= estimator.estimateTokenCountInMessage(orphanToolExecutionResultMessage);
                 }
             }
+            currentTokenCount = messages.isEmpty() ? 0 : estimator.estimateTokenCountInMessages(messages);
         }
     }
 

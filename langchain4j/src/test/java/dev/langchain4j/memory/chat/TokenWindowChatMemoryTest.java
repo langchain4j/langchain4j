@@ -21,6 +21,8 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -29,8 +31,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
-import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import java.time.Duration;
 
 class TokenWindowChatMemoryTest implements WithAssertions {
 
@@ -617,8 +617,7 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
     @Test
     void should_work_even_if_the_first_message_exceeds_max_tokens() {
-        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(
-                2, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(2, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
 
         chatMemory.add(userMessageWithTokens(25));
         chatMemory.add(aiMessageWithTokens(10));
@@ -629,8 +628,7 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
     @Test
     void should_not_fail_even_with_just_system_message() {
-        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(
-                2, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(2, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
         chatMemory.add(systemMessageWithTokens(10));
     }
 
@@ -899,7 +897,10 @@ class TokenWindowChatMemoryTest implements WithAssertions {
                 .chatMemoryStore(store)
                 .build();
 
-        assertThat(chatMemory.messagesAsync()).failsWithin(Duration.ofSeconds(5)).withThrowableThat().withCause(failure);
+        assertThat(chatMemory.messagesAsync())
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .withCause(failure);
         assertThat(chatMemory.addAsync(List.of(userMessage("hi"))))
                 .failsWithin(Duration.ofSeconds(5))
                 .withThrowableThat()
@@ -950,7 +951,43 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         boolean interruptFlagRestored = Thread.interrupted(); // also clears the flag for the next tests
 
         assertThat(interruptFlagRestored).isTrue();
-        assertThat(future).failsWithin(Duration.ofSeconds(5)).withThrowableThat().withCause(interrupted);
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .withCause(interrupted);
+    }
+
+    @Test
+    void should_not_over_evict_when_list_and_message_token_estimates_differ() {
+        TokenCountEstimator estimator = new TokenCountEstimator() {
+            @Override
+            public int estimateTokenCountInText(String text) {
+                return 1;
+            }
+
+            @Override
+            public int estimateTokenCountInMessage(ChatMessage message) {
+                return 1 + EXTRA_TOKENS_PER_REQUEST; // 4
+            }
+
+            @Override
+            public int estimateTokenCountInMessages(Iterable<ChatMessage> messages) {
+                int count = 0;
+                for (ChatMessage ignored : messages) {
+                    count += 1;
+                }
+                return count == 0 ? 0 : count + EXTRA_TOKENS_PER_REQUEST;
+            }
+        };
+
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(4, estimator);
+        UserMessage first = userMessage("hi");
+        UserMessage second = userMessage("yo");
+
+        chatMemory.add(first);
+        chatMemory.add(second);
+
+        assertThat(chatMemory.messages()).containsExactly(second);
     }
 
     @SuppressWarnings("unchecked")
