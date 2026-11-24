@@ -341,8 +341,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
             Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName(format);
             while (readers.hasNext()) {
                 ImageReader reader = readers.next();
-                ImageReaderSpi provider = reader.getOriginatingProvider();
-                if (provider != null && provider.canDecodeInput(input)) {
+                if (canDecode(reader.getOriginatingProvider(), input)) {
                     return reader;
                 }
                 reader.dispose();
@@ -350,6 +349,20 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
         }
         throw new InvalidRequestException(
                 "The image format is not supported: only PNG, JPEG, GIF, BMP and WebP images can be edited");
+    }
+
+    private static boolean canDecode(@Nullable ImageReaderSpi provider, ImageInputStream input) throws IOException {
+        if (provider == null) {
+            return false;
+        }
+        long start = input.getStreamPosition();
+        try {
+            return provider.canDecodeInput(input);
+        } catch (IOException e) {
+            return false; // content shorter than the signature of this format
+        } finally {
+            input.seek(start);
+        }
     }
 
     private static int[] pixels(BufferedImage image) {
