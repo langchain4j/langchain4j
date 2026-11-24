@@ -14,6 +14,7 @@ import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaChatModel;
 import dev.langchain4j.service.common.AbstractAiServiceWithJsonSchemaIT;
 import java.util.List;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -29,6 +30,13 @@ class OllamaAiServiceWithJsonSchemaIT extends AbstractAiServiceWithJsonSchemaIT 
             ollama = new LC4jOllamaContainer(resolve(OLLAMA_IMAGE, localOllamaImageWithTools)).withModel(MODEL);
             ollama.start();
             ollama.commitToImage(localOllamaImageWithTools);
+        }
+    }
+
+    @AfterAll
+    static void stopOllama() {
+        if (ollama != null) {
+            ollama.stop();
         }
     }
 

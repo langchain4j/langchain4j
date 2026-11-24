@@ -11,6 +11,7 @@ import dev.langchain4j.exception.ModelNotFoundException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelListenerIT;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
+import org.junit.jupiter.api.AfterAll;
 
 class OllamaChatModelListenerIT extends AbstractChatModelListenerIT {
 
@@ -24,6 +25,13 @@ class OllamaChatModelListenerIT extends AbstractChatModelListenerIT {
                     .withModel(MODEL_NAME);
             ollama.start();
             ollama.commitToImage(localOllamaImage);
+        }
+    }
+
+    @AfterAll
+    static void stopOllama() {
+        if (ollama != null) {
+            ollama.stop();
         }
     }
 

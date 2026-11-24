@@ -32,6 +32,7 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.DisabledIf;
 import org.junit.jupiter.api.condition.EnabledIf;
@@ -73,6 +74,11 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
             CONTAINER_MAP.put(localOllamaImageWithTools, ollamaWithTools);
             CONTAINER_MAP.put(localOllamaImageWithVision, ollamaWithVision);
         }
+    }
+
+    @AfterAll
+    static void stopOllama() {
+        CONTAINER_MAP.values().forEach(LC4jOllamaContainer::stop);
     }
 
     static final OllamaStreamingChatModel OLLAMA_CHAT_MODEL_WITH_TOOLS = OllamaStreamingChatModel.builder()

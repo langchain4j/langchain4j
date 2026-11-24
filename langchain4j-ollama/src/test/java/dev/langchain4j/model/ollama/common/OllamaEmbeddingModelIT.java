@@ -14,6 +14,7 @@ import dev.langchain4j.model.embedding.listener.EmbeddingModelListener;
 import dev.langchain4j.model.ollama.LC4jOllamaContainer;
 import dev.langchain4j.model.ollama.OllamaEmbeddingModel;
 import java.util.List;
+import org.junit.jupiter.api.AfterAll;
 
 class OllamaEmbeddingModelIT extends AbstractEmbeddingModelIT {
 
@@ -27,6 +28,13 @@ class OllamaEmbeddingModelIT extends AbstractEmbeddingModelIT {
             ollama = new LC4jOllamaContainer(resolve(OLLAMA_IMAGE, localOllamaImage)).withModel(MODEL_NAME);
             ollama.start();
             ollama.commitToImage(localOllamaImage);
+        }
+    }
+
+    @AfterAll
+    static void stopOllama() {
+        if (ollama != null) {
+            ollama.stop();
         }
     }
 
