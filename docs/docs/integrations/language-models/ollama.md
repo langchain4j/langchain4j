@@ -298,7 +298,7 @@ params with the builder pattern:
 | `listeners`                | See [Chat Model Observability](https://docs.langchain4j.dev/tutorials/observability#chat-model-observability)                                                                     | `List<ChatModelListener>` |                             |
 | `supportedCapabilities`    | Set of model capabilities used by `AiServices` API (only `OllamaChatModel` supported)                                                                                             | `Set<Capability>`         | RESPONSE_FORMAT_JSON_SCHEMA |
 | `maxRetries`               | The maximum number of retries in case of API call failure.                                                                                                                        | `Integer`                 |                             |
-| `mediaFetcher`             | Downloads the images that messages refer to by URL. By default, only `http` and `https` URLs of public hosts. See below.                                                          | `MediaFetcher`            |                             |
+| `mediaFetcher`             | Downloads the images that messages refer to by URL. By default, only `http` and `https` URLs of public hosts. See below.                                                          | `MediaFetcher`            | `DefaultMediaFetcher`       |
 
 #### Usage Example
 ```java
@@ -522,6 +522,13 @@ OllamaChatModel model = OllamaChatModel.builder()
         .build())
     .build();
 ```
+
+:::tip
+When image URLs come from users, tools or retrieved content, allow only the hosts you expect, for example with
+`DefaultMediaFetcher.builder().allowedHosts("images.example.com")`.
+:::
+
+See [Media given by URL](/tutorials/chat-and-language-models#media-given-by-url) for all options of `DefaultMediaFetcher`.
 
 ### Decision models
 

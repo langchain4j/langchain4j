@@ -3,8 +3,12 @@ package dev.langchain4j.data.media;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.exception.LangChain4jException;
+import dev.langchain4j.exception.RateLimitException;
+import dev.langchain4j.exception.RetriableException;
+import dev.langchain4j.exception.TimeoutException;
 import dev.langchain4j.internal.AsyncNotSupported;
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;
@@ -21,19 +25,37 @@ import java.util.concurrent.CompletableFuture;
  * Implement this interface to download media in another way, for example from a private storage with its own client.
  * Media URLs can come from end users, from documents, or from tools that a model calls, so an implementation must
  * not download what it should not, such as local files or internal services. A simple way is to handle only the URLs
- * you trust yourself, and to pass every other URL to a {@link DefaultMediaFetcher}:
+ * you trust yourself, and to pass every other URL to a {@link DefaultMediaFetcher}. In this example,
+ * {@code readFromStorage(URI)} stands for your own code that reads an object with the client of your storage:
  * <pre>{@code
- * MediaFetcher defaultMediaFetcher = DefaultMediaFetcher.builder().build();
+ * class StorageMediaFetcher implements MediaFetcher {
  *
- * MediaFetcher mediaFetcher = request -> {
- *     if ("storage.internal.example.com".equals(request.url().getHost())) {
- *         return FetchedMedia.from(readFromStorage(request.url()), "image/png");
+ *     private final MediaFetcher defaultMediaFetcher = DefaultMediaFetcher.builder().build();
+ *     private final Executor executor = Executors.newFixedThreadPool(4);
+ *
+ *     @Override
+ *     public FetchedMedia fetch(MediaFetchRequest request) {
+ *         if (isInStorage(request)) {
+ *             return FetchedMedia.from(readFromStorage(request.url()), "image/png");
+ *         }
+ *         return defaultMediaFetcher.fetch(request);
  *     }
- *     return defaultMediaFetcher.fetch(request);
- * };
+ *
+ *     @Override
+ *     public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
+ *         if (isInStorage(request)) {
+ *             return CompletableFuture.supplyAsync(() -> fetch(request), executor);
+ *         }
+ *         return defaultMediaFetcher.fetchAsync(request);
+ *     }
+ *
+ *     private static boolean isInStorage(MediaFetchRequest request) {
+ *         return request != null && "storage.internal.example.com".equals(request.url().getHost());
+ *     }
+ * }
  * }</pre>
- * A fetcher written as a lambda, like this one, implements only {@link #fetch(MediaFetchRequest)}; asynchronous and
- * streaming model calls need {@link #fetchAsync(MediaFetchRequest)} as well.
+ * A fetcher written as a lambda implements only {@link #fetch(MediaFetchRequest)}, so it supports only blocking model
+ * calls, not asynchronous and streaming ones.
  * <p>
  * Implementations are used by many threads at the same time and must be thread-safe.
  *
@@ -47,11 +69,15 @@ public interface MediaFetcher {
      * Downloads the media at the URL of the given request.
      *
      * @param request the request with the URL of the media, for example {@code https://example.com/cat.png}.
-     * @return the downloaded media.
-     * @throws InvalidRequestException if the URL is not allowed (for example a local file), or if the host answers
-     *                                 with an HTTP status other than 2xx.
-     * @throws LangChain4jException    if the download fails, for example because the host cannot be reached or the
-     *                                 download takes too long.
+     * @return the downloaded media, never {@code null}.
+     * @throws InvalidRequestException if the URL is not allowed (for example a local file), if the media is too large,
+     *                                 or if its host rejects the request. Retrying the same URL does not help.
+     * @throws RetriableException      if the download fails temporarily and may succeed when retried, for example
+     *                                 because it takes too long ({@link TimeoutException}), because the host limits
+     *                                 how many requests it accepts ({@link RateLimitException}), or because of an error
+     *                                 of the host ({@link InternalServerException}).
+     * @throws LangChain4jException    if the download fails for another reason, for example because the host is
+     *                                 unknown or cannot be reached.
      */
     FetchedMedia fetch(MediaFetchRequest request);
 

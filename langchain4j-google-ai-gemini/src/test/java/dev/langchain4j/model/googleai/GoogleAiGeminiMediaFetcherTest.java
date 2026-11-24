@@ -1,5 +1,6 @@
 package dev.langchain4j.model.googleai;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -28,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 class GoogleAiGeminiMediaFetcherTest {
@@ -101,7 +103,7 @@ class GoogleAiGeminiMediaFetcherTest {
 
         CompletableFuture<ChatResponse> response = stream(model, REQUEST_WITH_IMAGE_URL);
 
-        assertThat(response.get().aiMessage().text()).isEqualTo("A cat");
+        assertThat(response.get(10, SECONDS).aiMessage().text()).isEqualTo("A cat");
         assertThat(mediaFetcher.fetchedAsync).containsExactly(IMAGE_URL);
         assertThat(mediaFetcher.fetched).isEmpty();
         assertThat(httpClient.request().body()).contains(IMAGE_BASE64).contains("image/png");
@@ -138,7 +140,7 @@ class GoogleAiGeminiMediaFetcherTest {
 
         download.complete(FetchedMedia.from(IMAGE_BYTES, "image/png"));
 
-        assertThat(response.get().aiMessage().text()).isEqualTo("A cat");
+        assertThat(response.get(10, SECONDS).aiMessage().text()).isEqualTo("A cat");
         assertThat(httpClient.request().body()).contains(IMAGE_BASE64);
     }
 
@@ -181,7 +183,47 @@ class GoogleAiGeminiMediaFetcherTest {
         CompletableFuture<ChatResponse> response = stream(
                 model, ChatRequest.builder().messages(UserMessage.from("Hi")).build());
 
-        assertThat(response.get().aiMessage().text()).isEqualTo("A cat");
+        assertThat(response.get(10, SECONDS).aiMessage().text()).isEqualTo("A cat");
+    }
+
+    @Test
+    void streaming_chat_model_maps_a_request_without_image_urls_with_createGenerateContentRequest() throws Exception {
+        MockHttpClient httpClient =
+                MockHttpClient.thatAlwaysResponds(List.of(new ServerSentEvent("message", GENERATE_CONTENT_RESPONSE)));
+        MediaFetcher mediaFetcher = new MediaFetcher() {
+
+            @Override
+            public FetchedMedia fetch(MediaFetchRequest request) {
+                throw new AssertionError("fetch() must not be called");
+            }
+
+            @Override
+            public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
+                return CompletableFuture.completedFuture(FetchedMedia.from(IMAGE_BYTES, "image/png"));
+            }
+        };
+        AtomicInteger overrideCalls = new AtomicInteger();
+        GoogleAiGeminiStreamingChatModel model =
+                new GoogleAiGeminiStreamingChatModel(GoogleAiGeminiStreamingChatModel.builder()
+                        .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                        .apiKey("does not matter")
+                        .modelName(MODEL_NAME)
+                        .mediaFetcher(mediaFetcher)) {
+
+                    @Override
+                    protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
+                        overrideCalls.incrementAndGet();
+                        return super.createGenerateContentRequest(chatRequest);
+                    }
+                };
+
+        assertThat(stream(model, ChatRequest.builder().messages(UserMessage.from("Hi")).build()))
+                .succeedsWithin(10, SECONDS);
+        assertThat(overrideCalls).hasValue(1);
+
+        // a request whose images are downloaded first is mapped without it
+        assertThat(stream(model, REQUEST_WITH_IMAGE_URL)).succeedsWithin(10, SECONDS);
+        assertThat(overrideCalls).hasValue(1);
     }
 
     @Test

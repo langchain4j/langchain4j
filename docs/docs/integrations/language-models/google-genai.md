@@ -176,6 +176,7 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     .allowedFunctionNames(List.of("getWeather"))
     .thinkingLevel("LOW")
     .listeners(...)
+    .mediaFetcher(...)
     .build();
 ```
 
@@ -859,8 +860,8 @@ ChatResponse response = gemini.chat(ChatRequest.builder()
     .build());
 ```
 
-Media given by a URL is downloaded by LangChain4j and sent to Gemini as content,
-except Cloud Storage URLs (`gs://...`), which are passed on to Gemini as they are.
+This integration downloads media given by a URL and sends its content to Gemini,
+except Cloud Storage URLs (`gs://...`), which it passes on to Gemini as they are.
 By default, only `http` and `https` URLs of public hosts are downloaded, with a timeout and a size limit,
 and local files given as URLs are never read.
 To send a local file, read it with `ImageContent.from(Path, String)`, `PdfFileContent.from(Path)`,
@@ -879,6 +880,15 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
 
 `GoogleGenAiStreamingChatModel`, `GoogleGenAiBatchChatModel`, `GoogleGenAiTokenCountEstimator`
 and `GoogleGenAiCaches` have the same option.
+`chatAsync(...)` and `GoogleGenAiStreamingChatModel` download without blocking the calling thread:
+`GoogleGenAiStreamingChatModel` waits for the downloads on its executor, which then reads the streamed response.
+
+:::tip
+When media URLs come from users, tools or retrieved content, allow only the hosts you expect, for example with
+`DefaultMediaFetcher.builder().allowedHosts("media.example.com")`.
+:::
+
+See [Media given by URL](/tutorials/chat-and-language-models#media-given-by-url) for all options of `DefaultMediaFetcher`.
 
 ## Audio Transcription
 

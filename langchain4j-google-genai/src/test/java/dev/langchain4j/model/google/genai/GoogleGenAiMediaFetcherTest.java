@@ -38,6 +38,10 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -106,7 +110,7 @@ class GoogleGenAiMediaFetcherTest {
                 .mediaFetcher(mediaFetcher)
                 .build();
 
-        ChatResponse response = model.chatAsync(REQUEST_WITH_IMAGE_URL).get();
+        ChatResponse response = model.chatAsync(REQUEST_WITH_IMAGE_URL).get(10, SECONDS);
 
         assertThat(response.aiMessage().text()).isEqualTo("A cat");
         assertThat(mediaFetcher.fetchedAsync).containsExactly(IMAGE_URL);
@@ -133,7 +137,7 @@ class GoogleGenAiMediaFetcherTest {
 
         download.complete(FetchedMedia.from(IMAGE_BYTES, "image/png"));
 
-        assertThat(response.get().aiMessage().text()).isEqualTo("A cat");
+        assertThat(response.get(10, SECONDS).aiMessage().text()).isEqualTo("A cat");
         assertThat(sentImage(asyncModels)).isEqualTo(IMAGE_BYTES);
     }
 
@@ -232,6 +236,72 @@ class GoogleGenAiMediaFetcherTest {
                 .havingCause()
                 .isInstanceOf(AsyncNotSupportedException.class)
                 .withMessageContaining("fetchAsync()");
+        verify(models, never()).generateContentStream(anyString(), anyList(), any(GenerateContentConfig.class));
+    }
+
+    @Test
+    void streaming_chat_model_submits_to_its_executor_on_the_calling_thread_and_waits_there_for_the_download()
+            throws Exception {
+        Models models = streamingModels();
+        CompletableFuture<FetchedMedia> download = new CompletableFuture<>();
+        List<Thread> submittingThreads = new CopyOnWriteArrayList<>();
+        ExecutorService executor = new ThreadPoolExecutor(0, 4, 1, SECONDS, new SynchronousQueue<>()) {
+            @Override
+            public void execute(Runnable task) {
+                submittingThreads.add(Thread.currentThread());
+                super.execute(task);
+            }
+        };
+        try {
+            GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                    .client(clientWith(models))
+                    .modelName(MODEL_NAME)
+                    .executor(executor)
+                    .mediaFetcher(asyncMediaFetcher(download))
+                    .build();
+
+            CompletableFuture<ChatResponse> response = stream(model, REQUEST_WITH_IMAGE_URL);
+
+            assertThat(submittingThreads).containsExactly(Thread.currentThread());
+            assertThat(response).isNotDone();
+            Thread completing = new Thread(() -> download.complete(FetchedMedia.from(IMAGE_BYTES, "image/png")));
+            completing.start();
+            completing.join(10_000);
+
+            assertThat(response.get(10, SECONDS).aiMessage().text()).isEqualTo("A cat");
+            assertThat(submittingThreads).containsExactly(Thread.currentThread());
+            assertThat(sentStreamedImage(models)).isEqualTo(IMAGE_BYTES);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void streaming_chat_model_reports_a_rejected_task_to_onError_and_cancels_the_download() throws Exception {
+        Models models = streamingModels();
+        CompletableFuture<FetchedMedia> download = new CompletableFuture<>();
+        RejectedExecutionException rejected = new RejectedExecutionException("busy");
+        ExecutorService rejecting = new ThreadPoolExecutor(0, 1, 1, SECONDS, new SynchronousQueue<>()) {
+            @Override
+            public void execute(Runnable task) {
+                throw rejected;
+            }
+        };
+        GoogleGenAiStreamingChatModel model = GoogleGenAiStreamingChatModel.builder()
+                .client(clientWith(models))
+                .modelName(MODEL_NAME)
+                .executor(rejecting)
+                .mediaFetcher(asyncMediaFetcher(download))
+                .build();
+
+        CompletableFuture<ChatResponse> response = stream(model, REQUEST_WITH_IMAGE_URL);
+
+        assertThat(response)
+                .failsWithin(Duration.ofSeconds(10))
+                .withThrowableThat()
+                .havingCause()
+                .isSameAs(rejected);
+        assertThat(download).isCancelled();
         verify(models, never()).generateContentStream(anyString(), anyList(), any(GenerateContentConfig.class));
     }
 

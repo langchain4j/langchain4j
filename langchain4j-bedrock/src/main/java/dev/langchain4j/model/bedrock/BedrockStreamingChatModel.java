@@ -1,6 +1,5 @@
 package dev.langchain4j.model.bedrock;
 
-import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.InternalFlowUtils.failPublisherOnThrow;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
@@ -17,7 +16,9 @@ import static java.util.Objects.isNull;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
+import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.reactive.streaming.ReactiveStreamingDefaults;
 import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
@@ -97,7 +98,7 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         validate(chatRequest.parameters());
         validateTotalCachePoints(chatRequest);
-        prefetchMediaAndStreamTo(chatRequest, handler);
+        prefetchMediaThenStream(chatRequest, handler);
     }
 
     @Override
@@ -117,27 +118,22 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
                     terminated.complete(null);
                     bridge.cancelUpstream();
                 });
-                CompletableFuture<MediaDownloads> media = prefetchMediaAndStreamTo(chatRequest, bridge);
+                if (tube.cancelled()) {
+                    return; // cancelled in onSubscribe, before the termination action above was registered
+                }
+                CompletableFuture<MediaFetcher> media = prefetchMediaThenStream(chatRequest, bridge);
                 terminated.thenRun(() -> media.cancel(true));
             });
         });
     }
 
-    private CompletableFuture<MediaDownloads> prefetchMediaAndStreamTo(
+    private CompletableFuture<MediaFetcher> prefetchMediaThenStream(
             ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        CompletableFuture<MediaDownloads> media = prefetchMedia(chatRequest.messages());
-        media.whenComplete((downloads, error) -> {
-            if (error != null) {
-                withLoggingExceptions(() -> handler.onError(unwrapCompletionException(error)));
-                return;
-            }
-            try {
-                streamTo(buildConverseStreamRequest(chatRequest, downloads), handler);
-            } catch (Throwable e) {
-                withLoggingExceptions(() -> handler.onError(e));
-            }
-        });
-        return media;
+        return MediaPrefetcher.prefetchThenStream(
+                mediaFetcher,
+                mediaUrls(chatRequest.messages()),
+                handler,
+                prefetched -> streamTo(buildConverseStreamRequest(chatRequest, new MediaDownloads(prefetched)), handler));
     }
 
     private void streamTo(ConverseStreamRequest converseStreamRequest, StreamingChatResponseHandler targetHandler) {

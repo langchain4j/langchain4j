@@ -19,6 +19,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.ProviderJson;
 import dev.langchain4j.internal.ProviderJsonSpec;
@@ -153,11 +154,12 @@ final class BedrockBatchConverseMapper {
                 String bytes = fetched == null ? image.base64Data() : base64(fetched);
                 blocks.add(Map.of("image", Map.of("format", format, "source", Map.of("bytes", bytes))));
             } else if (content instanceof PdfFileContent pdf) {
-                String bytes = pdf.pdfFile().base64Data() != null
-                        ? pdf.pdfFile().base64Data()
-                        : base64(media.fetch(pdf.pdfFile().url()));
-                String name =
-                        extractFilenameWithoutExtensionFromUri(pdf.pdfFile().url());
+                PdfFile pdfFile = pdf.pdfFile();
+                String bytes =
+                        pdfFile.base64Data() != null ? pdfFile.base64Data() : base64(media.fetch(pdfFile.url()));
+                String name = pdfFile.url() == null
+                        ? media.documentName(Base64.getDecoder().decode(bytes))
+                        : extractFilenameWithoutExtensionFromUri(pdfFile.url());
                 blocks.add(Map.of("document", Map.of("format", "pdf", "name", name, "source", Map.of("bytes", bytes))));
             } else {
                 throw new UnsupportedFeatureException(

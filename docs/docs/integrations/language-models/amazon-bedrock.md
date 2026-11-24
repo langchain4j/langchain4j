@@ -99,13 +99,18 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
 
 ## Images and PDF files given by URL
 
-Bedrock accepts images and PDF files only as data. When a message refers to one by URL, for example with
-`ImageContent.from("https://example.com/cat.png")`, `BedrockChatModel`, `BedrockStreamingChatModel` and
+This integration sends images and PDF files to Bedrock as bytes. When a message refers to one by URL, for example
+with `ImageContent.from("https://example.com/cat.png")`, `BedrockChatModel`, `BedrockStreamingChatModel` and
 `BedrockBatchChatModel` download it before sending the request, with the `MediaFetcher` set with `mediaFetcher(...)`.
 By default, only `http` and `https` URLs of public hosts are downloaded, with a timeout and a size limit, and local
 files are never read from a URL. To send a local file, create the content from its path, for example
 `ImageContent.from(Path.of("cat.png"), "image/png")` or `PdfFileContent.from(Path.of("report.pdf"))`.
 `chatAsync(...)` and `BedrockStreamingChatModel` download without blocking the calling thread.
+
+Bedrock needs a name for each document. A PDF file given by URL is named after its file name. A PDF file created from
+a local file or from base64 data is named `document-` followed by the first 12 hex digits of the SHA-256 hash of its
+content, so it gets the same name in every request; when the same content appears more than once in a request, the
+names get the suffixes `-2`, `-3`, and so on.
 
 The image format is taken from the MIME type of the `ImageContent`, then from the extension of the URL, and then from
 the MIME type of the downloaded image.
@@ -120,6 +125,13 @@ ChatModel model = BedrockChatModel.builder()
                 .build())
         .build();
 ```
+
+:::tip
+When image or PDF URLs come from users, tools or retrieved content, allow only the hosts you expect, for example with
+`DefaultMediaFetcher.builder().allowedHosts("images.example.com")`.
+:::
+
+See [Media given by URL](/tutorials/chat-and-language-models#media-given-by-url) for all options of `DefaultMediaFetcher`.
 
 ## Amazon Bedrock Guardrails
 

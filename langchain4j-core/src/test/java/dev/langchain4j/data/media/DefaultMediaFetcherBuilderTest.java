@@ -52,7 +52,7 @@ class DefaultMediaFetcherBuilderTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "*", "https://images.example.com", "images.example.com:443"})
+    @ValueSource(strings = {"", "*", "https://images.example.com", "images.example.com:443", "[::1]:8080", "[::1"})
     void should_reject_invalid_host_names(String host) {
         assertThatThrownBy(() -> DefaultMediaFetcher.builder().allowedHosts(host).build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
@@ -81,5 +81,33 @@ class DefaultMediaFetcherBuilderTest {
         assertThatThrownBy(() -> DefaultMediaFetcher.builder().maxRedirects(-1).build())
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("maxRedirects must not be negative, but is: -1");
+    }
+
+    @Test
+    void should_reject_timeouts_that_are_too_long() {
+        Duration longest = Duration.ofNanos(Long.MAX_VALUE);
+
+        assertThatThrownBy(() -> DefaultMediaFetcher.builder()
+                        .connectTimeout(Duration.ofMillis(Long.MAX_VALUE))
+                        .build())
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("connectTimeout must not be longer than " + longest + " (about 292 years), but is: "
+                        + Duration.ofMillis(Long.MAX_VALUE));
+        assertThatThrownBy(() -> DefaultMediaFetcher.builder()
+                        .timeout(Duration.ofSeconds(Long.MAX_VALUE))
+                        .build())
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("timeout must not be longer than " + longest + " (about 292 years), but is: "
+                        + Duration.ofSeconds(Long.MAX_VALUE));
+        assertThatThrownBy(() -> DefaultMediaFetcher.builder()
+                        .timeout(longest.plusNanos(1))
+                        .build())
+                .isExactlyInstanceOf(IllegalArgumentException.class);
+
+        assertThat(DefaultMediaFetcher.builder()
+                        .connectTimeout(longest)
+                        .timeout(longest)
+                        .build())
+                .isNotNull();
     }
 }

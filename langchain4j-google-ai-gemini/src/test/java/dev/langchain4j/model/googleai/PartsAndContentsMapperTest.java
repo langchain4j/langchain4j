@@ -28,8 +28,11 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class PartsAndContentsMapperTest {
 
@@ -987,5 +990,82 @@ class PartsAndContentsMapperTest {
                         URI.create("https://example.com/cat.png"),
                         URI.create("http://example.com/dog.png"),
                         URI.create("https://example.com/screenshot.png"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"text/html", "application/octet-stream", "video/mp4"})
+    void fromContentToGPart_rejectsMimeTypeOfDownloadThatIsNotAnImageType(String reportedMimeType) {
+        // Given
+        MediaFetcher mediaFetcher = request -> FetchedMedia.from(new byte[] {1, 2, 3}, reportedMimeType);
+        ImageContent image = ImageContent.from("https://www.example.com/watch?v=abc123");
+
+        // When/Then
+        assertThatThrownBy(() -> PartsAndContentsMapper.fromContentToGPart(image, mediaFetcher))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unable to detect the MIME type of 'https://www.example.com/...'")
+                .hasMessageContaining("the server answered with " + reportedMimeType)
+                .hasMessageNotContaining("watch")
+                .hasMessageNotContaining("abc123");
+    }
+
+    @Test
+    void fromContentToGPart_leavesMimeTypeUnsetWhenNeitherUrlNorDownloadTellIt() {
+        // Given
+        MediaFetcher mediaFetcher = request -> FetchedMedia.from(new byte[] {1, 2, 3});
+
+        // When
+        GeminiContent.GeminiPart part = PartsAndContentsMapper.fromContentToGPart(
+                ImageContent.from("https://example.com/images?id=42"), mediaFetcher);
+
+        // Then
+        assertThat(part.inlineData().mimeType()).isNull();
+    }
+
+    @Test
+    void mediaUrls_returnsExactlyTheUrlsThatTheMappingDownloads() {
+        // Given
+        String base64Image = Base64.getEncoder().encodeToString(new byte[] {1, 2, 3});
+        List<ChatMessage> messages = List.of(
+                SystemMessage.from("system"),
+                UserMessage.from(
+                        TextContent.from("describe"),
+                        ImageContent.from("https://example.com/cat.png"),
+                        ImageContent.from("http://example.com/images?id=42"),
+                        ImageContent.from(base64Image, "image/png"),
+                        ImageContent.from("data:image/png;base64," + base64Image),
+                        ImageContent.from("gs://bucket/cat.png"),
+                        ImageContent.from("file:///home/me/cat.png"),
+                        ImageContent.from("cat.png"),
+                        AudioContent.from("https://example.com/audio.mp3"),
+                        AudioContent.from("data:audio/wav;base64," + base64Image),
+                        VideoContent.from("https://www.youtube.com/watch?v=abc123"),
+                        VideoContent.from("data:video/mp4;base64," + base64Image),
+                        PdfFileContent.from("https://example.com/document.pdf"),
+                        PdfFileContent.from("data:application/pdf;base64," + base64Image)),
+                AiMessage.from("answer"),
+                UserMessage.from(
+                        ImageContent.from("https://example.com/cat.png"),
+                        ImageContent.from("https://example.com/dog.jpg")),
+                ToolExecutionResultMessage.builder()
+                        .id("call-1")
+                        .toolName("takeScreenshot")
+                        .contents(List.of(
+                                TextContent.from("done"),
+                                ImageContent.from("https://example.com/screenshot.png"),
+                                ImageContent.from(base64Image, "image/png")))
+                        .build());
+        List<URI> downloaded = new ArrayList<>();
+        MediaFetcher mediaFetcher = request -> {
+            downloaded.add(request.url());
+            return FetchedMedia.from(new byte[] {1, 2, 3}, "image/png");
+        };
+
+        // When
+        PartsAndContentsMapper.fromMessageToGContent(messages, null, false, mediaFetcher);
+
+        // Then
+        assertThat(Set.copyOf(PartsAndContentsMapper.mediaUrls(messages)))
+                .hasSize(4)
+                .isEqualTo(Set.copyOf(downloaded));
     }
 }

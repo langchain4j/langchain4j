@@ -178,6 +178,8 @@ When image URLs come from users, tools or retrieved content, allow only the host
 `DefaultMediaFetcher.builder().allowedHosts("images.example.com")`.
 :::
 
+See [Media given by URL](/tutorials/chat-and-language-models#media-given-by-url) for all options of `DefaultMediaFetcher`.
+
 ## Questions and answers
 
 | `DecisionModel` | Ollama | Notes |

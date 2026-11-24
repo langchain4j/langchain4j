@@ -37,6 +37,16 @@ class HostPatternsTest {
     }
 
     @Test
+    void should_convert_host_names_with_non_ascii_characters_to_their_ascii_form() {
+        HostPatterns patterns =
+                HostPatterns.from(List.of("B\u00dcCHER.example", "*.m\u00fcnchen.example"), "allowedHosts");
+
+        assertThat(patterns.matches("xn--bcher-kva.example")).isTrue();
+        assertThat(patterns.matches("images.xn--mnchen-3ya.example")).isTrue();
+        assertThat(patterns.matches("xn--mnchen-3ya.example")).isFalse();
+    }
+
+    @Test
     void should_normalize_hosts() {
         assertThat(HostPatterns.normalize("MEDIA.Example.COM.")).isEqualTo("media.example.com");
         assertThat(HostPatterns.normalize("[::1]")).isEqualTo("::1");
@@ -62,10 +72,25 @@ class HostPatternsTest {
                 "example.com:8080",
                 "user@example.com",
                 "exa mple.com",
-                " example.com"
+                " example.com",
+                "[::1]:8080",
+                "[::1",
+                "::1]",
+                "[[::1]]",
+                "[::1]]",
+                "*.[::1]"
             })
     void should_reject_invalid_patterns(String pattern) {
         assertThatThrownBy(() -> HostPatterns.from(List.of(pattern), "allowedHosts"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("allowedHosts must contain host names such as");
+    }
+
+    @Test
+    void should_reject_host_names_that_have_no_ascii_form() {
+        String tooLongLabel = "\u00fc".repeat(64);
+
+        assertThatThrownBy(() -> HostPatterns.from(List.of(tooLongLabel + ".example"), "allowedHosts"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("allowedHosts must contain host names such as");
     }

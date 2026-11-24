@@ -1,9 +1,10 @@
 package dev.langchain4j.data.media;
 
-import java.io.ByteArrayOutputStream;
 import java.net.http.HttpResponse.BodySubscriber;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.List;
+import java.util.OptionalLong;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Flow;
@@ -16,41 +17,55 @@ import org.jspecify.annotations.Nullable;
  */
 final class LimitedBodySubscriber implements BodySubscriber<byte[]> {
 
+    private static final int DEFAULT_INITIAL_CAPACITY = 8 * 1024;
+
     private final int maxSizeInBytes;
     private final @Nullable Supplier<RuntimeException> tooLarge;
     private final @Nullable RuntimeException failure;
     private final CompletableFuture<byte[]> body = new CompletableFuture<>();
-    private final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+    private byte[] buffer;
+    private int size;
     private Flow.@Nullable Subscription subscription;
 
     private LimitedBodySubscriber(
             int maxSizeInBytes,
+            int initialCapacity,
             @Nullable Supplier<RuntimeException> tooLarge,
             @Nullable RuntimeException failure) {
         this.maxSizeInBytes = maxSizeInBytes;
+        this.buffer = new byte[initialCapacity];
         this.tooLarge = tooLarge;
         this.failure = failure;
     }
 
     /**
      * Collects the body, or fails with the exception from {@code tooLarge} once it exceeds {@code maxSizeInBytes}.
+     * When the {@code Content-Length} of the response is known and not larger than {@code maxSizeInBytes}, the buffer
+     * has exactly that size from the start, so that a body of that size is never copied.
      */
-    static BodySubscriber<byte[]> collecting(int maxSizeInBytes, Supplier<RuntimeException> tooLarge) {
-        return new LimitedBodySubscriber(maxSizeInBytes, tooLarge, null);
+    static BodySubscriber<byte[]> collecting(
+            int maxSizeInBytes, OptionalLong contentLength, Supplier<RuntimeException> tooLarge) {
+        boolean contentLengthFits = contentLength.isPresent()
+                && contentLength.getAsLong() >= 0
+                && contentLength.getAsLong() <= maxSizeInBytes;
+        int initialCapacity = contentLengthFits
+                ? (int) contentLength.getAsLong()
+                : Math.min(DEFAULT_INITIAL_CAPACITY, maxSizeInBytes);
+        return new LimitedBodySubscriber(maxSizeInBytes, initialCapacity, tooLarge, null);
     }
 
     /**
      * Does not read the body at all; the body is {@code null}.
      */
     static BodySubscriber<byte[]> discarding() {
-        return new LimitedBodySubscriber(0, null, null);
+        return new LimitedBodySubscriber(0, 0, null, null);
     }
 
     /**
      * Does not read the body at all and fails with the given exception.
      */
     static BodySubscriber<byte[]> failing(RuntimeException failure) {
-        return new LimitedBodySubscriber(0, null, failure);
+        return new LimitedBodySubscriber(0, 0, null, failure);
     }
 
     @Override
@@ -73,14 +88,18 @@ final class LimitedBodySubscriber implements BodySubscriber<byte[]> {
             return;
         }
         for (ByteBuffer byteBuffer : buffers) {
-            if (buffer.size() + (long) byteBuffer.remaining() > maxSizeInBytes) {
+            int remaining = byteBuffer.remaining();
+            if ((long) size + remaining > maxSizeInBytes) {
                 subscription.cancel();
                 body.completeExceptionally(tooLarge.get());
                 return;
             }
-            byte[] bytes = new byte[byteBuffer.remaining()];
-            byteBuffer.get(bytes);
-            buffer.write(bytes, 0, bytes.length);
+            if (size + remaining > buffer.length) {
+                long newCapacity = Math.max(size + remaining, 2L * buffer.length);
+                buffer = Arrays.copyOf(buffer, (int) Math.min(newCapacity, maxSizeInBytes));
+            }
+            byteBuffer.get(buffer, size, remaining);
+            size += remaining;
         }
     }
 
@@ -91,7 +110,7 @@ final class LimitedBodySubscriber implements BodySubscriber<byte[]> {
 
     @Override
     public void onComplete() {
-        body.complete(buffer.toByteArray());
+        body.complete(size == buffer.length ? buffer : Arrays.copyOf(buffer, size));
     }
 
     @Override

@@ -37,6 +37,7 @@ import dev.langchain4j.model.googleai.GeminiGenerateContentResponse.GeminiUsageM
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import java.net.URI;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
@@ -138,6 +139,16 @@ class BaseGeminiChatModel {
                 builder.customHeadersSupplier);
     }
 
+    /**
+     * Maps a chat request to a Gemini request. Images given by an {@code http} or {@code https} URL are downloaded with
+     * the {@link MediaFetcher} of the model while the request is mapped.
+     * <p>
+     * {@link GoogleAiGeminiStreamingChatModel} calls this method only for requests without such image URLs: it
+     * downloads them first, without blocking, and then maps the request without calling this method.
+     *
+     * @param chatRequest the chat request.
+     * @return the Gemini request.
+     */
     protected GeminiGenerateContentRequest createGenerateContentRequest(ChatRequest chatRequest) {
         return createGenerateContentRequest(chatRequest, mediaFetcher);
     }
@@ -412,7 +423,7 @@ class BaseGeminiChatModel {
         protected String imageSize;
         protected String cachedContentName;
         protected Supplier<Map<String, String>> customHeadersSupplier;
-        @Nullable MediaFetcher mediaFetcher;
+        private @Nullable MediaFetcher mediaFetcher;
 
         @SuppressWarnings("unchecked")
         protected B builder() {
@@ -853,19 +864,23 @@ class BaseGeminiChatModel {
          * downloaded before the request is sent. Other media URLs (of audio, video and PDF files, and image URLs with
          * another scheme) are passed on to Gemini as they are, and are not downloaded.
          * <p>
-         * When not set, a {@link DefaultMediaFetcher} with the default settings is used: it downloads only from
-         * public hosts, with a timeout and a size limit, and never reads local files. To download images from your
-         * own servers, or to change the limits, configure a {@link DefaultMediaFetcher} and set it here:
+         * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
+         * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To send
+         * a local file, read it when you create the content, for example with {@link ImageContent#from(Path, String)}.
+         * To download from your own servers, or to change the limits, set a {@link DefaultMediaFetcher} with other
+         * settings, or your own {@link MediaFetcher}.
+         * For example, a fetcher that also downloads from one of your own servers:
          * <pre>{@code
          * MediaFetcher mediaFetcher = DefaultMediaFetcher.builder()
          *         .allowNonPublicHosts("images.internal.example.com")
          *         .build();
          * }</pre>
          * {@link GoogleAiGeminiStreamingChatModel} downloads with {@link MediaFetcher#fetchAsync(MediaFetchRequest)},
-         * so that it does not block the calling thread. A custom fetcher that does not implement it fails there.
+         * so that it does not block the calling thread. A fetcher used there must implement that method.
          *
          * @param mediaFetcher the fetcher that downloads images, or {@code null} to use the default one.
          * @return {@code this}.
+         * @since 1.25.0
          */
         @Experimental
         public B mediaFetcher(@Nullable MediaFetcher mediaFetcher) {

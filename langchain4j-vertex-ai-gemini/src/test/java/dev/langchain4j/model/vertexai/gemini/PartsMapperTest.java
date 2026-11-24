@@ -1,6 +1,7 @@
 package dev.langchain4j.model.vertexai.gemini;
 
 import com.google.cloud.vertexai.api.Part;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.media.DefaultMediaFetcher;
@@ -9,10 +10,12 @@ import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.exception.InvalidRequestException;
@@ -29,7 +32,9 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -280,5 +285,112 @@ class PartsMapperTest {
         assertThat(downloaded).containsExactly(mp3url);
         assertThat(mp3urlPart.getInlineData().getMimeType()).isEqualTo("audio/mp3");
         assertThat(mp3urlPart.getInlineData().getData().toByteArray()).containsExactly(1, 2, 3);
+    }
+
+    static Stream<Arguments> contentsWithMimeTypeOfDownloadThatDoesNotFit() {
+        return Stream.of(
+                Arguments.of(VideoContent.from("https://www.youtube.com/watch?v=abc123"), "text/html"),
+                Arguments.of(VideoContent.from("https://www.youtube.com/watch?v=abc123"), "application/octet-stream"),
+                Arguments.of(ImageContent.from("https://www.youtube.com/watch?v=abc123"), "text/html"),
+                Arguments.of(ImageContent.from("https://www.youtube.com/watch?v=abc123"), "application/octet-stream"),
+                Arguments.of(AudioContent.from("https://www.youtube.com/watch?v=abc123"), "video/mp4"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("contentsWithMimeTypeOfDownloadThatDoesNotFit")
+    void should_not_use_mime_type_of_download_that_does_not_fit_the_content(Content content, String reportedMimeType) {
+
+        // given
+        MediaFetcher mediaFetcher = request -> FetchedMedia.from("<html></html>".getBytes(), reportedMimeType);
+
+        // when-then
+        assertThatThrownBy(() -> PartsMapper.map(UserMessage.from(content), mediaFetcher))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unable to detect the MIME type of 'https://www.youtube.com/...'")
+                .hasMessageContaining("the server answered with " + reportedMimeType)
+                .hasMessageNotContaining("watch")
+                .hasMessageNotContaining("abc123");
+    }
+
+    @Test
+    void should_use_mime_type_of_download_that_fits_the_content() {
+
+        // given
+        MediaFetcher mediaFetcher = request -> FetchedMedia.from(new byte[]{1, 2, 3}, switch (request.url().getPath()) {
+            case "/audio" -> "audio/ogg";
+            case "/video" -> "video/webm";
+            case "/document" -> "application/pdf";
+            default -> "image/avif";
+        });
+        UserMessage message = UserMessage.from(
+                ImageContent.from("https://example.com/image"),
+                AudioContent.from("https://example.com/audio"),
+                VideoContent.from("https://example.com/video"),
+                PdfFileContent.from("https://example.com/document"));
+
+        // when
+        List<Part> parts = PartsMapper.map(message, mediaFetcher);
+
+        // then
+        assertThat(parts)
+                .extracting(part -> part.getInlineData().getMimeType())
+                .containsExactly("image/avif", "audio/ogg", "video/webm", "application/pdf");
+    }
+
+    @Test
+    void should_show_only_scheme_and_host_of_cloud_storage_url_when_mime_type_is_unknown() {
+
+        // when-then
+        assertThatThrownBy(() -> PartsMapper.map(ImageContent.from("gs://bucket/private/object"), NO_DOWNLOADS))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Unable to detect the MIME type of 'gs://bucket/...'. Please provide it explicitly.");
+    }
+
+    @Test
+    void should_download_exactly_the_media_urls_that_are_prefetched() {
+
+        // given
+        String base64 = Base64.getEncoder().encodeToString(new byte[]{1, 2, 3});
+        List<ChatMessage> messages = List.of(
+                SystemMessage.from("system"),
+                UserMessage.from(
+                        TextContent.from("describe"),
+                        ImageContent.from("https://example.com/cat.png"),
+                        ImageContent.from("https://example.com/images?id=42"),
+                        ImageContent.from(base64, "image/png"),
+                        ImageContent.from("data:image/png;base64," + base64),
+                        ImageContent.from("gs://bucket/image.png"),
+                        ImageContent.from("file:///home/me/cat.png"),
+                        ImageContent.from("cat.png"),
+                        AudioContent.from("https://example.com/audio.mp3"),
+                        AudioContent.from(base64, "audio/mp3"),
+                        VideoContent.from("https://example.com/video.mp4"),
+                        VideoContent.from("gs://bucket/video.mp4"),
+                        VideoContent.from(base64, "video/mp4"),
+                        PdfFileContent.from("https://example.com/document.pdf"),
+                        PdfFileContent.from("file:///home/me/report.pdf"),
+                        PdfFileContent.from(base64, "application/pdf")),
+                AiMessage.from("answer"),
+                UserMessage.from(
+                        ImageContent.from("https://example.com/cat.png"), ImageContent.from("https://example.com/dog.jpg")),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("call-1")
+                        .name("weather")
+                        .arguments("{}")
+                        .build()),
+                ToolExecutionResultMessage.from("call-1", "weather", "sunny"));
+        List<URI> downloaded = new ArrayList<>();
+        MediaFetcher mediaFetcher = request -> {
+            downloaded.add(request.url());
+            return FetchedMedia.from(new byte[]{1, 2, 3}, "image/png");
+        };
+
+        // when
+        ContentsMapper.splitInstructionAndContent(messages, mediaFetcher);
+
+        // then
+        assertThat(Set.copyOf(PartsMapper.mediaUrls(messages)))
+                .hasSize(10)
+                .isEqualTo(Set.copyOf(downloaded));
     }
 }

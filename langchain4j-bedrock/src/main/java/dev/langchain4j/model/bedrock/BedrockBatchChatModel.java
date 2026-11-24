@@ -815,8 +815,8 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
          * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
          * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To send
          * a local file, read it when you create the content, for example with {@link ImageContent#from(Path, String)}
-         * or {@link PdfFileContent#from(Path)}. To download from your own servers, use a {@link DefaultMediaFetcher}
-         * that allows them, or your own {@link MediaFetcher}.
+         * or {@link PdfFileContent#from(Path)}. To download from your own servers, or to change the limits, set a
+         * {@link DefaultMediaFetcher} with other settings, or your own {@link MediaFetcher}.
          *
          * @param mediaFetcher the fetcher, or {@code null} to use the default one
          * @return {@code this}

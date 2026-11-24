@@ -129,6 +129,7 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .mediaResolutionPerPartEnabled(true)
     .listeners(...)
     .supportedCapabilities(...)
+    .mediaFetcher(...)
     .build();
 ```
 
@@ -680,9 +681,8 @@ In input, Gemini accepts:
 The example below shows how to mix a text prompt with an image:
 
 ```java
-// PNG of the cute colorful parrot mascot of the LangChain4j project
-String base64Img = b64encoder.encodeToString(readBytes(
-  "https://avatars.githubusercontent.com/u/132277850?v=4"));
+// PNG of the cute colorful parrot mascot of the LangChain4j project, read from a local file
+ImageContent logo = ImageContent.from(Path.of("langchain4j-parrot.png"), "image/png");
 
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
@@ -691,7 +691,7 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
 
 ChatResponse response = gemini.chat(
     UserMessage.from(
-        ImageContent.from(base64Img, "image/png"),
+        logo,
         TextContent.from("""
             Do you think this logo fits well
             with the project description?
@@ -702,7 +702,8 @@ ChatResponse response = gemini.chat(
 
 An image can also be given by an `http` or `https` URL, for example with
 `ImageContent.from("https://example.com/cat.png")`.
-Gemini receives images as content, so LangChain4j downloads such URLs before it sends the request.
+This integration downloads such an image before it sends the request, and sends its content to Gemini.
+A `data:` URL, for example `data:image/png;base64,...`, is decoded locally and sent as content too.
 Other media URLs (of videos, audio and PDF files, and image URLs with another scheme) are passed on to Gemini as they are.
 By default, only URLs of public hosts are downloaded, with a timeout and a size limit.
 To download images from your own servers, or to change the limits, set a `MediaFetcher` on the model builder:
@@ -719,6 +720,13 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
 
 `GoogleAiGeminiStreamingChatModel`, `GoogleAiGeminiBatchChatModel`, `GoogleAiGeminiTokenCountEstimator`
 and `GeminiCaches` have the same option.
+
+:::tip
+When image URLs come from users, tools or retrieved content, allow only the hosts you expect, for example with
+`DefaultMediaFetcher.builder().allowedHosts("images.example.com")`.
+:::
+
+See [Media given by URL](/tutorials/chat-and-language-models#media-given-by-url) for all options of `DefaultMediaFetcher`.
 
 ### Image Generation Output
 

@@ -39,6 +39,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.internal.MediaPrefetcher;
@@ -69,7 +70,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.jspecify.annotations.Nullable;
@@ -468,6 +468,11 @@ abstract class AbstractBedrockChatModel {
                         && messageIndex == lastUserMessageIndex);
     }
 
+    /**
+     * @deprecated This model no longer calls this method while it maps a request, so overriding it has no effect.
+     *             There is no replacement.
+     */
+    @Deprecated(since = "1.25.0")
     protected void handleToolResult(
             ToolExecutionResultMessage toolResult,
             List<ContentBlock> blocks,
@@ -499,6 +504,11 @@ abstract class AbstractBedrockChatModel {
         }
     }
 
+    /**
+     * @deprecated This model no longer calls this method while it maps a request, so overriding it has no effect.
+     *             There is no replacement.
+     */
+    @Deprecated(since = "1.25.0")
     protected ContentBlock createToolResultBlock(ToolExecutionResultMessage toolResult) {
         return createToolResultBlock(toolResult, new MediaDownloads(mediaFetcher));
     }
@@ -542,6 +552,11 @@ abstract class AbstractBedrockChatModel {
                 .build();
     }
 
+    /**
+     * @deprecated This model no longer calls this method while it maps a request, so overriding it has no effect.
+     *             There is no replacement.
+     */
+    @Deprecated(since = "1.25.0")
     protected Message convertToBedRockMessage(ChatMessage message) {
         return convertToBedRockMessage(message, new MediaDownloads(mediaFetcher));
     }
@@ -555,6 +570,11 @@ abstract class AbstractBedrockChatModel {
         throw new IllegalArgumentException("Unsupported message type: " + message.getClass());
     }
 
+    /**
+     * @deprecated This model no longer calls this method while it maps a request, so overriding it has no effect.
+     *             There is no replacement.
+     */
+    @Deprecated(since = "1.25.0")
     protected Message createUserMessage(UserMessage message) {
         return createUserMessage(message, new MediaDownloads(mediaFetcher));
     }
@@ -614,6 +634,11 @@ abstract class AbstractBedrockChatModel {
                 .toList();
     }
 
+    /**
+     * @deprecated This model no longer calls this method while it maps a request, so overriding it has no effect.
+     *             There is no replacement.
+     */
+    @Deprecated(since = "1.25.0")
     protected List<ContentBlock> convertContents(List<Content> contents) {
         return convertContents(contents, new MediaDownloads(mediaFetcher));
     }
@@ -638,6 +663,11 @@ abstract class AbstractBedrockChatModel {
                 .toList();
     }
 
+    /**
+     * @deprecated This model no longer calls this method while it maps a request, so overriding it has no effect.
+     *             There is no replacement.
+     */
+    @Deprecated(since = "1.25.0")
     protected ContentBlock convertContent(Content content) {
         return convertContent(content, new MediaDownloads(mediaFetcher));
     }
@@ -646,17 +676,19 @@ abstract class AbstractBedrockChatModel {
         if (content instanceof TextContent text) {
             return ContentBlock.builder().text(text.text()).build();
         } else if (content instanceof PdfFileContent pdfFileContent) {
-            final SdkBytes bytes = fromByteArray(
-                    nonNull(pdfFileContent.pdfFile().base64Data())
-                            ? Base64.getDecoder()
-                                    .decode(pdfFileContent.pdfFile().base64Data())
-                            : media.fetch(pdfFileContent.pdfFile().url()).bytes());
+            PdfFile pdfFile = pdfFileContent.pdfFile();
+            byte[] bytes = nonNull(pdfFile.base64Data())
+                    ? Base64.getDecoder().decode(pdfFile.base64Data())
+                    : media.fetch(pdfFile.url()).bytes();
             return ContentBlock.builder()
                     .document(DocumentBlock.builder()
                             .format(DocumentFormat.PDF)
-                            .source(DocumentSource.builder().bytes(bytes).build())
-                            .name(extractFilenameWithoutExtensionFromUri(
-                                    pdfFileContent.pdfFile().url()))
+                            .source(DocumentSource.builder()
+                                    .bytes(fromByteArray(bytes))
+                                    .build())
+                            .name(pdfFile.url() == null
+                                    ? media.documentName(bytes)
+                                    : extractFilenameWithoutExtensionFromUri(pdfFile.url()))
                             .build())
                     .build();
         } else if (content instanceof ImageContent image) {
@@ -681,6 +713,11 @@ abstract class AbstractBedrockChatModel {
         return convertContent(content, media);
     }
 
+    /**
+     * @deprecated This model no longer calls this method while it maps a request, so overriding it has no effect.
+     *             There is no replacement.
+     */
+    @Deprecated(since = "1.25.0")
     protected ContentBlock createImageBlock(ImageContent imageContent) {
         return createImageBlock(imageContent, new MediaDownloads(mediaFetcher));
     }
@@ -729,11 +766,12 @@ abstract class AbstractBedrockChatModel {
     }
 
     /**
-     * Downloads, with {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, every image and PDF file that the messages
-     * refer to by URL and that {@link #extractRegularMessages(List, BedrockCachePointPlacement, CacheTTL,
-     * BedrockGuardContentPlacement, MediaDownloads)} would download.
+     * Returns the URLs of the images and PDF files that the messages refer to by URL, which
+     * {@link #extractRegularMessages(List, BedrockCachePointPlacement, CacheTTL, BedrockGuardContentPlacement,
+     * MediaDownloads)} downloads. The asynchronous and streaming paths download them first with
+     * {@link MediaFetcher#fetchAsync(MediaFetchRequest)}.
      */
-    CompletableFuture<MediaDownloads> prefetchMedia(List<ChatMessage> messages) {
+    static List<URI> mediaUrls(List<ChatMessage> messages) {
         List<URI> urls = new ArrayList<>();
         for (ChatMessage message : messages) {
             if (message instanceof UserMessage userMessage) {
@@ -752,7 +790,7 @@ abstract class AbstractBedrockChatModel {
                 }
             }
         }
-        return MediaDownloads.prefetch(mediaFetcher, urls);
+        return urls;
     }
 
     private static void addUrlToFetch(List<URI> urls, @Nullable String base64Data, @Nullable URI url) {
@@ -1405,7 +1443,7 @@ abstract class AbstractBedrockChatModel {
         protected List<ChatModelListener> listeners;
         protected Set<Capability> supportedCapabilities;
         protected Supplier<Map<String, String>> customHeadersSupplier;
-        protected MediaFetcher mediaFetcher;
+        private @Nullable MediaFetcher mediaFetcher;
 
         @SuppressWarnings("unchecked")
         public T self() {
@@ -1540,11 +1578,12 @@ abstract class AbstractBedrockChatModel {
          * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
          * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To send
          * a local file, read it when you create the content, for example with {@link ImageContent#from(Path, String)}
-         * or {@link PdfFileContent#from(Path)}. To download from your own servers, use a {@link DefaultMediaFetcher}
-         * that allows them, or your own {@link MediaFetcher}.
+         * or {@link PdfFileContent#from(Path)}. To download from your own servers, or to change the limits, set a
+         * {@link DefaultMediaFetcher} with other settings, or your own {@link MediaFetcher}.
          * <p>
          * {@link ChatModel#chatAsync(ChatRequest)} and the streaming model download with
-         * {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, so a fetcher used there must implement it.
+         * {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, so that they do not block the calling thread. A fetcher
+         * used there must implement that method.
          *
          * @param mediaFetcher the fetcher, or {@code null} to use the default one
          * @return {@code this}

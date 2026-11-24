@@ -10,6 +10,8 @@ import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.InvalidRequestException;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
@@ -19,6 +21,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import org.assertj.core.api.ThrowableAssertAlternative;
 import org.junit.jupiter.api.Test;
@@ -71,12 +74,12 @@ class MediaPrefetcherTest {
     }
 
     @Test
-    void should_fetch_each_distinct_url_once_and_serve_the_results() {
+    void should_fetch_each_distinct_url_once_and_serve_the_results() throws Exception {
         RecordingMediaFetcher fetcher =
                 new RecordingMediaFetcher(url -> CompletableFuture.supplyAsync(() -> media(url)));
 
-        MediaFetcher prefetched = MediaPrefetcher.prefetch(fetcher, List.of(CAT, DOG, CAT, BIRD))
-                .join();
+        MediaFetcher prefetched =
+                MediaPrefetcher.prefetch(fetcher, List.of(CAT, DOG, CAT, BIRD)).get(10, SECONDS);
 
         assertThat(fetcher.urls).containsExactlyInAnyOrder(CAT, DOG, BIRD);
         assertThat(prefetched.fetch(MediaFetchRequest.from(CAT))).isEqualTo(media(CAT));
@@ -86,10 +89,10 @@ class MediaPrefetcherTest {
     }
 
     @Test
-    void should_fail_for_urls_that_were_not_prefetched() {
+    void should_fail_for_urls_that_were_not_prefetched() throws Exception {
         RecordingMediaFetcher fetcher =
                 new RecordingMediaFetcher(url -> CompletableFuture.completedFuture(media(url)));
-        MediaFetcher prefetched = MediaPrefetcher.prefetch(fetcher, List.of(CAT)).join();
+        MediaFetcher prefetched = MediaPrefetcher.prefetch(fetcher, List.of(CAT)).get(10, SECONDS);
 
         assertThatThrownBy(() -> prefetched.fetch(MediaFetchRequest.from(BIRD)))
                 .isExactlyInstanceOf(IllegalStateException.class)
@@ -102,12 +105,12 @@ class MediaPrefetcherTest {
     }
 
     @Test
-    void should_not_call_the_fetcher_without_urls() {
+    void should_not_call_the_fetcher_without_urls() throws Exception {
         MediaFetcher syncOnly = request -> {
             throw new AssertionError("must not be called");
         };
 
-        MediaFetcher prefetched = MediaPrefetcher.prefetch(syncOnly, List.of()).join();
+        MediaFetcher prefetched = MediaPrefetcher.prefetch(syncOnly, List.of()).get(10, SECONDS);
 
         assertThatThrownBy(() -> prefetched.fetch(MediaFetchRequest.from(CAT)))
                 .isExactlyInstanceOf(IllegalStateException.class);
@@ -209,5 +212,127 @@ class MediaPrefetcherTest {
                         MediaPrefetcher.defaultMediaFetcher(), List.of(URI.create("file:///etc/passwd"))))
                 .isExactlyInstanceOf(InvalidRequestException.class)
                 .withMessageContaining("Only http and https URLs can be fetched");
+    }
+
+    // prefetchThenStream
+
+    /**
+     * Records the error that the handler receives.
+     */
+    private static final class ErrorRecordingHandler implements StreamingChatResponseHandler {
+
+        private final CompletableFuture<Throwable> error = new CompletableFuture<>();
+        private final RuntimeException thrownByOnError;
+
+        private ErrorRecordingHandler() {
+            this(null);
+        }
+
+        private ErrorRecordingHandler(RuntimeException thrownByOnError) {
+            this.thrownByOnError = thrownByOnError;
+        }
+
+        @Override
+        public void onCompleteResponse(ChatResponse completeResponse) {
+            throw new AssertionError("must not be called");
+        }
+
+        @Override
+        public void onError(Throwable error) {
+            this.error.complete(error);
+            if (thrownByOnError != null) {
+                throw thrownByOnError;
+            }
+        }
+    }
+
+    @Test
+    void prefetchThenStream_should_start_the_stream_with_the_downloaded_media() throws Exception {
+        RecordingMediaFetcher fetcher =
+                new RecordingMediaFetcher(url -> CompletableFuture.supplyAsync(() -> media(url)));
+        ErrorRecordingHandler handler = new ErrorRecordingHandler();
+        CompletableFuture<FetchedMedia> streamed = new CompletableFuture<>();
+
+        CompletableFuture<MediaFetcher> prefetched = MediaPrefetcher.prefetchThenStream(
+                fetcher,
+                List.of(CAT, CAT),
+                handler,
+                media -> streamed.complete(media.fetch(MediaFetchRequest.from(CAT))));
+
+        assertThat(streamed).succeedsWithin(10, SECONDS).isEqualTo(media(CAT));
+        assertThat(prefetched).isCompleted();
+        assertThat(fetcher.urls).containsExactly(CAT);
+        assertThat(handler.error).isNotDone();
+    }
+
+    @Test
+    void prefetchThenStream_should_start_the_stream_at_once_without_urls() {
+        MediaFetcher syncOnly = request -> {
+            throw new AssertionError("must not be called");
+        };
+        AtomicReference<Thread> streamThread = new AtomicReference<>();
+
+        MediaPrefetcher.prefetchThenStream(
+                syncOnly, List.of(), new ErrorRecordingHandler(), media -> streamThread.set(Thread.currentThread()));
+
+        assertThat(streamThread.get()).isSameAs(Thread.currentThread());
+    }
+
+    @Test
+    void prefetchThenStream_should_report_a_failed_download_to_the_handler() {
+        InvalidRequestException notAllowed = new InvalidRequestException("not allowed");
+        RecordingMediaFetcher fetcher = new RecordingMediaFetcher(url -> CompletableFuture.supplyAsync(() -> {
+            throw notAllowed;
+        }));
+        ErrorRecordingHandler handler = new ErrorRecordingHandler();
+
+        MediaPrefetcher.prefetchThenStream(fetcher, List.of(CAT), handler, media -> {
+            throw new AssertionError("must not be called");
+        });
+
+        assertThat(handler.error).succeedsWithin(10, SECONDS).isSameAs(notAllowed);
+    }
+
+    @Test
+    void prefetchThenStream_should_report_a_failure_of_the_stream_to_the_handler() {
+        RecordingMediaFetcher fetcher = new RecordingMediaFetcher(url -> CompletableFuture.completedFuture(media(url)));
+        ErrorRecordingHandler handler = new ErrorRecordingHandler();
+        IllegalStateException mappingFailed = new IllegalStateException("mapping failed");
+
+        MediaPrefetcher.prefetchThenStream(fetcher, List.of(CAT), handler, media -> {
+            throw mappingFailed;
+        });
+
+        assertThat(handler.error).succeedsWithin(10, SECONDS).isSameAs(mappingFailed);
+    }
+
+    @Test
+    void prefetchThenStream_should_ignore_an_exception_of_onError() {
+        ErrorRecordingHandler handler = new ErrorRecordingHandler(new RuntimeException("onError failed"));
+
+        CompletableFuture<MediaFetcher> prefetched =
+                MediaPrefetcher.prefetchThenStream(null, List.of(CAT), handler, media -> {});
+
+        assertThat(handler.error)
+                .succeedsWithin(10, SECONDS)
+                .isInstanceOf(IllegalArgumentException.class);
+        assertFailsWith(prefetched).isExactlyInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void prefetchThenStream_should_cancel_the_downloads_and_not_start_the_stream_when_cancelled() {
+        RecordingMediaFetcher fetcher = new RecordingMediaFetcher(url -> new CompletableFuture<>());
+        ErrorRecordingHandler handler = new ErrorRecordingHandler();
+
+        CompletableFuture<MediaFetcher> prefetched =
+                MediaPrefetcher.prefetchThenStream(fetcher, List.of(CAT, DOG), handler, media -> {
+                    throw new AssertionError("must not be called");
+                });
+        prefetched.cancel(true);
+
+        assertThat(fetcher.futures.values()).hasSize(2).allSatisfy(future -> assertThat(future)
+                .failsWithin(5, SECONDS)
+                .withThrowableOfType(CancellationException.class));
+        assertThat(handler.error).succeedsWithin(10, SECONDS).isInstanceOf(CancellationException.class);
     }
 }

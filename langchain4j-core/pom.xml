@@ -91,9 +91,11 @@
                         <configuration>
                             <!-- the guardrail assertions and model mocks copied below are published only in langchain4j-test: a module -->
                             <!-- that uses test classes of this test-jar which need them must also depend on langchain4j-test -->
+                            <!-- the key store of the media fetcher tests is only for these tests -->
                             <excludes>
                                 <exclude>dev/langchain4j/test/guardrail/**</exclude>
                                 <exclude>dev/langchain4j/test/mock/**</exclude>
+                                <exclude>media-fetcher/**</exclude>
                             </excludes>
                         </configuration>
                     </execution>
@@ -163,10 +165,11 @@
                             <goal>test-jar-no-fork</goal>
                         </goals>
                         <configuration>
-                            <!-- The copied sources are published only in langchain4j-test -->
+                            <!-- The copied sources are published only in langchain4j-test, and the key store of the media fetcher tests is only for these tests -->
                             <excludes>
                                 <exclude>dev/langchain4j/test/guardrail/**</exclude>
                                 <exclude>dev/langchain4j/test/mock/**</exclude>
+                                <exclude>media-fetcher/**</exclude>
                             </excludes>
                         </configuration>
                     </execution>

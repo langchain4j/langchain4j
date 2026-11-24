@@ -54,6 +54,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
@@ -165,18 +168,47 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
 
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
-        GoogleGenAiContentMapper.prefetch(mediaFetcher, chatRequest.messages())
-                .whenComplete((prefetched, error) -> {
-                    if (error != null) {
-                        handler.onError(error);
-                        return;
-                    }
-                    try {
-                        stream(chatRequest, prefetched, handler);
-                    } catch (Throwable e) {
-                        handler.onError(e);
-                    }
-                });
+        CompletableFuture<MediaFetcher> prefetch =
+                MediaPrefetcher.prefetch(mediaFetcher, GoogleGenAiContentMapper.mediaUrls(chatRequest.messages()));
+        try {
+            // submitted on the calling thread, so that a context-propagating executor captures the caller's context
+            executor.execute(() -> {
+                MediaFetcher prefetched = awaitPrefetch(prefetch, handler);
+                if (prefetched == null) {
+                    return;
+                }
+                try {
+                    stream(chatRequest, prefetched, handler);
+                } catch (Throwable e) {
+                    withLoggingExceptions(() -> handler.onError(e));
+                }
+            });
+        } catch (Throwable e) {
+            prefetch.cancel(true);
+            withLoggingExceptions(() -> handler.onError(e));
+        }
+    }
+
+    /**
+     * Waits on the executor thread, which runs the blocking stream anyway, for the media that the request needs.
+     *
+     * @return the fetcher that returns the downloaded media, or {@code null} if the download failed, which was reported
+     *         to the handler.
+     */
+    private static @Nullable MediaFetcher awaitPrefetch(
+            CompletableFuture<MediaFetcher> prefetch, StreamingChatResponseHandler handler) {
+        try {
+            return prefetch.get();
+        } catch (InterruptedException e) {
+            prefetch.cancel(true);
+            Thread.currentThread().interrupt();
+            withLoggingExceptions(() -> handler.onError(e));
+        } catch (ExecutionException e) {
+            withLoggingExceptions(() -> handler.onError(e.getCause()));
+        } catch (CancellationException e) {
+            withLoggingExceptions(() -> handler.onError(e));
+        }
+        return null;
     }
 
     private void stream(ChatRequest chatRequest, MediaFetcher prefetched, StreamingChatResponseHandler handler) {
@@ -220,127 +252,125 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
         MappingTrackingStreamingChatResponseHandler trackingHandler =
                 new MappingTrackingStreamingChatResponseHandler(handler);
 
-        executor.execute(() -> {
-            GoogleGenAiStreamingHandle streamingHandle = null;
-            try (ResponseStream<GenerateContentResponse> stream =
-                    client.models.generateContentStream(modelName, contents, config)) {
-                streamingHandle = new GoogleGenAiStreamingHandle(stream);
+        GoogleGenAiStreamingHandle streamingHandle = null;
+        try (ResponseStream<GenerateContentResponse> stream =
+                client.models.generateContentStream(modelName, contents, config)) {
+            streamingHandle = new GoogleGenAiStreamingHandle(stream);
 
-                StringBuilder textBuilder = new StringBuilder();
-                StringBuilder thinkingBuilder = new StringBuilder();
-                List<ToolExecutionRequest> toolRequests = new ArrayList<>();
-                Map<String, Object> attributes = new java.util.HashMap<>();
-                TokenUsage tokenUsage = GoogleGenAiTokenUsage.builder().build();
-                FinishReason finishReason = null;
-                GenerateContentResponse lastChunk = null;
+            StringBuilder textBuilder = new StringBuilder();
+            StringBuilder thinkingBuilder = new StringBuilder();
+            List<ToolExecutionRequest> toolRequests = new ArrayList<>();
+            Map<String, Object> attributes = new java.util.HashMap<>();
+            TokenUsage tokenUsage = GoogleGenAiTokenUsage.builder().build();
+            FinishReason finishReason = null;
+            GenerateContentResponse lastChunk = null;
 
-                int toolIndex = 0;
+            int toolIndex = 0;
 
-                for (GenerateContentResponse chunk : stream) {
-                    if (streamingHandle.isCancelled()) {
-                        return;
-                    }
-                    trackingHandler.resetMappingTracking();
-                    lastChunk = chunk;
-                    ChatResponse partialResponse = GoogleGenAiContentMapper.toChatResponse(
-                            chunk, modelName, returnThinking, includeCodeExecutionOutput, textBuilder);
-                    AiMessage aiMessage = partialResponse.aiMessage();
-
-                    if (aiMessage.attributes() != null
-                            && !aiMessage.attributes().isEmpty()) {
-                        mergeAttributes(attributes, aiMessage.attributes());
-                    }
-
-                    if (aiMessage.thinking() != null && !aiMessage.thinking().isEmpty()) {
-                        thinkingBuilder.append(aiMessage.thinking());
-                        onPartialThinking(trackingHandler, aiMessage.thinking(), streamingHandle);
-                        if (streamingHandle.isCancelled()) {
-                            return;
-                        }
-                    }
-
-                    if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
-                        textBuilder.append(aiMessage.text());
-                        onPartialResponse(trackingHandler, aiMessage.text(), streamingHandle);
-                        if (streamingHandle.isCancelled()) {
-                            return;
-                        }
-                    }
-
-                    if (aiMessage.toolExecutionRequests() != null) {
-                        for (ToolExecutionRequest req : aiMessage.toolExecutionRequests()) {
-                            toolRequests.add(req);
-                            onCompleteToolCall(trackingHandler, new CompleteToolCall(toolIndex++, req));
-                        }
-                    }
-
-                    if (partialResponse.tokenUsage() != null) {
-                        tokenUsage = partialResponse.tokenUsage();
-                    }
-                    FinishReason partialReason = partialResponse.finishReason();
-                    if (partialReason != null && partialReason != FinishReason.OTHER) {
-                        if (finishReason != FinishReason.LENGTH && finishReason != FinishReason.CONTENT_FILTER) {
-                            finishReason = partialReason;
-                        }
-                    }
-
-                    if (!trackingHandler.wasMapped()) {
-                        onUnmappedRawEvent(trackingHandler, chunk);
-                    }
-                }
-
+            for (GenerateContentResponse chunk : stream) {
                 if (streamingHandle.isCancelled()) {
                     return;
                 }
+                trackingHandler.resetMappingTracking();
+                lastChunk = chunk;
+                ChatResponse partialResponse = GoogleGenAiContentMapper.toChatResponse(
+                        chunk, modelName, returnThinking, includeCodeExecutionOutput, textBuilder);
+                AiMessage aiMessage = partialResponse.aiMessage();
 
-                AiMessage finalAiMessage;
-                if (!toolRequests.isEmpty() && textBuilder.length() > 0) {
-                    finalAiMessage = new AiMessage(textBuilder.toString(), toolRequests);
-                } else if (!toolRequests.isEmpty()) {
-                    finalAiMessage = AiMessage.from(toolRequests);
-                } else {
-                    finalAiMessage = AiMessage.from(textBuilder.toString());
+                if (aiMessage.attributes() != null
+                        && !aiMessage.attributes().isEmpty()) {
+                    mergeAttributes(attributes, aiMessage.attributes());
                 }
 
-                if (thinkingBuilder.length() > 0) {
-                    finalAiMessage = finalAiMessage.toBuilder()
-                            .thinking(thinkingBuilder.toString())
-                            .build();
+                if (aiMessage.thinking() != null && !aiMessage.thinking().isEmpty()) {
+                    thinkingBuilder.append(aiMessage.thinking());
+                    onPartialThinking(trackingHandler, aiMessage.thinking(), streamingHandle);
+                    if (streamingHandle.isCancelled()) {
+                        return;
+                    }
                 }
 
-                if (!attributes.isEmpty()) {
-                    finalAiMessage =
-                            finalAiMessage.toBuilder().attributes(attributes).build();
+                if (aiMessage.text() != null && !aiMessage.text().isEmpty()) {
+                    textBuilder.append(aiMessage.text());
+                    onPartialResponse(trackingHandler, aiMessage.text(), streamingHandle);
+                    if (streamingHandle.isCancelled()) {
+                        return;
+                    }
                 }
 
-                GoogleGenAiChatResponseMetadata metadata = GoogleGenAiChatResponseMetadata.builder()
-                        .modelName(modelName)
-                        .tokenUsage(tokenUsage)
-                        .finishReason(
-                                !toolRequests.isEmpty()
-                                        ? FinishReason.TOOL_EXECUTION
-                                        : (finishReason != null ? finishReason : FinishReason.STOP))
-                        .rawResponse(lastChunk)
-                        .build();
-
-                ChatResponse finalChatResponse = ChatResponse.builder()
-                        .aiMessage(finalAiMessage)
-                        .metadata(metadata)
-                        .build();
-
-                if (logResponses) {
-                    log.info("Response:\n- model: {}\n- response: {}", modelName, finalChatResponse);
+                if (aiMessage.toolExecutionRequests() != null) {
+                    for (ToolExecutionRequest req : aiMessage.toolExecutionRequests()) {
+                        toolRequests.add(req);
+                        onCompleteToolCall(trackingHandler, new CompleteToolCall(toolIndex++, req));
+                    }
                 }
 
-                onCompleteResponse(trackingHandler, finalChatResponse);
-            } catch (Exception e) {
-                if (streamingHandle != null && streamingHandle.isCancelled()) {
-                    return;
+                if (partialResponse.tokenUsage() != null) {
+                    tokenUsage = partialResponse.tokenUsage();
                 }
-                withLoggingExceptions(
-                        () -> trackingHandler.onError(GoogleGenAiExceptionMapper.INSTANCE.mapException(e)));
+                FinishReason partialReason = partialResponse.finishReason();
+                if (partialReason != null && partialReason != FinishReason.OTHER) {
+                    if (finishReason != FinishReason.LENGTH && finishReason != FinishReason.CONTENT_FILTER) {
+                        finishReason = partialReason;
+                    }
+                }
+
+                if (!trackingHandler.wasMapped()) {
+                    onUnmappedRawEvent(trackingHandler, chunk);
+                }
             }
-        });
+
+            if (streamingHandle.isCancelled()) {
+                return;
+            }
+
+            AiMessage finalAiMessage;
+            if (!toolRequests.isEmpty() && textBuilder.length() > 0) {
+                finalAiMessage = new AiMessage(textBuilder.toString(), toolRequests);
+            } else if (!toolRequests.isEmpty()) {
+                finalAiMessage = AiMessage.from(toolRequests);
+            } else {
+                finalAiMessage = AiMessage.from(textBuilder.toString());
+            }
+
+            if (thinkingBuilder.length() > 0) {
+                finalAiMessage = finalAiMessage.toBuilder()
+                        .thinking(thinkingBuilder.toString())
+                        .build();
+            }
+
+            if (!attributes.isEmpty()) {
+                finalAiMessage =
+                        finalAiMessage.toBuilder().attributes(attributes).build();
+            }
+
+            GoogleGenAiChatResponseMetadata metadata = GoogleGenAiChatResponseMetadata.builder()
+                    .modelName(modelName)
+                    .tokenUsage(tokenUsage)
+                    .finishReason(
+                            !toolRequests.isEmpty()
+                                    ? FinishReason.TOOL_EXECUTION
+                                    : (finishReason != null ? finishReason : FinishReason.STOP))
+                    .rawResponse(lastChunk)
+                    .build();
+
+            ChatResponse finalChatResponse = ChatResponse.builder()
+                    .aiMessage(finalAiMessage)
+                    .metadata(metadata)
+                    .build();
+
+            if (logResponses) {
+                log.info("Response:\n- model: {}\n- response: {}", modelName, finalChatResponse);
+            }
+
+            onCompleteResponse(trackingHandler, finalChatResponse);
+        } catch (Exception e) {
+            if (streamingHandle != null && streamingHandle.isCancelled()) {
+                return;
+            }
+            withLoggingExceptions(
+                    () -> trackingHandler.onError(GoogleGenAiExceptionMapper.INSTANCE.mapException(e)));
+        }
     }
 
     private static class GoogleGenAiStreamingHandle implements StreamingHandle {
@@ -1050,18 +1080,18 @@ public class GoogleGenAiStreamingChatModel implements StreamingChatModel {
          * given by a URL is downloaded before the request is sent. Cloud Storage URLs ({@code gs://...}) are not
          * downloaded: they are passed on to Gemini.
          * <p>
-         * When not set, a {@link DefaultMediaFetcher} with the default settings is used: it downloads only
-         * {@code http} and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local
-         * files. To send a local file, read it yourself, for example with {@link ImageContent#from(Path, String)}.
-         * To download media from your own servers, or to change the limits, configure a {@link DefaultMediaFetcher}
-         * and set it here.
+         * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
+         * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To send
+         * a local file, read it when you create the content, for example with {@link ImageContent#from(Path, String)}.
+         * To download from your own servers, or to change the limits, set a {@link DefaultMediaFetcher} with other
+         * settings, or your own {@link MediaFetcher}.
          * <p>
          * This model downloads with {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, so that it does not block the
-         * calling thread. A custom fetcher that does not implement it fails, through
-         * {@link StreamingChatResponseHandler#onError(Throwable)}.
+         * calling thread. A fetcher used there must implement that method.
          *
          * @param mediaFetcher the fetcher that downloads media, or {@code null} to use the default one.
          * @return {@code this}.
+         * @since 1.25.0
          */
         @Experimental
         public Builder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {

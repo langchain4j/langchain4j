@@ -137,7 +137,7 @@ abstract class OllamaBaseChatModel {
         protected Logger logger;
         protected List<ChatModelListener> listeners;
         protected Set<Capability> supportedCapabilities;
-        protected MediaFetcher mediaFetcher;
+        private @Nullable MediaFetcher mediaFetcher;
 
         protected B self() {
             return (B) this;
@@ -352,11 +352,11 @@ abstract class OllamaBaseChatModel {
          * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
          * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To send
          * a local file, read it when you create the content, for example with {@link ImageContent#from(Path, String)}.
-         * To download from your own servers, use a {@link DefaultMediaFetcher} that allows them, or your own
-         * {@link MediaFetcher}.
+         * To download from your own servers, or to change the limits, set a {@link DefaultMediaFetcher} with other
+         * settings, or your own {@link MediaFetcher}.
          * <p>
-         * {@link OllamaStreamingChatModel} downloads with {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, so a
-         * fetcher used there must implement it.
+         * {@link OllamaStreamingChatModel} downloads with {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, so that
+         * it does not block the calling thread. A fetcher used there must implement that method.
          *
          * @param mediaFetcher the fetcher, or {@code null} to use the default one
          * @return {@code this}

@@ -1,13 +1,15 @@
 package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.model.ModelProvider.GOOGLE_AI_GEMINI;
-import static dev.langchain4j.model.googleai.PartsAndContentsMapper.prefetch;
+import static dev.langchain4j.model.googleai.PartsAndContentsMapper.mediaUrls;
 
+import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import java.net.URI;
 import java.util.List;
 
 public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implements StreamingChatModel {
@@ -31,18 +33,13 @@ public class GoogleAiGeminiStreamingChatModel extends BaseGeminiChatModel implem
 
     @Override
     public void doChat(ChatRequest request, StreamingChatResponseHandler handler) {
-        prefetch(mediaFetcher, request.messages()).whenComplete((prefetched, error) -> {
-            if (error != null) {
-                handler.onError(error);
-                return;
-            }
-            try {
-                GeminiGenerateContentRequest geminiRequest = createGenerateContentRequest(request, prefetched);
-                geminiService.generateContentStream(
-                        request.modelName(), geminiRequest, includeCodeExecutionOutput, returnThinking, handler);
-            } catch (Throwable e) {
-                handler.onError(e);
-            }
+        List<URI> mediaUrls = mediaUrls(request.messages());
+        MediaPrefetcher.prefetchThenStream(mediaFetcher, mediaUrls, handler, prefetched -> {
+            GeminiGenerateContentRequest geminiRequest = mediaUrls.isEmpty()
+                    ? createGenerateContentRequest(request)
+                    : createGenerateContentRequest(request, prefetched);
+            geminiService.generateContentStream(
+                    request.modelName(), geminiRequest, includeCodeExecutionOutput, returnThinking, handler);
         });
     }
 

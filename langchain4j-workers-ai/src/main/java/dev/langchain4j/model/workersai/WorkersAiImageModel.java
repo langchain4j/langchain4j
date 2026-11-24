@@ -18,6 +18,7 @@ import org.jspecify.annotations.Nullable;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
+import javax.imageio.spi.ImageReaderSpi;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.MemoryCacheImageInputStream;
 import java.awt.image.BufferedImage;
@@ -29,6 +30,7 @@ import java.net.URI;
 import java.net.URL;
 import java.util.Base64;
 import java.util.Iterator;
+import java.util.List;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
@@ -46,10 +48,17 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
     private static final String MIME_TYPE = "image/png";
 
     /**
-     * The largest width times height that the Workers AI image models accept (2048 x 2048). An image with more pixels
-     * is rejected before it is decoded, because decoding needs memory for every pixel, whatever the file size.
+     * The largest width times height of an image that this model decodes (2048 x 2048). This is a limit of LangChain4j,
+     * not of Workers AI: decoding needs memory for every pixel, whatever the size of the file, so a larger image is
+     * rejected before it is decoded.
      */
     private static final long MAX_PIXELS = 2048L * 2048L;
+
+    /**
+     * The image formats that this model decodes. Only the image readers of these formats are used, so that no other
+     * image reader that happens to be installed reads the downloaded content.
+     */
+    private static final List<String> IMAGE_FORMATS = List.of("png", "jpeg", "gif", "bmp", "webp");
 
     private final MediaFetcher mediaFetcher;
 
@@ -171,12 +180,15 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
         /**
          * Sets the {@link MediaFetcher} that downloads the images given by URL to
          * {@link WorkersAiImageModel#edit(Image, String)}, {@link WorkersAiImageModel#edit(Image, Image, String)} and
-         * {@link WorkersAiImageModel#getPixels(URL)}. They are downloaded and decoded before the request is sent.
+         * {@link WorkersAiImageModel#getPixels(URL)}. They are downloaded and decoded before the request is sent. Only
+         * PNG, JPEG, GIF, BMP and WebP images are decoded (WebP only if an image reader for it is installed), and only
+         * images of at most 2048 x 2048 pixels, a limit of LangChain4j against very large decoded images.
          * <p>
          * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
          * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To edit
-         * a local file, create the image from its content with {@link Image.Builder#base64Data(String)}. To download
-         * from your own servers, use a {@link DefaultMediaFetcher} that allows them, or your own {@link MediaFetcher}.
+         * a local image, create the image from the content of the file with {@link Image.Builder#base64Data(String)}:
+         * it is decoded in the same way, with the same limits. To download from your own servers, or to change the
+         * limits, set a {@link DefaultMediaFetcher} with other settings, or your own {@link MediaFetcher}.
          *
          * @param mediaFetcher the fetcher, or {@code null} to use the default one.
          * @return The current instance of {@link Builder}.
@@ -277,8 +289,8 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
      * @return
      *      pixels of the image
      * @throws InvalidRequestException
-     *      if the media fetcher does not allow the URL, if the image format is not supported, or if the image has
-     *      more than 2048 x 2048 pixels
+     *      if the media fetcher does not allow the URL, if the image is not a PNG, JPEG, GIF, BMP or WebP image, or if
+     *      it has more than 2048 x 2048 pixels, the limit of LangChain4j for decoded images
      * @throws Exception
      *      return an exception if pixel not returned
      */
@@ -302,18 +314,15 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
 
     private static int[] pixels(byte[] imageBytes) {
         try (ImageInputStream input = new MemoryCacheImageInputStream(new ByteArrayInputStream(imageBytes))) {
-            Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
-            if (!readers.hasNext()) {
-                throw new InvalidRequestException("The image format is not supported");
-            }
-            ImageReader reader = readers.next();
+            ImageReader reader = imageReader(input);
             try {
                 reader.setInput(input, true, true);
                 int width = reader.getWidth(0);
                 int height = reader.getHeight(0);
                 if ((long) width * height > MAX_PIXELS) {
                     throw new InvalidRequestException("The image has " + width + " x " + height
-                            + " pixels, more than the maximum of " + MAX_PIXELS + " pixels (2048 x 2048)");
+                            + " pixels, more than LangChain4j decodes for Workers AI (" + MAX_PIXELS
+                            + " pixels, 2048 x 2048)");
                 }
                 return pixels(reader.read(0));
             } finally {
@@ -322,6 +331,25 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
         } catch (IOException e) {
             throw new InvalidRequestException("The image cannot be read", e);
         }
+    }
+
+    /**
+     * Returns a reader of one of the {@link #IMAGE_FORMATS} that can read the image.
+     */
+    private static ImageReader imageReader(ImageInputStream input) throws IOException {
+        for (String format : IMAGE_FORMATS) {
+            Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName(format);
+            while (readers.hasNext()) {
+                ImageReader reader = readers.next();
+                ImageReaderSpi provider = reader.getOriginatingProvider();
+                if (provider != null && provider.canDecodeInput(input)) {
+                    return reader;
+                }
+                reader.dispose();
+            }
+        }
+        throw new InvalidRequestException(
+                "The image format is not supported: only PNG, JPEG, GIF, BMP and WebP images can be edited");
     }
 
     private static int[] pixels(BufferedImage image) {

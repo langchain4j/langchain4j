@@ -8,7 +8,9 @@ import dev.langchain4j.data.media.FetchedMedia;
 import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
@@ -18,28 +20,38 @@ import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.decision.DecisionModel;
+import dev.langchain4j.model.decision.request.ContentsInput;
+import dev.langchain4j.model.decision.request.DecisionInput;
 import dev.langchain4j.model.decision.request.DecisionRequest;
+import dev.langchain4j.model.decision.request.DecisionRequestParameters;
+import dev.langchain4j.model.decision.request.FieldsInput;
+import dev.langchain4j.model.decision.request.MessagesInput;
 import dev.langchain4j.model.decision.request.YesNoQuestion;
 import dev.langchain4j.model.decision.response.DecisionResponse;
 import java.net.URI;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class OllamaMediaFetcherTest {
 
     private static final URI IMAGE_URL = URI.create("https://example.com/cat.png");
+    private static final URI OTHER_URL = URI.create("https://example.com/dog.jpg");
     private static final byte[] IMAGE_BYTES = {1, 2, 3};
     private static final String IMAGE_BASE64 = Base64.getEncoder().encodeToString(IMAGE_BYTES);
 
@@ -261,6 +273,164 @@ class OllamaMediaFetcherTest {
                 .decideAsync(decisionRequest(ImageContent.from("aGVsbG8=", "image/png")));
 
         assertThat(response).succeedsWithin(10, SECONDS);
+    }
+
+    @Test
+    void should_reject_media_urls_of_non_public_hosts_by_default() {
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(CHAT_RESPONSE));
+        ChatModel chatModel = OllamaChatModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .baseUrl("http://localhost:11434")
+                .modelName("llava")
+                .build();
+        DecisionModel decisionModel = OllamaDecisionModel.builder()
+                .httpClientBuilder(new MockHttpClientBuilder(httpClient))
+                .baseUrl("http://localhost:11434")
+                .modelName("clef")
+                .build();
+
+        assertThatThrownBy(() -> chatModel.chat(UserMessage.from(ImageContent.from("http://127.0.0.1/cat.png"))))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessageContaining("non-public address");
+        assertThatThrownBy(() -> decisionModel.decide(decisionRequest(ImageContent.from("http://127.0.0.1/cat.png"))))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessageContaining("non-public address");
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void streaming_should_not_block_the_caller_while_downloading() throws Exception {
+        CompletableFuture<FetchedMedia> download = new CompletableFuture<>();
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(List.of(new ServerSentEvent(null, CHAT_RESPONSE)));
+        StreamingChatModel model = streamingModel(httpClient, pendingMediaFetcher(download));
+
+        CompletingHandler handler = new CompletingHandler();
+        model.chat(
+                ChatRequest.builder()
+                        .messages(UserMessage.from(TextContent.from("What is this?"), ImageContent.from(IMAGE_URL)))
+                        .build(),
+                handler);
+
+        assertThat(handler.response).isNotDone();
+        assertThat(httpClient.requests()).isEmpty();
+
+        download.complete(FetchedMedia.from(IMAGE_BYTES, "image/png"));
+
+        assertThat(handler.response.get(10, SECONDS).aiMessage().text()).isEqualTo("a cat");
+        assertThat(sentImages(httpClient)).containsExactly(IMAGE_BASE64);
+    }
+
+    @Test
+    void decideAsync_should_not_block_the_caller_while_downloading() {
+        CompletableFuture<FetchedMedia> download = new CompletableFuture<>();
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(DECISION_RESPONSE));
+
+        CompletableFuture<DecisionResponse> response = decisionModel(httpClient, pendingMediaFetcher(download))
+                .decideAsync(decisionRequest(ImageContent.from(IMAGE_URL)));
+
+        assertThat(response).isNotDone();
+        assertThat(httpClient.requests()).isEmpty();
+
+        download.complete(FetchedMedia.from(IMAGE_BYTES, "image/png"));
+
+        assertThat(response).succeedsWithin(10, SECONDS);
+        assertThat(sentImages(httpClient)).containsExactly(IMAGE_BASE64);
+    }
+
+    @Test
+    void cancelling_decideAsync_should_cancel_the_download() {
+        CompletableFuture<FetchedMedia> download = new CompletableFuture<>();
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(DECISION_RESPONSE));
+
+        CompletableFuture<DecisionResponse> response = decisionModel(httpClient, pendingMediaFetcher(download))
+                .decideAsync(decisionRequest(ImageContent.from(IMAGE_URL)));
+        response.cancel(true);
+
+        assertThat(download).isCancelled();
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void chat_mapping_should_download_exactly_the_prefetched_urls() {
+        List<ChatMessage> messages = List.of(
+                SystemMessage.from("You describe images."),
+                UserMessage.from(
+                        TextContent.from("What is this?"),
+                        ImageContent.from(IMAGE_URL),
+                        ImageContent.from(URI.create("https://example.com/photo?id=1")),
+                        ImageContent.from(IMAGE_BASE64, "image/png"),
+                        ImageContent.from(URI.create("data:image/png;base64," + IMAGE_BASE64)),
+                        ImageContent.from(URI.create("file:///home/me/cat.png")),
+                        ImageContent.from("cat.png")),
+                AiMessage.from("A cat."),
+                UserMessage.from(
+                        TextContent.from("And this?"), ImageContent.from(IMAGE_URL), ImageContent.from(OTHER_URL)));
+        RecordingMediaFetcher mediaFetcher = new RecordingMediaFetcher();
+
+        InternalOllamaHelper.toOllamaMessages(messages, mediaFetcher);
+        assertThat(MediaPrefetcher.prefetch(mediaFetcher, ImageUtils.mediaUrls(InternalOllamaHelper.images(messages))))
+                .succeedsWithin(10, SECONDS);
+
+        assertThat(Set.copyOf(mediaFetcher.fetchedAsync)).hasSize(6).isEqualTo(Set.copyOf(mediaFetcher.fetched));
+    }
+
+    static Stream<DecisionInput> decisionInputs() {
+        return Stream.of(
+                ContentsInput.from(List.of(
+                        TextContent.from("Two photos."),
+                        ImageContent.from(IMAGE_URL),
+                        ImageContent.from(IMAGE_BASE64, "image/png"),
+                        ImageContent.from(URI.create("file:///home/me/cat.png")),
+                        ImageContent.from(OTHER_URL))),
+                FieldsInput.from(Map.of(
+                        "photo", ImageContent.from(IMAGE_URL),
+                        "album", List.of(TextContent.from("Album"), ImageContent.from(OTHER_URL)),
+                        "inline", ImageContent.from(IMAGE_BASE64, "image/png"),
+                        "local", ImageContent.from("cat.png"),
+                        "caption", "A photo")),
+                MessagesInput.from(List.of(
+                        UserMessage.from(TextContent.from("Look"), ImageContent.from(IMAGE_URL)),
+                        AiMessage.from("A cat."),
+                        UserMessage.from(
+                                ImageContent.from(OTHER_URL),
+                                ImageContent.from(URI.create("data:image/png;base64," + IMAGE_BASE64))))));
+    }
+
+    @ParameterizedTest
+    @MethodSource("decisionInputs")
+    void decision_mapping_should_download_exactly_the_prefetched_urls(DecisionInput input) {
+        DecisionRequest request = DecisionRequest.builder()
+                .input(input)
+                .question("cat", YesNoQuestion.from("Is there a cat?"))
+                .parameters(DecisionRequestParameters.builder().modelName("clef").build())
+                .build();
+        RecordingMediaFetcher mediaFetcher = new RecordingMediaFetcher();
+
+        OllamaDecisionMapper.toOllamaRequest(request, null, mediaFetcher);
+        assertThat(MediaPrefetcher.prefetch(
+                        mediaFetcher, ImageUtils.mediaUrls(OllamaDecisionMapper.images(request.input()))))
+                .succeedsWithin(10, SECONDS);
+
+        assertThat(Set.copyOf(mediaFetcher.fetchedAsync)).hasSize(3).isEqualTo(Set.copyOf(mediaFetcher.fetched));
+    }
+
+    /**
+     * Returns the given download from {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, and fails the test if
+     * {@link MediaFetcher#fetch(MediaFetchRequest)} is called.
+     */
+    private static MediaFetcher pendingMediaFetcher(CompletableFuture<FetchedMedia> download) {
+        return new MediaFetcher() {
+
+            @Override
+            public FetchedMedia fetch(MediaFetchRequest request) {
+                throw new AssertionError("fetch() must not be called");
+            }
+
+            @Override
+            public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
+                return download;
+            }
+        };
     }
 
     private static StreamingChatModel streamingModel(MockHttpClient httpClient, MediaFetcher mediaFetcher) {

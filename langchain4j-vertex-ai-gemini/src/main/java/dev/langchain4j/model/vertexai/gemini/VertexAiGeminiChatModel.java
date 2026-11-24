@@ -803,11 +803,12 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
          * given by a URL is downloaded before the request is sent. Cloud Storage URLs ({@code gs://...}) are not
          * downloaded: they are passed on to Gemini.
          * <p>
-         * When not set, a {@link DefaultMediaFetcher} with the default settings is used: it downloads only
-         * {@code http} and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local
-         * files. To send a local file, read it yourself, for example with {@link ImageContent#from(Path, String)}.
-         * To download media from your own servers, or to change the limits, configure a {@link DefaultMediaFetcher}
-         * and set it here:
+         * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
+         * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To send
+         * a local file, read it when you create the content, for example with {@link ImageContent#from(Path, String)}.
+         * To download from your own servers, or to change the limits, set a {@link DefaultMediaFetcher} with other
+         * settings, or your own {@link MediaFetcher}.
+         * For example, a fetcher that also downloads from one of your own servers:
          * <pre>{@code
          * MediaFetcher mediaFetcher = DefaultMediaFetcher.builder()
          *         .allowNonPublicHosts("media.internal.example.com")
@@ -816,6 +817,7 @@ public class VertexAiGeminiChatModel implements ChatModel, Closeable {
          *
          * @param mediaFetcher the fetcher that downloads media, or {@code null} to use the default one.
          * @return {@code this}.
+         * @since 1.25.0
          */
         @Experimental
         public VertexAiGeminiChatModelBuilder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {

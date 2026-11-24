@@ -1,6 +1,7 @@
 package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
+import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -28,7 +29,6 @@ import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.CustomMimeTypesFileTypeDetector;
-import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiBlob;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiCodeExecutionResult;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiCodeExecutionResult.GeminiOutcome;
@@ -41,9 +41,9 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -167,14 +167,6 @@ final class PartsAndContentsMapper {
         }
     }
 
-    /**
-     * Downloads, without blocking, the media that {@link #fromMessageToGContent} downloads for the given messages, and
-     * completes with a {@link MediaFetcher} that returns them, to be passed to {@link #fromMessageToGContent}.
-     */
-    static CompletableFuture<MediaFetcher> prefetch(MediaFetcher mediaFetcher, List<ChatMessage> messages) {
-        return MediaPrefetcher.prefetch(mediaFetcher, mediaUrls(messages));
-    }
-
     private static FetchedMedia fetch(MediaFetcher mediaFetcher, URI url) {
         return mediaFetcher.fetch(MediaFetchRequest.from(url));
     }
@@ -210,11 +202,39 @@ final class PartsAndContentsMapper {
         return url.getScheme() != null && url.getScheme().startsWith("http");
     }
 
+    /**
+     * Returns the MIME type of a downloaded image: the given one, otherwise the one of the file name in the URL,
+     * otherwise the one the server reported, but only if it is an image type (a web page is not sent as an image).
+     */
     private static @Nullable String mimeType(@Nullable String mimeType, URI url, FetchedMedia media) {
         if (mimeType != null) {
             return mimeType;
         }
-        return getOrDefault(mimeTypeDetector.probeContentTypeFromName(url), media.mimeType());
+        String mimeTypeFromName = mimeTypeDetector.probeContentTypeFromName(url);
+        if (mimeTypeFromName != null) {
+            return mimeTypeFromName;
+        }
+        String reportedMimeType = media.mimeType();
+        if (reportedMimeType == null || reportedMimeType.toLowerCase(Locale.ROOT).startsWith("image/")) {
+            return reportedMimeType;
+        }
+        throw illegalArgument(
+                "Unable to detect the MIME type of '%s' (the server answered with %s). Please provide it explicitly.",
+                withoutPathAndQuery(url),
+                reportedMimeType);
+    }
+
+    /**
+     * Shows the scheme, the host and the port of the URL only, because the path and the query can contain
+     * credentials, for example in a presigned URL.
+     */
+    private static String withoutPathAndQuery(URI url) {
+        String scheme = url.getScheme() == null ? "" : url.getScheme() + ":";
+        if (url.getHost() == null) {
+            return scheme + "...";
+        }
+        String port = url.getPort() == -1 ? "" : ":" + url.getPort();
+        return scheme + "//" + url.getHost() + port + "/...";
     }
 
     /**

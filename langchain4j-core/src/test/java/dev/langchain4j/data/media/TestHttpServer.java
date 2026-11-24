@@ -126,7 +126,11 @@ final class TestHttpServer implements AutoCloseable {
     }
 
     static Handler redirect(String location) {
-        return status(302, "Location", location);
+        return redirect(302, location);
+    }
+
+    static Handler redirect(int status, String location) {
+        return status(status, "Location", location);
     }
 
     static Handler redirect(URI location) {
@@ -141,6 +145,19 @@ final class TestHttpServer implements AutoCloseable {
             byte[] chunk = new byte[64 * 1024];
             for (long written = 0; written < totalBytes; written += chunk.length) {
                 out.write(chunk, 0, (int) Math.min(chunk.length, totalBytes - written));
+            }
+        };
+    }
+
+    /** Sends the headers with the given {@code Content-Length}, then waits up to 10 seconds without sending the body. */
+    static Handler headersOnly(long contentLength) {
+        return exchange -> {
+            exchange.sendResponseHeaders(200, contentLength);
+            exchange.getResponseBody().flush();
+            try {
+                Thread.sleep(10_000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
         };
     }

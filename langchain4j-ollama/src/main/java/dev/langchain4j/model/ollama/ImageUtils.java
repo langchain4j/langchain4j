@@ -7,17 +7,15 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.media.MediaFetchRequest;
 import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.internal.MediaPrefetcher;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
- * Every download of an image in this module goes through {@link #base64Image(Image, MediaFetcher)} or
- * {@link #prefetch(MediaFetcher, List)}.
+ * Every download of an image in this module goes through {@link #base64Image(Image, MediaFetcher)}. The asynchronous
+ * and streaming paths download the URLs of {@link #mediaUrls(List)} first, without blocking.
  */
 @Internal
 class ImageUtils {
@@ -37,18 +35,15 @@ class ImageUtils {
     }
 
     /**
-     * Downloads, with {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, the images that
-     * {@link #base64Image(Image, MediaFetcher)} would download.
-     *
-     * @return a future of a fetcher that returns the downloaded images; it never throws.
+     * Returns the URLs of the images that {@link #base64Image(Image, MediaFetcher)} would download.
      */
-    static CompletableFuture<MediaFetcher> prefetch(MediaFetcher mediaFetcher, List<Image> images) {
+    static List<URI> mediaUrls(List<Image> images) {
         List<URI> urls = new ArrayList<>();
         for (Image image : images) {
             if (isNullOrEmpty(image.base64Data()) && image.url() != null) {
                 urls.add(image.url());
             }
         }
-        return MediaPrefetcher.prefetch(mediaFetcher, urls);
+        return urls;
     }
 }

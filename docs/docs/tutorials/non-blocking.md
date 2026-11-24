@@ -267,8 +267,9 @@ response first.
 
 ## Controlling the executor and propagating context
 
-Everywhere LangChain4j runs work off the caller thread — concurrent tool calls, offloaded retrieval, retry backoff
-— it takes the executor from one pluggable seam, the `ExecutorProvider` SPI:
+Everywhere LangChain4j runs work off the caller thread — concurrent tool calls, offloaded retrieval, retry backoff,
+downloads of [media given by URL](/tutorials/chat-and-language-models#media-given-by-url) — it takes the executor
+from one pluggable seam, the `ExecutorProvider` SPI:
 
 ```java
 public interface ExecutorProvider {
@@ -354,6 +355,10 @@ Some things to be aware of:
   integration starts on its own (for example to read a streaming response), and the parallel and asynchronous agents
   of `langchain4j-agentic`. Combine `captureContext()` with a context-propagating executor if you need context
   there.
+- An integration that downloads [media given by URL](/tutorials/chat-and-language-models#media-given-by-url) before
+  an asynchronous or streaming request also calls `captureContext()`, on the thread that starts the request, with or
+  without an AI Service. The downloads complete on other threads, and the integration then maps and sends the
+  request with the captured context.
 - The lazy resolution of the A2A and MCP client agents of `langchain4j-agentic` (fetching the agent card, creating
   the MCP client and listing its tools) runs with the context of the invocation that started it, also for the other
   invocations waiting on it.

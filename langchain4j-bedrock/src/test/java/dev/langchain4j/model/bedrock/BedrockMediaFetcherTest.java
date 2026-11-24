@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -23,6 +24,7 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.InvalidRequestException;
+import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
@@ -30,16 +32,25 @@ import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.util.Base64;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.mockito.ArgumentCaptor;
 import software.amazon.awssdk.awscore.DefaultAwsResponseMetadata;
 import software.amazon.awssdk.core.SdkBytes;
@@ -392,6 +403,322 @@ class BedrockMediaFetcherTest {
                 .converseStream(any(ConverseStreamRequest.class), any(ConverseStreamResponseHandler.class));
     }
 
+    @Test
+    void should_reject_media_urls_of_non_public_hosts_by_default() {
+        BedrockRuntimeClient client = mock(BedrockRuntimeClient.class);
+        ChatModel model =
+                BedrockChatModel.builder().modelId("test-model").client(client).build();
+
+        assertThatThrownBy(() -> model.chat(UserMessage.from(ImageContent.from("http://127.0.0.1/cat.png"))))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessageContaining("non-public address");
+        verify(client, never()).converse(any(ConverseRequest.class));
+    }
+
+    @Test
+    void chatAsync_should_not_block_the_caller_while_downloading() {
+        CompletableFuture<FetchedMedia> download = new CompletableFuture<>();
+        BedrockRuntimeAsyncClient asyncClient = mock(BedrockRuntimeAsyncClient.class);
+        when(asyncClient.converse(any(ConverseRequest.class)))
+                .thenReturn(CompletableFuture.completedFuture(converseResponse()));
+        ChatModel model = BedrockChatModel.builder()
+                .modelId("test-model")
+                .client(mock(BedrockRuntimeClient.class))
+                .asyncClient(asyncClient)
+                .mediaFetcher(pendingMediaFetcher(download))
+                .build();
+
+        CompletableFuture<ChatResponse> response = model.chatAsync(
+                ChatRequest.builder().messages(UserMessage.from(ImageContent.from(IMAGE_URL))).build());
+
+        assertThat(response).isNotDone();
+        verify(asyncClient, never()).converse(any(ConverseRequest.class));
+
+        download.complete(FetchedMedia.from(IMAGE_BYTES, "image/png"));
+
+        assertThat(response).succeedsWithin(10, SECONDS);
+        ArgumentCaptor<ConverseRequest> request = ArgumentCaptor.forClass(ConverseRequest.class);
+        verify(asyncClient).converse(request.capture());
+        assertThat(request.getValue().messages().get(0).content().get(0).image().source().bytes())
+                .isEqualTo(SdkBytes.fromByteArray(IMAGE_BYTES));
+    }
+
+    @Test
+    void cancelling_chatAsync_should_cancel_the_download() {
+        CompletableFuture<FetchedMedia> download = new CompletableFuture<>();
+        BedrockRuntimeAsyncClient asyncClient = mock(BedrockRuntimeAsyncClient.class);
+        ChatModel model = BedrockChatModel.builder()
+                .modelId("test-model")
+                .client(mock(BedrockRuntimeClient.class))
+                .asyncClient(asyncClient)
+                .mediaFetcher(pendingMediaFetcher(download))
+                .build();
+
+        CompletableFuture<ChatResponse> response = model.chatAsync(
+                ChatRequest.builder().messages(UserMessage.from(ImageContent.from(IMAGE_URL))).build());
+        response.cancel(true);
+
+        assertThat(download).isCancelled();
+        verify(asyncClient, never()).converse(any(ConverseRequest.class));
+    }
+
+    @Test
+    void streaming_should_not_block_the_caller_while_downloading() {
+        CompletableFuture<FetchedMedia> download = new CompletableFuture<>();
+        AtomicReference<ConverseStreamRequest> streamRequest = new AtomicReference<>();
+        BedrockRuntimeAsyncClient client = streamingClient(streamRequest);
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
+                .modelId("test-model")
+                .client(client)
+                .mediaFetcher(pendingMediaFetcher(download))
+                .build();
+
+        CompletingHandler handler = new CompletingHandler();
+        model.chat(ChatRequest.builder().messages(UserMessage.from(ImageContent.from(IMAGE_URL))).build(), handler);
+
+        assertThat(handler.response).isNotDone();
+        verify(client, never())
+                .converseStream(any(ConverseStreamRequest.class), any(ConverseStreamResponseHandler.class));
+
+        download.complete(FetchedMedia.from(IMAGE_BYTES, "image/png"));
+
+        assertThat(handler.response).succeedsWithin(10, SECONDS);
+        assertThat(streamRequest.get().messages().get(0).content().get(0).image().source().bytes())
+                .isEqualTo(SdkBytes.fromByteArray(IMAGE_BYTES));
+    }
+
+    @Test
+    void reactive_streaming_should_not_block_the_caller_while_downloading() {
+        CompletableFuture<FetchedMedia> download = new CompletableFuture<>();
+        AtomicReference<ConverseStreamRequest> streamRequest = new AtomicReference<>();
+        BedrockRuntimeAsyncClient client = streamingClient(streamRequest);
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
+                .modelId("test-model")
+                .client(client)
+                .mediaFetcher(pendingMediaFetcher(download))
+                .build();
+
+        CompletingSubscriber subscriber = new CompletingSubscriber();
+        model.chat(ChatRequest.builder()
+                        .messages(UserMessage.from(ImageContent.from(IMAGE_URL)))
+                        .build())
+                .subscribe(subscriber);
+
+        assertThat(subscriber.completion).isNotDone();
+        verify(client, never())
+                .converseStream(any(ConverseStreamRequest.class), any(ConverseStreamResponseHandler.class));
+
+        download.complete(FetchedMedia.from(IMAGE_BYTES, "image/png"));
+
+        assertThat(subscriber.completion).succeedsWithin(10, SECONDS);
+        assertThat(streamRequest.get().messages().get(0).content().get(0).image().source().bytes())
+                .isEqualTo(SdkBytes.fromByteArray(IMAGE_BYTES));
+    }
+
+    @Test
+    void cancelling_the_reactive_subscription_should_cancel_the_download() {
+        CompletableFuture<FetchedMedia> download = new CompletableFuture<>();
+        BedrockRuntimeAsyncClient client = mock(BedrockRuntimeAsyncClient.class);
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
+                .modelId("test-model")
+                .client(client)
+                .mediaFetcher(pendingMediaFetcher(download))
+                .build();
+
+        CompletingSubscriber subscriber = new CompletingSubscriber();
+        model.chat(ChatRequest.builder()
+                        .messages(UserMessage.from(ImageContent.from(IMAGE_URL)))
+                        .build())
+                .subscribe(subscriber);
+        subscriber.subscription.get().cancel();
+
+        assertThat(download).isCancelled();
+        verify(client, never())
+                .converseStream(any(ConverseStreamRequest.class), any(ConverseStreamResponseHandler.class));
+    }
+
+    @Test
+    void reactive_streaming_should_not_download_when_the_subscription_is_cancelled_in_onSubscribe() {
+        RecordingMediaFetcher mediaFetcher =
+                new RecordingMediaFetcher(Map.of(IMAGE_URL, FetchedMedia.from(IMAGE_BYTES, "image/png")));
+        BedrockRuntimeAsyncClient client = mock(BedrockRuntimeAsyncClient.class);
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
+                .modelId("test-model")
+                .client(client)
+                .mediaFetcher(mediaFetcher)
+                .build();
+
+        model.chat(ChatRequest.builder()
+                        .messages(UserMessage.from(ImageContent.from(IMAGE_URL)))
+                        .build())
+                .subscribe(new Flow.Subscriber<>() {
+
+                    @Override
+                    public void onSubscribe(Flow.Subscription subscription) {
+                        subscription.cancel();
+                    }
+
+                    @Override
+                    public void onNext(ChatModelStreamingEvent event) {}
+
+                    @Override
+                    public void onError(Throwable error) {}
+
+                    @Override
+                    public void onComplete() {}
+                });
+
+        assertThat(mediaFetcher.fetchedAsync).isEmpty();
+        assertThat(mediaFetcher.fetched).isEmpty();
+        verify(client, never())
+                .converseStream(any(ConverseStreamRequest.class), any(ConverseStreamResponseHandler.class));
+    }
+
+    @ParameterizedTest
+    @EnumSource(BedrockGuardContentPlacement.class)
+    @NullSource
+    void should_prefetch_exactly_the_media_urls_that_the_mapping_downloads(
+            BedrockGuardContentPlacement guardContentPlacement) {
+        String imageBase64 = Base64.getEncoder().encodeToString(IMAGE_BYTES);
+        String pdfBase64 = Base64.getEncoder().encodeToString(PDF_BYTES);
+        List<ChatMessage> messages = List.of(
+                UserMessage.from(
+                        TextContent.from("describe"),
+                        ImageContent.from(IMAGE_URL),
+                        ImageContent.from(URI.create("https://example.com/photo?id=1")),
+                        ImageContent.from(imageBase64, "image/png"),
+                        ImageContent.from(URI.create("data:image/png;base64," + imageBase64)),
+                        ImageContent.from(URI.create("gs://bucket/cat.png")),
+                        ImageContent.from(URI.create("file:///home/me/cat.png")),
+                        ImageContent.from("cat.png")),
+                AiMessage.from("ok"),
+                UserMessage.from(
+                        TextContent.from("and these"),
+                        PdfFileContent.from(PDF_URL),
+                        PdfFileContent.from(pdfBase64, "application/pdf"),
+                        PdfFileContent.from(URI.create("file:///home/me/report.pdf")),
+                        ImageContent.from(IMAGE_URL)),
+                toolCall(),
+                ToolExecutionResultMessage.builder()
+                        .id("call-1")
+                        .toolName("chart")
+                        .contents(
+                                TextContent.from("the chart"),
+                                ImageContent.from(TOOL_IMAGE_URL),
+                                ImageContent.from(imageBase64, "image/png"))
+                        .build());
+        List<URI> fetched = new CopyOnWriteArrayList<>();
+        List<URI> fetchedAsync = new CopyOnWriteArrayList<>();
+        BedrockChatModel model = BedrockChatModel.builder()
+                .modelId("test-model")
+                .client(mock(BedrockRuntimeClient.class))
+                .mediaFetcher(new MediaFetcher() {
+
+                    @Override
+                    public FetchedMedia fetch(MediaFetchRequest request) {
+                        fetched.add(request.url());
+                        return FetchedMedia.from(IMAGE_BYTES, "image/png");
+                    }
+
+                    @Override
+                    public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
+                        fetchedAsync.add(request.url());
+                        return CompletableFuture.completedFuture(FetchedMedia.from(IMAGE_BYTES, "image/png"));
+                    }
+                })
+                .build();
+
+        model.extractRegularMessages(messages, null, null, guardContentPlacement);
+        assertThat(MediaPrefetcher.prefetch(model.mediaFetcher, AbstractBedrockChatModel.mediaUrls(messages)))
+                .succeedsWithin(10, SECONDS);
+
+        assertThat(Set.copyOf(fetchedAsync)).hasSize(9).isEqualTo(Set.copyOf(fetched));
+    }
+
+    // names of documents without a URL
+
+    private static String expectedDocumentName(byte[] content) throws Exception {
+        return "document-"
+                + HexFormat.of()
+                        .formatHex(MessageDigest.getInstance("SHA-256").digest(content))
+                        .substring(0, 12);
+    }
+
+    private static List<String> documentNames(List<Message> messages) {
+        return messages.stream()
+                .flatMap(message -> message.content().stream())
+                .filter(block -> block.document() != null)
+                .map(block -> block.document().name())
+                .toList();
+    }
+
+    @Test
+    void should_name_a_document_without_a_url_after_its_content_in_every_request(@TempDir Path directory)
+            throws Exception {
+        Path report = Files.write(directory.resolve("report.pdf"), PDF_BYTES);
+        String pdfBase64 = Base64.getEncoder().encodeToString(PDF_BYTES);
+        BedrockRuntimeClient client = mock(BedrockRuntimeClient.class);
+        when(client.converse(any(ConverseRequest.class))).thenReturn(converseResponse());
+        ChatModel model =
+                BedrockChatModel.builder().modelId("test-model").client(client).build();
+
+        model.chat(UserMessage.from(TextContent.from("summarize"), PdfFileContent.from(report)));
+        model.chat(UserMessage.from(TextContent.from("summarize"), PdfFileContent.from(pdfBase64, "application/pdf")));
+
+        ArgumentCaptor<ConverseRequest> requests = ArgumentCaptor.forClass(ConverseRequest.class);
+        verify(client, times(2)).converse(requests.capture());
+        String expected = expectedDocumentName(PDF_BYTES);
+        assertThat(documentNames(requests.getAllValues().get(0).messages())).containsExactly(expected);
+        assertThat(documentNames(requests.getAllValues().get(1).messages())).containsExactly(expected);
+    }
+
+    @Test
+    void should_give_identical_documents_without_a_url_distinct_names_in_one_request() throws Exception {
+        String pdfBase64 = Base64.getEncoder().encodeToString(PDF_BYTES);
+        String otherBase64 = Base64.getEncoder().encodeToString(IMAGE_BYTES);
+        BedrockRuntimeClient client = mock(BedrockRuntimeClient.class);
+        when(client.converse(any(ConverseRequest.class))).thenReturn(converseResponse());
+        ChatModel model =
+                BedrockChatModel.builder().modelId("test-model").client(client).build();
+
+        model.chat(ChatRequest.builder()
+                .messages(
+                        UserMessage.from(
+                                PdfFileContent.from(pdfBase64, "application/pdf"),
+                                PdfFileContent.from(otherBase64, "application/pdf"),
+                                PdfFileContent.from(pdfBase64, "application/pdf")),
+                        AiMessage.from("ok"),
+                        UserMessage.from(PdfFileContent.from(pdfBase64, "application/pdf")))
+                .build());
+
+        String expected = expectedDocumentName(PDF_BYTES);
+        assertThat(documentNames(capturedRequest(client).messages()))
+                .containsExactly(expected, expectedDocumentName(IMAGE_BYTES), expected + "-2", expected + "-3");
+    }
+
+    @Test
+    void streaming_should_name_a_document_without_a_url_after_its_content() throws Exception {
+        AtomicReference<ConverseStreamRequest> streamRequest = new AtomicReference<>();
+        StreamingChatModel model = BedrockStreamingChatModel.builder()
+                .modelId("test-model")
+                .client(streamingClient(streamRequest))
+                .build();
+        String pdfBase64 = Base64.getEncoder().encodeToString(PDF_BYTES);
+
+        CompletingHandler handler = new CompletingHandler();
+        model.chat(
+                ChatRequest.builder()
+                        .messages(UserMessage.from(
+                                PdfFileContent.from(pdfBase64, "application/pdf"),
+                                PdfFileContent.from(pdfBase64, "application/pdf")))
+                        .build(),
+                handler);
+
+        assertThat(handler.response).succeedsWithin(10, SECONDS);
+        String expected = expectedDocumentName(PDF_BYTES);
+        assertThat(documentNames(streamRequest.get().messages())).containsExactly(expected, expected + "-2");
+    }
+
     private static List<ChatMessage> messagesWithMedia() {
         return List.of(
                 UserMessage.from(
@@ -458,6 +785,25 @@ class BedrockMediaFetcherTest {
     }
 
     /**
+     * Returns the given download from {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, and fails the test if
+     * {@link MediaFetcher#fetch(MediaFetchRequest)} is called.
+     */
+    private static MediaFetcher pendingMediaFetcher(CompletableFuture<FetchedMedia> download) {
+        return new MediaFetcher() {
+
+            @Override
+            public FetchedMedia fetch(MediaFetchRequest request) {
+                throw new AssertionError("fetch() must not be called");
+            }
+
+            @Override
+            public CompletableFuture<FetchedMedia> fetchAsync(MediaFetchRequest request) {
+                return download;
+            }
+        };
+    }
+
+    /**
      * Returns the given media for each URL and records whether it was asked with {@link #fetch(MediaFetchRequest)} or
      * {@link #fetchAsync(MediaFetchRequest)}.
      */
@@ -505,9 +851,11 @@ class BedrockMediaFetcherTest {
     private static class CompletingSubscriber implements Flow.Subscriber<ChatModelStreamingEvent> {
 
         final CompletableFuture<Void> completion = new CompletableFuture<>();
+        final AtomicReference<Flow.Subscription> subscription = new AtomicReference<>();
 
         @Override
         public void onSubscribe(Flow.Subscription subscription) {
+            this.subscription.set(subscription);
             subscription.request(Long.MAX_VALUE);
         }
 

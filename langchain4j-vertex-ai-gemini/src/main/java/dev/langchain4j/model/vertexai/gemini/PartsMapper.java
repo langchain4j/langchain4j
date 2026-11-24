@@ -30,7 +30,6 @@ import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.internal.MediaPrefetcher;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -38,7 +37,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import org.jspecify.annotations.Nullable;
 
 class PartsMapper {
@@ -157,43 +155,38 @@ class PartsMapper {
 
     static Part map(ImageContent content, MediaFetcher mediaFetcher) {
         Image image = content.image();
-        return getPart(image.url(), image.mimeType(), image.base64Data(), mediaFetcher);
+        return getPart(image.url(), image.mimeType(), image.base64Data(), MediaKind.IMAGE, mediaFetcher);
     }
 
     static Part map(AudioContent content, MediaFetcher mediaFetcher) {
         Audio audio = content.audio();
-        return getPart(audio.url(), audio.mimeType(), audio.base64Data(), mediaFetcher);
+        return getPart(audio.url(), audio.mimeType(), audio.base64Data(), MediaKind.AUDIO, mediaFetcher);
     }
 
     static Part map(VideoContent content, MediaFetcher mediaFetcher) {
         Video video = content.video();
-        return getPart(video.url(), video.mimeType(), video.base64Data(), mediaFetcher);
+        return getPart(video.url(), video.mimeType(), video.base64Data(), MediaKind.VIDEO, mediaFetcher);
     }
 
     static Part map(PdfFileContent content, MediaFetcher mediaFetcher) {
         PdfFile pdfFile = content.pdfFile();
-        return getPart(pdfFile.url(), pdfFile.mimeType(), pdfFile.base64Data(), mediaFetcher);
+        return getPart(pdfFile.url(), pdfFile.mimeType(), pdfFile.base64Data(), MediaKind.PDF, mediaFetcher);
     }
 
     private static Part getPart(
-            @Nullable URI url, @Nullable String mimeType, String base64data, MediaFetcher mediaFetcher) {
+            @Nullable URI url,
+            @Nullable String mimeType,
+            String base64data,
+            MediaKind mediaKind,
+            MediaFetcher mediaFetcher) {
         if (url != null) {
             if (isPassedOn(url)) {
                 return fromMimeTypeAndData(getOrDefault(mimeType, () -> detectMimeType(url)), url);
             }
             FetchedMedia media = fetch(mediaFetcher, url);
-            return fromMimeTypeAndData(mimeType(mimeType, url, media), media.bytes());
+            return fromMimeTypeAndData(mimeType(mimeType, url, media, mediaKind), media.bytes());
         }
         return fromMimeTypeAndData(mimeType, Base64.getDecoder().decode(base64data));
-    }
-
-    /**
-     * Downloads, without blocking, the media that {@link #map(ChatMessage, MediaFetcher)} downloads for the given
-     * messages, and completes with a {@link MediaFetcher} that returns them, to be passed to
-     * {@link #map(ChatMessage, MediaFetcher)}.
-     */
-    static CompletableFuture<MediaFetcher> prefetch(MediaFetcher mediaFetcher, List<ChatMessage> messages) {
-        return MediaPrefetcher.prefetch(mediaFetcher, mediaUrls(messages));
     }
 
     private static FetchedMedia fetch(MediaFetcher mediaFetcher, URI url) {
@@ -236,7 +229,12 @@ class PartsMapper {
         return "gs".equals(url.getScheme());
     }
 
-    private static String mimeType(@Nullable String mimeType, URI url, FetchedMedia media) {
+    /**
+     * Returns the MIME type of downloaded media: the given one, otherwise the one of the extension of the URL,
+     * otherwise the one the server reported, but only if it fits the kind of the content (for example, a web page
+     * given as a video is not sent as a video).
+     */
+    private static String mimeType(@Nullable String mimeType, URI url, FetchedMedia media, MediaKind mediaKind) {
         if (mimeType != null) {
             return mimeType;
         }
@@ -244,16 +242,17 @@ class PartsMapper {
         if (mimeTypeFromExtension != null) {
             return mimeTypeFromExtension;
         }
-        if (media.mimeType() != null) {
-            return media.mimeType();
+        String reportedMimeType = media.mimeType();
+        if (reportedMimeType != null && mediaKind.matches(reportedMimeType)) {
+            return reportedMimeType;
         }
-        throw unknownMimeType(url);
+        throw unknownMimeType(url, reportedMimeType);
     }
 
     static String detectMimeType(URI url) {
         String mimeType = mimeTypeFromExtension(url);
         if (mimeType == null) {
-            throw unknownMimeType(url);
+            throw unknownMimeType(url, null);
         }
         return mimeType;
     }
@@ -270,8 +269,41 @@ class PartsMapper {
         return null;
     }
 
-    private static IllegalArgumentException unknownMimeType(URI url) {
-        return illegalArgument("Unable to detect the MIME type of '%s'. Please provide it explicitly.", url);
+    private static IllegalArgumentException unknownMimeType(URI url, @Nullable String reportedMimeType) {
+        return illegalArgument(
+                "Unable to detect the MIME type of '%s'%s. Please provide it explicitly.",
+                withoutPathAndQuery(url),
+                reportedMimeType == null ? "" : " (the server answered with " + reportedMimeType + ")");
+    }
+
+    /**
+     * Shows the scheme, the host and the port of the URL only, because the path and the query can contain
+     * credentials, for example in a presigned URL.
+     */
+    private static String withoutPathAndQuery(URI url) {
+        String scheme = url.getScheme() == null ? "" : url.getScheme() + ":";
+        if (url.getHost() == null) {
+            return scheme + "...";
+        }
+        String port = url.getPort() == -1 ? "" : ":" + url.getPort();
+        return scheme + "//" + url.getHost() + port + "/...";
+    }
+
+    private enum MediaKind {
+        IMAGE,
+        AUDIO,
+        VIDEO,
+        PDF;
+
+        boolean matches(String mimeType) {
+            String lowerCaseMimeType = mimeType.toLowerCase(Locale.ROOT);
+            return switch (this) {
+                case IMAGE -> lowerCaseMimeType.startsWith("image/");
+                case AUDIO -> lowerCaseMimeType.startsWith("audio/");
+                case VIDEO -> lowerCaseMimeType.startsWith("video/");
+                case PDF -> lowerCaseMimeType.equals("application/pdf");
+            };
+        }
     }
 
     private static Struct parseFunctionResponseToStruct(String functionResponseText) {

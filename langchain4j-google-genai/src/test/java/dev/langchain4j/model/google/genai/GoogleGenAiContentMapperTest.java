@@ -52,8 +52,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class GoogleGenAiContentMapperTest {
 
@@ -673,6 +678,115 @@ class GoogleGenAiContentMapperTest {
         assertThat(downloaded).containsExactly(URI.create("https://example.com/screenshot"));
         assertThat(contents.get(0).parts().orElseThrow().get(1).inlineData().orElseThrow().mimeType())
                 .hasValue("image/png");
+    }
+
+    static Stream<Arguments> contentsWithMimeTypeOfDownloadThatDoesNotFit() {
+        return Stream.of(
+                Arguments.of(VideoContent.from("https://www.youtube.com/watch?v=abc123"), "text/html"),
+                Arguments.of(VideoContent.from("https://www.youtube.com/watch?v=abc123"), "application/octet-stream"),
+                Arguments.of(ImageContent.from("https://www.youtube.com/watch?v=abc123"), "text/html"),
+                Arguments.of(ImageContent.from("https://www.youtube.com/watch?v=abc123"), "application/octet-stream"),
+                Arguments.of(AudioContent.from("https://www.youtube.com/watch?v=abc123"), "video/mp4"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("contentsWithMimeTypeOfDownloadThatDoesNotFit")
+    void should_not_use_mime_type_of_download_that_does_not_fit_the_content(
+            dev.langchain4j.data.message.Content content, String reportedMimeType) {
+        MediaFetcher mediaFetcher = request -> FetchedMedia.from("<html></html>".getBytes(), reportedMimeType);
+        UserMessage message = UserMessage.from(content);
+
+        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message, mediaFetcher))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unable to detect the MIME type of 'https://www.youtube.com/...'")
+                .hasMessageContaining("the server answered with " + reportedMimeType)
+                .hasMessageNotContaining("watch")
+                .hasMessageNotContaining("abc123");
+    }
+
+    @Test
+    void should_use_mime_type_of_download_that_fits_the_content() {
+        MediaFetcher mediaFetcher = request -> FetchedMedia.from(new byte[] {1, 2, 3}, switch (request.url().getPath()) {
+            case "/audio" -> "audio/ogg";
+            case "/video" -> "video/webm";
+            case "/document" -> "application/pdf";
+            default -> "image/avif";
+        });
+        UserMessage message = UserMessage.from(
+                ImageContent.from("https://example.com/image"),
+                AudioContent.from("https://example.com/audio"),
+                VideoContent.from("https://example.com/video"),
+                PdfFileContent.from("https://example.com/document"));
+
+        Content result = GoogleGenAiContentMapper.toContent(message, mediaFetcher);
+
+        assertThat(result.parts().get())
+                .extracting(part -> part.inlineData().orElseThrow().mimeType().orElseThrow())
+                .containsExactly("image/avif", "audio/ogg", "video/webm", "application/pdf");
+    }
+
+    @Test
+    void should_show_only_scheme_and_host_of_cloud_storage_url_when_mime_type_is_unknown() {
+        UserMessage message = UserMessage.from(ImageContent.from("gs://bucket/private/object"));
+
+        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message, NO_DOWNLOADS))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Unable to detect the MIME type of 'gs://bucket/...'. Please provide it explicitly.");
+    }
+
+    @Test
+    void should_download_exactly_the_media_urls_that_are_prefetched() {
+        String base64 = Base64.getEncoder().encodeToString("bytes".getBytes(StandardCharsets.UTF_8));
+        List<ChatMessage> messages = List.of(
+                SystemMessage.from("system"),
+                UserMessage.from(
+                        TextContent.from("describe"),
+                        ImageContent.from("https://example.com/cat.png"),
+                        ImageContent.from("https://example.com/images?id=42"),
+                        ImageContent.from(base64, "image/png"),
+                        ImageContent.from("data:image/png;base64," + base64),
+                        ImageContent.from("gs://bucket/image.png"),
+                        ImageContent.from("file:///home/me/cat.png"),
+                        ImageContent.from("cat.png"),
+                        AudioContent.from("https://example.com/audio.mp3"),
+                        AudioContent.from(base64, "audio/mp3"),
+                        AudioContent.from(Audio.builder()
+                                .binaryData("bytes".getBytes(StandardCharsets.UTF_8))
+                                .mimeType("audio/wav")
+                                .build()),
+                        VideoContent.from("https://example.com/video.mp4"),
+                        VideoContent.from("gs://bucket/video.mp4"),
+                        VideoContent.from(base64, "video/mp4"),
+                        PdfFileContent.from("https://example.com/document.pdf"),
+                        PdfFileContent.from("file:///home/me/report.pdf"),
+                        PdfFileContent.from(base64, "application/pdf")),
+                AiMessage.from("answer"),
+                UserMessage.from(
+                        ImageContent.from("https://example.com/cat.png"), ImageContent.from("https://example.com/dog.jpg")),
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("call-1")
+                        .name("take_screenshot")
+                        .arguments("{}")
+                        .build()),
+                ToolExecutionResultMessage.builder()
+                        .id("call-1")
+                        .toolName("take_screenshot")
+                        .contents(List.of(
+                                TextContent.from("done"),
+                                ImageContent.from("https://example.com/screenshot"),
+                                ImageContent.from(base64, "image/png")))
+                        .build());
+        List<URI> downloaded = new ArrayList<>();
+        MediaFetcher mediaFetcher = request -> {
+            downloaded.add(request.url());
+            return FetchedMedia.from("bytes".getBytes(StandardCharsets.UTF_8), "image/png");
+        };
+
+        GoogleGenAiContentMapper.toContents(messages, false, mediaFetcher);
+
+        assertThat(Set.copyOf(GoogleGenAiContentMapper.mediaUrls(messages)))
+                .hasSize(11)
+                .isEqualTo(Set.copyOf(downloaded));
     }
 
     @Test

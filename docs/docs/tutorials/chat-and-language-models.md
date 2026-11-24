@@ -203,8 +203,9 @@ UserMessage userMessage = UserMessage.from(
 
 #### Image Content
 Depending on the LLM provider, `ImageContent` can be created either from the URL of the **remote** image (see an example above),
-or from the Base64-encoded binary data:
+or from the Base64-encoded binary data, for example of an image that you already have as a `byte[]`:
 ```java
+String base64Data = Base64.getEncoder().encodeToString(imageBytes);
 ImageContent imageContent = ImageContent.from(base64Data, "image/jpeg");
 ```
 
@@ -215,10 +216,7 @@ ImageContent imageContent = ImageContent.from(Path.of("/home/me/cat.jpg"), "imag
 UserMessage userMessage = UserMessage.from(imageContent);
 ```
 
-Some LLM providers accept images only as data, not as a URL. For them, LangChain4j downloads an image given by URL
-before sending the request, with a `MediaFetcher`. By default, only `http` and `https` URLs of public hosts are
-downloaded, with a timeout and a size limit, and local files are never read from a URL.
-The integrations of these providers have a `mediaFetcher(...)` option to change this.
+Some integrations download an image given by URL themselves, see [Media given by URL](#media-given-by-url).
 
 One can also specify `DetailLevel` enum (with `LOW`/`HIGH`/`AUTO` options) to control how the model processes the image.
 See more details [here](https://platform.openai.com/docs/guides/vision#low-or-high-fidelity-image-understanding).
@@ -231,6 +229,86 @@ See more details [here](https://platform.openai.com/docs/guides/vision#low-or-hi
 
 #### PDF File Content
 `PdfFileContent` is similar to the `ImageContent`, but represents binary contents of a PDF file.
+
+#### Media given by URL
+Most integrations send an image, audio, video or PDF file given by URL to the LLM provider as the URL itself, and the
+provider downloads it. Some integrations download the media themselves, in your application, and send its content:
+
+| Integration | What it downloads |
+|---|---|
+| [Amazon Bedrock](/integrations/language-models/amazon-bedrock) | Images and PDF files |
+| [Ollama](/integrations/language-models/ollama) chat models and the [Ollama decision model](/integrations/decision-models/ollama) | Images |
+| [Google AI Gemini](/integrations/language-models/google-ai-gemini) | Images given by an `http` or `https` URL |
+| [Google GenAI](/integrations/language-models/google-genai) | Images, audio, video and PDF files, except Cloud Storage (`gs://`) URLs |
+| [Google Vertex AI Gemini](/integrations/language-models/google-vertex-ai-gemini) | Images, audio, video and PDF files, except Cloud Storage (`gs://`) URLs |
+| [Cloudflare Workers AI](/integrations/image-models/workers-ai) image editing | Images |
+
+They download with a `MediaFetcher`, which you can set with `mediaFetcher(...)` on their builders.
+If you do not set one, they use a `DefaultMediaFetcher` with the default settings:
+
+- It downloads only `http` and `https` URLs. Local files are never read from a URL: `file:` URLs and plain paths
+  are rejected. To send a local file, create the content from its path, with `ImageContent.from(Path, String)`,
+  `AudioContent.from(Path, String)`, `VideoContent.from(Path, String)` or `PdfFileContent.from(Path)`.
+- It downloads only from hosts whose addresses are all public. Hosts of your own network, such as `localhost`,
+  private addresses or a container name like `minio`, are rejected unless you list them in `allowNonPublicHosts(...)`.
+- It follows redirects, and checks every URL that they lead to in the same way.
+
+`DefaultMediaFetcher.builder()` has these options:
+
+| Option | Default | Description |
+|---|---|---|
+| `allowedHosts(...)` | every host | The only hosts to download from, for example `"images.example.com"` or `"*.cdn.example.com"` |
+| `allowNonPublicHosts(...)` | none | The hosts that may resolve to non-public addresses, for example `"minio"` |
+| `connectTimeout(...)` | 10 seconds | The time that connecting to a host can take |
+| `timeout(...)` | 60 seconds | The time that the whole download can take, including redirects |
+| `maxSizeInBytes(...)` | 50 MiB | The maximum size of the content of each URL: a request with several media URLs downloads each of them, each up to this size |
+| `maxRedirects(...)` | 5 | How many redirects are followed |
+| `httpClientBuilder(...)` | a builder for HTTP/1.1 | The builder of the JDK `HttpClient`, for example to set a proxy or an `SSLContext` |
+
+For example, a fetcher that downloads only from your own CDN, up to 5 MiB:
+```java
+MediaFetcher mediaFetcher = DefaultMediaFetcher.builder()
+        .allowedHosts("images.example.com", "*.cdn.example.com")
+        .maxSizeInBytes(5 * 1024 * 1024)
+        .build();
+
+ChatModel model = OllamaChatModel.builder()
+        .baseUrl("http://localhost:11434")
+        .modelName("llava")
+        .mediaFetcher(mediaFetcher)
+        .build();
+```
+
+:::tip
+When media URLs can come from end users, from tools or from retrieved content, set `allowedHosts(...)` to the hosts
+you expect. The address check cannot tell an internal service that has a public address from any other public server.
+:::
+
+The JVM-wide proxy settings (such as the `https.proxyHost` system property) are not used for these downloads.
+If media can only be reached through a proxy, set it on the HTTP client builder, together with an `Authenticator`
+if the proxy needs credentials:
+```java
+MediaFetcher mediaFetcher = DefaultMediaFetcher.builder()
+        .httpClientBuilder(HttpClient.newBuilder()
+                .proxy(ProxySelector.of(new InetSocketAddress("proxy.example.com", 3128))))
+        .build();
+```
+With a proxy, host names that only the proxy can resolve are passed to the proxy unchecked.
+
+A media URL that is not allowed, media that is too large, and a URL that its host rejects fail with an
+`InvalidRequestException`: retrying the same URL does not help. A temporary failure that may succeed when retried
+fails with a `RetriableException`: a `TimeoutException` when the download takes too long, a `RateLimitException` when
+the host limits how many requests it accepts, and an `InternalServerException` for an error of the host.
+
+To download media in another way, for example from a private storage with its own client, implement `MediaFetcher`.
+Asynchronous and streaming calls, such as `chatAsync(...)` and `StreamingChatModel`, download with
+`fetchAsync(...)` so that they do not block the calling thread. A custom `MediaFetcher` used for them must
+also implement `fetchAsync(...)`, otherwise they fail with an `AsyncNotSupportedException`.
+The Javadoc of `MediaFetcher` has an example.
+
+Each model, token count estimator and cache downloads the media of the messages it gets, so set the same fetcher on
+every one of them that sees media URLs, for example on both `GoogleGenAiChatModel` and
+`GoogleGenAiTokenCountEstimator`.
 
 ### Non-blocking calls
 

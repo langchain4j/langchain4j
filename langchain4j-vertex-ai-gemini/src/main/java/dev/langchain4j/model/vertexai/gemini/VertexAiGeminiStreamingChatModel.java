@@ -3,6 +3,7 @@ package dev.langchain4j.model.vertexai.gemini;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
+import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
@@ -58,6 +59,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.SynchronousQueue;
@@ -357,11 +361,33 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this(generativeModel, generationConfig, null, listeners);
     }
 
+    VertexAiGeminiStreamingChatModel(
+            GenerativeModel generativeModel, GenerationConfig generationConfig, MediaFetcher mediaFetcher) {
+        this(generativeModel, generationConfig, null, Collections.emptyList(), mediaFetcher);
+    }
+
+    VertexAiGeminiStreamingChatModel(
+            GenerativeModel generativeModel,
+            GenerationConfig generationConfig,
+            Executor executor,
+            MediaFetcher mediaFetcher) {
+        this(generativeModel, generationConfig, executor, Collections.emptyList(), mediaFetcher);
+    }
+
     private VertexAiGeminiStreamingChatModel(
             GenerativeModel generativeModel,
             GenerationConfig generationConfig,
             Executor executor,
             List<ChatModelListener> listeners) {
+        this(generativeModel, generationConfig, executor, listeners, MediaPrefetcher.defaultMediaFetcher());
+    }
+
+    private VertexAiGeminiStreamingChatModel(
+            GenerativeModel generativeModel,
+            GenerationConfig generationConfig,
+            Executor executor,
+            List<ChatModelListener> listeners,
+            MediaFetcher mediaFetcher) {
         this.generativeModel = ensureNotNull(generativeModel, "generativeModel");
         this.generationConfig = ensureNotNull(generationConfig, "generationConfig");
         this.defaultRequestParameters =
@@ -381,7 +407,7 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         this.listeners = copy(listeners);
         this.executor = getOrDefault(executor, VertexAiGeminiStreamingChatModel::createDefaultExecutor);
         this.labels = Collections.emptyMap();
-        this.mediaFetcher = MediaPrefetcher.defaultMediaFetcher();
+        this.mediaFetcher = mediaFetcher;
     }
 
     private static ExecutorService createDefaultExecutor() {
@@ -402,20 +428,50 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
             ChatRequestValidationUtils.validate(parameters.responseFormat());
 
             List<ToolSpecification> toolSpecifications = parameters.toolSpecifications();
-            PartsMapper.prefetch(mediaFetcher, chatRequest.messages()).whenComplete((prefetched, error) -> {
-                if (error != null) {
-                    handler.onError(error);
-                    return;
-                }
-                try {
-                    generate(chatRequest.messages(), toolSpecifications, prefetched, handler);
-                } catch (Throwable e) {
-                    handler.onError(e);
-                }
-            });
+            CompletableFuture<MediaFetcher> prefetch =
+                    MediaPrefetcher.prefetch(mediaFetcher, PartsMapper.mediaUrls(chatRequest.messages()));
+            try {
+                // submitted on the calling thread, so that a context-propagating executor captures the caller's context
+                executor.execute(() -> {
+                    MediaFetcher prefetched = awaitPrefetch(prefetch, handler);
+                    if (prefetched == null) {
+                        return;
+                    }
+                    try {
+                        generate(chatRequest.messages(), toolSpecifications, prefetched, handler);
+                    } catch (Throwable e) {
+                        withLoggingExceptions(() -> handler.onError(e));
+                    }
+                });
+            } catch (Throwable e) {
+                prefetch.cancel(true);
+                withLoggingExceptions(() -> handler.onError(e));
+            }
         } catch (RuntimeException e) {
             handler.onError(e);
         }
+    }
+
+    /**
+     * Waits on the executor thread, which runs the blocking stream anyway, for the media that the request needs.
+     *
+     * @return the fetcher that returns the downloaded media, or {@code null} if the download failed, which was reported
+     *         to the handler.
+     */
+    private static @Nullable MediaFetcher awaitPrefetch(
+            CompletableFuture<MediaFetcher> prefetch, StreamingChatResponseHandler handler) {
+        try {
+            return prefetch.get();
+        } catch (InterruptedException e) {
+            prefetch.cancel(true);
+            Thread.currentThread().interrupt();
+            withLoggingExceptions(() -> handler.onError(e));
+        } catch (ExecutionException e) {
+            withLoggingExceptions(() -> handler.onError(e.getCause()));
+        } catch (CancellationException e) {
+            withLoggingExceptions(() -> handler.onError(e));
+        }
+        return null;
     }
 
     private void generate(
@@ -460,67 +516,65 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
         AtomicInteger toolIndex = new AtomicInteger(0);
         StreamingHandle streamingHandle = new VertexAiGeminiStreamingHandle();
 
-        executor.execute(() -> {
-            try {
-                Iterable<GenerateContentResponse> responseStream;
-                if (labels.isEmpty()) {
-                    responseStream = finalModel.generateContentStream(instructionAndContent.contents);
-                } else {
-                    GenerateContentRequest request = VertexAiGeminiChatModel.buildGenerateContentRequest(
-                            finalModel, vertexAI, instructionAndContent.contents, labels);
-                    responseStream = vertexAI.getPredictionServiceClient()
-                            .streamGenerateContentCallable()
-                            .call(request);
-                }
-                responseStream.forEach(partialResponse -> {
-                    if (streamingHandle.isCancelled()) {
-                        return;
-                    }
-
-                    if (partialResponse.getCandidatesCount() > 0) {
-                        StreamingChatResponseBuilder.TextAndFunctions textAndFunctions =
-                                responseBuilder.append(partialResponse);
-
-                        String text = textAndFunctions.text();
-                        if (isNotNullOrEmpty(text)) {
-                            onPartialResponse(handler, text, streamingHandle);
-                        }
-
-                        for (FunctionCall functionCall : textAndFunctions.functionCalls()) {
-                            final int index = toolIndex.get();
-                            ToolExecutionRequest toolExecutionRequest = fromFunctionCall(index, functionCall);
-                            CompleteToolCall completeToolCall = new CompleteToolCall(index, toolExecutionRequest);
-                            onCompleteToolCall(handler, completeToolCall);
-                            toolIndex.incrementAndGet();
-                        }
-                    }
-                });
-
+        try {
+            Iterable<GenerateContentResponse> responseStream;
+            if (labels.isEmpty()) {
+                responseStream = finalModel.generateContentStream(instructionAndContent.contents);
+            } else {
+                GenerateContentRequest request = VertexAiGeminiChatModel.buildGenerateContentRequest(
+                        finalModel, vertexAI, instructionAndContent.contents, labels);
+                responseStream = vertexAI.getPredictionServiceClient()
+                        .streamGenerateContentCallable()
+                        .call(request);
+            }
+            responseStream.forEach(partialResponse -> {
                 if (streamingHandle.isCancelled()) {
                     return;
                 }
 
-                Response<AiMessage> fullResponse = responseBuilder.build();
+                if (partialResponse.getCandidatesCount() > 0) {
+                    StreamingChatResponseBuilder.TextAndFunctions textAndFunctions =
+                            responseBuilder.append(partialResponse);
 
-                ChatResponse chatResponse = ChatResponse.builder()
-                        .aiMessage(fullResponse.content())
-                        .metadata(ChatResponseMetadata.builder()
-                                .modelName(modelName)
-                                .tokenUsage(fullResponse.tokenUsage())
-                                .finishReason(fullResponse.finishReason())
-                                .build())
-                        .build();
+                    String text = textAndFunctions.text();
+                    if (isNotNullOrEmpty(text)) {
+                        onPartialResponse(handler, text, streamingHandle);
+                    }
 
-                onCompleteResponse(handler, chatResponse);
-
-                if (this.logResponses && logger.isDebugEnabled()) {
-                    logger.debug("GEMINI ({}) response: {}", modelName, fullResponse);
+                    for (FunctionCall functionCall : textAndFunctions.functionCalls()) {
+                        final int index = toolIndex.get();
+                        ToolExecutionRequest toolExecutionRequest = fromFunctionCall(index, functionCall);
+                        CompleteToolCall completeToolCall = new CompleteToolCall(index, toolExecutionRequest);
+                        onCompleteToolCall(handler, completeToolCall);
+                        toolIndex.incrementAndGet();
+                    }
                 }
-            } catch (Exception exception) {
-                RuntimeException mappedException = VertexAiGeminiExceptionMapper.INSTANCE.mapException(exception);
-                handler.onError(mappedException);
+            });
+
+            if (streamingHandle.isCancelled()) {
+                return;
             }
-        });
+
+            Response<AiMessage> fullResponse = responseBuilder.build();
+
+            ChatResponse chatResponse = ChatResponse.builder()
+                    .aiMessage(fullResponse.content())
+                    .metadata(ChatResponseMetadata.builder()
+                            .modelName(modelName)
+                            .tokenUsage(fullResponse.tokenUsage())
+                            .finishReason(fullResponse.finishReason())
+                            .build())
+                    .build();
+
+            onCompleteResponse(handler, chatResponse);
+
+            if (this.logResponses && logger.isDebugEnabled()) {
+                logger.debug("GEMINI ({}) response: {}", modelName, fullResponse);
+            }
+        } catch (Exception exception) {
+            RuntimeException mappedException = VertexAiGeminiExceptionMapper.INSTANCE.mapException(exception);
+            handler.onError(mappedException);
+        }
     }
 
     @VisibleForTesting
@@ -748,22 +802,23 @@ public class VertexAiGeminiStreamingChatModel implements StreamingChatModel, Clo
          * given by a URL is downloaded before the request is sent. Cloud Storage URLs ({@code gs://...}) are not
          * downloaded: they are passed on to Gemini.
          * <p>
-         * When not set, a {@link DefaultMediaFetcher} with the default settings is used: it downloads only
-         * {@code http} and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local
-         * files. To send a local file, read it yourself, for example with {@link ImageContent#from(Path, String)}.
-         * To download media from your own servers, or to change the limits, configure a {@link DefaultMediaFetcher}
-         * and set it here:
+         * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
+         * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To send
+         * a local file, read it when you create the content, for example with {@link ImageContent#from(Path, String)}.
+         * To download from your own servers, or to change the limits, set a {@link DefaultMediaFetcher} with other
+         * settings, or your own {@link MediaFetcher}.
+         * For example, a fetcher that also downloads from one of your own servers:
          * <pre>{@code
          * MediaFetcher mediaFetcher = DefaultMediaFetcher.builder()
          *         .allowNonPublicHosts("media.internal.example.com")
          *         .build();
          * }</pre>
          * This model downloads with {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, so that it does not block the
-         * calling thread. A custom fetcher that does not implement it fails, through
-         * {@link StreamingChatResponseHandler#onError(Throwable)}.
+         * calling thread. A fetcher used there must implement that method.
          *
          * @param mediaFetcher the fetcher that downloads media, or {@code null} to use the default one.
          * @return {@code this}.
+         * @since 1.25.0
          */
         @Experimental
         public VertexAiGeminiStreamingChatModelBuilder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {

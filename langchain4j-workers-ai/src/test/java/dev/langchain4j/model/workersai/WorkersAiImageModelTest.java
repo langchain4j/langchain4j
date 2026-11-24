@@ -13,6 +13,7 @@ import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.internal.Json;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -37,12 +38,94 @@ class WorkersAiImageModelTest {
             SuccessfulHttpResponse.builder().statusCode(200).body(new byte[] {1}).build());
 
     @Test
-    void should_send_the_pixels_of_base64_images() throws Exception {
-        WorkersAiImageModel model = model(null);
+    void should_send_the_pixels_of_the_image_and_the_mask_given_as_base64_data() throws Exception {
+        WorkersAiImageModel model = model(request -> {
+            throw new AssertionError("must not download");
+        });
 
         model.edit(base64Image(png(RED, RED)), base64Image(png(BLUE, BLUE)), "a cat");
 
         assertThat(sentPixels()).containsExactlyInAnyOrder(List.of(RED, RED), List.of(BLUE, BLUE));
+    }
+
+    @Test
+    void should_send_the_same_request_for_an_image_given_as_base64_data_and_by_url() throws Exception {
+        byte[] png = png(RED, BLUE);
+        model(null).edit(base64Image(png), "a cat");
+        model(request -> FetchedMedia.from(png, "image/png"))
+                .edit(Image.builder().url("https://example.com/image.png").build(), "a cat");
+
+        assertThat(httpClient.requests()).hasSize(2);
+        assertThat(httpClient.requests().get(0).body())
+                .contains("[" + RED + "," + BLUE + "]")
+                .isEqualTo(httpClient.requests().get(1).body());
+    }
+
+    @Test
+    void should_not_decode_base64_images_of_other_formats() throws Exception {
+        WorkersAiImageModel model = model(null);
+
+        assertThatThrownBy(() -> model.edit(base64Image(image("tiff")), "a cat"))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessage("The image format is not supported: only PNG, JPEG, GIF, BMP and WebP images can be edited");
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void should_reject_a_base64_image_with_too_many_pixels_before_decoding_it() throws Exception {
+        WorkersAiImageModel model = model(null);
+
+        assertThatThrownBy(() -> model.edit(base64Image(pngHeaderOnly(20_000, 20_000)), "a cat"))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessageContaining("20000 x 20000");
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void should_reject_an_image_with_neither_base64_data_nor_a_url() {
+        WorkersAiImageModel model = model(null);
+
+        assertThatThrownBy(() -> model.edit(Image.builder().build(), "a cat"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The image has neither base64 data nor a URL");
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void should_send_the_pixels_of_the_image_and_the_mask_given_by_url() throws Exception {
+        URI imageUrl = URI.create("https://example.com/image.png");
+        URI maskUrl = URI.create("https://example.com/mask.png");
+        Map<URI, byte[]> images = Map.of(imageUrl, png(RED, RED), maskUrl, png(BLUE, BLUE));
+        WorkersAiImageModel model = model(request -> FetchedMedia.from(images.get(request.url()), "image/png"));
+
+        model.edit(Image.builder().url(imageUrl).build(), Image.builder().url(maskUrl).build(), "a cat");
+
+        assertThat(sentPixels()).containsExactlyInAnyOrder(List.of(RED, RED), List.of(BLUE, BLUE));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"png", "jpeg", "gif", "bmp"})
+    void should_decode_images_of_the_supported_formats(String format) throws Exception {
+        byte[] image = image(format);
+        WorkersAiImageModel model = model(request -> FetchedMedia.from(image));
+
+        model.edit(Image.builder().url("https://example.com/image").build(), "a cat");
+
+        assertThat(sentPixels()).singleElement().asList().hasSize(4);
+    }
+
+    @Test
+    void should_not_decode_images_of_other_formats_even_if_an_image_reader_is_installed() throws Exception {
+        byte[] image = image("tiff");
+        assertThat(ImageIO.read(new ByteArrayInputStream(image)))
+                .as("an image reader for TIFF is installed")
+                .isNotNull();
+        WorkersAiImageModel model = model(request -> FetchedMedia.from(image));
+
+        assertThatThrownBy(() -> model.edit(Image.builder().url("https://example.com/image").build(), "a cat"))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessage("The image format is not supported: only PNG, JPEG, GIF, BMP and WebP images can be edited");
+        assertThat(httpClient.requests()).isEmpty();
     }
 
     @Test
@@ -88,6 +171,16 @@ class WorkersAiImageModelTest {
     }
 
     @Test
+    void should_reject_image_urls_of_non_public_hosts_by_default() {
+        WorkersAiImageModel model = model(null);
+
+        assertThatThrownBy(() -> model.edit(Image.builder().url("http://127.0.0.1/cat.png").build(), "a cat"))
+                .isInstanceOf(InvalidRequestException.class)
+                .hasMessageContaining("non-public address");
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
     void getPixels_should_not_read_local_files_by_default() {
         WorkersAiImageModel model = model(null);
 
@@ -98,30 +191,31 @@ class WorkersAiImageModelTest {
 
     @Test
     void should_reject_an_image_with_too_many_pixels_before_decoding_it() throws Exception {
-        WorkersAiImageModel model = model(null);
         byte[] png = pngHeaderOnly(20_000, 20_000);
+        WorkersAiImageModel model = model(request -> FetchedMedia.from(png, "image/png"));
 
-        assertThatThrownBy(() -> model.edit(base64Image(png), "a cat"))
+        assertThatThrownBy(() -> model.edit(Image.builder().url("https://example.com/huge.png").build(), "a cat"))
                 .isInstanceOf(InvalidRequestException.class)
-                .hasMessageContaining("20000 x 20000");
+                .hasMessage("The image has 20000 x 20000 pixels, more than LangChain4j decodes for Workers AI"
+                        + " (4194304 pixels, 2048 x 2048)");
         assertThat(httpClient.requests()).isEmpty();
     }
 
     @Test
     void should_accept_an_image_with_the_maximum_number_of_pixels() throws Exception {
-        WorkersAiImageModel model = model(null);
+        byte[] png = png(new int[2048 * 2048], 2048);
+        WorkersAiImageModel model = model(request -> FetchedMedia.from(png, "image/png"));
 
-        model.edit(base64Image(png(new int[2048 * 2048], 2048)), "a cat");
+        model.edit(Image.builder().url("https://example.com/large.png").build(), "a cat");
 
         assertThat(httpClient.requests()).hasSize(1);
     }
 
     @Test
     void should_reject_content_that_is_not_an_image() {
-        WorkersAiImageModel model = model(null);
-        Image notAnImage = base64Image("hello".getBytes(US_ASCII));
+        WorkersAiImageModel model = model(request -> FetchedMedia.from("hello".getBytes(US_ASCII), "text/plain"));
 
-        assertThatThrownBy(() -> model.edit(notAnImage, "a cat"))
+        assertThatThrownBy(() -> model.edit(Image.builder().url("https://example.com/hello.txt").build(), "a cat"))
                 .isInstanceOf(InvalidRequestException.class)
                 .hasMessageContaining("not supported");
         assertThat(httpClient.requests()).isEmpty();
@@ -154,6 +248,13 @@ class WorkersAiImageModelTest {
                 .base64Data(Base64.getEncoder().encodeToString(bytes))
                 .mimeType("image/png")
                 .build();
+    }
+
+    private static byte[] image(String format) throws IOException {
+        BufferedImage image = new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        assertThat(ImageIO.write(image, format, bytes)).as("an image writer for %s is installed", format).isTrue();
+        return bytes.toByteArray();
     }
 
     private static byte[] png(int... argbPixels) throws IOException {

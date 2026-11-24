@@ -7,7 +7,8 @@ import java.util.concurrent.Executor;
 /**
  * SPI for supplying the {@link Executor} that LangChain4j uses to offload blocking work and run its asynchronous
  * continuations — concurrent tool execution, blocking RAG / retrieval and embedding-store calls, moderation,
- * in-process embedding models, retry backoff scheduling, and similar.
+ * in-process embedding models, retry backoff scheduling, downloads of media given by URL
+ * ({@code DefaultMediaFetcher.fetchAsync}), and similar.
  *
  * <h2>Why implement this</h2>
  * LangChain4j hops threads at these offload points and does <b>not</b> propagate thread-local context
@@ -75,6 +76,12 @@ public interface ExecutorProvider {
      * Work that runs without being offloaded (guardrails, chat memory, listeners, streaming callbacks) is not
      * wrapped, and neither is work offloaded outside an AI Service invocation (retry backoff, threads that a model
      * integration starts on its own, parallel and asynchronous agents of {@code langchain4j-agentic}).
+     * <p>
+     * LangChain4j also calls this method when a model integration downloads media given by URL (see
+     * {@code MediaFetcher}) before it sends an asynchronous or streaming request, with or without an AI Service: on
+     * the thread that starts the request, once per request. The downloads complete on other threads, and the work
+     * that continues after them in the integration (mapping and sending the request) runs in the returned
+     * {@link CapturedContext}.
      * <p>
      * This applies to AI Services created with {@code AiServices}. A framework that builds its own AI Service
      * implementation decides itself how it propagates context.

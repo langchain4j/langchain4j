@@ -88,7 +88,7 @@ class Utils {
      * @param image             The Image object containing mime type and URI
      * @param fetchedMimeType   The MIME type of the downloaded image, or {@code null} if it is not known
      * @return The normalized ImageFormat
-     * @throws dev.langchain4j.exception.UnsupportedFeatureException if the format is not supported
+     * @throws UnsupportedFeatureException if the format is not supported
      * @throws IllegalArgumentException if the image is null
      */
     public static String extractAndValidateFormat(Image image, @Nullable String fetchedMimeType) {
@@ -117,8 +117,21 @@ class Utils {
         throw new UnsupportedFeatureException(String.format(
                 "Unsupported image format, should be one of png | jpeg | gif | webp. Mime type: %s, URI: %s%s",
                 image.mimeType(),
-                image.url(),
+                image.url() == null ? null : withoutPathAndQuery(image.url()),
                 fetchedMimeType == null ? "" : ", mime type of the downloaded image: " + fetchedMimeType));
+    }
+
+    /**
+     * Shows the scheme, the host and the port of the URL only, because the path and the query can contain
+     * credentials, for example in a presigned URL.
+     */
+    private static String withoutPathAndQuery(URI url) {
+        String scheme = url.getScheme() == null ? "" : url.getScheme() + ":";
+        if (url.getHost() == null) {
+            return scheme + "...";
+        }
+        String port = url.getPort() == -1 ? "" : ":" + url.getPort();
+        return scheme + "//" + url.getHost() + port + "/...";
     }
 
     private static @Nullable ImageFormat formatOfMimeType(@Nullable String mimeType) {

@@ -23,7 +23,10 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import java.net.URI;
+import java.security.MessageDigest;
 import java.util.ArrayList;
+import java.util.Base64;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -161,6 +164,30 @@ class BedrockBatchConverseMapperTest {
         Map<String, Object> block = (Map<String, Object>) ((List<?>) message.get("content")).get(0);
         assertThat(block.get("document"))
                 .isEqualTo(Map.of("format", "pdf", "name", "quarterly-report", "source", Map.of("bytes", "JVBERi0=")));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void should_name_a_pdf_document_without_a_url_after_its_content_with_distinct_names_in_one_request()
+            throws Exception {
+        String name = "document-"
+                + HexFormat.of()
+                        .formatHex(MessageDigest.getInstance("SHA-256").digest(Base64.getDecoder().decode("JVBERi0=")))
+                        .substring(0, 12);
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from(
+                        PdfFileContent.from("JVBERi0=", "application/pdf"),
+                        PdfFileContent.from("JVBERi0=", "application/pdf")))
+                .build();
+
+        for (int i = 0; i < 2; i++) {
+            Map<String, Object> modelInput = modelInput(request);
+
+            Map<String, Object> message = (Map<String, Object>) ((List<?>) modelInput.get("messages")).get(0);
+            assertThat((List<Map<String, Object>>) message.get("content"))
+                    .extracting(block -> ((Map<String, Object>) block.get("document")).get("name"))
+                    .containsExactly(name, name + "-2");
+        }
     }
 
     @Test

@@ -10,6 +10,11 @@ import org.jspecify.annotations.Nullable;
  * Decides whether an IP address is a public unicast address. Everything else (loopback, private, link-local,
  * cloud metadata, multicast, reserved, documentation, ...) is non-public. IPv4 addresses embedded in IPv6 addresses
  * are checked as IPv4 addresses.
+ * <p>
+ * The lists contain every block of the IANA IPv4 and IPv6 Special-Purpose Address Registries (as of 2026) that is not
+ * globally reachable. The blocks for IETF protocol assignments ({@code 192.0.0.0/24} and {@code 2001::/23}) are
+ * non-public as a whole, including the few anycast and service addresses in them that are globally reachable, except
+ * Teredo ({@code 2001::/32}), whose embedded IPv4 address is checked.
  */
 final class AddressClassifier {
 
@@ -39,8 +44,11 @@ final class AddressClassifier {
             Cidr.parse("fc00::/7"),
             Cidr.parse("ff00::/8"),
             Cidr.parse("100::/64"),
-            Cidr.parse("2001:2::/48"),
+            Cidr.parse("100:0:0:1::/64"),
+            Cidr.parse("2001::/23"),
             Cidr.parse("2001:db8::/32"),
+            Cidr.parse("3fff::/20"),
+            Cidr.parse("5f00::/16"),
             Cidr.parse("64:ff9b:1::/48"));
 
     private static final Cidr IPV4_MAPPED = Cidr.parse("::ffff:0:0/96");
@@ -61,11 +69,11 @@ final class AddressClassifier {
     }
 
     private static boolean isPublicIpv6(byte[] address) {
-        if (NON_PUBLIC_IPV6.stream().anyMatch(cidr -> cidr.contains(address))) {
-            return false;
-        }
         byte[] embedded = embeddedIpv4(address);
-        return embedded == null || isPublicIpv4(embedded);
+        if (embedded != null) {
+            return isPublicIpv4(embedded);
+        }
+        return NON_PUBLIC_IPV6.stream().noneMatch(cidr -> cidr.contains(address));
     }
 
     private static byte @Nullable [] embeddedIpv4(byte[] address) {

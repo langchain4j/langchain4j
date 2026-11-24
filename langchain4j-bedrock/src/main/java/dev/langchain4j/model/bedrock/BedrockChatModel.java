@@ -10,6 +10,7 @@ import static java.util.Objects.isNull;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.CancellationChain;
+import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -79,9 +80,9 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
 
             CompletableFuture<ChatResponse> result = new CompletableFuture<>();
             CancellationChain chain = new CancellationChain(result);
-            chain.track(prefetchMedia(request.messages()))
-                    .thenCompose(media -> {
-                        ConverseRequest converseRequest = buildConverseRequest(request, media);
+            chain.track(MediaPrefetcher.prefetch(mediaFetcher, mediaUrls(request.messages())))
+                    .thenCompose(prefetched -> {
+                        ConverseRequest converseRequest = buildConverseRequest(request, new MediaDownloads(prefetched));
                         return chain.track(withRetryMappingExceptionsAsync(
                                         () -> asyncClient().converse(converseRequest),
                                         maxRetries,

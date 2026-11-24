@@ -109,7 +109,8 @@ public class OllamaDecisionModel implements DecisionModel {
             OllamaDecisionMapper.ensureModelName(request);
             CompletableFuture<DecisionResponse> result = new CompletableFuture<>();
             CancellationChain chain = new CancellationChain(result);
-            chain.track(ImageUtils.prefetch(mediaFetcher, OllamaDecisionMapper.images(request.input())))
+            chain.track(MediaPrefetcher.prefetch(
+                            mediaFetcher, ImageUtils.mediaUrls(OllamaDecisionMapper.images(request.input()))))
                     .thenCompose(media -> {
                         OllamaDecisionRequest ollamaRequest =
                                 OllamaDecisionMapper.toOllamaRequest(request, keepAlive, media);
@@ -293,11 +294,12 @@ public class OllamaDecisionModel implements DecisionModel {
          * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
          * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To send
          * a local file, read it when you create the content, for example with {@link ImageContent#from(Path, String)}.
-         * To download from your own servers, use a {@link DefaultMediaFetcher} that allows them, or your own
-         * {@link MediaFetcher}.
+         * To download from your own servers, or to change the limits, set a {@link DefaultMediaFetcher} with other
+         * settings, or your own {@link MediaFetcher}.
          * <p>
          * {@link OllamaDecisionModel#decideAsync(DecisionRequest)} downloads with
-         * {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, so a fetcher used with it must implement it.
+         * {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, so that it does not block the calling thread. A fetcher
+         * used there must implement that method.
          *
          * @param mediaFetcher the fetcher, or {@code null} to use the default one
          * @return {@code this}

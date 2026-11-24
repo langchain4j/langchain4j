@@ -19,6 +19,7 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.TokenCountEstimator;
 import java.net.URI;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.LinkedList;
 import java.util.List;
@@ -187,12 +188,15 @@ public class GoogleAiGeminiTokenCountEstimator implements TokenCountEstimator {
          * example with {@link ImageContent#from(URI)}. Gemini receives such images as content, so they are
          * downloaded before their tokens are counted. Other media URLs are passed on to Gemini as they are.
          * <p>
-         * When not set, a {@link DefaultMediaFetcher} with the default settings is used: it downloads only from
-         * public hosts, with a timeout and a size limit, and never reads local files. To download images from your
-         * own servers, or to change the limits, configure a {@link DefaultMediaFetcher} and set it here.
+         * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
+         * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To send
+         * a local file, read it when you create the content, for example with {@link ImageContent#from(Path, String)}.
+         * To download from your own servers, or to change the limits, set a {@link DefaultMediaFetcher} with other
+         * settings, or your own {@link MediaFetcher}.
          *
          * @param mediaFetcher the fetcher that downloads images, or {@code null} to use the default one.
          * @return {@code this}.
+         * @since 1.25.0
          */
         @Experimental
         public Builder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {

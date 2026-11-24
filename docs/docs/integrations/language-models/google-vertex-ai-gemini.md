@@ -234,8 +234,8 @@ ChatResponse response = model.chat(userMessage);
 The URL can be a web URL, or can point at a file stored in Google Cloud Storage buckets,
 like `gs://my-bucket/my-image.png`.
 
-Gemini receives media as content, so LangChain4j downloads web URLs before it sends the request.
-Cloud Storage URLs are passed on to Gemini as they are.
+This integration downloads media given by a web URL before it sends the request, and sends its content to Gemini.
+It passes Cloud Storage URLs on to Gemini as they are.
 By default, only `http` and `https` URLs of public hosts are downloaded, with a timeout and a size limit,
 and local files given as URLs are never read.
 To send a local file, read it with `ImageContent.from(Path, String)`, `PdfFileContent.from(Path)`,
@@ -249,7 +249,8 @@ UserMessage userMessage = UserMessage.from(
 ```
 
 To download media from your own servers, or to change the limits, set a `MediaFetcher` on the model builder
-(`VertexAiGeminiStreamingChatModel` has the same option):
+(`VertexAiGeminiStreamingChatModel` has the same option; it downloads without blocking the calling thread, and waits
+for the downloads on its executor, which then reads the streamed response):
 
 ```java
 ChatModel model = VertexAiGeminiChatModel.builder()
@@ -262,10 +263,17 @@ ChatModel model = VertexAiGeminiChatModel.builder()
         .build();
 ```
 
+:::tip
+When media URLs come from users, tools or retrieved content, allow only the hosts you expect, for example with
+`DefaultMediaFetcher.builder().allowedHosts("media.example.com")`.
+:::
+
+See [Media given by URL](/tutorials/chat-and-language-models#media-given-by-url) for all options of `DefaultMediaFetcher`.
+
 You can also pass the content of an image as Base64 encoded string:
 
 ```java
-String base64Data = Base64.getEncoder().encodeToString(readBytes(CAT_IMAGE_URL));
+String base64Data = Base64.getEncoder().encodeToString(Files.readAllBytes(Path.of("cat.png")));
 UserMessage userMessage = UserMessage.from(
         ImageContent.from(base64Data, "image/png"),
         TextContent.from("What do you see? Reply in one word.")
