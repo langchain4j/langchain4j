@@ -116,7 +116,8 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private volatile Client a2aClient;
     private Consumer<ClientBuilder> clientCustomizer;
     private Supplier<Map<String, String>> agentCardHeaders;
-    private final Collection<A2AClientConfigurator> configurators =
+    // Loaded once: every agent applies the same configurators
+    private static final Collection<A2AClientConfigurator> CONFIGURATORS =
             ServiceHelper.loadFactories(A2AClientConfigurator.class);
 
     private String name;
@@ -203,7 +204,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private Map<String, String> cardHeaders() {
         A2AClientContext context = context(tenant, null);
         Map<String, String> headers = new HashMap<>();
-        for (A2AClientConfigurator configurator : configurators) {
+        for (A2AClientConfigurator configurator : CONFIGURATORS) {
             Map<String, String> configured = configurator.agentCardHeaders(context);
             if (configured != null) {
                 headers.putAll(configured);
@@ -222,12 +223,12 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
      * client customizer cannot remove them.
      */
     private ClientCallContext callContext(String callTenant) {
-        if (configurators.isEmpty()) {
+        if (CONFIGURATORS.isEmpty()) {
             return null;
         }
         A2AClientContext context = context(callTenant, resolveAgentCard());
         Map<String, String> headers = new HashMap<>();
-        for (A2AClientConfigurator configurator : configurators) {
+        for (A2AClientConfigurator configurator : CONFIGURATORS) {
             Map<String, String> configured = configurator.messageHeaders(context);
             if (configured != null) {
                 headers.putAll(configured);
@@ -237,7 +238,13 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     private A2AClientContext context(String contextTenant, AgentCard card) {
-        return new A2AClientContext(a2aServerUrl, contextTenant, name(), agentServiceClass, card);
+        return A2AClientContext.builder()
+                .a2aServerUrl(a2aServerUrl)
+                .tenant(contextTenant)
+                .agentName(name())
+                .agentInterface(agentServiceClass)
+                .agentCard(card)
+                .build();
     }
 
     private String describeCard() {
@@ -301,7 +308,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                 cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder());
             }
             A2AClientContext context = context(tenant, card);
-            for (A2AClientConfigurator configurator : configurators) {
+            for (A2AClientConfigurator configurator : CONFIGURATORS) {
                 configurator.customize(context, cb);
             }
             if (clientCustomizer != null) {
