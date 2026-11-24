@@ -160,8 +160,9 @@ public class StreamingChatModelMock implements StreamingChatModel {
     }
 
     /**
-     * Throws the exception of this mock from {@code chat(ChatRequest, StreamingChatResponseHandler)} itself, as some
-     * providers do when a request cannot be sent, instead of passing it to the handler. The {@code Publisher}-based
+     * Throws the exception of this mock from {@code doChat(ChatRequest, StreamingChatResponseHandler)}, as some
+     * providers do when a request cannot be sent, instead of passing it to the handler.
+     * {@code chat(ChatRequest, StreamingChatResponseHandler)} then reports it to the handler's {@code onError}. The {@code Publisher}-based
      * {@code chat(ChatRequest)} then fails with an {@link IllegalStateException}, as this option does not apply to it.
      *
      * @deprecated has no replacement: {@link MockStreamingChatModel} reports every failure with {@code onError}, like
@@ -305,10 +306,20 @@ public class StreamingChatModelMock implements StreamingChatModel {
         }
     }
 
+    /**
+     * @deprecated use {@link MockStreamingChatModel#requests()} instead, which returns a copy. Removed together with
+     * this class, in 1.26.0 at the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public List<ChatRequest> requests() {
         return requests;
     }
 
+    /**
+     * @deprecated use {@link MockStreamingChatModel#request()} instead. Removed together with this class, in 1.26.0 at
+     * the earliest.
+     */
+    @Deprecated(since = "1.24.0", forRemoval = true)
     public ChatRequest request() {
         if (requests.size() == 1) {
             return requests.get(0);

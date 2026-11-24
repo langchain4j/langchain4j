@@ -13,7 +13,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -66,6 +65,7 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -363,27 +363,12 @@ class GoogleAiGeminiChatModelIT {
         assertThat(diceRolls.length).isEqualTo(3);
     }
 
-    private static class Color {
-        private String name;
-        private int red;
-        private int green;
-        private int blue;
-        private boolean muted;
-
-        @JsonCreator
-        public Color(
-                @JsonProperty("name") String name,
-                @JsonProperty("red") int red,
-                @JsonProperty("green") int green,
-                @JsonProperty("blue") int blue,
-                @JsonProperty("muted") boolean muted) {
-            this.name = name;
-            this.red = red;
-            this.green = green;
-            this.blue = blue;
-            this.muted = muted;
-        }
-    }
+    private record Color(
+            @JsonProperty(required = true) String name,
+            @JsonProperty(required = true) int red,
+            @JsonProperty(required = true) int green,
+            @JsonProperty(required = true) int blue,
+            @JsonProperty(required = true) boolean muted) {}
 
     @Test
     void should_deserialize_to_POJO() throws JsonProcessingException {
@@ -536,6 +521,10 @@ class GoogleAiGeminiChatModelIT {
     }
 
     @Test
+    @DisabledIfEnvironmentVariable(
+            named = "LC4J_SKIP_IMAGE_GENERATION_ITS",
+            matches = "true",
+            disabledReason = "Image generation is expensive: CI runs it only in one nightly and when a Google module changes")
     void should_generate_image() {
 
         // given
@@ -573,6 +562,10 @@ class GoogleAiGeminiChatModelIT {
     }
 
     @Test
+    @DisabledIfEnvironmentVariable(
+            named = "LC4J_SKIP_IMAGE_GENERATION_ITS",
+            matches = "true",
+            disabledReason = "Image generation is expensive: CI runs it only in one nightly and when a Google module changes")
     void ai_service_should_generate_image() {
         ImageGenerator imageGenerator = AiServices.builder(ImageGenerator.class)
                 .chatModel(GoogleAiGeminiChatModel.builder()

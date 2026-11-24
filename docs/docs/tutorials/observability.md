@@ -136,7 +136,7 @@ A few things to keep in mind:
   - Its summary is still delivered to the inner AI Service's own listeners. So a listener registered on both AI Services receives the inner summary twice: on its own, and inside the outer summary. When you add up tokens, costs or tool calls, count each invocation only once, for example by skipping the `AiServiceInvocationSummaryEvent`s found in `events()`.
   - A summary listener of the outer AI Service also receives the prompts, responses and tool results of the inner invocations. If you filter or redact what you log or export, do the same for the nested summaries.
   - Inner invocations called from the chat model, the chat memory or its `ChatMemoryStore` are nested. Inner invocations that end before the outer one has fired its `AiServiceStartedEvent` (those called from the `ChatMemoryProvider`, the system or user message provider or the system message transformer), or after the outer one has ended, are linked but not nested.
-- For an AI Service method returning a `TokenStream`, the invocation starts when the method is called but only ends once the stream has been started with `start()`. Events collected for a `TokenStream` that is never started are never released, so always start the streams you create. If `start()` fails because of a configuration error (for example, a missing error handler), the invocation ends with an `AiServiceErrorEvent`; calling `start()` again once the configuration is fixed starts a new invocation.
+- For an AI Service method returning a `TokenStream`, the invocation starts when the method is called but only ends once the stream has been started with `start()`. Events collected for a `TokenStream` that is never started are never released, so always start the streams you create. If `start()` throws, for example because of a configuration error (such as a missing error handler), the invocation ends with an `AiServiceErrorEvent`; calling `start()` again once the configuration is fixed starts a new invocation. A failure of the model call is not thrown from `start()`: it is passed to the `onError` callback of the `TokenStream`.
 - Each subscription to the reactive stream returned by an AI Service method, and each call of `TokenStream.start()`, is a separate invocation with its own `invocationId`, so it results in its own `AiServiceInvocationSummaryEvent`, also when several subscriptions run at the same time. A second `start()` of the same `TokenStream` reuses the retrieved contents, the input guardrails and the messages prepared when the AI Service method was called, so its summary contains no `RetrievalAugmentedEvent` and no input guardrail events: only the model call, the tools and the output guardrails run again.
 - An `AiServiceInvocationSummaryEvent` is fired by the registrar itself. Trying to fire one via `AiServiceListenerRegistrar.fireEvent` results in an `IllegalArgumentException`.
 
@@ -530,16 +530,22 @@ The same applies to `StreamingChatModel.chat(chatRequest, options, handler)`.
   `ChatModelListener.onRequest()` will **_not_** be called for every retry.
 - The `ChatModelListener.onResponse()` method is called only once,
   immediately after receiving a successful response from the LLM provider.
-- The `ChatModelListener.onError()` method is called only once.
+- With a `ChatModel`, the `ChatModelListener.onError()` method is called only once.
   If an error occurs while calling the LLM provider API and a retry happens,
   `ChatModelListener.onError()` will **_not_** be called for every retry.
+- With a `StreamingChatModel`, the `ChatModelListener.onError()` method can be called more than once for one request,
+  also after `ChatModelListener.onResponse()`: an exception thrown by your own `StreamingChatResponseHandler`
+  (for example by its `onPartialResponse()`) is reported to the listeners too.
 - If an exception is thrown from one of the `ChatModelListener` methods,
   it will be logged at the `WARN` level. The execution of subsequent listeners will continue as usual.
 - The `ChatRequest` provided via `ChatModelRequestContext`, `ChatModelResponseContext`, and `ChatModelErrorContext`
   is the final request, containing both the default `ChatRequestParameters` configured on the `ChatModel`
   and the request-specific `ChatRequestParameters` merged together.
 - For `StreamingChatModel`, the `ChatModelListener.onResponse()` and `ChatModelListener.onError()`
-  are called on a different thread than the `ChatModelListener.onRequest()`.
+  are usually called on a different thread than the `ChatModelListener.onRequest()`.
+  A failure found before the request is sent (for example a parameter that the model does not support)
+  calls `ChatModelListener.onError()` on the calling thread.
+  A failure before `ChatModelListener.onRequest()` (for example a `null` request) notifies no listener.
   The thread context is currently not propagated automatically, so you might want to use the `attributes` map
   to propagate any necessary data from `ChatModelListener.onRequest()` to `ChatModelListener.onResponse()` or `ChatModelListener.onError()`.
 - For `StreamingChatModel`, the `ChatModelListener.onResponse()` is called before the

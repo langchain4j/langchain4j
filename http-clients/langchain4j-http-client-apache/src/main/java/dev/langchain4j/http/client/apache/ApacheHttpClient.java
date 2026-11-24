@@ -1,6 +1,8 @@
 package dev.langchain4j.http.client.apache;
 
 import static dev.langchain4j.http.client.sse.ServerSentEventListenerUtils.ignoringExceptions;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 
@@ -29,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Future;
 import java.util.concurrent.Flow;
 import java.util.function.BiConsumer;
 import mutiny.zero.BackpressureStrategy;
@@ -163,9 +166,13 @@ public class ApacheHttpClient implements HttpClient {
 
     @Override
     public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+        return failOnThrow(() -> doExecuteAsync(request));
+    }
+
+    private CompletableFuture<SuccessfulHttpResponse> doExecuteAsync(HttpRequest request) {
         SimpleHttpRequest apacheRequest = toSimpleApacheRequest(request);
         CompletableFuture<SuccessfulHttpResponse> future = new CompletableFuture<>();
-        java.util.concurrent.Future<SimpleHttpResponse> apacheFuture = asyncClient()
+        Future<SimpleHttpResponse> apacheFuture = asyncClient()
                 .execute(apacheRequest, new FutureCallback<>() {
                     @Override
                     public void completed(SimpleHttpResponse apacheResponse) {
@@ -244,15 +251,22 @@ public class ApacheHttpClient implements HttpClient {
                     }
                 }
             };
-            java.util.concurrent.Future<Void> future = asyncClient()
-                    .execute(
-                            SimpleRequestProducer.create(toSimpleApacheRequest(request)),
-                            new SseResponseConsumer(parser, listener, (statusCode, headers) -> {
-                                if (!tube.cancelled() && tube.outstandingRequests() > 0) {
-                                    tube.send(new HttpErrorResponseReceived(statusCode, headers));
-                                }
-                            }),
-                            null);
+            Future<Void> future;
+            try {
+                future = asyncClient()
+                        .execute(
+                                SimpleRequestProducer.create(toSimpleApacheRequest(request)),
+                                new SseResponseConsumer(parser, listener, (statusCode, headers) -> {
+                                    if (!tube.cancelled() && tube.outstandingRequests() > 0) {
+                                        tube.send(new HttpErrorResponseReceived(statusCode, headers));
+                                    }
+                                }),
+                                null);
+            } catch (Throwable error) {
+                restoreInterruptIfInterrupted(error);
+                tube.fail(error);
+                return;
+            }
             tube.whenTerminates(() -> future.cancel(true));
             // Tube does not replay termination to an action registered after it.
             if (tube.cancelled()) {
@@ -389,15 +403,20 @@ public class ApacheHttpClient implements HttpClient {
 
     @Override
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
-        executeServerSentEvents(request, parser, listener);
+        try {
+            executeServerSentEvents(request, parser, listener);
+        } catch (Throwable error) {
+            restoreInterruptIfInterrupted(error);
+            listener.onError(error); // not ignoringExceptions: what onError throws on the calling thread propagates
+        }
     }
 
     /**
-     * Starts a server-sent-events request and returns the in-flight Apache {@link java.util.concurrent.Future}, so
+     * Starts a server-sent-events request and returns the in-flight Apache {@link Future}, so
      * a caller (the reactive {@link #stream}) can abort the underlying HTTP request. The listener callbacks are
      * unchanged.
      */
-    private java.util.concurrent.Future<SimpleHttpResponse> executeServerSentEvents(
+    private Future<SimpleHttpResponse> executeServerSentEvents(
             HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener) {
         SimpleHttpRequest apacheRequest = toSimpleApacheRequest(request);
         return asyncClient().execute(apacheRequest, new FutureCallback<>() {

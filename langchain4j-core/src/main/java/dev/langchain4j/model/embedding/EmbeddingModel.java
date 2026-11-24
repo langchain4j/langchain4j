@@ -3,9 +3,11 @@ package dev.langchain4j.model.embedding;
 import dev.langchain4j.internal.ObservabilityListeners;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.model.ModelProvider.OTHER;
 
 import dev.langchain4j.Experimental;
@@ -34,6 +36,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -114,9 +117,9 @@ public interface EmbeddingModel {
     /**
      * Non-blocking counterpart of {@link #embed(EmbeddingRequest)}: embeds the request's inputs and completes the
      * returned future with the embeddings, without blocking the calling thread. The request's parameters are merged
-     * with {@link #defaultRequestParameters()} and validated exactly as in {@link #embed(EmbeddingRequest)}, but a
-     * validation failure completes the future exceptionally rather than being thrown, so callers always observe
-     * errors through the future. {@link #listeners()} are notified around the asynchronous call. Cancelling the
+     * with {@link #defaultRequestParameters()} and validated exactly as in {@link #embed(EmbeddingRequest)}. This
+     * method never throws: any failure, including an invalid request, completes the returned future exceptionally.
+     * {@link #listeners()} are notified around the asynchronous call. Cancelling the
      * returned future cancels the in-flight embedding call for providers whose {@link #doEmbedAsync(EmbeddingRequest)}
      * honors cancellation (best-effort); the listeners are then notified of neither a response nor an error.
      * When {@link #doEmbedAsync(EmbeddingRequest)} is not implemented, the returned future fails with an
@@ -125,94 +128,76 @@ public interface EmbeddingModel {
      * {@link #embed(EmbeddingRequest)} on another thread, which the listeners observe as a separate call; without it,
      * the RAG call fails with an {@code UnsupportedFeatureException}.
      *
-     * @param request the inputs to embed and the per-call parameters.
+     * @param request the inputs to embed and the per-call parameters; must not be {@code null}, otherwise the returned
+     *                future fails with an {@link IllegalArgumentException}.
      * @return a {@link CompletableFuture} of the embeddings and the response metadata.
      * @since 1.20.0
      */
     @Experimental
     default CompletableFuture<EmbeddingResponse> embedAsync(EmbeddingRequest request) {
+        return failOnThrow(() -> {
+            ensureNotNull(request, "request");
+            EmbeddingRequest finalRequest = validatedRequest(request);
+            List<EmbeddingModelListener> listeners = ObservabilityListeners.embedding(listeners());
 
-        EmbeddingRequest finalRequest;
-        List<EmbeddingModelListener> listeners;
-        try {
-            finalRequest = validatedRequest(request);
-            listeners = ObservabilityListeners.embedding(listeners());
-        } catch (Exception error) {
-            return CompletableFuture.failedFuture(error);
-        }
+            if (isNullOrEmpty(listeners)) {
+                return failOnThrow(this, "doEmbedAsync(EmbeddingRequest)", () -> doEmbedAsync(finalRequest));
+            }
 
-        if (isNullOrEmpty(listeners)) {
-            return invokeDoEmbedAsync(finalRequest);
-        }
-
-        List<TextSegment> textSegments;
-        try {
-            textSegments = finalRequest.inputs().stream()
+            List<TextSegment> textSegments = finalRequest.inputs().stream()
                     .map(input -> TextSegment.from(input.text()))
                     .toList();
-        } catch (Exception error) {
-            return CompletableFuture.failedFuture(error);
-        }
-        Map<Object, Object> attributes = new java.util.concurrent.ConcurrentHashMap<>();
-        UUID invocationId = CurrentInvocation.invocationId();
+            Map<Object, Object> attributes = new ConcurrentHashMap<>();
+            UUID invocationId = CurrentInvocation.invocationId();
+            EmbeddingModelListenerUtils.onRequest(
+                    EmbeddingModelRequestContext.builder()
+                            .textSegments(textSegments)
+                            .embeddingRequest(finalRequest)
+                            .embeddingModel(this)
+                            .attributes(attributes)
+                            .invocationId(invocationId)
+                            .build(),
+                    listeners);
 
-        EmbeddingModelListenerUtils.onRequest(
-                EmbeddingModelRequestContext.builder()
-                        .textSegments(textSegments)
-                        .embeddingRequest(finalRequest)
-                        .embeddingModel(this)
-                        .attributes(attributes)
-                        .invocationId(invocationId)
-                        .build(),
-                listeners);
-
-        CompletableFuture<EmbeddingResponse> inFlight = invokeDoEmbedAsync(finalRequest);
-        CompletableFuture<EmbeddingResponse> result = inFlight.whenComplete((response, error) -> {
-            if (error != null) {
-                Throwable cause = unwrapCompletionException(error);
-                // Cancellation is a caller action, not a model failure: do not report it to listeners as an error
-                // (mirrors ChatModel.chatAsync).
-                if (!(cause instanceof CancellationException)) {
-                    EmbeddingModelListenerUtils.onError(
-                            EmbeddingModelErrorContext.builder()
-                                    .error(cause)
-                                    .textSegments(textSegments)
+            CompletableFuture<EmbeddingResponse> inFlight =
+                    failOnThrow(this, "doEmbedAsync(EmbeddingRequest)", () -> doEmbedAsync(finalRequest));
+            CompletableFuture<EmbeddingResponse> result = inFlight.whenComplete((response, error) -> {
+                if (error != null) {
+                    Throwable cause = unwrapCompletionException(error);
+                    // Cancellation is a caller action, not a model failure: do not report it to listeners as an error
+                    // (mirrors ChatModel.chatAsync).
+                    if (!(cause instanceof CancellationException)) {
+                        EmbeddingModelListenerUtils.onError(
+                                EmbeddingModelErrorContext.builder()
+                                        .error(cause)
+                                        .textSegments(textSegments)
+                                        .embeddingRequest(finalRequest)
+                                        .embeddingModel(this)
+                                        .attributes(attributes)
+                                        .invocationId(invocationId)
+                                        .build(),
+                                listeners);
+                    }
+                } else {
+                    Response<List<Embedding>> legacyResponse =
+                            Response.from(response.embeddings(), response.metadata().tokenUsage());
+                    EmbeddingModelListenerUtils.onResponse(
+                            EmbeddingModelResponseContext.builder()
                                     .embeddingRequest(finalRequest)
+                                    .embeddingResponse(response)
                                     .embeddingModel(this)
                                     .attributes(attributes)
                                     .invocationId(invocationId)
+                                    .response(legacyResponse)
+                                    .textSegments(textSegments)
                                     .build(),
                             listeners);
                 }
-            } else {
-                Response<List<Embedding>> legacyResponse =
-                        Response.from(response.embeddings(), response.metadata().tokenUsage());
-                EmbeddingModelListenerUtils.onResponse(
-                        EmbeddingModelResponseContext.builder()
-                                .embeddingRequest(finalRequest)
-                                .embeddingResponse(response)
-                                .embeddingModel(this)
-                                .attributes(attributes)
-                                .invocationId(invocationId)
-                                .response(legacyResponse)
-                                .textSegments(textSegments)
-                                .build(),
-                        listeners);
-            }
+            });
+            // cancelling the caller-facing future cancels the in-flight call (whenComplete does not propagate cancellation)
+            propagateCancellation(result, inFlight);
+            return result;
         });
-        // cancelling the caller-facing future cancels the in-flight call (whenComplete does not propagate cancellation)
-        propagateCancellation(result, inFlight);
-        return result;
-    }
-
-    private CompletableFuture<EmbeddingResponse> invokeDoEmbedAsync(EmbeddingRequest finalRequest) {
-        // A provider's doEmbedAsync should return a failed future on error, but guard a synchronous throw so the
-        // async contract holds regardless.
-        try {
-            return doEmbedAsync(finalRequest);
-        } catch (Exception error) {
-            return CompletableFuture.failedFuture(error);
-        }
     }
 
     private EmbeddingRequest validatedRequest(EmbeddingRequest request) {
@@ -316,9 +301,12 @@ public interface EmbeddingModel {
      * ({@code offloadBlocking(true)}), in which case {@code EmbeddingStoreContentRetriever.retrieveAsync} offloads
      * its blocking {@link #embed(EmbeddingRequest)} for it; otherwise the returned future fails rather than a
      * thread being silently blocked.
+     * <p>
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid request or
+     * an error while preparing it, completes the returned future exceptionally.
      *
      * @param request the request, with parameters already merged and validated.
-     * @return a {@link CompletableFuture} of the response.
+     * @return a {@link CompletableFuture} of the response, never {@code null}.
      * @since 1.20.0
      */
     @Experimental

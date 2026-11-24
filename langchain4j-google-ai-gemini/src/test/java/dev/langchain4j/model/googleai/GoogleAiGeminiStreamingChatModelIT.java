@@ -8,6 +8,7 @@ import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HA
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.P;
@@ -44,6 +45,7 @@ import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -338,7 +340,7 @@ class GoogleAiGeminiStreamingChatModelIT {
     void should_deserialize_to_POJO() throws Exception {
 
         // given
-        record Person(String name, int age) {}
+        record Person(@JsonProperty(required = true) String name, @JsonProperty(required = true) int age) {}
 
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -355,6 +357,8 @@ class GoogleAiGeminiStreamingChatModelIT {
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         gemini.chat("Klaus is 37 years old", handler);
         ChatResponse response = handler.get();
+
+        System.out.println("response = " + response);
 
         Person person = new ObjectMapper().readValue(response.aiMessage().text(), Person.class);
 
@@ -469,6 +473,10 @@ class GoogleAiGeminiStreamingChatModelIT {
     }
 
     @Test
+    @DisabledIfEnvironmentVariable(
+            named = "LC4J_SKIP_IMAGE_GENERATION_ITS",
+            matches = "true",
+            disabledReason = "Image generation is expensive: CI runs it only in one nightly and when a Google module changes")
     void should_generate_image_streaming() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()

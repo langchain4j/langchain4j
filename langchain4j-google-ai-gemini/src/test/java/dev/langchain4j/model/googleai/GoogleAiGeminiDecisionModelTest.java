@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockingDetails;
+import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
@@ -815,6 +816,28 @@ class GoogleAiGeminiDecisionModelTest {
                 .failsWithin(Duration.ZERO)
                 .withThrowableOfType(ExecutionException.class)
                 .withCauseInstanceOf(UnsupportedFeatureException.class);
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void do_decide_async_should_return_a_failed_future_when_preparing_the_request_throws_an_error() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        GoogleAiGeminiDecisionModel model = model(httpClient);
+        NoClassDefFoundError error = new NoClassDefFoundError("com/example/Missing");
+        DecisionRequestParameters parameters = mock(DecisionRequestParameters.class);
+        when(parameters.modelName()).thenThrow(error);
+        DecisionRequest request = REQUEST.toBuilder().parameters(parameters).build();
+
+        // when
+        CompletableFuture<DecisionResponse> future = model.doDecideAsync(request);
+
+        // then
+        assertThat(future)
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCause(error);
         assertThat(httpClient.requests()).isEmpty();
     }
 

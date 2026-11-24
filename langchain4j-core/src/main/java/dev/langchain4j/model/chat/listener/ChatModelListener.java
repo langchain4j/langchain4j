@@ -11,7 +11,11 @@ import dev.langchain4j.model.chat.response.ChatResponse;
  * threads: on the synchronous API ({@code chat}) the caller's thread; on the asynchronous and reactive APIs
  * ({@code chatAsync} and the streaming {@code chat}), {@link #onRequest} runs on the thread that starts the call and
  * {@link #onResponse}/{@link #onError} on the transport's I/O worker thread that reads the response (for HTTP models,
- * the JDK HTTP client's {@code HttpClient-*} workers). Blocking in a callback — a synchronous database write, a
+ * the JDK HTTP client's {@code HttpClient-*} workers). A failure found before the request is sent, for example a
+ * parameter that the model does not support, calls {@link #onError} on the thread that starts the call. A failure
+ * before {@link #onRequest}, for example a {@code null} request, notifies no listener. With a streaming model,
+ * {@link #onError} can be called more than once for one request, also after {@link #onResponse}: an exception thrown
+ * by the {@code StreamingChatResponseHandler} is reported too. Blocking in a callback — a synchronous database write, a
  * synchronous HTTP call to an observability backend, synchronous file logging — stalls that worker and, under
  * concurrency, degrades throughput for all in-flight calls, exactly as blocking in a reactive {@code onNext} would.
  * Keep these methods non-blocking: record metrics or start/stop tracing spans (as the built-in Micrometer and
@@ -44,6 +48,8 @@ public interface ChatModelListener {
 
     /**
      * This method is called when an error occurs during interaction with the model.
+     * With a streaming model, it is also called when the {@code StreamingChatResponseHandler} throws, so it can be
+     * called more than once for one request, also after {@link #onResponse(ChatModelResponseContext)}.
      *
      * @param errorContext The error context.
      *                     It contains the error, corresponding {@link ChatRequest},
