@@ -29,8 +29,7 @@ Image image = Image.builder()
         .build();
 ```
 
-It decodes PNG, JPEG, GIF, BMP and WebP images (WebP only if an image reader for it is installed) of at most
-2048 x 2048 pixels, a limit of LangChain4j against very large decoded images.
+The image and the mask are sent to Workers AI as the bytes of their files, so Workers AI checks their format and size.
 
 
 ## Examples

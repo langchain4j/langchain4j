@@ -1,7 +1,6 @@
 package dev.langchain4j.model.workersai;
 
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.image.ImageModel;
@@ -10,22 +9,14 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.workersai.client.AbstractWorkersAIModel;
 import dev.langchain4j.model.workersai.client.WorkersAiImageGenerationRequest;
 import dev.langchain4j.model.workersai.spi.WorkersAiImageModelBuilderFactory;
-import org.jspecify.annotations.Nullable;
 
 import javax.imageio.ImageIO;
-import javax.imageio.ImageReader;
-import javax.imageio.spi.ImageReaderSpi;
-import javax.imageio.stream.ImageInputStream;
-import javax.imageio.stream.MemoryCacheImageInputStream;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Base64;
-import java.util.Iterator;
-import java.util.List;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -35,9 +26,8 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
  * WorkerAI Image model.
  * <p>
  * To edit an image, give its content as base64 data, for example
- * {@code Image.builder().base64Data(base64Data).mimeType("image/png").build()}. Images given by URL are not supported.
- * Only PNG, JPEG, GIF, BMP and WebP images can be edited (WebP only if an image reader for it is installed), with at
- * most 2048 x 2048 pixels, a limit of LangChain4j.
+ * {@code Image.builder().base64Data(base64Data).mimeType("image/png").build()}. The image and the mask are sent to
+ * Workers AI as the bytes of their files. Images given by URL are not supported.
  */
 public class WorkersAiImageModel extends AbstractWorkersAIModel implements ImageModel {
 
@@ -45,19 +35,6 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
      * The mime type returned by Workers
      */
     private static final String MIME_TYPE = "image/png";
-
-    /**
-     * The largest width times height of an image that this model decodes (2048 x 2048). This is a limit of LangChain4j,
-     * not of Workers AI: decoding needs memory for every pixel, whatever the size of the file, so a larger image is
-     * rejected before it is decoded.
-     */
-    private static final long MAX_PIXELS = 2048L * 2048L;
-
-    /**
-     * The image formats that this model decodes. Only the image readers of these formats are used, so that no other
-     * image reader that happens to be installed reads the content.
-     */
-    private static final List<String> IMAGE_FORMATS = List.of("png", "jpeg", "gif", "bmp", "webp");
 
     static final String IMAGE_URL_NOT_SUPPORTED = "Workers AI does not support images given by URL; it needs the image"
             + " content. Create the image from the content of a file or from its bytes, for example"
@@ -242,10 +219,10 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
         WorkersAiImageGenerationRequest imgReq = new WorkersAiImageGenerationRequest();
         imgReq.setPrompt(prompt);
         if (image != null) {
-            imgReq.setImage(pixels(image));
+            imgReq.setImage(bytes(image));
         }
         if (mask != null) {
-            imgReq.setMask(pixels(mask));
+            imgReq.setMask(bytes(mask));
         }
 
         try {
@@ -270,73 +247,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
      */
     public int[] getPixels(URL imageUrl) throws Exception {
         BufferedImage image = ImageIO.read(imageUrl);
-        return pixels(image);
-    }
 
-    private static int[] pixels(Image image) {
-        if (image.base64Data() != null) {
-            return pixels(Base64.getDecoder().decode(image.base64Data()));
-        }
-        if (image.url() == null) {
-            throw new IllegalArgumentException("The image has neither base64 data nor a URL");
-        }
-        throw new UnsupportedFeatureException(IMAGE_URL_NOT_SUPPORTED);
-    }
-
-    private static int[] pixels(byte[] imageBytes) {
-        try (ImageInputStream input = new MemoryCacheImageInputStream(new ByteArrayInputStream(imageBytes))) {
-            ImageReader reader = imageReader(input);
-            try {
-                reader.setInput(input, true, true);
-                int width = reader.getWidth(0);
-                int height = reader.getHeight(0);
-                if ((long) width * height > MAX_PIXELS) {
-                    throw new InvalidRequestException("The image has " + width + " x " + height
-                            + " pixels, more than LangChain4j decodes for Workers AI (" + MAX_PIXELS
-                            + " pixels, 2048 x 2048)");
-                }
-                return pixels(reader.read(0));
-            } finally {
-                reader.dispose();
-            }
-        } catch (IOException e) {
-            throw new InvalidRequestException("The image cannot be read", e);
-        }
-    }
-
-    /**
-     * Returns a reader of one of the {@link #IMAGE_FORMATS} that can read the image.
-     */
-    private static ImageReader imageReader(ImageInputStream input) throws IOException {
-        for (String format : IMAGE_FORMATS) {
-            Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName(format);
-            while (readers.hasNext()) {
-                ImageReader reader = readers.next();
-                if (canDecode(reader.getOriginatingProvider(), input)) {
-                    return reader;
-                }
-                reader.dispose();
-            }
-        }
-        throw new InvalidRequestException(
-                "The image format is not supported: only PNG, JPEG, GIF, BMP and WebP images can be edited");
-    }
-
-    private static boolean canDecode(@Nullable ImageReaderSpi provider, ImageInputStream input) throws IOException {
-        if (provider == null) {
-            return false;
-        }
-        long start = input.getStreamPosition();
-        try {
-            return provider.canDecodeInput(input);
-        } catch (IOException e) {
-            return false; // content shorter than the signature of this format
-        } finally {
-            input.seek(start);
-        }
-    }
-
-    private static int[] pixels(BufferedImage image) {
         // Get image dimensions
         int width = image.getWidth();
         int height = image.getHeight();
@@ -365,6 +276,24 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
             }
         }
         return pixelData;
+    }
+
+    /**
+     * Returns the bytes of the image file as values from 0 to 255, as Workers AI expects them.
+     */
+    private static int[] bytes(Image image) {
+        if (image.base64Data() == null) {
+            if (image.url() == null) {
+                throw new IllegalArgumentException("The image has neither base64 data nor a URL");
+            }
+            throw new UnsupportedFeatureException(IMAGE_URL_NOT_SUPPORTED);
+        }
+        byte[] bytes = Base64.getDecoder().decode(image.base64Data());
+        int[] values = new int[bytes.length];
+        for (int i = 0; i < bytes.length; i++) {
+            values[i] = Byte.toUnsignedInt(bytes[i]);
+        }
+        return values;
     }
 
     /**
