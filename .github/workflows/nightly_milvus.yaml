@@ -29,6 +29,17 @@ jobs:
             run_cloud_tests: true
           - milvus_image: milvusdb/milvus:v3.0.6
             run_cloud_tests: false
+    env:
+      # The Maven repository without the SNAPSHOTs that the nightlies install themselves. actions/cache archives a
+      # matched directory whole, so a "!" line only leaves out a sibling of what the lines above it match.
+      # All nightlies must use the same lines, to restore and to save: they are part of the cache version.
+      MAVEN_CACHE_PATHS: |
+        ~/.m2/repository/*
+        !~/.m2/repository/dev
+        ~/.m2/repository/dev/*
+        !~/.m2/repository/dev/langchain4j
+        ~/.m2/repository/dev/langchain4j/*/*
+        !~/.m2/repository/dev/langchain4j/*/*-SNAPSHOT
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -38,7 +49,23 @@ jobs:
         with:
           java-version: 17.0.21+9
           distribution: 'temurin'
-          cache: 'maven'
+
+      - name: Get the month for the Maven cache key
+        id: maven-cache-month
+        # A new month starts a fresh cache, so old dependency versions do not pile up in it
+        run: echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Maven repository
+        id: maven-cache
+        # Not setup-java's cache: quick jobs that never install save its key first, so the install downloaded most of
+        # its plugins and dependencies from Maven Central, which rate-limits with HTTP 429.
+        # After a POM change, the restore key brings back the repository of the previous night.
+        # Restore only: this job installs only the Milvus modules, so its repository would be an incomplete cache.
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.MAVEN_CACHE_PATHS }}
+          key: maven-nightly-${{ steps.maven-cache-month.outputs.month }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-nightly-${{ steps.maven-cache-month.outputs.month }}-
 
       - name: Build with JDK 17
         run: |
