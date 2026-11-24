@@ -13,7 +13,6 @@ import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.tika.exception.WriteLimitReachedException;
 import org.apache.tika.exception.ZeroByteFileException;
-import org.apache.tika.fork.ForkParser;
 import org.apache.tika.metadata.Metadata;
 import org.apache.tika.parser.AutoDetectParser;
 import org.apache.tika.parser.ParseContext;
@@ -21,6 +20,7 @@ import org.apache.tika.parser.Parser;
 import org.apache.tika.sax.BodyContentHandler;
 import org.jspecify.annotations.Nullable;
 import org.xml.sax.ContentHandler;
+import org.xml.sax.SAXException;
 
 /**
  * Parses an {@link InputStream} into a {@link Document} using the Apache Tika library by
@@ -42,7 +42,9 @@ import org.xml.sax.ContentHandler;
  * }</pre>
  *
  * <h2>Maximum number of extracted characters</h2>
- * By default, the parser extracts at most {@value #DEFAULT_MAX_CHARACTERS} characters of text from a document.
+ * By default, the parser extracts at most 10,000,000 characters of text from a document.
+ * The count includes the line breaks and other whitespace that Tika adds to the text,
+ * for example after each paragraph.
  * If a document contains more text, {@link #parse(InputStream)} throws a {@link RuntimeException}
  * instead of returning a {@link Document}. The exception message names the limit, and its cause is Tika's
  * {@link WriteLimitReachedException}.
@@ -53,34 +55,21 @@ import org.xml.sax.ContentHandler;
  * for example {@code new BodyContentHandler(limit)}.
  *
  * <h2>Documents from untrusted sources</h2>
- * The limit bounds the amount of extracted text. It does not bound the memory that Tika needs to read a document:
- * some small, highly compressed documents can need a lot of memory before any limit applies
- * (for example, a {@code .docx} file whose text is one very long run, or a PDF page with millions of characters).
- * If you parse documents from sources you do not trust, run the parsing in a separate process with a bounded heap,
- * for example with Tika's {@link ForkParser}, passed through {@link Builder#parserSupplier(Supplier)}:
- * <pre>{@code
- * ForkParser forkParser = new ForkParser(ApacheTikaDocumentParser.class.getClassLoader(), new AutoDetectParser());
- * forkParser.setJavaCommand(List.of("java", "-Xmx512m"));
- *
- * DocumentParser parser = ApacheTikaDocumentParser.builder()
- *         .parserSupplier(() -> forkParser)
- *         .build();
- * }</pre>
- * The {@code ForkParser} starts child JVMs and reuses them for the next documents. Close it when you no longer need it.
- * Running the whole application in a JVM with a bounded heap ({@code -Xmx}) also keeps one document from
- * taking all the memory of the machine.
+ * The limit bounds the amount of extracted text. It does not bound all the memory that Tika needs to read a document:
+ * some small, highly compressed documents can need a lot of memory before any limit applies.
+ * An {@link OutOfMemoryError} in the JVM of your application can affect the whole application, even with a heap limit
+ * ({@code -Xmx}). Only a separate process with its own heap limit contains it.
+ * <p>
+ * So if you parse documents from sources you do not trust, parse them in a separate process with its own heap limit.
+ * With Tika 3.x, Tika's {@code ForkParser} can do this: pass it with {@link Builder#parserSupplier(Supplier)}.
+ * The separate process sends the extracted text back to your application, so give it a heap limit that is small
+ * compared to the heap of your application. {@code ForkParser} starts a new Java process, so it needs a Java runtime
+ * and does not work in an application compiled to a native image.
  */
 public class ApacheTikaDocumentParser implements DocumentParser {
 
-    /**
-     * The default maximum number of characters that the parser extracts from a document: {@value}.
-     *
-     * @see Builder#maxCharacters(Integer)
-     */
-    public static final int DEFAULT_MAX_CHARACTERS = 10_000_000;
-
+    private static final int DEFAULT_MAX_CHARACTERS = 10_000_000;
     private static final int NO_WRITE_LIMIT = -1;
-    private static final int MAX_CAUSE_DEPTH = 100;
     public static final Supplier<Parser> DEFAULT_PARSER_SUPPLIER = AutoDetectParser::new;
     public static final Supplier<Metadata> DEFAULT_METADATA_SUPPLIER = Metadata::new;
     public static final Supplier<ParseContext> DEFAULT_PARSE_CONTEXT_SUPPLIER = ParseContext::new;
@@ -88,9 +77,8 @@ public class ApacheTikaDocumentParser implements DocumentParser {
     /**
      * Supplies a {@link BodyContentHandler} without a limit on the number of extracted characters.
      *
-     * @deprecated This is no longer the default content handler. By default, the parser now extracts at most
-     * {@link #DEFAULT_MAX_CHARACTERS} characters. To extract all the text, use
-     * {@link Builder#maxCharacters(Integer)} with {@code -1}:
+     * @deprecated The default content handler of this parser extracts at most 10,000,000 characters.
+     * To extract all the text, use {@link Builder#maxCharacters(Integer)} with {@code -1}:
      * {@code ApacheTikaDocumentParser.builder().maxCharacters(-1).build()}.
      */
     @Deprecated(since = "1.25.0")
@@ -101,7 +89,6 @@ public class ApacheTikaDocumentParser implements DocumentParser {
     private final Supplier<ContentHandler> contentHandlerSupplier;
     private final Supplier<Metadata> metadataSupplier;
     private final Supplier<ParseContext> parseContextSupplier;
-    private final boolean usesDefaultContentHandler;
     private final int maxCharacters;
 
     private final boolean includeMetadata;
@@ -109,7 +96,7 @@ public class ApacheTikaDocumentParser implements DocumentParser {
     /**
      * Creates an instance of an {@code ApacheTikaDocumentParser} with the default Tika components.
      * It uses {@link AutoDetectParser}, {@link BodyContentHandler} that extracts at most
-     * {@link #DEFAULT_MAX_CHARACTERS} characters, empty {@link Metadata} and empty {@link ParseContext}.
+     * 10,000,000 characters, empty {@link Metadata} and empty {@link ParseContext}.
      * Note: By default, no metadata is added to the parsed document.
      */
     public ApacheTikaDocumentParser() {
@@ -119,7 +106,7 @@ public class ApacheTikaDocumentParser implements DocumentParser {
     /**
      * Creates an instance of an {@code ApacheTikaDocumentParser} with the default Tika components.
      * It uses {@link AutoDetectParser}, {@link BodyContentHandler} that extracts at most
-     * {@link #DEFAULT_MAX_CHARACTERS} characters, empty {@link Metadata} and empty {@link ParseContext}.
+     * 10,000,000 characters, empty {@link Metadata} and empty {@link ParseContext}.
      *
      * @param includeMetadata        Whether to include metadata in the parsed document
      */
@@ -129,14 +116,14 @@ public class ApacheTikaDocumentParser implements DocumentParser {
 
     /**
      * Creates an instance of an {@code ApacheTikaDocumentParser} with the provided Tika components.
-     * If some of the components are not provided ({@code null}, the defaults will be used.
+     * If some of the components are not provided ({@code null}), the defaults will be used.
      *
      * @param parser         Tika parser to use. Default: {@link AutoDetectParser}
      * @param contentHandler Tika content handler. Default: {@link BodyContentHandler} that extracts at most
-     *                       {@link #DEFAULT_MAX_CHARACTERS} characters
+     *                       10,000,000 characters
      * @param metadata       Tika metadata. Default: empty {@link Metadata}
      * @param parseContext   Tika parse context. Default: empty {@link ParseContext}
-     * @deprecated Use the constructor with suppliers for Tika components if you intend to use this parser for multiple files.
+     * @deprecated Use {@link #builder()} instead.
      */
     @Deprecated(forRemoval = true)
     public ApacheTikaDocumentParser(
@@ -158,18 +145,17 @@ public class ApacheTikaDocumentParser implements DocumentParser {
      *
      * @param parserSupplier         Supplier for Tika parser to use. Default: {@link AutoDetectParser}
      * @param contentHandlerSupplier Supplier for Tika content handler. Default: {@link BodyContentHandler}
-     *                               that extracts at most {@link #DEFAULT_MAX_CHARACTERS} characters
+     *                               that extracts at most 10,000,000 characters
      * @param metadataSupplier       Supplier for Tika metadata. Default: empty {@link Metadata}
      * @param parseContextSupplier   Supplier for Tika parse context. Default: empty {@link ParseContext}
-     * @deprecated Use the constructor with suppliers for Tika components if you intend to use this parser for multiple files
-     * and specify whether to include metadata or not.
+     * @deprecated Use {@link #builder()} instead.
      */
     @Deprecated(forRemoval = true)
     public ApacheTikaDocumentParser(
-            Supplier<Parser> parserSupplier,
-            Supplier<ContentHandler> contentHandlerSupplier,
-            Supplier<Metadata> metadataSupplier,
-            Supplier<ParseContext> parseContextSupplier) {
+            @Nullable Supplier<Parser> parserSupplier,
+            @Nullable Supplier<ContentHandler> contentHandlerSupplier,
+            @Nullable Supplier<Metadata> metadataSupplier,
+            @Nullable Supplier<ParseContext> parseContextSupplier) {
         this(parserSupplier, contentHandlerSupplier, metadataSupplier, parseContextSupplier, false);
     }
 
@@ -180,7 +166,7 @@ public class ApacheTikaDocumentParser implements DocumentParser {
      *
      * @param parserSupplier         Supplier for Tika parser to use. Default: {@link AutoDetectParser}
      * @param contentHandlerSupplier Supplier for Tika content handler. Default: {@link BodyContentHandler}
-     *                               that extracts at most {@link #DEFAULT_MAX_CHARACTERS} characters
+     *                               that extracts at most 10,000,000 characters
      * @param metadataSupplier       Supplier for Tika metadata. Default: empty {@link Metadata}
      * @param parseContextSupplier   Supplier for Tika parse context. Default: empty {@link ParseContext}
      * @param includeMetadata        Whether to include metadata in the parsed document
@@ -199,7 +185,24 @@ public class ApacheTikaDocumentParser implements DocumentParser {
                 .includeMetadata(includeMetadata));
     }
 
-    private ApacheTikaDocumentParser(Builder builder) {
+    /**
+     * Creates a parser with the options of the given builder.
+     * To create a parser, use {@link #builder()} and {@link Builder#build()}.
+     * This constructor is for subclasses, which can use it to set the options of the parser, for example:
+     * <pre>{@code
+     * class MyDocumentParser extends ApacheTikaDocumentParser {
+     *
+     *     MyDocumentParser() {
+     *         super(ApacheTikaDocumentParser.builder().maxCharacters(-1));
+     *     }
+     * }
+     * }</pre>
+     *
+     * @param builder the builder with the options of the parser
+     * @throws IllegalArgumentException if the options are not valid, see {@link Builder#build()}
+     * @since 1.25.0
+     */
+    protected ApacheTikaDocumentParser(Builder builder) {
         if (builder.contentHandlerSupplier != null && builder.maxCharacters != null) {
             throw illegalArgument("maxCharacters applies only to the default content handler, "
                     + "so it cannot be used together with contentHandlerSupplier. "
@@ -211,9 +214,8 @@ public class ApacheTikaDocumentParser implements DocumentParser {
                     "maxCharacters must be a positive number, or -1 for no limit, but was: %s", maxCharacters);
         }
         this.maxCharacters = maxCharacters;
-        this.usesDefaultContentHandler = builder.contentHandlerSupplier == null;
         this.parserSupplier = getOrDefault(builder.parserSupplier, () -> DEFAULT_PARSER_SUPPLIER);
-        Supplier<ContentHandler> defaultContentHandlerSupplier = () -> new BodyContentHandler(maxCharacters);
+        Supplier<ContentHandler> defaultContentHandlerSupplier = () -> new LimitedBodyContentHandler(maxCharacters);
         this.contentHandlerSupplier = getOrDefault(builder.contentHandlerSupplier, defaultContentHandlerSupplier);
         this.metadataSupplier = getOrDefault(builder.metadataSupplier, () -> DEFAULT_METADATA_SUPPLIER);
         this.parseContextSupplier = getOrDefault(builder.parseContextSupplier, () -> DEFAULT_PARSE_CONTEXT_SUPPLIER);
@@ -222,13 +224,17 @@ public class ApacheTikaDocumentParser implements DocumentParser {
 
     @Override
     public Document parse(InputStream inputStream) {
+        ContentHandler contentHandler = null;
         try {
             Parser parser = parserSupplier.get();
-            ContentHandler contentHandler = contentHandlerSupplier.get();
+            contentHandler = contentHandlerSupplier.get();
             Metadata metadata = metadataSupplier.get();
             ParseContext parseContext = parseContextSupplier.get();
 
             parser.parse(inputStream, contentHandler, metadata, parseContext);
+            if (contentHandler instanceof LimitedBodyContentHandler limitedContentHandler) {
+                limitedContentHandler.throwIfWriteLimitReached();
+            }
             String text = contentHandler.toString();
 
             if (isNullOrBlank(text)) {
@@ -241,27 +247,20 @@ public class ApacheTikaDocumentParser implements DocumentParser {
         } catch (ZeroByteFileException e) {
             throw new BlankDocumentException();
         } catch (Exception e) {
-            WriteLimitReachedException writeLimitReached = usesDefaultContentHandler ? findWriteLimitReached(e) : null;
-            if (writeLimitReached != null) {
-                throw new RuntimeException(
-                        "The document contains more than " + maxCharacters + " characters of text, "
+            if (contentHandler instanceof LimitedBodyContentHandler limitedContentHandler
+                    && limitedContentHandler.writeLimitReached != null) {
+                RuntimeException maxCharactersExceeded = new RuntimeException(
+                        "The text extracted from the document has more than " + maxCharacters + " characters, "
                                 + "which is the maximum this parser extracts. To parse it, set a higher limit with "
                                 + "ApacheTikaDocumentParser.builder().maxCharacters(...), or -1 for no limit.",
-                        writeLimitReached);
+                        limitedContentHandler.writeLimitReached);
+                if (e != limitedContentHandler.writeLimitReached) {
+                    maxCharactersExceeded.addSuppressed(e);
+                }
+                throw maxCharactersExceeded;
             }
             throw new RuntimeException(e);
         }
-    }
-
-    private static @Nullable WriteLimitReachedException findWriteLimitReached(Throwable throwable) {
-        Throwable current = throwable;
-        for (int depth = 0; current != null && depth < MAX_CAUSE_DEPTH; depth++) {
-            if (current instanceof WriteLimitReachedException writeLimitReached) {
-                return writeLimitReached;
-            }
-            current = current.getCause();
-        }
-        return null;
     }
 
     /**
@@ -282,11 +281,47 @@ public class ApacheTikaDocumentParser implements DocumentParser {
         return new dev.langchain4j.data.document.Metadata(tikaMetaData);
     }
 
+    private static final class LimitedBodyContentHandler extends BodyContentHandler {
+
+        private @Nullable WriteLimitReachedException writeLimitReached;
+
+        private LimitedBodyContentHandler(int maxCharacters) {
+            super(maxCharacters);
+        }
+
+        @Override
+        public void characters(char[] ch, int start, int length) throws SAXException {
+            try {
+                super.characters(ch, start, length);
+            } catch (WriteLimitReachedException e) {
+                writeLimitReached = e;
+                throw e;
+            }
+        }
+
+        @Override
+        public void ignorableWhitespace(char[] ch, int start, int length) throws SAXException {
+            try {
+                super.ignorableWhitespace(ch, start, length);
+            } catch (WriteLimitReachedException e) {
+                writeLimitReached = e;
+                throw e;
+            }
+        }
+
+        private void throwIfWriteLimitReached() throws WriteLimitReachedException {
+            if (writeLimitReached != null) {
+                throw writeLimitReached;
+            }
+        }
+    }
+
     /**
      * Creates a builder for an {@link ApacheTikaDocumentParser}.
      * Every option is optional: options that are not set (or set to {@code null}) use their default values.
      *
      * @return a new builder
+     * @since 1.25.0
      */
     public static Builder builder() {
         return new Builder();
@@ -295,6 +330,11 @@ public class ApacheTikaDocumentParser implements DocumentParser {
     /**
      * Builder for {@link ApacheTikaDocumentParser}.
      * Options that are not set (or set to {@code null}) use their default values.
+     * <p>
+     * Each supplier is called once for every parsed document, so the content handler and metadata suppliers should
+     * return a new object on every call: these objects collect the text and the metadata of a single document.
+     *
+     * @since 1.25.0
      */
     public static final class Builder {
 
@@ -314,6 +354,7 @@ public class ApacheTikaDocumentParser implements DocumentParser {
          * @param parserSupplier the supplier of the Tika parser;
          *                       {@code null} means the default, an {@link AutoDetectParser}
          * @return this builder
+         * @since 1.25.0
          */
         public Builder parserSupplier(@Nullable Supplier<Parser> parserSupplier) {
             this.parserSupplier = parserSupplier;
@@ -333,6 +374,7 @@ public class ApacheTikaDocumentParser implements DocumentParser {
          *                               {@code null} means the default, a {@link BodyContentHandler} that extracts
          *                               at most {@link #maxCharacters(Integer)} characters
          * @return this builder
+         * @since 1.25.0
          */
         public Builder contentHandlerSupplier(@Nullable Supplier<ContentHandler> contentHandlerSupplier) {
             this.contentHandlerSupplier = contentHandlerSupplier;
@@ -346,6 +388,7 @@ public class ApacheTikaDocumentParser implements DocumentParser {
          * @param metadataSupplier the supplier of the Tika metadata;
          *                         {@code null} means the default, an empty {@link Metadata}
          * @return this builder
+         * @since 1.25.0
          */
         public Builder metadataSupplier(@Nullable Supplier<Metadata> metadataSupplier) {
             this.metadataSupplier = metadataSupplier;
@@ -359,6 +402,7 @@ public class ApacheTikaDocumentParser implements DocumentParser {
          * @param parseContextSupplier the supplier of the Tika parse context;
          *                             {@code null} means the default, an empty {@link ParseContext}
          * @return this builder
+         * @since 1.25.0
          */
         public Builder parseContextSupplier(@Nullable Supplier<ParseContext> parseContextSupplier) {
             this.parseContextSupplier = parseContextSupplier;
@@ -371,6 +415,7 @@ public class ApacheTikaDocumentParser implements DocumentParser {
          *
          * @param includeMetadata whether to include the metadata; {@code null} means the default, {@code false}
          * @return this builder
+         * @since 1.25.0
          */
         public Builder includeMetadata(@Nullable Boolean includeMetadata) {
             this.includeMetadata = includeMetadata;
@@ -379,6 +424,8 @@ public class ApacheTikaDocumentParser implements DocumentParser {
 
         /**
          * Sets the maximum number of characters of text that the parser extracts from a document.
+         * The count includes the line breaks and other whitespace that Tika adds to the text,
+         * for example after each paragraph.
          * If a document contains more text, {@link ApacheTikaDocumentParser#parse(InputStream)} throws a
          * {@link RuntimeException} whose cause is Tika's {@link WriteLimitReachedException}.
          * <p>
@@ -386,8 +433,9 @@ public class ApacheTikaDocumentParser implements DocumentParser {
          * {@link #contentHandlerSupplier(Supplier)}.
          *
          * @param maxCharacters the maximum number of characters, a positive number, or {@code -1} for no limit;
-         *                      {@code null} means the default, {@link ApacheTikaDocumentParser#DEFAULT_MAX_CHARACTERS}
+         *                      {@code null} means the default, 10,000,000
          * @return this builder
+         * @since 1.25.0
          */
         public Builder maxCharacters(@Nullable Integer maxCharacters) {
             this.maxCharacters = maxCharacters;
@@ -401,6 +449,7 @@ public class ApacheTikaDocumentParser implements DocumentParser {
          * @throws IllegalArgumentException if {@link #maxCharacters(Integer)} is not a positive number or {@code -1},
          *                                  or if both {@link #maxCharacters(Integer)} and
          *                                  {@link #contentHandlerSupplier(Supplier)} are set
+         * @since 1.25.0
          */
         public ApacheTikaDocumentParser build() {
             return new ApacheTikaDocumentParser(this);

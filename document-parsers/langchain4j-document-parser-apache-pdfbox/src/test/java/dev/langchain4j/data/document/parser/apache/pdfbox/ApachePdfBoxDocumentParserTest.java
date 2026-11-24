@@ -11,6 +11,7 @@ import org.apache.pdfbox.pdmodel.PDResources;
 import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -128,26 +129,100 @@ class ApachePdfBoxDocumentParserTest {
     }
 
     @Test
-    void should_parse_document_with_max_characters() throws IOException {
+    void should_parse_document_whose_text_has_max_characters() throws IOException {
+        int textLength = textLength(pdfWithPages(50, 50));
         DocumentParser parser =
-                ApachePdfBoxDocumentParser.builder().maxCharacters(100).build();
+                ApachePdfBoxDocumentParser.builder().maxCharacters(textLength).build();
 
         Document document = parser.parse(pdfWithPages(50, 50));
 
+        assertThat(document.text()).hasSize(textLength);
         assertThat(document.text()).isEqualToIgnoringWhitespace("a".repeat(100));
     }
 
     @Test
-    void should_fail_when_document_has_more_than_max_characters() throws IOException {
-        DocumentParser parser =
-                ApachePdfBoxDocumentParser.builder().maxCharacters(100).build();
-        InputStream pdf = pdfWithPages(60, 60);
+    void should_fail_when_document_text_has_more_than_max_characters() throws IOException {
+        // the text also contains the line breaks that PDFBox adds after each line
+        int textLength = textLength(pdfWithPages(50, 50));
+        DocumentParser parser = ApachePdfBoxDocumentParser.builder()
+                .maxCharacters(textLength - 1)
+                .build();
+        InputStream pdf = pdfWithPages(50, 50);
 
         assertThatThrownBy(() -> parser.parse(pdf))
                 .isExactlyInstanceOf(RuntimeException.class)
-                .hasMessage("The PDF document contains more than 100 characters, "
-                        + "which is the maximum this parser extracts. To parse it, set a higher limit with "
-                        + "ApachePdfBoxDocumentParser.builder().maxCharacters(...), or -1 for no limit.");
+                .hasMessage("The text extracted from the PDF document has more than " + (textLength - 1)
+                        + " characters, which is the maximum this parser extracts. To parse it, set a higher limit "
+                        + "with ApachePdfBoxDocumentParser.builder().maxCharacters(...), or -1 for no limit.");
+    }
+
+    @Test
+    void should_not_carry_over_characters_from_previous_documents() throws IOException {
+        DocumentParser parser = ApachePdfBoxDocumentParser.builder()
+                .maxCharacters(100)
+                .maxCharactersPerPage(100)
+                .build();
+
+        Document first = parser.parse(pdfWithPages(60));
+        Document second = parser.parse(pdfWithPages(60));
+
+        assertThat(first.text()).isEqualToIgnoringWhitespace("a".repeat(60));
+        assertThat(second.text()).isEqualToIgnoringWhitespace("a".repeat(60));
+    }
+
+    @Test
+    void should_count_all_characters_of_a_glyph_towards_max_characters_per_page() throws IOException {
+        DocumentParser parser = ApachePdfBoxDocumentParser.builder()
+                .maxCharacters(-1)
+                .maxCharactersPerPage(999)
+                .build();
+        // each of the 10 glyphs is read as 100 characters
+        InputStream pdf = pdfWithGlyphsReadAs("A".repeat(100), 10);
+
+        assertThatThrownBy(() -> parser.parse(pdf))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessage("Page 1 of the PDF document contains more than 999 characters, "
+                        + "which is the maximum this parser extracts from a page. To parse it, set a higher limit with "
+                        + "ApachePdfBoxDocumentParser.builder().maxCharactersPerPage(...), or -1 for no limit.");
+    }
+
+    @Test
+    void should_count_all_characters_of_a_glyph_towards_max_characters() throws IOException {
+        DocumentParser parser = ApachePdfBoxDocumentParser.builder()
+                .maxCharacters(999)
+                .maxCharactersPerPage(-1)
+                .build();
+        // each of the 10 glyphs is read as 100 characters
+        InputStream pdf = pdfWithGlyphsReadAs("A".repeat(100), 10);
+
+        assertThatThrownBy(() -> parser.parse(pdf))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessageStartingWith("The text extracted from the PDF document has more than 999 characters");
+    }
+
+    @Test
+    void should_parse_page_whose_glyphs_are_read_as_several_characters_within_limits() throws IOException {
+        DocumentParser parser = ApachePdfBoxDocumentParser.builder()
+                .maxCharacters(-1)
+                .maxCharactersPerPage(1_000)
+                .build();
+
+        Document document = parser.parse(pdfWithGlyphsReadAs("A".repeat(100), 10));
+
+        assertThat(document.text()).isEqualToIgnoringWhitespace("A".repeat(1_000));
+    }
+
+    @Test
+    void should_count_actual_text_towards_max_characters_per_page() throws IOException {
+        DocumentParser parser = ApachePdfBoxDocumentParser.builder()
+                .maxCharacters(-1)
+                .maxCharactersPerPage(999)
+                .build();
+        InputStream pdf = pdfWithContent("/Span <</ActualText (" + "A".repeat(1_000) + ")>> BDC (a) Tj EMC", null);
+
+        assertThatThrownBy(() -> parser.parse(pdf))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessageStartingWith("Page 1 of the PDF document contains more than 999 characters");
     }
 
     @Test
@@ -177,7 +252,7 @@ class ApachePdfBoxDocumentParserTest {
 
         assertThatThrownBy(() -> parser.parse(pdf))
                 .isExactlyInstanceOf(RuntimeException.class)
-                .hasMessageStartingWith("The PDF document contains more than 10000000 characters");
+                .hasMessageStartingWith("The text extracted from the PDF document has more than 10000000 characters");
     }
 
     @Test
@@ -188,6 +263,21 @@ class ApachePdfBoxDocumentParserTest {
         Document document = parser.parse(pdfWithSamePage(101, 100_000));
 
         assertThat(document.text().chars().filter(c -> c == 'a').count()).isEqualTo(10_100_000);
+    }
+
+    @Test
+    void should_let_subclass_set_limits() throws IOException {
+
+        class ParserWithoutLimitPerPage extends ApachePdfBoxDocumentParser {
+
+            ParserWithoutLimitPerPage() {
+                super(ApachePdfBoxDocumentParser.builder().maxCharactersPerPage(-1));
+            }
+        }
+
+        Document document = new ParserWithoutLimitPerPage().parse(pdfWithPages(100_001));
+
+        assertThat(document.text()).isEqualToIgnoringWhitespace("a".repeat(100_001));
     }
 
     @ParameterizedTest
@@ -245,6 +335,51 @@ class ApachePdfBoxDocumentParserTest {
             }
             return toInputStream(document);
         }
+    }
+
+    private static InputStream pdfWithGlyphsReadAs(String text, int glyphs) throws IOException {
+        StringBuilder hex = new StringBuilder();
+        for (char c : text.toCharArray()) {
+            hex.append(String.format("%04X", (int) c));
+        }
+        String toUnicode = "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n"
+                + "/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n"
+                + "1 begincodespacerange\n<00> <FF>\nendcodespacerange\n"
+                + "1 beginbfchar\n<61> <" + hex + ">\nendbfchar\n"
+                + "endcmap\nCMapName currentdict /CMap defineresource pop\nend\nend\n";
+        return pdfWithContent("(" + "a".repeat(glyphs) + ") Tj", toUnicode);
+    }
+
+    private static InputStream pdfWithContent(String textOperators, @Nullable String toUnicodeCMap) throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            PDType1Font font = new PDType1Font(Standard14Fonts.FontName.HELVETICA);
+            if (toUnicodeCMap != null) {
+                PDStream toUnicode = new PDStream(document);
+                try (OutputStream out = toUnicode.createOutputStream(COSName.FLATE_DECODE)) {
+                    out.write(toUnicodeCMap.getBytes(US_ASCII));
+                }
+                font.getCOSObject().setItem(COSName.TO_UNICODE, toUnicode);
+            }
+            PDResources resources = new PDResources();
+            resources.put(COSName.getPDFName("F1"), font);
+            PDStream content = new PDStream(document);
+            try (OutputStream out = content.createOutputStream(COSName.FLATE_DECODE)) {
+                out.write(("BT /F1 1 Tf 10 700 Td " + textOperators + " ET").getBytes(US_ASCII));
+            }
+            PDPage page = new PDPage();
+            page.setResources(resources);
+            page.setContents(content);
+            document.addPage(page);
+            return toInputStream(document);
+        }
+    }
+
+    private static int textLength(InputStream pdf) {
+        DocumentParser parser = ApachePdfBoxDocumentParser.builder()
+                .maxCharacters(-1)
+                .maxCharactersPerPage(-1)
+                .build();
+        return parser.parse(pdf).text().length();
     }
 
     private static InputStream toInputStream(PDDocument document) throws IOException {

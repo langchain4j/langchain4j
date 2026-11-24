@@ -14,6 +14,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Writer;
 
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -33,19 +34,28 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
  * }</pre>
  *
  * <h2>Maximum number of extracted characters</h2>
- * By default, the parser extracts at most 10,000,000 characters from a document, and at most 100,000 characters
- * from a single page. Every character (glyph) drawn on a page counts.
+ * By default, the parser extracts at most 10,000,000 characters of text from a document, and reads at most
+ * 100,000 characters from a single page:
+ * <ul>
+ *     <li>The limit per document counts the characters of the returned text,
+ *     including the spaces and line breaks that PDFBox adds between words, lines and pages.</li>
+ *     <li>The limit per page counts the characters of the page's text as PDFBox reads it,
+ *     before it adds spaces and line breaks. Every character drawn on the page counts, also when it is drawn
+ *     more than once at the same position.</li>
+ * </ul>
  * If a document or a page contains more characters, {@link #parse(InputStream)} throws a {@link RuntimeException}
  * instead of returning a {@link Document}. The exception message names the limit that was passed.
  * Use {@link Builder#maxCharacters(Integer)} and {@link Builder#maxCharactersPerPage(Integer)} to set different
  * limits, or {@code -1} for no limit.
  * <p>
  * The limit per page exists because PDFBox keeps every character of a page in memory, with its position and font,
- * until the whole page is processed: a small PDF file can draw millions of characters on one page.
+ * until the whole page is processed.
  * <p>
  * The limits bound the amount of extracted text. They do not bound all the memory that PDFBox needs to read a
- * document (for example for large images or fonts). If you parse documents from sources you do not trust,
- * also run the application, or the parsing, in a JVM with a bounded heap ({@code -Xmx}).
+ * document: some small, highly compressed PDF files can need a lot of memory before these limits apply.
+ * An {@link OutOfMemoryError} in the JVM of your application can affect the whole application, even with a heap limit
+ * ({@code -Xmx}). So if you parse documents from sources you do not trust, parse them in a separate process with its
+ * own heap limit.
  */
 public class ApachePdfBoxDocumentParser implements DocumentParser {
 
@@ -74,7 +84,24 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
         this(builder().includeMetadata(includeMetadata));
     }
 
-    private ApachePdfBoxDocumentParser(Builder builder) {
+    /**
+     * Creates a parser with the options of the given builder.
+     * To create a parser, use {@link #builder()} and {@link Builder#build()}.
+     * This constructor is for subclasses, which can use it to set the options of the parser, for example:
+     * <pre>{@code
+     * class MyDocumentParser extends ApachePdfBoxDocumentParser {
+     *
+     *     MyDocumentParser() {
+     *         super(ApachePdfBoxDocumentParser.builder().maxCharacters(-1));
+     *     }
+     * }
+     * }</pre>
+     *
+     * @param builder the builder with the options of the parser
+     * @throws IllegalArgumentException if the options are not valid, see {@link Builder#build()}
+     * @since 1.25.0
+     */
+    protected ApachePdfBoxDocumentParser(Builder builder) {
         this.includeMetadata = getOrDefault(builder.includeMetadata, false);
         this.maxCharacters = ensureValidLimit(
                 getOrDefault(builder.maxCharacters, DEFAULT_MAX_CHARACTERS), "maxCharacters");
@@ -94,6 +121,7 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
      * Every option is optional: options that are not set (or set to {@code null}) use their default values.
      *
      * @return a new builder
+     * @since 1.25.0
      */
     public static Builder builder() {
         return new Builder();
@@ -102,8 +130,9 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
     @Override
     public Document parse(InputStream inputStream) {
         try (PDDocument pdfDocument = Loader.loadPDF(inputStream.readAllBytes())) {
-            PDFTextStripper stripper = new LimitedTextStripper(maxCharacters, maxCharactersPerPage);
-            String text = stripper.getText(pdfDocument);
+            LimitedWriter writer = new LimitedWriter(maxCharacters);
+            new LimitedTextStripper(maxCharactersPerPage).writeText(pdfDocument, writer);
+            String text = writer.toString();
             if (isNullOrBlank(text)) {
                 throw new BlankDocumentException();
             }
@@ -127,13 +156,10 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
 
     private static class LimitedTextStripper extends PDFTextStripper {
 
-        private final int maxCharacters;
         private final int maxCharactersPerPage;
-        private long characters;
         private long charactersOnPage;
 
-        private LimitedTextStripper(int maxCharacters, int maxCharactersPerPage) {
-            this.maxCharacters = maxCharacters;
+        private LimitedTextStripper(int maxCharactersPerPage) {
             this.maxCharactersPerPage = maxCharactersPerPage;
         }
 
@@ -145,26 +171,69 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
 
         @Override
         protected void processTextPosition(TextPosition text) {
-            characters++;
-            charactersOnPage++;
+            super.processTextPosition(text);
+            charactersOnPage += Math.max(1, text.getUnicode().length());
             if (maxCharactersPerPage != NO_LIMIT && charactersOnPage > maxCharactersPerPage) {
                 throw new RuntimeException("Page " + getCurrentPageNo() + " of the PDF document contains more than "
                         + maxCharactersPerPage + " characters, which is the maximum this parser extracts from a page. "
                         + "To parse it, set a higher limit with "
                         + "ApachePdfBoxDocumentParser.builder().maxCharactersPerPage(...), or -1 for no limit.");
             }
-            if (maxCharacters != NO_LIMIT && characters > maxCharacters) {
-                throw new RuntimeException("The PDF document contains more than " + maxCharacters
+        }
+    }
+
+    private static class LimitedWriter extends Writer {
+
+        private final int maxCharacters;
+        private final StringBuilder text = new StringBuilder();
+
+        private LimitedWriter(int maxCharacters) {
+            this.maxCharacters = maxCharacters;
+        }
+
+        @Override
+        public void write(int c) {
+            ensureCapacityFor(1);
+            text.append((char) c);
+        }
+
+        @Override
+        public void write(char[] chars, int offset, int length) {
+            ensureCapacityFor(length);
+            text.append(chars, offset, length);
+        }
+
+        @Override
+        public void write(String string, int offset, int length) {
+            ensureCapacityFor(length);
+            text.append(string, offset, offset + length);
+        }
+
+        private void ensureCapacityFor(int length) {
+            if (maxCharacters != NO_LIMIT && (long) text.length() + length > maxCharacters) {
+                throw new RuntimeException("The text extracted from the PDF document has more than " + maxCharacters
                         + " characters, which is the maximum this parser extracts. To parse it, set a higher limit "
                         + "with ApachePdfBoxDocumentParser.builder().maxCharacters(...), or -1 for no limit.");
             }
-            super.processTextPosition(text);
+        }
+
+        @Override
+        public void flush() {}
+
+        @Override
+        public void close() {}
+
+        @Override
+        public String toString() {
+            return text.toString();
         }
     }
 
     /**
      * Builder for {@link ApachePdfBoxDocumentParser}.
      * Options that are not set (or set to {@code null}) use their default values.
+     *
+     * @since 1.25.0
      */
     public static final class Builder {
 
@@ -180,6 +249,7 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
          *
          * @param includeMetadata whether to include the metadata; {@code null} means the default, {@code false}
          * @return this builder
+         * @since 1.25.0
          */
         public Builder includeMetadata(@Nullable Boolean includeMetadata) {
             this.includeMetadata = includeMetadata;
@@ -187,14 +257,15 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
         }
 
         /**
-         * Sets the maximum number of characters that the parser extracts from the whole document.
-         * Every character (glyph) drawn on a page counts.
-         * If a document contains more characters, {@link ApachePdfBoxDocumentParser#parse(InputStream)}
+         * Sets the maximum number of characters of text that the parser extracts from the whole document.
+         * The count includes the spaces and line breaks that PDFBox adds between words, lines and pages.
+         * If the text of a document has more characters, {@link ApachePdfBoxDocumentParser#parse(InputStream)}
          * throws a {@link RuntimeException}.
          *
          * @param maxCharacters the maximum number of characters, a positive number, or {@code -1} for no limit;
          *                      {@code null} means the default, 10,000,000
          * @return this builder
+         * @since 1.25.0
          */
         public Builder maxCharacters(@Nullable Integer maxCharacters) {
             this.maxCharacters = maxCharacters;
@@ -202,8 +273,10 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
         }
 
         /**
-         * Sets the maximum number of characters that the parser extracts from a single page.
-         * Every character (glyph) drawn on the page counts.
+         * Sets the maximum number of characters that the parser reads from a single page.
+         * The count is the number of characters of the page's text as PDFBox reads it, before it adds spaces and
+         * line breaks. Every character drawn on the page counts, also when it is drawn more than once at the same
+         * position.
          * If a page contains more characters, {@link ApachePdfBoxDocumentParser#parse(InputStream)}
          * throws a {@link RuntimeException}.
          * <p>
@@ -214,6 +287,7 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
          * @param maxCharactersPerPage the maximum number of characters per page, a positive number,
          *                             or {@code -1} for no limit; {@code null} means the default, 100,000
          * @return this builder
+         * @since 1.25.0
          */
         public Builder maxCharactersPerPage(@Nullable Integer maxCharactersPerPage) {
             this.maxCharactersPerPage = maxCharactersPerPage;
@@ -227,6 +301,7 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
          * @throws IllegalArgumentException if {@link #maxCharacters(Integer)} or
          *                                  {@link #maxCharactersPerPage(Integer)} is not a positive number or
          *                                  {@code -1}
+         * @since 1.25.0
          */
         public ApachePdfBoxDocumentParser build() {
             return new ApachePdfBoxDocumentParser(this);
