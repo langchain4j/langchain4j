@@ -29,14 +29,6 @@ public final class TestedModels {
             .modelId("us.amazon.nova-pro-v1:0")
             .build();
 
-    public static final ChatModel CLAUDE_3_HAIKU = BedrockChatModel.builder()
-            .modelId("anthropic.claude-3-haiku-20240307-v1:0")
-            .logResponses(true)
-            .build();
-    public static final StreamingChatModel STREAMING_CLAUDE_3_HAIKU = BedrockStreamingChatModel.builder()
-            .modelId("anthropic.claude-3-haiku-20240307-v1:0")
-            .build();
-
     public static final ChatModel MISTRAL_LARGE = BedrockChatModel.builder()
             .modelId("mistral.mistral-large-2402-v1:0")
             .build();
@@ -48,10 +40,11 @@ public final class TestedModels {
             .modelId("meta.llama3-2-90b-instruct-v1:0")
             .build();
 
-    public static final ChatModel COHERE_COMMAND_R_PLUS =
-            BedrockChatModel.builder().modelId("cohere.command-r-plus-v1:0").build();
-    public static final StreamingChatModel STREAMING_COHERE_COMMAND_R_PLUS = BedrockStreamingChatModel.builder()
-            .modelId("cohere.command-r-plus-v1:0")
+    public static final ChatModel CLAUDE_HAIKU_4_5 = BedrockChatModel.builder()
+            .modelId("us.anthropic.claude-haiku-4-5-20251001-v1:0")
+            .build();
+    public static final StreamingChatModel STREAMING_CLAUDE_HAIKU_4_5 = BedrockStreamingChatModel.builder()
+            .modelId("us.anthropic.claude-haiku-4-5-20251001-v1:0")
             .build();
 
     public static final ChatModel AI_JAMBA_1_5_MINI =

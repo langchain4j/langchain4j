@@ -2,8 +2,6 @@ package dev.langchain4j.model.huggingface.client;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 import java.util.Objects;
 
@@ -12,7 +10,6 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 @Deprecated(forRemoval = true, since = "1.7.0-beta13")
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
-@JsonNaming(SnakeCaseStrategy.class)
 public class Parameters {
 
     private final Integer topK;
@@ -35,6 +32,42 @@ public class Parameters {
         this.returnFullText = builder.returnFullText;
         this.numReturnSequences = builder.numReturnSequences;
         this.doSample = builder.doSample;
+    }
+
+    public Integer getTopK() {
+        return topK;
+    }
+
+    public Double getTopP() {
+        return topP;
+    }
+
+    public Double getTemperature() {
+        return temperature;
+    }
+
+    public Double getRepetitionPenalty() {
+        return repetitionPenalty;
+    }
+
+    public Integer getMaxNewTokens() {
+        return maxNewTokens;
+    }
+
+    public Double getMaxTime() {
+        return maxTime;
+    }
+
+    public Boolean getReturnFullText() {
+        return returnFullText;
+    }
+
+    public Integer getNumReturnSequences() {
+        return numReturnSequences;
+    }
+
+    public Boolean getDoSample() {
+        return doSample;
     }
 
     @Override

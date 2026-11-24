@@ -318,6 +318,65 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
                                 atIndex(1)));
     }
 
+    @Test
+    void rewriteSurvivesLaterPlainSuccess() {
+        assertThat(aiService.rewriteThenPlainSuccess("1", "foo")).isEqualTo("Request: foo; Response: Hi!,1");
+    }
+
+    @Test
+    void rewriteAfterEarlierPlainSuccessIsKept() {
+        assertThat(aiService.plainSuccessThenRewrite("1", "foo")).isEqualTo("Request: foo; Response: Hi!,1");
+    }
+
+    @Test
+    void singleRewritingGuardrailRewritesTheOutput() {
+        assertThat(aiService.onlyRewrite("1", "foo")).isEqualTo("Request: foo; Response: Hi!,1");
+    }
+
+    @Test
+    void rewriteSurvivesPlainSuccessGuardrailsOnBothSides() {
+        assertThat(aiService.plainSuccessRewritePlainSuccess("1", "foo")).isEqualTo("Request: foo; Response: Hi!,1");
+    }
+
+    // A later text-only rewrite supersedes an earlier successWith(text, result).
+    // Discarding the result object here is intentional, not a bug: the result object is a derivative of the text it
+    // was parsed from (see JsonExtractorOutputGuardrail, which does successWith(r.json(), r.value())). Once a later
+    // guardrail rewrites the text, that parsed object describes a superseded payload. Keeping both is also impossible,
+    // since a non-null successfulResult short-circuits response creation and would silently drop the later text.
+    @Test
+    void laterTextOnlyRewriteSupersedesEarlierResultObject() {
+        assertThat(aiService.resultThenTextOnlyRewrite("1", "foo"))
+                .isEqualTo("Request: foo; Response: Hi!,2,2")
+                .isNotEqualTo(RewritingGuardrailWithResult.RESULT)
+                .doesNotContain(RewritingGuardrailWithResult.RESULT);
+    }
+
+    @Test
+    void resultObjectSurvivesLaterPlainSuccess() {
+        assertThat(aiService.resultThenPlainSuccess("1", "foo")).isSameAs(RewritingGuardrailWithResult.RESULT);
+    }
+
+    @Test
+    void repromptIsBlockedWhenARewriteHappenedEarlierInTheChain() {
+        var rewritingGuardrail = SingletonClassInstanceFactory.getInstance(FirstRewritingGuardrail.class);
+        var plainSuccessGuardrail = SingletonClassInstanceFactory.getInstance(PlainSuccessGuardrail.class);
+        var repromptingGuardrail = SingletonClassInstanceFactory.getInstance(AlwaysRepromptingGuardrail.class);
+        assertThatExceptionOfType(OutputGuardrailException.class)
+                .isThrownBy(() -> aiService.rewritePlainSuccessThenReprompt("1", "foo"))
+                .withMessageContaining("Retry or reprompt is not allowed after a rewritten output");
+        assertThat(rewritingGuardrail.spy()).isEqualTo(1);
+        assertThat(plainSuccessGuardrail.spy()).isEqualTo(1);
+        assertThat(repromptingGuardrail.spy()).isEqualTo(1);
+    }
+
+    @Test
+    void laterResultObjectSupersedesEarlierResultObject() {
+        assertThat(aiService.resultThenAnotherResult("1", "foo"))
+                .isSameAs(SecondRewritingGuardrailWithResult.RESULT_B)
+                .isNotSameAs(RewritingGuardrailWithResult.RESULT)
+                .isNotEqualTo(RewritingGuardrailWithResult.RESULT);
+    }
+
     public interface MyAiService {
         @OutputGuardrails({FirstGuardrail.class, SecondGuardrail.class})
         String firstOneTwo(@MemoryId String mem, @UserMessage String message);
@@ -338,6 +397,31 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
 
         @OutputGuardrails({FirstRewritingGuardrail.class, RewritingGuardrailWithResult.class})
         String rewritingSuccessWithResult(@MemoryId String mem, @UserMessage String message);
+
+        @OutputGuardrails({FirstRewritingGuardrail.class, PlainSuccessGuardrail.class})
+        String rewriteThenPlainSuccess(@MemoryId String mem, @UserMessage String message);
+
+        @OutputGuardrails({PlainSuccessGuardrail.class, FirstRewritingGuardrail.class})
+        String plainSuccessThenRewrite(@MemoryId String mem, @UserMessage String message);
+
+        @OutputGuardrails({FirstRewritingGuardrail.class})
+        String onlyRewrite(@MemoryId String mem, @UserMessage String message);
+
+        @OutputGuardrails({PlainSuccessGuardrail.class, FirstRewritingGuardrail.class, PlainSuccessGuardrail.class})
+        String plainSuccessRewritePlainSuccess(@MemoryId String mem, @UserMessage String message);
+
+        @OutputGuardrails({RewritingGuardrailWithResult.class, SecondRewritingGuardrail.class})
+        String resultThenTextOnlyRewrite(@MemoryId String mem, @UserMessage String message);
+
+        @OutputGuardrails({RewritingGuardrailWithResult.class, PlainSuccessGuardrail.class})
+        String resultThenPlainSuccess(@MemoryId String mem, @UserMessage String message);
+
+        @OutputGuardrails({RewritingGuardrailWithResult.class, SecondRewritingGuardrailWithResult.class})
+        String resultThenAnotherResult(@MemoryId String mem, @UserMessage String message);
+
+        @OutputGuardrails({FirstRewritingGuardrail.class, PlainSuccessGuardrail.class, AlwaysRepromptingGuardrail.class
+        })
+        String rewritePlainSuccessThenReprompt(@MemoryId String mem, @UserMessage String message);
 
         static MyAiService create() {
             return createAiService(MyAiService.class, builder -> builder.chatModel(new MyChatModel()));
@@ -452,6 +536,7 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
     }
 
     public static class FirstRewritingGuardrail implements OutputGuardrail {
+        private final AtomicInteger spy = new AtomicInteger(0);
         private final AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
 
         @Override
@@ -462,8 +547,13 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
 
         @Override
         public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+            spy.incrementAndGet();
             String text = responseFromLLM.text();
             return successWith(text + ",1");
+        }
+
+        public int spy() {
+            return spy.get();
         }
 
         public ChatMemory chatMemory() {
@@ -512,6 +602,55 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
         }
     }
 
+    public static class SecondRewritingGuardrailWithResult implements OutputGuardrail {
+        static final String RESULT_B = String.valueOf(2_000);
+        private final AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
+
+        @Override
+        public OutputGuardrailResult validate(OutputGuardrailRequest request) {
+            this.chatMemory.set(request.requestParams().chatMemory());
+            return OutputGuardrail.super.validate(request);
+        }
+
+        @Override
+        public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+            var text = responseFromLLM.text();
+            return successWith(text + ",3", RESULT_B);
+        }
+
+        public ChatMemory chatMemory() {
+            return chatMemory.get();
+        }
+    }
+
+    public static class PlainSuccessGuardrail implements OutputGuardrail {
+        private final AtomicInteger spy = new AtomicInteger(0);
+
+        @Override
+        public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+            spy.incrementAndGet();
+            return success();
+        }
+
+        public int spy() {
+            return spy.get();
+        }
+    }
+
+    public static class AlwaysRepromptingGuardrail implements OutputGuardrail {
+        private final AtomicInteger spy = new AtomicInteger(0);
+
+        @Override
+        public OutputGuardrailResult validate(AiMessage responseFromLLM) {
+            spy.incrementAndGet();
+            return reprompt("Always unhappy", "Please try again");
+        }
+
+        public int spy() {
+            return spy.get();
+        }
+    }
+
     public static class RepromptingGuardrail implements OutputGuardrail {
         private boolean firstCall = true;
         private final AtomicReference<ChatMemory> chatMemory = new AtomicReference<>();
@@ -543,9 +682,7 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
         @Override
         public OutputGuardrailResult validate(OutputGuardrailRequest request) {
             var message = request.responseFromLLM().aiMessage().text();
-            var isAllUppercase = message.chars()
-                    .filter(Character::isLetter)
-                    .allMatch(Character::isUpperCase);
+            var isAllUppercase = message.chars().filter(Character::isLetter).allMatch(Character::isUpperCase);
 
             if (isAllUppercase) {
                 return success();
@@ -570,9 +707,7 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
             if (response == null) {
                 throw new IllegalArgumentException("No response found for request: " + request);
             }
-            return ChatResponse.builder()
-                    .aiMessage(AiMessage.from(response))
-                    .build();
+            return ChatResponse.builder().aiMessage(AiMessage.from(response)).build();
         }
 
         private static String getLastMessage(ChatRequest chatRequest) {
@@ -593,8 +728,7 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
         static UppercaseAiService create() {
             Map<String, String> responses = Map.of(
                     "SAY HELLO", "Hello world",
-                    "Please provide the output in uppercase.", "HELLO WORLD"
-            );
+                    "Please provide the output in uppercase.", "HELLO WORLD");
             return createAiService(UppercaseAiService.class, builder -> builder.chatModel(new MapChatModel(responses)));
         }
     }
@@ -605,4 +739,3 @@ class OutputGuardrailChainTests extends BaseGuardrailTests {
         assertThat(aiService.helloWorld("SAY HELLO")).isEqualTo("HELLO WORLD");
     }
 }
-

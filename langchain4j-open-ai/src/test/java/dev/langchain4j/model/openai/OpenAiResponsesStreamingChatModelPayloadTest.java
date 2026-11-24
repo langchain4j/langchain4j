@@ -6,14 +6,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.MockHttpClient;
 import dev.langchain4j.http.client.MockHttpClientBuilder;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Flow;
 import org.junit.jupiter.api.Test;
 
 class OpenAiResponsesStreamingChatModelPayloadTest {
@@ -27,6 +32,11 @@ class OpenAiResponsesStreamingChatModelPayloadTest {
                     .addStringProperty("city")
                     .required("city")
                     .build())
+            .build();
+
+    private static final ToolSpecification DYNAMIC_TOOL = ToolSpecification.builder()
+            .name("call_tool")
+            .description("Calls a tool discovered via find_tool")
             .build();
 
     @Test
@@ -122,5 +132,130 @@ class OpenAiResponsesStreamingChatModelPayloadTest {
         assertThat(payload.get("tools").get(0).get("type").asText()).isEqualTo("file_search");
         assertThat(payload.get("tools").get(0).get("vector_store_ids").get(0).asText())
                 .isEqualTo("vs_1");
+    }
+
+    @Test
+    void should_send_object_schema_for_tool_without_parameters() throws Exception {
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
+        OpenAiResponsesStreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(MODEL_NAME)
+                .toolSpecifications(DYNAMIC_TOOL)
+                .build();
+
+        try {
+            model.chat("Hello", new TestStreamingChatResponseHandler());
+        } catch (Exception ignored) {
+        }
+
+        JsonNode tool = OBJECT_MAPPER
+                .readTree(mockHttpClient.request().body())
+                .get("tools")
+                .get(0);
+        assertThat(tool.get("parameters").get("type").asText()).isEqualTo("object");
+        assertThat(tool.get("parameters").get("properties")).isEmpty();
+        assertThat(tool.get("parameters").get("required")).isEmpty();
+        assertThat(tool.get("parameters").has("additionalProperties")).isFalse();
+        // the Responses API defaults "strict" to true, so it must be sent explicitly
+        assertThat(tool.get("strict").asBoolean()).isFalse();
+    }
+
+    @Test
+    void should_send_strict_object_schema_for_tool_without_parameters_when_strict() throws Exception {
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
+        OpenAiResponsesStreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(MODEL_NAME)
+                .toolSpecifications(DYNAMIC_TOOL)
+                .strictTools(true)
+                .build();
+
+        try {
+            model.chat("Hello", new TestStreamingChatResponseHandler());
+        } catch (Exception ignored) {
+        }
+
+        JsonNode tool = OBJECT_MAPPER
+                .readTree(mockHttpClient.request().body())
+                .get("tools")
+                .get(0);
+        assertThat(tool.get("parameters").get("type").asText()).isEqualTo("object");
+        assertThat(tool.get("parameters").get("additionalProperties").asBoolean())
+                .isFalse();
+        assertThat(tool.get("strict").asBoolean()).isTrue();
+    }
+
+    @Test
+    void should_send_strict_false_explicitly_for_tool_with_parameters() throws Exception {
+        MockHttpClient mockHttpClient = new MockHttpClient();
+
+        OpenAiResponsesStreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(MODEL_NAME)
+                .toolSpecifications(WEATHER_TOOL)
+                .build();
+
+        try {
+            model.chat("Hello", new TestStreamingChatResponseHandler());
+        } catch (Exception ignored) {
+        }
+
+        JsonNode tool = OBJECT_MAPPER
+                .readTree(mockHttpClient.request().body())
+                .get("tools")
+                .get(0);
+        assertThat(tool.get("strict").asBoolean()).isFalse();
+    }
+
+    @Test
+    void publisher_hook_should_signal_an_unsupported_parameter_instead_of_throwing() {
+        MockHttpClient mockHttpClient = new MockHttpClient();
+        OpenAiResponsesStreamingChatModel model = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test-key")
+                .httpClientBuilder(new MockHttpClientBuilder(mockHttpClient))
+                .modelName(MODEL_NAME)
+                .build();
+        // the hook is called directly, so the parameters are those of this model, as chat(ChatRequest) passes them
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("Hi"))
+                .parameters(OpenAiResponsesChatRequestParameters.builder()
+                        .modelName(MODEL_NAME)
+                        .topK(3)
+                        .build())
+                .build();
+        List<Object> signals = new CopyOnWriteArrayList<>();
+
+        model.doChat(request).subscribe(new Flow.Subscriber<>() {
+
+            @Override
+            public void onSubscribe(Flow.Subscription subscription) {
+                signals.add("onSubscribe");
+            }
+
+            @Override
+            public void onNext(ChatModelStreamingEvent event) {
+                signals.add(event);
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                signals.add(error);
+            }
+
+            @Override
+            public void onComplete() {
+                signals.add("onComplete");
+            }
+        });
+
+        assertThat(signals).hasSize(2);
+        assertThat(signals.get(0)).isEqualTo("onSubscribe");
+        assertThat(signals.get(1)).isInstanceOf(UnsupportedFeatureException.class);
+        assertThat(mockHttpClient.requests()).isEmpty();
     }
 }

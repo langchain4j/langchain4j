@@ -4,8 +4,6 @@ import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import java.util.List;
 
 /**
@@ -15,15 +13,17 @@ import java.util.List;
  */
 @JsonInclude(NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class JinaMultimodalEmbeddingRequest {
 
     public String model;
+    public String task;
     public Boolean lateChunking;
     public List<JinaMultimodalInput> input;
 
-    public JinaMultimodalEmbeddingRequest(String model, Boolean lateChunking, List<JinaMultimodalInput> input) {
+    public JinaMultimodalEmbeddingRequest(
+            String model, String task, Boolean lateChunking, List<JinaMultimodalInput> input) {
         this.model = model;
+        this.task = task;
         this.lateChunking = lateChunking;
         this.input = input;
     }

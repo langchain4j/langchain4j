@@ -1,0 +1,21 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class org.slf4j.Logger",
+          "justification": "The builder accepts an alternate SLF4J Logger for request/response logging, like other provider integrations"
+        },
+        {
+          "code": "java.method.returnTypeChanged",
+          "old": "method dev.langchain4j.model.decision.request.DecisionRequestParameters dev.langchain4j.model.typesafe.TypeSafeDecisionModel::defaultRequestParameters()",
+          "new": "method dev.langchain4j.model.typesafe.TypeSafeDecisionRequestParameters dev.langchain4j.model.typesafe.TypeSafeDecisionModel::defaultRequestParameters()",
+          "justification": "defaultRequestParameters() now returns the provider-specific TypeSafeDecisionRequestParameters (covariant return, the compiler keeps a bridge method), consistent with OpenAiChatModel and AnthropicChatModel"
+        }
+      ]
+    }
+  }
+]

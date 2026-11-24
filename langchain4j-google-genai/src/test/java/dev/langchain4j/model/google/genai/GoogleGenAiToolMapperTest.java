@@ -15,9 +15,12 @@ import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
 import dev.langchain4j.model.chat.request.json.JsonNullSchema;
 import dev.langchain4j.model.chat.request.json.JsonNumberSchema;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonRawSchema;
+import dev.langchain4j.model.chat.request.json.JsonReferenceSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class GoogleGenAiToolMapperTest {
@@ -571,5 +574,51 @@ class GoogleGenAiToolMapperTest {
 
         assertThat(addressSchema.type().get()).hasToString("OBJECT");
         assertThat(addressSchema.properties().get()).containsKeys("street", "city");
+    }
+
+    @Test
+    void should_use_parameters_json_schema_when_object_schema_has_definitions() {
+        JsonObjectSchema nodeSchema = JsonObjectSchema.builder()
+                .addStringProperty("name")
+                .addProperty(
+                        "children",
+                        JsonArraySchema.builder()
+                                .items(JsonReferenceSchema.builder()
+                                        .reference("Node")
+                                        .build())
+                                .build())
+                .build();
+
+        JsonObjectSchema rootSchema = JsonObjectSchema.builder()
+                .addProperty("root", nodeSchema)
+                .definitions(Map.of("Node", nodeSchema))
+                .build();
+
+        ToolSpecification spec = ToolSpecification.builder()
+                .name("processTree")
+                .description("Process a recursive tree")
+                .parameters(rootSchema)
+                .build();
+
+        FunctionDeclaration fd = GoogleGenAiToolMapper.convertToGoogleFunction(spec);
+
+        assertThat(fd.parameters()).isEmpty();
+        assertThat(fd.parametersJsonSchema()).isPresent();
+        assertThat(fd.parametersJsonSchema().get()).isInstanceOf(Map.class);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> rawSchemaMap =
+                (Map<String, Object>) fd.parametersJsonSchema().get();
+        assertThat(rawSchemaMap).containsKey("$defs");
+    }
+
+    @Test
+    void should_check_can_be_mapped_for_raw_and_reference_schemas() {
+        assertThat(GoogleGenAiToolMapper.canBeMapped(JsonStringSchema.builder().build()))
+                .isTrue();
+        assertThat(GoogleGenAiToolMapper.canBeMapped(JsonRawSchema.from("{\"type\":\"string\"}")))
+                .isFalse();
+        assertThat(GoogleGenAiToolMapper.canBeMapped(
+                        JsonReferenceSchema.builder().reference("Ref").build()))
+                .isFalse();
     }
 }

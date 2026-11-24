@@ -87,7 +87,7 @@ class ScopeStateSerializationIT {
 
         // rootCallEnded triggers flush → registry.update → store.save → toJson
         // This should not fail due to non-serializable runtime objects in state
-        assertThatNoException().isThrownBy(() -> scope.rootCallEnded(registry, null));
+        assertThatNoException().isThrownBy(() -> scope.rootCallEnded(registry, null, false));
 
         assertThat(store.getAllKeys()).isNotEmpty();
     }

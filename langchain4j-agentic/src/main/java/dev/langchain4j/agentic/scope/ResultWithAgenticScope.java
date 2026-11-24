@@ -109,7 +109,8 @@ public final class ResultWithAgenticScope<T> {
 
     @Override
     public String toString() {
-        return "ResultWithAgenticScope[agenticScope=" + agenticScope
+        return "ResultWithAgenticScope[agenticScope="
+                + (agenticScope != null ? "AgenticScope(memoryId=" + agenticScope.memoryId() + ")" : "null")
                 + ", result=" + result
                 + ", suspended=" + suspended + "]";
     }

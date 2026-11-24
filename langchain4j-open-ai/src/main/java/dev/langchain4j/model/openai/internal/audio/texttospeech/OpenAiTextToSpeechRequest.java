@@ -1,10 +1,10 @@
 package dev.langchain4j.model.openai.internal.audio.texttospeech;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 
 /**
  * Represents the text-to-speech request.
@@ -13,7 +13,6 @@ import com.fasterxml.jackson.databind.annotation.JsonNaming;
  */
 @JsonDeserialize(builder = OpenAiTextToSpeechRequest.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_EMPTY)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class OpenAiTextToSpeechRequest {
 
     /**
@@ -37,6 +36,7 @@ public class OpenAiTextToSpeechRequest {
     @JsonProperty
     private final String voice;
 
+    @JsonCreator
     public OpenAiTextToSpeechRequest(Builder builder) {
         this.input = builder.text;
         this.model = builder.model;
@@ -58,6 +58,8 @@ public class OpenAiTextToSpeechRequest {
     public static Builder builder() {
         return new Builder();
     }
+
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
 
     public static class Builder {
 

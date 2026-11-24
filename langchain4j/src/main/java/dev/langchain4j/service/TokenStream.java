@@ -9,6 +9,7 @@ import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.PartialThinkingContext;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCallContext;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.service.tool.BeforeToolExecution;
@@ -31,6 +32,9 @@ public interface TokenStream {
      * <p>
      * Either this or the {@link #onPartialResponseWithContext(BiConsumer)} callback can be used
      * if you want to consume tokens as soon as they become available.
+     * <p>
+     * This callback does not provide a {@link StreamingHandle}, so the streaming cannot be cancelled from it.
+     * Use {@link #onPartialResponseWithContext(BiConsumer)} instead if you need to cancel.
      *
      * @param partialResponseHandler lambda that will be invoked when a model generates a new partial textual response
      * @return token stream instance used to configure or start stream processing
@@ -61,6 +65,9 @@ public interface TokenStream {
      * <p>
      * Either this or the {@link #onPartialThinkingWithContext(BiConsumer)} callback can be used
      * if you want to consume thinking tokens as soon as they become available.
+     * <p>
+     * This callback does not provide a {@link StreamingHandle}, so the streaming cannot be cancelled from it.
+     * Use {@link #onPartialThinkingWithContext(BiConsumer)} instead if you need to cancel.
      *
      * @param partialThinkingHandler lambda that will be invoked when a model generates a new partial thinking/reasoning text
      * @return token stream instance used to configure or start stream processing
@@ -95,6 +102,9 @@ public interface TokenStream {
      * <p>
      * Either this or the {@link #onPartialToolCallWithContext(BiConsumer)} callback can be used
      * if you want to consume partial tool calls as soon as they become available.
+     * <p>
+     * This callback does not provide a {@link StreamingHandle}, so the streaming cannot be cancelled from it.
+     * Use {@link #onPartialToolCallWithContext(BiConsumer)} instead if you need to cancel.
      *
      * @param partialToolCallHandler lambda that will be invoked when a model generates a new partial tool call
      * @return token stream instance used to configure or start stream processing
@@ -208,7 +218,13 @@ public interface TokenStream {
     TokenStream onCompleteResponse(Consumer<ChatResponse> completeResponseHandler);
 
     /**
-     * The provided consumer will be invoked when an error occurs during streaming.
+     * The provided consumer will be invoked when an error occurs, before or during streaming. A failure of the model
+     * call, including an invalid request, is passed to this consumer and is not thrown from {@link #start()}. The
+     * consumer can be called before {@link #start()} returns.
+     * <p>
+     * If this consumer throws an {@link Exception}, it is logged and not thrown from {@link #start()}. An
+     * {@link Error} that it throws on the calling thread before {@link #start()} returns comes out of
+     * {@link #start()}.
      *
      * @param errorHandler lambda that will be invoked when an error occurs
      * @return token stream instance used to configure or start stream processing
@@ -216,7 +232,11 @@ public interface TokenStream {
     TokenStream onError(Consumer<Throwable> errorHandler);
 
     /**
-     * All errors during streaming will be ignored (but will be logged with a WARN log level).
+     * Every failure that would be passed to {@link #onError(Consumer)}, before or during streaming, including an
+     * invalid request, is ignored and logged with the WARN level. It is not thrown from {@link #start()}. After a
+     * failure of the model call, no other callback is called, so code that waits for
+     * {@link #onCompleteResponse(Consumer)} would wait forever: to also finish on a failure, use
+     * {@link #onError(Consumer)} instead.
      *
      * @return token stream instance used to configure or start stream processing
      */
@@ -226,6 +246,16 @@ public interface TokenStream {
      * Completes the current token stream building and starts processing.
      * <p>
      * Will send a request to LLM and start response streaming.
+     * <p>
+     * A failure of the model call, including an invalid request, is passed to {@link #onError(Consumer)} (possibly
+     * before this method returns) and is not thrown from this method. This method throws an
+     * {@link IllegalConfigurationException} if this token stream is not configured correctly, for example if neither
+     * or both of {@link #onError(Consumer)} and {@link #ignoreErrors()} were called. It also throws what the
+     * {@link #onRetrieved(Consumer)} callback or the chat request transformer of the AI Service throws.
+     * <p>
+     * Each call is a separate AI Service invocation with its own invocation id. A second call reuses the retrieved
+     * contents, the result of the input guardrails and the messages prepared when the AI Service method was called:
+     * only the model call, the tools and the output guardrails run again.
      */
     void start();
 }

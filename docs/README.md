@@ -28,7 +28,7 @@ npm ci
 
 This command builds the deployable static artifacts (i.e., html, js, css, etc) under the `build` directory. This static content can then be deployed to `GitHub pages` or `Vercel`, etc.
 
-```
+```bash
 npm run build
 ```
 
@@ -37,6 +37,6 @@ npm run build
 This command starts a local development server and opens up a browser window. Most changes are reflected live without
 having to restart the server.
 
-```
+```bash
 npm run start
 ```

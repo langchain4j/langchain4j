@@ -1,6 +1,7 @@
 package dev.langchain4j.guardrail;
 
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import java.util.Arrays;
 
 /**
@@ -9,7 +10,9 @@ import java.util.Arrays;
  * <p>
  * In the case of reprompting, the reprompt message is added to the LLM context and the request is retried.
  * <p>
- * The maximum number of retries is configurable, defaulting to {@link dev.langchain4j.guardrail.config.OutputGuardrailsConfig#MAX_RETRIES_DEFAULT}.
+ * The maximum number of times a response of the model is validated, including the first one, is configurable with
+ * {@link OutputGuardrailsConfig#maxRetries()}, and defaults to {@link OutputGuardrailsConfig#MAX_RETRIES_DEFAULT} (one
+ * retry or reprompt).
  */
 public interface OutputGuardrail extends Guardrail<OutputGuardrailRequest, OutputGuardrailResult> {
     /**
@@ -96,6 +99,20 @@ public interface OutputGuardrail extends Guardrail<OutputGuardrailRequest, Outpu
      */
     default OutputGuardrailResult successWith(AiMessage successfulAiMessage, Object successfulResult) {
         return OutputGuardrailResult.successWith(successfulAiMessage, successfulResult);
+    }
+
+    /**
+     * Produces a successful result carrying a result object without marking the output as rewritten.
+     * <p>
+     * Unlike {@link #successWith(String, Object)} and {@link #successWith(AiMessage, Object)}, the result is a
+     * plain {@code SUCCESS}, so subsequent guardrails in the chain remain allowed to retry or reprompt.
+     *
+     * @param successfulResult
+     *            the object to carry on the successful result.
+     * @return The result of a successful output guardrail validation carrying the given object.
+     */
+    default OutputGuardrailResult successWithResult(Object successfulResult) {
+        return OutputGuardrailResult.successWithResult(successfulResult);
     }
 
     /**

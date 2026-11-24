@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atMost;
 import static org.mockito.Mockito.mockStatic;
@@ -59,8 +60,8 @@ public class WatsonxModerationTest {
         when(mockDetectionServiceBuilder.spaceId(any())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.timeout(any())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.version(any())).thenReturn(mockDetectionServiceBuilder);
-        when(mockDetectionServiceBuilder.logRequests(any())).thenReturn(mockDetectionServiceBuilder);
-        when(mockDetectionServiceBuilder.logResponses(any())).thenReturn(mockDetectionServiceBuilder);
+        when(mockDetectionServiceBuilder.logRequests(nullable(Boolean.class))).thenReturn(mockDetectionServiceBuilder);
+        when(mockDetectionServiceBuilder.logResponses(nullable(Boolean.class))).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.apiKey(any())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.httpClient(any())).thenReturn(mockDetectionServiceBuilder);
         when(mockDetectionServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockDetectionServiceBuilder);

@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.JsonSchemaElementUtils.jsonSchemaElementF
 import static dev.langchain4j.model.azure.AzureModelBuilders.getAzureOpenaiEndpoint;
 import static dev.langchain4j.model.azure.AzureModelBuilders.getAzureOpenaiKey;
 import static dev.langchain4j.model.chat.request.ResponseFormatType.JSON;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -205,10 +206,12 @@ class AzureOpenAiChatModelIT {
                 .build();
 
         // when
-        String answer = model.chat("What is the capital of Germany?");
+        ChatResponse response = model.chat(userMessage("Tell me a long story"));
 
         // then
-        assertThat(answer).contains("Berlin");
+        // the answer text is not asserted: a reasoning model may use the whole budget for reasoning and return no text
+        assertThat(response.finishReason()).isEqualTo(LENGTH);
+        assertThat(response.tokenUsage().outputTokenCount()).isLessThanOrEqualTo(maxCompletionTokens);
     }
 
     @Test

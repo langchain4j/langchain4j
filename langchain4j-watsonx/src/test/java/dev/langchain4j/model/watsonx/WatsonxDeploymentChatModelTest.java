@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -16,6 +17,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.ibm.watsonx.ai.CloudRegion;
+import com.ibm.watsonx.ai.chat.ChatModeration;
 import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.TextChatResponse;
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
@@ -66,8 +68,10 @@ public class WatsonxDeploymentChatModelTest {
         when(mockDeploymentServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockDeploymentServiceBuilder);
         when(mockDeploymentServiceBuilder.timeout(any())).thenReturn(mockDeploymentServiceBuilder);
         when(mockDeploymentServiceBuilder.version(any())).thenReturn(mockDeploymentServiceBuilder);
-        when(mockDeploymentServiceBuilder.logRequests(any())).thenReturn(mockDeploymentServiceBuilder);
-        when(mockDeploymentServiceBuilder.logResponses(any())).thenReturn(mockDeploymentServiceBuilder);
+        when(mockDeploymentServiceBuilder.logRequests(nullable(Boolean.class)))
+                .thenReturn(mockDeploymentServiceBuilder);
+        when(mockDeploymentServiceBuilder.logResponses(nullable(Boolean.class)))
+                .thenReturn(mockDeploymentServiceBuilder);
         when(mockDeploymentServiceBuilder.authenticator(any())).thenReturn(mockDeploymentServiceBuilder);
         when(mockDeploymentServiceBuilder.apiKey(any())).thenReturn(mockDeploymentServiceBuilder);
         when(mockDeploymentServiceBuilder.httpClient(any())).thenReturn(mockDeploymentServiceBuilder);
@@ -216,6 +220,29 @@ public class WatsonxDeploymentChatModelTest {
     }
 
     @Test
+    @SuppressWarnings("removal")
+    void should_throw_exception_when_repetition_or_length_penalty_is_set() {
+
+        assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxDeploymentChatModel.builder()
+                        .baseUrl("https://test.com")
+                        .deploymentId("deployment-id")
+                        .apiKey("api-key")
+                        .repetitionPenalty(1.1)
+                        .build());
+
+        assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxDeploymentChatModel.builder()
+                        .baseUrl("https://test.com")
+                        .deploymentId("deployment-id")
+                        .apiKey("api-key")
+                        .lengthPenalty(1.2)
+                        .build());
+    }
+
+    @Test
     void should_throw_exception_for_chat_request_with_model_name() {
 
         var chatModel = WatsonxDeploymentChatModel.builder()
@@ -241,6 +268,50 @@ public class WatsonxDeploymentChatModelTest {
                                 .modelName("my-model")
                                 .build())
                         .build());
+    }
+
+    @Test
+    void should_throw_exception_for_chat_request_with_moderations() {
+
+        var moderation = ChatModeration.builder().pii(p -> p.input(true)).build();
+
+        var chatModel = WatsonxDeploymentChatModel.builder()
+                .baseUrl("https://test.com")
+                .deploymentId("deployment-id")
+                .apiKey("api-key")
+                .build();
+
+        var ex = assertThrows(
+                UnsupportedFeatureException.class,
+                () -> chatModel.chat(ChatRequest.builder()
+                        .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                        .parameters(WatsonxChatRequestParameters.builder()
+                                .moderations(moderation)
+                                .build())
+                        .build()));
+
+        assertEquals("The 'moderations' parameter is not supported by the on-demand deployments", ex.getMessage());
+
+        assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxDeploymentChatModel.builder()
+                        .baseUrl("https://test.com")
+                        .deploymentId("deployment-id")
+                        .apiKey("api-key")
+                        .defaultRequestParameters(WatsonxChatRequestParameters.builder()
+                                .moderations(moderation)
+                                .build())
+                        .build());
+    }
+
+    @Test
+    void should_not_expose_the_moderations_setter() throws Exception {
+        assertThrows(
+                NoSuchMethodException.class,
+                () -> WatsonxDeploymentChatModel.Builder.class.getMethod("moderations", ChatModeration.class));
+        assertThrows(
+                NoSuchMethodException.class,
+                () -> WatsonxDeploymentStreamingChatModel.Builder.class.getMethod("moderations", ChatModeration.class));
     }
 
     @Test

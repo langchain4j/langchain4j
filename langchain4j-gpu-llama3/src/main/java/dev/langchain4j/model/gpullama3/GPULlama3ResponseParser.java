@@ -11,7 +11,13 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
  * <p>
  * This parser separates the thinking content from the actual response content for both
  * complete responses and streaming responses, while preserving the thinking tags.
+ *
+ * @deprecated GPULlama3.java has been succeeded by jitLLM. There is no replacement for this class:
+ * {@code dev.langchain4j.model.jitllm.JitLLMChatModel} and {@code dev.langchain4j.model.jitllm.JitLLMStreamingChatModel}
+ * from the {@code langchain4j-jitllm} module separate the thinking themselves and return it
+ * when {@code returnThinking(true)} is set.
  */
+@Deprecated(since = "1.21.0-beta31")
 public class GPULlama3ResponseParser {
 
     /**

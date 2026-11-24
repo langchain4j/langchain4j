@@ -1,0 +1,20 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class com.mongodb.client.MongoClient",
+          "justification": "The builder intentionally accepts a caller-owned MongoClient for connection reuse and caller-managed lifecycle."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class com.mongodb.client.model.CreateCollectionOptions",
+          "justification": "The builder intentionally exposes the MongoDB driver's collection creation options."
+        }
+      ]
+    }
+  }
+]

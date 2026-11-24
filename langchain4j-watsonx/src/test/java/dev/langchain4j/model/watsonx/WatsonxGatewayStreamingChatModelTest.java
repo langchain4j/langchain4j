@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -24,11 +25,11 @@ import com.ibm.watsonx.ai.chat.model.CompletedToolCall;
 import com.ibm.watsonx.ai.chat.model.FunctionCall;
 import com.ibm.watsonx.ai.chat.model.ResultMessage;
 import com.ibm.watsonx.ai.chat.model.ToolCall;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters.ReasoningEffort;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatParameters.ServiceTier;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatRequest;
 import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatResponse;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ReasoningEffort;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayParameters.ServiceTier;
-import com.ibm.watsonx.ai.gateway.chat.ModelGatewayService;
+import com.ibm.watsonx.ai.gateway.chat.ModelGatewayChatService;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ContentFilteredException;
@@ -45,6 +46,7 @@ import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.FinishReason;
 import java.net.URI;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -67,10 +69,10 @@ import org.mockito.quality.Strictness;
 public class WatsonxGatewayStreamingChatModelTest {
 
     @Mock
-    ModelGatewayService mockModelGatewayService;
+    ModelGatewayChatService mockModelGatewayChatService;
 
     @Mock
-    ModelGatewayService.Builder mockModelGatewayServiceBuilder;
+    ModelGatewayChatService.Builder mockModelGatewayChatServiceBuilder;
 
     @Captor
     ArgumentCaptor<ModelGatewayChatRequest> chatRequestCaptor;
@@ -80,17 +82,19 @@ public class WatsonxGatewayStreamingChatModelTest {
     @BeforeEach
     void setUp() {
 
-        when(mockModelGatewayServiceBuilder.modelId(any())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.timeout(any())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.version(any())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.logRequests(any())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.logResponses(any())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.authenticator(any())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.apiKey(any())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.httpClient(any())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockModelGatewayServiceBuilder);
-        when(mockModelGatewayServiceBuilder.build()).thenReturn(mockModelGatewayService);
+        when(mockModelGatewayChatServiceBuilder.modelId(any())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.baseUrl(any(URI.class))).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.timeout(any())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.version(any())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.logRequests(nullable(Boolean.class)))
+                .thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.logResponses(nullable(Boolean.class)))
+                .thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.authenticator(any())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.apiKey(any())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.httpClient(any())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.verifySsl(anyBoolean())).thenReturn(mockModelGatewayChatServiceBuilder);
+        when(mockModelGatewayChatServiceBuilder.build()).thenReturn(mockModelGatewayChatService);
 
         var chatUsage = new ChatUsage(10, 10, 20);
         chatResponse = ModelGatewayChatResponse.builder()
@@ -122,11 +126,11 @@ public class WatsonxGatewayStreamingChatModelTest {
         var defaultRequestParameters = assertInstanceOf(
                 WatsonxGatewayChatRequestParameters.class, streamingChatModel.defaultRequestParameters());
 
-        var modelGatewayServiceField = assertDoesNotThrow(
-                () -> streamingChatModel.getClass().getSuperclass().getDeclaredField("modelGatewayService"));
-        var modelGatewayService = assertDoesNotThrow(() -> modelGatewayServiceField.get(streamingChatModel));
+        var modelGatewayChatServiceField = assertDoesNotThrow(
+                () -> streamingChatModel.getClass().getSuperclass().getDeclaredField("modelGatewayChatService"));
+        var modelGatewayChatService = assertDoesNotThrow(() -> modelGatewayChatServiceField.get(streamingChatModel));
 
-        assertInstanceOf(ModelGatewayService.class, modelGatewayService);
+        assertInstanceOf(ModelGatewayChatService.class, modelGatewayChatService);
         assertEquals(ModelProvider.WATSONX, streamingChatModel.provider());
         assertEquals("gpt-4o", defaultRequestParameters.modelName());
         assertNull(defaultRequestParameters.serviceTier());
@@ -150,10 +154,10 @@ public class WatsonxGatewayStreamingChatModelTest {
 
                     return CompletableFuture.completedFuture(null);
                 })
-                .when(mockModelGatewayService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .when(mockModelGatewayChatService)
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
-        withModelGatewayServiceMock(() -> {
+        withModelGatewayChatServiceMock(() -> {
             var streamingChatModel = WatsonxGatewayStreamingChatModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("gpt-4o")
@@ -176,11 +180,11 @@ public class WatsonxGatewayStreamingChatModelTest {
                 public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {
                     var metadata = (WatsonxChatResponseMetadata) completeResponse.metadata();
                     assertEquals("Hello World", completeResponse.aiMessage().text());
-                    assertEquals("auto", metadata.getServiceTier());
-                    assertEquals("fp", metadata.getSystemFingerprint());
-                    assertEquals(true, metadata.getCached());
-                    assertEquals("modelVersion", metadata.getModelVersion());
-                    assertEquals(1L, metadata.getCreated());
+                    assertEquals("auto", metadata.serviceTier());
+                    assertEquals("fp", metadata.systemFingerprint());
+                    assertEquals(true, metadata.cached());
+                    assertEquals("modelVersion", metadata.modelVersion());
+                    assertEquals(1L, metadata.created());
                     latch.countDown();
                 }
 
@@ -222,10 +226,10 @@ public class WatsonxGatewayStreamingChatModelTest {
 
                     return CompletableFuture.completedFuture(null);
                 })
-                .when(mockModelGatewayService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .when(mockModelGatewayChatService)
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
-        withModelGatewayServiceMock(() -> {
+        withModelGatewayChatServiceMock(() -> {
             var streamingChatModel = WatsonxGatewayStreamingChatModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("gpt-4o")
@@ -282,10 +286,10 @@ public class WatsonxGatewayStreamingChatModelTest {
                     handler.onCompleteResponse(chatResponse.build());
                     return CompletableFuture.completedFuture(null);
                 })
-                .when(mockModelGatewayService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .when(mockModelGatewayChatService)
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
-        withModelGatewayServiceMock(() -> {
+        withModelGatewayChatServiceMock(() -> {
             StreamingChatModel streamingChatModel = WatsonxGatewayStreamingChatModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("gpt-4o")
@@ -317,11 +321,11 @@ public class WatsonxGatewayStreamingChatModelTest {
                     assertTrue(completeResponse.aiMessage().hasToolExecutionRequests());
                     assertEquals("id", completeResponse.id());
                     assertEquals("model", completeResponse.modelName());
-                    assertEquals("modelVersion", metadata.getModelVersion());
-                    assertEquals(1L, metadata.getCreated());
-                    assertEquals("auto", metadata.getServiceTier());
-                    assertEquals("fp", metadata.getSystemFingerprint());
-                    assertEquals(true, metadata.getCached());
+                    assertEquals("modelVersion", metadata.modelVersion());
+                    assertEquals(1L, metadata.created());
+                    assertEquals("auto", metadata.serviceTier());
+                    assertEquals("fp", metadata.systemFingerprint());
+                    assertEquals(true, metadata.cached());
                     assertEquals(FinishReason.TOOL_EXECUTION, completeResponse.finishReason());
                     assertEquals(
                             1,
@@ -383,10 +387,10 @@ public class WatsonxGatewayStreamingChatModelTest {
                     handler.onCompleteResponse(chatResponse.build());
                     return CompletableFuture.completedFuture(null);
                 })
-                .when(mockModelGatewayService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .when(mockModelGatewayChatService)
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
-        withModelGatewayServiceMock(() -> {
+        withModelGatewayChatServiceMock(() -> {
             var streamingChatModel = WatsonxGatewayStreamingChatModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("gpt-4o")
@@ -440,10 +444,10 @@ public class WatsonxGatewayStreamingChatModelTest {
                     handler.onError(new Exception("test"));
                     return CompletableFuture.completedFuture(null);
                 })
-                .when(mockModelGatewayService)
-                .chatStreaming(chatRequestCaptor.capture(), any());
+                .when(mockModelGatewayChatService)
+                .chatStreaming(chatRequestCaptor.capture(), any(ChatHandler.class));
 
-        withModelGatewayServiceMock(() -> {
+        withModelGatewayChatServiceMock(() -> {
             var streamingChatModel = WatsonxGatewayStreamingChatModel.builder()
                     .baseUrl("https://test.com")
                     .modelName("gpt-4o")
@@ -485,24 +489,22 @@ public class WatsonxGatewayStreamingChatModelTest {
                 .apiKey("api-key")
                 .build();
 
-        assertThrows(
-                UnsupportedFeatureException.class,
-                () -> streamingChatModel.chat(
-                        ChatRequest.builder()
+        AtomicReference<Throwable> reportedError = new AtomicReference<>();
+        streamingChatModel.chat(ChatRequest.builder()
                                 .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
                                 .topK(10)
-                                .build(),
-                        new StreamingChatResponseHandler() {
-                            @Override
-                            public void onPartialResponse(String partialResponse) {}
+                                .build(), new StreamingChatResponseHandler() {
 
-                            @Override
-                            public void onCompleteResponse(
-                                    dev.langchain4j.model.chat.response.ChatResponse completeResponse) {}
+            @Override
+            public void onCompleteResponse(dev.langchain4j.model.chat.response.ChatResponse completeResponse) {}
 
-                            @Override
-                            public void onError(Throwable error) {}
-                        }));
+            @Override
+            public void onError(Throwable error) {
+                reportedError.set(error);
+            }
+        });
+        // the model reports the unsupported parameter to the handler instead of throwing it
+        assertInstanceOf(UnsupportedFeatureException.class, reportedError.get());
 
         assertThrows(
                 UnsupportedFeatureException.class,
@@ -529,9 +531,9 @@ public class WatsonxGatewayStreamingChatModelTest {
         assertTrue(streamingChatModel.supportedCapabilities().contains(Capability.RESPONSE_FORMAT_JSON_SCHEMA));
     }
 
-    private void withModelGatewayServiceMock(Runnable action) {
-        try (MockedStatic<ModelGatewayService> mockedStatic = mockStatic(ModelGatewayService.class)) {
-            mockedStatic.when(ModelGatewayService::builder).thenReturn(mockModelGatewayServiceBuilder);
+    private void withModelGatewayChatServiceMock(Runnable action) {
+        try (MockedStatic<ModelGatewayChatService> mockedStatic = mockStatic(ModelGatewayChatService.class)) {
+            mockedStatic.when(ModelGatewayChatService::builder).thenReturn(mockModelGatewayChatServiceBuilder);
             action.run();
         }
     }

@@ -113,7 +113,7 @@ public class RegistryClientResponsesParsingTest {
                   }
                 }
                 """;
-        McpServer server = DefaultMcpRegistryClient.OBJECT_MAPPER.readValue(json, McpServer.class);
+        McpServer server = McpRegistryJson.fromJson(json, McpServer.class);
 
         // Verify server is not null
         assertThat(server).isNotNull();
@@ -210,12 +210,12 @@ public class RegistryClientResponsesParsingTest {
 
         // Verify meta information
         assertThat(server.getMeta()).isNotNull();
-        assertThat(server.getMeta().getPublisherProvided()).isNotNull();
-        assertThat(server.getMeta().getPublisherProvided()).containsKey("tool");
-        assertThat(server.getMeta().getPublisherProvided().get("tool").asText()).isEqualTo("ci-publisher");
-        assertThat(server.getMeta().getPublisherProvided()).containsKey("version");
-        assertThat(server.getMeta().getPublisherProvided().get("version").asText()).isEqualTo("3.2.1");
-        assertThat(server.getMeta().getPublisherProvided()).containsKey("build_info");
+        assertThat(server.getMeta().publisherProvided()).isNotNull();
+        assertThat(server.getMeta().publisherProvided()).containsKey("tool");
+        assertThat(server.getMeta().publisherProvided().get("tool")).isEqualTo("ci-publisher");
+        assertThat(server.getMeta().publisherProvided()).containsKey("version");
+        assertThat(server.getMeta().publisherProvided().get("version")).isEqualTo("3.2.1");
+        assertThat(server.getMeta().publisherProvided()).containsKey("build_info");
     }
 
 }

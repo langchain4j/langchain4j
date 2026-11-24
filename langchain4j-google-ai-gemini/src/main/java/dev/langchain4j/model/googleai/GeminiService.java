@@ -21,6 +21,7 @@ import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
 import dev.langchain4j.http.client.HttpMethod;
 import dev.langchain4j.http.client.HttpRequest;
+import dev.langchain4j.http.client.SuccessfulHttpResponse;
 import dev.langchain4j.http.client.log.LoggingHttpClient;
 import dev.langchain4j.http.client.sse.CancellationUnsupportedHandle;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
@@ -33,6 +34,9 @@ import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.model.googleai.BatchRequestResponse.ListOperationsResponse;
+import dev.langchain4j.model.googleai.GeminiCaches.GeminiCachedContent;
+import dev.langchain4j.model.googleai.GeminiCaches.GeminiCachedContentsListResponse;
+import dev.langchain4j.model.googleai.GeminiCaches.GeminiCreateCachedContentRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingRequest;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiBatchEmbeddingResponse;
 import dev.langchain4j.model.googleai.GeminiEmbeddingRequestResponse.GeminiEmbeddingRequest;
@@ -41,6 +45,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -179,6 +184,37 @@ class GeminiService {
                 new StringPair("pageSize", pageSize != null ? String.valueOf(pageSize) : null),
                 new StringPair("pageToken", pageToken));
         return sendRequest(url, apiKey, null, GeminiModelsListResponse.class, GET);
+    }
+
+    GeminiCachedContent createCachedContent(GeminiCreateCachedContentRequest request) {
+        String url = String.format("%s/cachedContents", baseUrl);
+        return sendRequest(url, apiKey, request, GeminiCachedContent.class);
+    }
+
+    GeminiCachedContent getCachedContent(String name) {
+        String url = String.format("%s/%s", baseUrl, name);
+        return sendRequest(url, apiKey, null, GeminiCachedContent.class, GET);
+    }
+
+    GeminiCachedContentsListResponse listCachedContents(@Nullable Integer pageSize, @Nullable String pageToken) {
+        String url = buildUrl(
+                baseUrl + "/cachedContents",
+                new StringPair("pageSize", pageSize != null ? String.valueOf(pageSize) : null),
+                new StringPair("pageToken", pageToken));
+        return sendRequest(url, apiKey, null, GeminiCachedContentsListResponse.class, GET);
+    }
+
+    Void deleteCachedContent(String name) {
+        String url = String.format("%s/%s", baseUrl, name);
+        return sendRequest(url, apiKey, null, Void.class, DELETE);
+    }
+
+    SuccessfulHttpResponse decide(GeminiDecisionRequest request) {
+        return httpClient.execute(buildHttpRequest(baseUrl + "/decisions", apiKey, request, POST));
+    }
+
+    CompletableFuture<SuccessfulHttpResponse> decideAsync(GeminiDecisionRequest request) {
+        return httpClient.executeAsync(buildHttpRequest(baseUrl + "/decisions", apiKey, request, POST));
     }
 
     void generateContentStream(

@@ -7,6 +7,7 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import java.net.URI;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -80,7 +81,7 @@ class Utils {
 
         // First try to extract from mime type
         if (image.mimeType() != null && !image.mimeType().isBlank()) {
-            ImageFormat format = MIME_TYPE_MAPPING.get(image.mimeType().toLowerCase());
+            ImageFormat format = MIME_TYPE_MAPPING.get(image.mimeType().toLowerCase(Locale.ROOT));
             if (format != null) {
                 return format.toString();
             }
@@ -88,7 +89,7 @@ class Utils {
 
         // If mime type fails, try to extract from URI
         if (image.url() != null) {
-            String extension = Utils.extractExtension(image.url()).toLowerCase();
+            String extension = Utils.extractExtension(image.url()).toLowerCase(Locale.ROOT);
             ImageFormat format = EXTENSION_MAPPING.get(extension);
             if (format != null) {
                 return format.toString();

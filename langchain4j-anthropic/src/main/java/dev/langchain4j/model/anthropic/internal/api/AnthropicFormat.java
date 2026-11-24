@@ -1,11 +1,11 @@
 package dev.langchain4j.model.anthropic.internal.api;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies.SnakeCaseStrategy;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 
@@ -18,7 +18,6 @@ import static dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper.to
 
 @JsonDeserialize(builder = AnthropicFormat.Builder.class)
 @JsonInclude(NON_NULL)
-@JsonNaming(SnakeCaseStrategy.class)
 public class AnthropicFormat {
 
     @JsonProperty
@@ -27,6 +26,7 @@ public class AnthropicFormat {
     @JsonProperty
     private final Map<String, Object> schema;
 
+    @JsonCreator
     private AnthropicFormat(Builder builder) {
         this.type = builder.type;
         this.schema = builder.schema;
@@ -72,7 +72,7 @@ public class AnthropicFormat {
 
     @JsonPOJOBuilder(withPrefix = "")
     @JsonIgnoreProperties(ignoreUnknown = true)
-    @JsonNaming(SnakeCaseStrategy.class)
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     public static class Builder {
         private AnthropicOutputFormatType type;
         private Map<String, Object> schema;

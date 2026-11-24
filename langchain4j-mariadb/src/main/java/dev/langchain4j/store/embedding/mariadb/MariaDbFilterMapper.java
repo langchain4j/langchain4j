@@ -7,103 +7,129 @@ import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.UUID;
+import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 abstract class MariaDbFilterMapper {
 
-    public String map(Filter filter) {
+    private static final Set<Class<?>> TYPES_BOUND_AS_IS = Set.of(
+            Integer.class,
+            Long.class,
+            Float.class,
+            Double.class,
+            Byte.class,
+            Short.class,
+            Boolean.class,
+            BigInteger.class,
+            BigDecimal.class);
+
+    public WhereClause map(Filter filter) {
+        List<Object> parameters = new ArrayList<>();
+        String sql = map(filter, parameters);
+        return new WhereClause(sql, parameters);
+    }
+
+    private String map(Filter filter, List<Object> parameters) {
         if (filter instanceof IsEqualTo) {
-            return mapEqual((IsEqualTo) filter);
+            return mapEqual((IsEqualTo) filter, parameters);
         } else if (filter instanceof IsNotEqualTo) {
-            return mapNotEqual((IsNotEqualTo) filter);
+            return mapNotEqual((IsNotEqualTo) filter, parameters);
         } else if (filter instanceof IsGreaterThan) {
-            return mapGreaterThan((IsGreaterThan) filter);
+            return mapGreaterThan((IsGreaterThan) filter, parameters);
         } else if (filter instanceof IsGreaterThanOrEqualTo) {
-            return mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter);
+            return mapGreaterThanOrEqual((IsGreaterThanOrEqualTo) filter, parameters);
         } else if (filter instanceof IsLessThan) {
-            return mapLessThan((IsLessThan) filter);
+            return mapLessThan((IsLessThan) filter, parameters);
         } else if (filter instanceof IsLessThanOrEqualTo) {
-            return mapLessThanOrEqual((IsLessThanOrEqualTo) filter);
+            return mapLessThanOrEqual((IsLessThanOrEqualTo) filter, parameters);
         } else if (filter instanceof IsIn) {
-            return mapIn((IsIn) filter);
+            return mapIn((IsIn) filter, parameters);
         } else if (filter instanceof IsNotIn) {
-            return mapNotIn((IsNotIn) filter);
+            return mapNotIn((IsNotIn) filter, parameters);
         } else if (filter instanceof And) {
-            return mapAnd((And) filter);
+            return mapAnd((And) filter, parameters);
         } else if (filter instanceof Not) {
-            return mapNot((Not) filter);
+            return mapNot((Not) filter, parameters);
         } else if (filter instanceof Or) {
-            return mapOr((Or) filter);
+            return mapOr((Or) filter, parameters);
         } else {
             throw new UnsupportedOperationException(
                     "Unsupported filter type: " + filter.getClass().getName());
         }
     }
 
-    private String mapEqual(IsEqualTo isEqualTo) {
+    private String mapEqual(IsEqualTo isEqualTo, List<Object> parameters) {
         String key = formatKey(isEqualTo.key());
-        return format("%s is not null and %s = %s", key, key, formatValue(isEqualTo.comparisonValue()));
+        return format("%s is not null and %s = %s", key, key, formatValue(isEqualTo.comparisonValue(), parameters));
     }
 
-    private String mapNotEqual(IsNotEqualTo isNotEqualTo) {
+    private String mapNotEqual(IsNotEqualTo isNotEqualTo, List<Object> parameters) {
         String key = formatKey(isNotEqualTo.key());
-        return format("(%s is null or %s != %s)", key, key, formatValue(isNotEqualTo.comparisonValue()));
+        return format(
+                "(%s is null or %s != %s)", key, key, formatValue(isNotEqualTo.comparisonValue(), parameters));
     }
 
-    private String mapGreaterThan(IsGreaterThan isGreaterThan) {
-        return format("%s > %s", formatKey(isGreaterThan.key()), formatValue(isGreaterThan.comparisonValue()));
+    private String mapGreaterThan(IsGreaterThan isGreaterThan, List<Object> parameters) {
+        return format(
+                "%s > %s",
+                formatKey(isGreaterThan.key()),
+                formatValue(isGreaterThan.comparisonValue(), parameters));
     }
 
-    private String mapGreaterThanOrEqual(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo) {
+    private String mapGreaterThanOrEqual(IsGreaterThanOrEqualTo isGreaterThanOrEqualTo, List<Object> parameters) {
         return format(
                 "%s >= %s",
-                formatKey(isGreaterThanOrEqualTo.key()), formatValue(isGreaterThanOrEqualTo.comparisonValue()));
+                formatKey(isGreaterThanOrEqualTo.key()),
+                formatValue(isGreaterThanOrEqualTo.comparisonValue(), parameters));
     }
 
-    private String mapLessThan(IsLessThan isLessThan) {
-        return format("%s < %s", formatKey(isLessThan.key()), formatValue(isLessThan.comparisonValue()));
-    }
-
-    private String mapLessThanOrEqual(IsLessThanOrEqualTo isLessThanOrEqualTo) {
+    private String mapLessThan(IsLessThan isLessThan, List<Object> parameters) {
         return format(
-                "%s <= %s", formatKey(isLessThanOrEqualTo.key()), formatValue(isLessThanOrEqualTo.comparisonValue()));
+                "%s < %s", formatKey(isLessThan.key()), formatValue(isLessThan.comparisonValue(), parameters));
     }
 
-    private String mapIn(IsIn isIn) {
-        return format("%s in %s", formatKey(isIn.key()), formatValue(isIn.comparisonValues()));
+    private String mapLessThanOrEqual(IsLessThanOrEqualTo isLessThanOrEqualTo, List<Object> parameters) {
+        return format(
+                "%s <= %s",
+                formatKey(isLessThanOrEqualTo.key()),
+                formatValue(isLessThanOrEqualTo.comparisonValue(), parameters));
     }
 
-    private String mapNotIn(IsNotIn isNotIn) {
+    private String mapIn(IsIn isIn, List<Object> parameters) {
+        return format("%s in %s", formatKey(isIn.key()), formatValues(isIn.comparisonValues(), parameters));
+    }
+
+    private String mapNotIn(IsNotIn isNotIn, List<Object> parameters) {
         String key = formatKey(isNotIn.key());
-        return format("(%s is null or %s not in %s)", key, key, formatValue(isNotIn.comparisonValues()));
+        return format(
+                "(%s is null or %s not in %s)", key, key, formatValues(isNotIn.comparisonValues(), parameters));
     }
 
-    private String mapAnd(And and) {
-        return format("%s and %s", map(and.left()), map(and.right()));
+    private String mapAnd(And and, List<Object> parameters) {
+        return format("%s and %s", map(and.left(), parameters), map(and.right(), parameters));
     }
 
-    private String mapNot(Not not) {
-        return format("not (%s)", map(not.expression()));
+    private String mapNot(Not not, List<Object> parameters) {
+        return format("not (%s)", map(not.expression(), parameters));
     }
 
-    private String mapOr(Or or) {
-        return format("(%s or %s)", map(or.left()), map(or.right()));
+    private String mapOr(Or or, List<Object> parameters) {
+        return format("(%s or %s)", map(or.left(), parameters), map(or.right(), parameters));
     }
 
     abstract String formatKey(String key);
 
-    String formatValue(Object value) {
-        if (value instanceof final Collection<?> vals) {
-            return "(" + vals.stream().map(this::formatValue).collect(Collectors.joining(",")) + ")";
-        } else if (value instanceof String stringValue) {
-            final String escapedValue = stringValue.replace("\\", "\\\\").replace("'", "''");
-            return "'" + escapedValue + "'";
-        } else if (value instanceof UUID) {
-            return "'" + value + "'";
-        } else {
-            return value.toString();
-        }
+    private static String formatValue(Object value, List<Object> parameters) {
+        parameters.add(TYPES_BOUND_AS_IS.contains(value.getClass()) ? value : String.valueOf(value));
+        return "?";
+    }
+
+    private static String formatValues(Collection<?> values, List<Object> parameters) {
+        return "(" + values.stream().map(value -> formatValue(value, parameters)).collect(Collectors.joining(",")) + ")";
     }
 }

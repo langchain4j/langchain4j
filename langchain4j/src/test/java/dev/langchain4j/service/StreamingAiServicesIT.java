@@ -38,6 +38,7 @@ import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static dev.langchain4j.model.output.FinishReason.STOP;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.inOrder;
@@ -546,6 +547,7 @@ class StreamingAiServicesIT {
         AtomicInteger partialResponsesCounter = new AtomicInteger();
 
         StringBuilder partialResponsesBuilder = new StringBuilder();
+        CompletableFuture<Void> cancelled = new CompletableFuture<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         Assistant assistant = AiServices.create(Assistant.class, model);
@@ -554,6 +556,7 @@ class StreamingAiServicesIT {
                     partialResponsesBuilder.append(partialResponse);
                     if (partialResponsesCounter.incrementAndGet() >= partialResponsesBeforeCancellation) {
                         context.streamingHandle().cancel();
+                        cancelled.complete(null);
                     }
                 })
                 .onCompleteResponse(response -> {
@@ -562,13 +565,13 @@ class StreamingAiServicesIT {
                 .onError(futureResponse::completeExceptionally)
                 .start();
 
-        ChatResponse response = null;
-        try {
-            response = futureResponse.get(5, SECONDS);
-        } catch (TimeoutException ignored) {
-        }
+        // generous budget for the provider to start streaming, fails fast with the actual error if streaming fails
+        CompletableFuture.anyOf(cancelled, futureResponse).get(60, SECONDS);
+        assertThat(cancelled).isDone();
 
-        assertThat(response).isNull();
+        // nothing should arrive after cancellation
+        assertThatThrownBy(() -> futureResponse.get(2, SECONDS)).isInstanceOf(TimeoutException.class);
+
         assertThat(partialResponsesBuilder.toString()).isNotEmpty();
         assertThat(partialResponsesCounter).hasValue(partialResponsesBeforeCancellation);
     }
@@ -603,6 +606,7 @@ class StreamingAiServicesIT {
         }
 
         TokenStreamHandler tokenStreamHandler = mock(TokenStreamHandler.class);
+        CompletableFuture<Void> cancelled = new CompletableFuture<>();
         CompletableFuture<ChatResponse> futureResponse = new CompletableFuture<>();
 
         // when
@@ -611,6 +615,7 @@ class StreamingAiServicesIT {
                     tokenStreamHandler.onPartialThinking(partialThinking, context);
                     if (partialThoughtsCounter.incrementAndGet() >= partialThoughtsBeforeCancellation) {
                         context.streamingHandle().cancel();
+                        cancelled.complete(null);
                     }
                 })
                 .onPartialResponse(partialResponse -> tokenStreamHandler.onPartialResponse(partialResponse))
@@ -625,14 +630,12 @@ class StreamingAiServicesIT {
                 .start();
 
         // then
-        ChatResponse chatResponse = null;
-        try {
-            chatResponse = futureResponse.get(5, SECONDS);
-        } catch (TimeoutException ignored) {
+        // generous budget for the provider to start streaming, fails fast with the actual error if streaming fails
+        CompletableFuture.anyOf(cancelled, futureResponse).get(60, SECONDS);
+        assertThat(cancelled).isDone();
 
-        }
-
-        assertThat(chatResponse).isNull();
+        // nothing should arrive after cancellation
+        assertThatThrownBy(() -> futureResponse.get(2, SECONDS)).isInstanceOf(TimeoutException.class);
 
         InOrder inOrder = inOrder(tokenStreamHandler);
         inOrder.verify(tokenStreamHandler, times(partialThoughtsBeforeCancellation)).onPartialThinking(any(), any());

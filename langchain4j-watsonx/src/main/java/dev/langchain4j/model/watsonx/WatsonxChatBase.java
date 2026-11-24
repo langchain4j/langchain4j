@@ -32,7 +32,6 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -41,8 +40,6 @@ import java.util.Set;
 
 @Internal
 abstract class WatsonxChatBase<R extends BaseChatRequest> {
-
-    private static final StreamingHandle CANCELLATION_UNSUPPORTED = new CancellationUnsupportedStreamingHandle();
 
     protected final List<ChatModelListener> listeners;
     protected final ChatRequestParameters defaultRequestParameters;
@@ -83,7 +80,8 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
         TextChatResponse chatResponse = WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
                 () -> chatProvider().chat(watsonxChatRequest));
 
-        String refusal = chatResponse.toAssistantMessage().refusal();
+        String refusal = WatsonxExceptionMapper.INSTANCE.withExceptionMapper(
+                () -> chatResponse.toAssistantMessage().refusal());
 
         if (isNotNullOrBlank(refusal)) throw new ContentFilteredException(refusal);
 
@@ -93,8 +91,9 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
     protected final void executeChatStreaming(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
 
         var watsonxChatRequest = toWatsonxChatRequest(chatRequest);
+        var streamingHandle = new WatsonxStreamingHandle();
 
-        chatProvider().chatStreaming(watsonxChatRequest, new ChatHandler() {
+        var streamingFuture = chatProvider().chatStreaming(watsonxChatRequest, new ChatHandler() {
             @Override
             public void onCompleteResponse(com.ibm.watsonx.ai.chat.ChatResponse completeResponse) {
 
@@ -125,8 +124,7 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
 
             @Override
             public void onPartialResponse(String partialResponse, PartialChatResponse partialChatResponse) {
-                InternalStreamingChatResponseHandlerUtils.onPartialResponse(
-                        handler, partialResponse, CANCELLATION_UNSUPPORTED);
+                InternalStreamingChatResponseHandlerUtils.onPartialResponse(handler, partialResponse, streamingHandle);
             }
 
             @Override
@@ -136,16 +134,17 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
 
             @Override
             public void onPartialThinking(String partialThinking, PartialChatResponse partialChatResponse) {
-                InternalStreamingChatResponseHandlerUtils.onPartialThinking(
-                        handler, partialThinking, CANCELLATION_UNSUPPORTED);
+                InternalStreamingChatResponseHandlerUtils.onPartialThinking(handler, partialThinking, streamingHandle);
             }
 
             @Override
             public void onPartialToolCall(PartialToolCall partialToolCall) {
                 InternalStreamingChatResponseHandlerUtils.onPartialToolCall(
-                        handler, Converter.toPartialToolCall(partialToolCall), CANCELLATION_UNSUPPORTED);
+                        handler, Converter.toPartialToolCall(partialToolCall), streamingHandle);
             }
         });
+
+        streamingHandle.bindTo(streamingFuture);
     }
 
     protected static final void applyCommonParameters(
@@ -188,19 +187,6 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
     private static void validate(ChatRequestParameters parameters) {
         if (nonNull(parameters.topK()))
             throw new UnsupportedFeatureException("'topK' parameter is not supported by watsonx.ai");
-    }
-
-    private static final class CancellationUnsupportedStreamingHandle implements StreamingHandle {
-
-        @Override
-        public void cancel() {
-            throw new UnsupportedFeatureException("Streaming cancellation is not supported by watsonx.ai");
-        }
-
-        @Override
-        public boolean isCancelled() {
-            return false;
-        }
     }
 
     @SuppressWarnings("unchecked")

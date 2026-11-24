@@ -6,7 +6,12 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import com.google.api.services.customsearch.v1.model.Result;
 import com.google.api.services.customsearch.v1.model.Search;
 import dev.langchain4j.web.search.WebSearchOrganicResult;
+import dev.langchain4j.web.search.WebSearchRequest;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class GoogleCustomWebSearchEngineTest {
@@ -140,5 +145,68 @@ class GoogleCustomWebSearchEngineTest {
                             .isEmpty();
                 })
                 .doesNotThrowAnyException();
+    }
+
+    private Locale originalLocale;
+
+    @BeforeEach
+    void rememberDefaultLocale() {
+        originalLocale = Locale.getDefault();
+    }
+
+    @AfterEach
+    void restoreDefaultLocale() {
+        Locale.setDefault(originalLocale);
+    }
+
+    @Test
+    void setCountryRestrict_underTurkishLocale_doesNotMangleGeoCodeContainingI() {
+        Locale.setDefault(Locale.forLanguageTag("tr"));
+        WebSearchRequest request = WebSearchRequest.builder()
+                .searchTerms("query")
+                .geoLocation("in")
+                .build();
+
+        String cr = GoogleCustomWebSearchEngine.setCountryRestrict(request);
+
+        assertThat(cr).isEqualTo("countryIN");
+    }
+
+    @Test
+    void setCountryRestrict_underTurkishLocale_upperCasesCodeWithoutI() {
+        Locale.setDefault(Locale.forLanguageTag("tr"));
+        WebSearchRequest request = WebSearchRequest.builder()
+                .searchTerms("query")
+                .geoLocation("de")
+                .build();
+
+        String cr = GoogleCustomWebSearchEngine.setCountryRestrict(request);
+
+        assertThat(cr).isEqualTo("countryDE");
+    }
+
+    @Test
+    void setCountryRestrict_withoutGeoLocation_returnsDefaultValue() {
+        Locale.setDefault(Locale.forLanguageTag("tr"));
+        WebSearchRequest request =
+                WebSearchRequest.builder().searchTerms("query").build();
+
+        String cr = GoogleCustomWebSearchEngine.setCountryRestrict(request);
+
+        assertThat(cr).isEmpty();
+    }
+
+    @Test
+    void setCountryRestrict_withCrInAdditionalParams_prefersAdditionalParams() {
+        Locale.setDefault(Locale.forLanguageTag("tr"));
+        WebSearchRequest request = WebSearchRequest.builder()
+                .searchTerms("query")
+                .geoLocation("in")
+                .additionalParams(Map.of("cr", "countryUS"))
+                .build();
+
+        String cr = GoogleCustomWebSearchEngine.setCountryRestrict(request);
+
+        assertThat(cr).isEqualTo("countryUS");
     }
 }

@@ -174,6 +174,30 @@ class ChromaEmbeddingStoreTest {
         assertThat(matches).extracting(EmbeddingMatch::score).containsExactly(1.0 / 1.5);
     }
 
+    /**
+     * maxResults travels as "n_results". Its getter is getnResults(), which is a bean getter to
+     * Jackson 2 but not to Jackson 3, so the field silently vanished from every query under the
+     * Jackson 3 opt-in and Chroma applied its own default instead.
+     */
+    @Test
+    void a_search_sends_n_results() {
+        CapturingHttpClient httpClient = new CapturingHttpClient();
+
+        store(httpClient)
+                .search(EmbeddingSearchRequest.builder()
+                        .queryEmbedding(EMBEDDING_1)
+                        .maxResults(7)
+                        .build());
+
+        String queryBody = httpClient.writeRequests().stream()
+                .map(HttpRequest::body)
+                .filter(body -> body.contains("query_embeddings"))
+                .reduce((first, second) -> second)
+                .orElseThrow();
+
+        assertThat(queryBody).contains("\"n_results\"").contains("7");
+    }
+
     private static List<EmbeddingMatch<TextSegment>> search(CapturingHttpClient httpClient) {
         return store(httpClient)
                 .search(EmbeddingSearchRequest.builder()

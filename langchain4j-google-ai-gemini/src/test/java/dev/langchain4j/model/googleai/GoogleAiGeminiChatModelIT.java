@@ -13,7 +13,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -50,6 +49,9 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.output.JsonSchemas;
 import java.awt.*;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.net.URI;
 import java.nio.file.Paths;
 import java.time.Duration;
@@ -63,6 +65,7 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -72,8 +75,10 @@ class GoogleAiGeminiChatModelIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
 
-    private static final String CAT_IMAGE_URL =
-            "https://upload.wikimedia.org/wikipedia/commons/e/e9/Felis_silvestris_silvestris_small_gradual_decrease_of_quality.png";
+    private static final String CAT_IMAGE_RESOURCE = "/images/cat.jpg";
+
+    private static final String CAT_IMAGE_URL = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/"
+            + "langchain4j-core/src/test/resources/images/cat.jpg";
 
     @Test
     void should_answer_in_json() {
@@ -358,27 +363,12 @@ class GoogleAiGeminiChatModelIT {
         assertThat(diceRolls.length).isEqualTo(3);
     }
 
-    private static class Color {
-        private String name;
-        private int red;
-        private int green;
-        private int blue;
-        private boolean muted;
-
-        @JsonCreator
-        public Color(
-                @JsonProperty("name") String name,
-                @JsonProperty("red") int red,
-                @JsonProperty("green") int green,
-                @JsonProperty("blue") int blue,
-                @JsonProperty("muted") boolean muted) {
-            this.name = name;
-            this.red = red;
-            this.green = green;
-            this.blue = blue;
-            this.muted = muted;
-        }
-    }
+    private record Color(
+            @JsonProperty(required = true) String name,
+            @JsonProperty(required = true) int red,
+            @JsonProperty(required = true) int green,
+            @JsonProperty(required = true) int blue,
+            @JsonProperty(required = true) boolean muted) {}
 
     @Test
     void should_deserialize_to_POJO() throws JsonProcessingException {
@@ -531,6 +521,10 @@ class GoogleAiGeminiChatModelIT {
     }
 
     @Test
+    @DisabledIfEnvironmentVariable(
+            named = "LC4J_SKIP_IMAGE_GENERATION_ITS",
+            matches = "true",
+            disabledReason = "Image generation is expensive: CI runs it only in one nightly and when a Google module changes")
     void should_generate_image() {
 
         // given
@@ -568,6 +562,10 @@ class GoogleAiGeminiChatModelIT {
     }
 
     @Test
+    @DisabledIfEnvironmentVariable(
+            named = "LC4J_SKIP_IMAGE_GENERATION_ITS",
+            matches = "true",
+            disabledReason = "Image generation is expensive: CI runs it only in one nightly and when a Google module changes")
     void ai_service_should_generate_image() {
         ImageGenerator imageGenerator = AiServices.builder(ImageGenerator.class)
                 .chatModel(GoogleAiGeminiChatModel.builder()
@@ -775,11 +773,8 @@ class GoogleAiGeminiChatModelIT {
                 .logResponses(true)
                 .build();
 
-        byte[] imageBytes = readBytes(CAT_IMAGE_URL);
-        String base64Data = Base64.getEncoder().encodeToString(imageBytes);
-
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(base64Data, "image/png"),
+                catImageContent(),
                 TextContent.from("What animal is shown in this image? Reply with just the animal name."));
 
         // when
@@ -803,11 +798,8 @@ class GoogleAiGeminiChatModelIT {
                 .logResponses(true)
                 .build();
 
-        byte[] imageBytes = readBytes(CAT_IMAGE_URL);
-        String base64Data = Base64.getEncoder().encodeToString(imageBytes);
-
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(base64Data, "image/png"),
+                catImageContent(),
                 TextContent.from("What animal is shown in this image? Reply with just the animal name."));
 
         // when
@@ -831,11 +823,8 @@ class GoogleAiGeminiChatModelIT {
                 .logResponses(true)
                 .build();
 
-        byte[] imageBytes = readBytes(CAT_IMAGE_URL);
-        String base64Data = Base64.getEncoder().encodeToString(imageBytes);
-
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(base64Data, "image/png"),
+                catImageContent(),
                 TextContent.from("What animal is shown in this image? Reply with just the animal name."));
 
         // when
@@ -859,11 +848,8 @@ class GoogleAiGeminiChatModelIT {
                 .logResponses(true)
                 .build();
 
-        byte[] imageBytes = readBytes(CAT_IMAGE_URL);
-        String base64Data = Base64.getEncoder().encodeToString(imageBytes);
-
         UserMessage userMessage = UserMessage.from(
-                ImageContent.from(base64Data, "image/png"),
+                catImageContent(),
                 TextContent.from("What animal is shown in this image? Reply with just the animal name."));
 
         // when
@@ -902,5 +888,14 @@ class GoogleAiGeminiChatModelIT {
         assertThat(response.aiMessage()).isNotNull();
         assertThat(response.aiMessage().text()).isNotNull();
         assertThat(response.aiMessage().text()).containsIgnoringCase("example");
+    }
+
+    private static ImageContent catImageContent() {
+        try (InputStream inputStream = GoogleAiGeminiChatModelIT.class.getResourceAsStream(CAT_IMAGE_RESOURCE)) {
+            String base64Data = Base64.getEncoder().encodeToString(inputStream.readAllBytes());
+            return ImageContent.from(base64Data, "image/jpeg");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 }

@@ -24,6 +24,9 @@ public class OllamaImage {
 
     public static final String GRANITE_3_GUARDIAN = "granite3-guardian";
 
+    public static final String TEV1 = "tev1";
+    public static final String CLEF_FLASH = "clef-flash";
+
     public static DockerImageName resolve(String baseImage, String localImageName) {
         DockerImageName dockerImageName = DockerImageName.parse(baseImage);
         DockerClient dockerClient = DockerClientFactory.instance().client();

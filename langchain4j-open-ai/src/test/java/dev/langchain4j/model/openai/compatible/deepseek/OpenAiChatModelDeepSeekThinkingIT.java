@@ -32,7 +32,7 @@ class OpenAiChatModelDeepSeekThinkingIT {
         // given
         boolean returnThinking = true;
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder());
 
         ChatModel model = OpenAiChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -81,7 +81,7 @@ class OpenAiChatModelDeepSeekThinkingIT {
         boolean returnThinking = true;
         boolean sendThinking = true;
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder());
 
         ChatModel model = OpenAiChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -128,7 +128,7 @@ class OpenAiChatModelDeepSeekThinkingIT {
         boolean sendThinking = true;
         String thinkingFieldName = "my_reason";
 
-        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder().build());
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder());
 
         ChatModel model = OpenAiChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

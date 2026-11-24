@@ -1,6 +1,8 @@
 package dev.langchain4j.mcp.registryclient.model;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import dev.langchain4j.mcp.registryclient.McpRegistryJson;
 import java.time.LocalDateTime;
 
 public class McpOfficialMeta {
@@ -9,6 +11,7 @@ public class McpOfficialMeta {
     private String serverId;
 
     @JsonAlias("is_latest")
+    @JsonProperty("isLatest")
     private boolean isLatest;
 
     @JsonAlias("published_at")
@@ -49,6 +52,14 @@ public class McpOfficialMeta {
 
     public String getStatus() {
         return status;
+    }
+
+    void setPublishedAt(Object publishedAt) {
+        this.publishedAt = McpRegistryJson.parseTimestamp(publishedAt);
+    }
+
+    void setUpdatedAt(Object updatedAt) {
+        this.updatedAt = McpRegistryJson.parseTimestamp(updatedAt);
     }
 
     @Override

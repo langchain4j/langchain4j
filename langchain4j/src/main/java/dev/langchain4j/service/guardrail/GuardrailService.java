@@ -1,18 +1,25 @@
 package dev.langchain4j.service.guardrail;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+
+import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailResult;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
+import dev.langchain4j.internal.AsyncNotSupported;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.service.guardrail.spi.GuardrailServiceBuilderFactory;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Optional;
 import java.util.ServiceLoader;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Defines a service for executing guardrails associated with methods in an AI service.
@@ -38,6 +45,28 @@ public interface GuardrailService {
     <MethodKey> InputGuardrailResult executeInputGuardrails(MethodKey method, InputGuardrailRequest request);
 
     /**
+     * Non-blocking counterpart of {@link #executeInputGuardrails(Object, InputGuardrailRequest)}.
+     * <p>
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; the internal implementation
+     * ({@code AbstractGuardrailService}) overrides it, and only implementors that opt into the non-blocking
+     * AI Service modes need to provide it.
+     * <p>
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
+     *
+     * @param method The method whose input guardrails are to be executed.
+     * @param request The parameters to validate against the input guardrails. Must not be null.
+     * @return A {@link CompletableFuture} that completes with the {@link InputGuardrailResult}.
+     * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
+     * @since 1.20.0
+     */
+    @Experimental
+    default <MethodKey> CompletableFuture<InputGuardrailResult> executeInputGuardrailsAsync(
+            MethodKey method, InputGuardrailRequest request) {
+        return AsyncNotSupported.failedFuture(getClass(), "executeInputGuardrailsAsync");
+    }
+
+    /**
      * Executes the input guardrails associated with the given method and parameters,
      * and retrieves a modified or validated {@link UserMessage} based on the result.
      *
@@ -54,6 +83,27 @@ public interface GuardrailService {
     }
 
     /**
+     * Non-blocking counterpart of {@link #executeGuardrails(Object, InputGuardrailRequest)}: runs the input
+     * guardrails without blocking the calling thread and yields the (possibly rewritten) {@link UserMessage}.
+     * <p>
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
+     *
+     * @since 1.20.0
+     */
+    @Experimental
+    default <MethodKey> CompletableFuture<UserMessage> executeGuardrailsAsync(
+            MethodKey method, InputGuardrailRequest request) {
+        CompletableFuture<InputGuardrailResult> guardrailFuture = failOnThrow(
+                this,
+                "executeInputGuardrailsAsync(Object, InputGuardrailRequest)",
+                () -> executeInputGuardrailsAsync(method, request));
+        CompletableFuture<UserMessage> result = guardrailFuture.thenApply(r -> r.userMessage(request));
+        propagateCancellation(result, guardrailFuture);
+        return result;
+    }
+
+    /**
      * Executes the output guardrails associated with a given {@code Method}.
      *
      * @param method The method whose output guardrails are to be executed.
@@ -63,6 +113,28 @@ public interface GuardrailService {
      * @param <MethodKey>> The type of the method key, representing a unique identifier for methods.
      */
     <MethodKey> OutputGuardrailResult executeOutputGuardrails(MethodKey method, OutputGuardrailRequest request);
+
+    /**
+     * Non-blocking counterpart of {@link #executeOutputGuardrails(Object, OutputGuardrailRequest)}.
+     * <p>
+     * The default implementation returns a failed future carrying {@link AsyncNotSupportedException}; the internal implementation
+     * ({@code AbstractGuardrailService}) overrides it, and only implementors that opt into the non-blocking
+     * AI Service modes need to provide it.
+     * <p>
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
+     *
+     * @param method The method whose output guardrails are to be executed.
+     * @param request The parameters to validate against the output guardrails. Must not be null.
+     * @return A {@link CompletableFuture} that completes with the {@link OutputGuardrailResult}.
+     * @param <MethodKey> The type of the method key, representing a unique identifier for methods.
+     * @since 1.20.0
+     */
+    @Experimental
+    default <MethodKey> CompletableFuture<OutputGuardrailResult> executeOutputGuardrailsAsync(
+            MethodKey method, OutputGuardrailRequest request) {
+        return AsyncNotSupported.failedFuture(getClass(), "executeOutputGuardrailsAsync");
+    }
 
     /**
      * Whether or not a method has any input guardrails associated with it
@@ -91,6 +163,30 @@ public interface GuardrailService {
      */
     default <MethodKey, T> T executeGuardrails(MethodKey method, OutputGuardrailRequest request) {
         return executeOutputGuardrails(method, request).response(request);
+    }
+
+    /**
+     * Non-blocking counterpart of {@link #executeGuardrails(Object, OutputGuardrailRequest)} for the asynchronous
+     * ({@code CompletableFuture}) and reactive ({@code Flow.Publisher}) AI Service modes. The output guardrails —
+     * including any reprompt round-trips to the model — run without blocking the calling thread; a guardrail that
+     * performs blocking I/O keeps the calling thread free only if it overrides
+     * {@link dev.langchain4j.guardrail.Guardrail#validateAsync(dev.langchain4j.guardrail.GuardrailRequest)}.
+     * <p>
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
+     *
+     * @since 1.20.0
+     */
+    @Experimental
+    default <MethodKey, T> CompletableFuture<T> executeGuardrailsAsync(
+            MethodKey method, OutputGuardrailRequest request) {
+        CompletableFuture<OutputGuardrailResult> guardrailFuture = failOnThrow(
+                this,
+                "executeOutputGuardrailsAsync(Object, OutputGuardrailRequest)",
+                () -> executeOutputGuardrailsAsync(method, request));
+        CompletableFuture<T> result = guardrailFuture.thenApply(r -> r.response(request));
+        propagateCancellation(result, guardrailFuture);
+        return result;
     }
 
     /**
@@ -231,10 +327,15 @@ public interface GuardrailService {
 
         /**
          * Builds and returns an instance of {@link GuardrailService}.
-         * This method configures input and output guardrails at the service level
-         * using the provided class-level or method-level annotations. If no
-         * method-level annotations are present, it defers to class-level annotations,
-         * and if those are absent, it uses the settings defined in the builder.
+         * This method configures input and output guardrails for each method of the service.
+         * Guardrails set in the builder take precedence. If none are set, it uses the
+         * method-level annotations, and if those are absent, the class-level annotations.
+         * <p>
+         * The guardrails and their configuration are resolved independently of each other, and separately for input
+         * and output guardrails. Only the first source found is used: guardrails set in the builder, on the method and
+         * on the class are not combined. Guardrails set in the builder count only when there is at least one:
+         * {@code null} or an empty list does not disable the guardrails declared in annotations. Guardrail instances
+         * and guardrail classes set in the builder are both used: the instances first, then the classes.
          *
          * @return an instance of {@link GuardrailService} configured with appropriate
          * input and output guardrails.

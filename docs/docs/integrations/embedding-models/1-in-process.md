@@ -15,7 +15,7 @@ For example:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 ```java
@@ -29,7 +29,7 @@ Or quantized:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 ```java
@@ -40,6 +40,13 @@ Embedding embedding = response.content();
 
 The complete list of all embedding models can be found [here](https://github.com/langchain4j/langchain4j/tree/main/embeddings).
 
+:::note Windows
+ONNX runtime needs version 14.40 or newer of the Microsoft Visual C++ runtime library `msvcp140.dll`.
+Many JDKs ship their own copy of this file in their `bin` folder, and Windows uses that copy first.
+If your JDK ships an older copy, the model fails to load, and the root cause of the error is
+`java.lang.UnsatisfiedLinkError: ...\onnxruntime.dll: A dynamic link library (DLL) initialization routine failed`.
+To fix it, update your JDK to a recent build that ships `msvcp140.dll` version 14.40 or newer.
+:::
 
 ## Parallelization
 
@@ -68,12 +75,19 @@ Information on how to convert models into ONNX format can be found [here](https:
 
 Many models already converted to ONNX format are available [here](https://huggingface.co/Xenova).
 
+:::warning
+**Load only model files you trust.**
+An ONNX model file is not just data: ONNX runtime parses it with native code,
+and a crafted model file can exploit flaws in the runtime, for example to read other files on your machine or to crash the JVM.
+Use models from sources you trust, or models you converted yourself.
+:::
+
 Example of using custom embedding model:
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 ```java

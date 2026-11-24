@@ -6,7 +6,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -93,19 +92,19 @@ class StreamingJsonLinesWriterTest {
         @Test
         void should_not_close_underlying_writer_after_write() throws IOException {
             // Given
-            // We use a mock to verify close() is NOT called by Jackson internally
-            // due to JsonGenerator.Feature.AUTO_CLOSE_TARGET being disabled
+            // We use a mock to verify close() is NOT called while writing:
+            // closing the target stays this class's job.
             var writerMock = mock(Writer.class);
             // We need a real BufferedWriter wrapper or the class will wrap it
             // The class allows passing a generic Writer, so passing the mock is fine.
-            subject = new StreamingJsonLinesWriter(writerMock, new ObjectMapper());
+            subject = new StreamingJsonLinesWriter(writerMock);
             var data = new TestData("keep-open", 1);
 
             // When
             subject.write(data);
 
             // Then
-            // Jackson's writeValue calls write methods, but should NOT call close on the writer
+            // Writing a line reaches the target, but must NOT close it
             verify(writerMock)
                     .write(ArgumentMatchers.<char[]>any(), anyInt(), anyInt()); // Verifying some write happened
             // Verify close was specifically NOT called
@@ -149,7 +148,7 @@ class StreamingJsonLinesWriterTest {
         void should_delegate_flush_to_underlying_writer() throws IOException {
             // Given
             var writerMock = mock(BufferedWriter.class);
-            subject = new StreamingJsonLinesWriter(writerMock, new ObjectMapper());
+            subject = new StreamingJsonLinesWriter(writerMock);
 
             // When
             subject.flush();
@@ -167,7 +166,7 @@ class StreamingJsonLinesWriterTest {
         void should_delegate_close_to_underlying_writer() throws IOException {
             // Given
             var writerMock = mock(BufferedWriter.class);
-            subject = new StreamingJsonLinesWriter(writerMock, new ObjectMapper());
+            subject = new StreamingJsonLinesWriter(writerMock);
 
             // When
             subject.close();

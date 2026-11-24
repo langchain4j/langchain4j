@@ -15,9 +15,11 @@ public class McpEnvironmentVariable {
     private String format;
 
     @JsonAlias("is_required")
+    @JsonProperty("isRequired")
     private boolean isRequired;
 
     @JsonAlias("is_secret")
+    @JsonProperty("isSecret")
     private boolean isSecret;
 
     private String name;
@@ -62,15 +64,18 @@ public class McpEnvironmentVariable {
 
     @Override
     public String toString() {
+        String maskedDefaultValue = isSecret ? "<redacted>" : defaultValue;
+        String maskedValue = isSecret ? "<redacted>" : value;
+
         return "McpEnvironmentVariable{" +
                 "choices=" + choices +
-                ", defaultValue='" + defaultValue + '\'' +
+                ", defaultValue='" + maskedDefaultValue + '\'' +
                 ", description='" + description + '\'' +
                 ", format='" + format + '\'' +
                 ", isRequired=" + isRequired +
                 ", isSecret=" + isSecret +
                 ", name='" + name + '\'' +
-                ", value='" + value + '\'' +
+                ", value='" + maskedValue + '\'' +
                 ", variables=" + variables +
                 '}';
     }

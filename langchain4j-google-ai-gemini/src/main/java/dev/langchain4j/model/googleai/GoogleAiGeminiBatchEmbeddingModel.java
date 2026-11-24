@@ -3,7 +3,7 @@ package dev.langchain4j.model.googleai;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.model.googleai.GeminiService.BatchOperationType.ASYNC_BATCH_EMBED_CONTENT;
 
-import com.fasterxml.jackson.core.type.TypeReference;
+import dev.langchain4j.internal.Types;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -22,6 +22,7 @@ import dev.langchain4j.model.googleai.GoogleAiEmbeddingModel.BaseGoogleAiEmbeddi
 import dev.langchain4j.model.googleai.jsonl.JsonLinesWriter;
 import dev.langchain4j.model.output.Response;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.List;
 import org.jspecify.annotations.NonNull;
@@ -221,8 +222,8 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
     private class EmbeddingRequestPreparer
             implements GeminiBatchProcessor.RequestPreparer<
                     TextSegment, GeminiEmbeddingRequest, GeminiEmbeddingResponse, Response<@NonNull Embedding>> {
-        private static final TypeReference<BatchCreateResponse.InlinedResponseWrapper<GeminiEmbeddingResponse>>
-                responseWrapperType = new TypeReference<>() {};
+        private static final Type responseWrapperType = Types.parameterized(
+                BatchCreateResponse.InlinedResponseWrapper.class, GeminiEmbeddingResponse.class);
 
         @Override
         public TextSegment prepareRequest(TextSegment textSegment) {
@@ -257,7 +258,8 @@ public final class GoogleAiGeminiBatchEmbeddingModel implements BatchEmbeddingMo
             List<BatchItemResult<Response<@NonNull Embedding>>> results = new ArrayList<>();
 
             for (Object wrapper : response.inlinedResponses().inlinedResponses()) {
-                var typed = Json.convertValue(wrapper, responseWrapperType);
+                BatchCreateResponse.InlinedResponseWrapper<GeminiEmbeddingResponse> typed =
+                        Json.convertValue(wrapper, responseWrapperType);
                 var typedResponse = typed.response();
                 if (typedResponse != null) {
                     var embedding = Embedding.from(typedResponse.embedding().values());

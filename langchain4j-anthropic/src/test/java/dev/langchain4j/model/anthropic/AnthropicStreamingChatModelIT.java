@@ -267,7 +267,7 @@ class AnthropicStreamingChatModelIT {
                 Map.of("context_management", Map.of("edits", List.of(Map.of("type", "clear_tool_uses_20250919"))));
 
         SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(JdkHttpClient.builder().build());
+                new SpyingHttpClient(JdkHttpClient.builder());
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -303,7 +303,7 @@ class AnthropicStreamingChatModelIT {
     @Test
     void should_send_strict_true_in_tools_definition_streaming() {
         SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(JdkHttpClient.builder().build());
+                new SpyingHttpClient(JdkHttpClient.builder());
 
         AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

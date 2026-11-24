@@ -1,8 +1,8 @@
 package dev.langchain4j.mcp.resourcesastools;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.exception.LlmVisibleToolExecutionException;
 import dev.langchain4j.exception.ToolArgumentsException;
-import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.McpClient;
@@ -51,7 +51,8 @@ class GetResourceToolExecutor implements ToolExecutor {
                 if (content instanceof McpTextResourceContents) {
                     result.append(((McpTextResourceContents) content).text());
                 } else {
-                    throw new ToolExecutionException("ERROR: binary content was requested, this is not supported yet");
+                    throw new LlmVisibleToolExecutionException(
+                            "ERROR: binary content was requested, this is not supported yet");
                 }
             }
             return ToolExecutionResult.builder().resultText(result.toString()).build();

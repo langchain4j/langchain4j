@@ -28,6 +28,9 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -42,6 +45,7 @@ import java.util.stream.Stream;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.GZIPOutputStream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -326,6 +330,39 @@ class UtilsTest {
         } finally {
             httpServer.stop(0);
         }
+    }
+
+    @Test
+    void read_bytes_from_local_file_system_path(@TempDir Path tempDir) throws IOException {
+        Path file = tempDir.resolve("cat.jpg");
+        Files.write(file, "meow".getBytes());
+
+        // a plain filesystem path, as shown in the user documentation
+        assertThat(Utils.readBytes(file.toString())).isEqualTo("meow".getBytes());
+
+        // a file:// URI keeps working
+        assertThat(Utils.readBytes(file.toUri().toString())).isEqualTo("meow".getBytes());
+
+        // a plain filesystem path that is not a valid URI
+        Path fileWithSpace = tempDir.resolve("my cat.jpg");
+        Files.write(fileWithSpace, "purr".getBytes());
+        assertThat(Utils.readBytes(fileWithSpace.toString())).isEqualTo("purr".getBytes());
+    }
+
+    @Test
+    void read_bytes_from_local_file_system_should_fail(@TempDir Path tempDir) throws IOException {
+        Path missingFile = tempDir.resolve("missing.jpg");
+        assertThatThrownBy(() -> Utils.readBytes(missingFile.toString()))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasCauseExactlyInstanceOf(NoSuchFileException.class);
+
+        // a malformed file URI is reported as such, not retried as a plain path
+        Path file = tempDir.resolve("cat.jpg");
+        Files.write(file, "meow".getBytes());
+        assertThatThrownBy(() -> Utils.readBytes(file.toUri() + "#fragment"))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasCauseExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("URI has a fragment component");
     }
 
     @Test

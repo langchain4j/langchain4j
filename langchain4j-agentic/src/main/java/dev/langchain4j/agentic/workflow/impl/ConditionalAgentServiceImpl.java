@@ -8,6 +8,7 @@ import static dev.langchain4j.agentic.internal.AgentUtil.validateAgentClass;
 import dev.langchain4j.agentic.UntypedAgent;
 import dev.langchain4j.agentic.internal.AbstractServiceBuilder;
 import dev.langchain4j.agentic.internal.AgentExecutor;
+import dev.langchain4j.agentic.internal.AgentHelpers;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.agentic.workflow.ConditionalAgent;
@@ -24,8 +25,16 @@ public class ConditionalAgentServiceImpl<T> extends AbstractServiceBuilder<T, Co
     protected final List<ConditionalAgent> conditionalAgents = new ArrayList<>();
 
     public ConditionalAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod) {
+        this(agentServiceClass, agenticMethod, List.of());
+    }
+
+    /**
+     * @param helperObjects the helper objects of the agent, whose instance helper methods configure it together
+     *        with the static methods of its type
+     */
+    public ConditionalAgentServiceImpl(Class<T> agentServiceClass, Method agenticMethod, List<Object> helperObjects) {
         super(agentServiceClass, agenticMethod);
-        configureConditional(agentServiceClass);
+        configureConditional(AgentHelpers.of(agentServiceClass, helperObjects));
     }
 
     @Override
@@ -98,8 +107,8 @@ public class ConditionalAgentServiceImpl<T> extends AbstractServiceBuilder<T, Co
         return "Conditional";
     }
 
-    private void configureConditional(Class<T> agentServiceClass) {
-        configureOutput(agentServiceClass, this);
-        buildAgentFeatures(agentServiceClass, this);
+    private void configureConditional(AgentHelpers helpers) {
+        configureOutput(helpers, this);
+        buildAgentFeatures(helpers, this);
     }
 }

@@ -24,7 +24,7 @@ From 15.2 Infinispan Server and above, metadata filtering is supported.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-infinispan</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 
@@ -32,7 +32,35 @@ From 15.2 Infinispan Server and above, metadata filtering is supported.
 ## APIs
 
 - `InfinispanEmbeddingStore`
+- `InfinispanChatMemoryStore`
 
+Both classes also implement the non-blocking methods of their interfaces: `searchAsync` on
+`InfinispanEmbeddingStore`, and `getMessagesAsync`, `updateMessagesAsync` and `deleteMessagesAsync` on
+`InfinispanChatMemoryStore`. They use the asynchronous API of the Infinispan Hot Rod client, so you can use them
+in asynchronous and reactive AI Services and RAG without blocking a thread.
+The returned futures complete on the I/O threads of the Hot Rod client, so do not block in code that you chain to them.
+See [Non-blocking and Reactive](/tutorials/non-blocking).
+
+### InfinispanChatMemoryStore
+
+A `ChatMemoryStore` backed by an Infinispan cache. Messages are serialized to JSON
+using `ChatMessageSerializer`, supporting all message types including multimodal
+content (images, audio, video, PDF), tool calls, and provider-specific attributes.
+
+```java
+// Using a ConfigurationBuilder
+InfinispanChatMemoryStore store = InfinispanChatMemoryStore.builder()
+    .infinispanConfigBuilder(builder)
+    .build();
+```
+
+When using a pre-configured `RemoteCacheManager` (e.g. in Quarkus):
+
+```java
+InfinispanChatMemoryStore store = InfinispanChatMemoryStore.builder()
+    .remoteCacheManager(remoteCacheManager)
+    .build();
+```
 
 ## Examples
 

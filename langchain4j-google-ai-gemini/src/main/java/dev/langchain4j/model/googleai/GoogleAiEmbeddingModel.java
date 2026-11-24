@@ -121,20 +121,20 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
         TaskType taskType = embedding2 ? null : toTaskType(inputType);
 
         List<GeminiEmbeddingRequest> embeddingRequests = request.inputs().stream()
-                .map(input -> buildEmbeddingRequest(embedding2 ? withTaskInstruction(input, inputType) : input, taskType))
+                .map(input ->
+                        buildEmbeddingRequest(embedding2 ? withTaskInstruction(input, inputType) : input, taskType))
                 .collect(Collectors.toList());
 
         return EmbeddingResponse.builder()
                 .embeddings(batchEmbed(embeddingRequests))
-                .metadata(EmbeddingResponseMetadata.builder().modelName(modelName).build())
+                .metadata(
+                        EmbeddingResponseMetadata.builder().modelName(modelName).build())
                 .build();
     }
 
     @Override
     public Set<ContentType> supportedContentTypes() {
-        return isMultimodalModel(modelName)
-                ? Set.of(ContentType.TEXT, ContentType.IMAGE)
-                : Set.of(ContentType.TEXT);
+        return isMultimodalModel(modelName) ? Set.of(ContentType.TEXT, ContentType.IMAGE) : Set.of(ContentType.TEXT);
     }
 
     private static boolean isMultimodalModel(String modelName) {
@@ -197,8 +197,8 @@ public class GoogleAiEmbeddingModel extends DimensionAwareEmbeddingModel {
             GeminiBatchEmbeddingRequest batchEmbeddingRequest =
                     new GeminiBatchEmbeddingRequest(embeddingRequests.subList(startIndex, lastIndex));
 
-            GeminiBatchEmbeddingResponse geminiResponse =
-                    withRetryMappingExceptions(() -> geminiService.batchEmbed(modelName, batchEmbeddingRequest));
+            GeminiBatchEmbeddingResponse geminiResponse = withRetryMappingExceptions(
+                    () -> geminiService.batchEmbed(modelName, batchEmbeddingRequest), maxRetries);
 
             allEmbeddings.addAll(geminiResponse.embeddings().stream()
                     .map(values -> Embedding.from(values.values()))

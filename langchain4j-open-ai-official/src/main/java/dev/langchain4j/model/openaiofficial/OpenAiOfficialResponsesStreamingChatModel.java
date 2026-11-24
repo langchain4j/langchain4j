@@ -10,6 +10,7 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.detectModelProvider;
 import static dev.langchain4j.model.openaiofficial.setup.OpenAiOfficialSetup.setupSyncClient;
 import static java.util.Arrays.asList;
 
@@ -105,6 +106,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -124,9 +127,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
     static final String ENCRYPTED_REASONING_KEY = "encrypted_reasoning";
 
     private final OpenAIClient client;
-    private final ExecutorService executorService;
+    private final Executor executor;
     private final OpenAiOfficialResponsesChatRequestParameters defaultRequestParameters;
     private final List<ChatModelListener> listeners;
+    private final ModelProvider modelProvider;
 
     private OpenAiOfficialResponsesStreamingChatModel(Builder builder) {
         this.client = builder.client != null
@@ -145,8 +149,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                         builder.maxRetries,
                         builder.proxy,
                         builder.customHeaders);
-        this.executorService =
-                getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
+        this.executor = getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutor);
 
         ChatRequestParameters commonParameters;
         if (builder.defaultRequestParameters != null) {
@@ -180,6 +183,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .promptCacheKey(getOrDefault(builder.promptCacheKey, responsesParameters.promptCacheKey()))
                 .promptCacheRetention(
                         getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
+                .promptCacheOptions(getOrDefault(builder.promptCacheOptions, responsesParameters.promptCacheOptions()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, responsesParameters.reasoningEffort()))
                 .reasoningSummary(getOrDefault(builder.reasoningSummary, responsesParameters.reasoningSummary()))
                 .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
@@ -192,6 +196,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .build();
 
         this.listeners = copy(builder.listeners);
+        this.modelProvider = detectModelProvider(
+                builder.isMicrosoftFoundry,
+                builder.isGitHubModels,
+                builder.baseUrl,
+                builder.microsoftFoundryDeploymentName,
+                builder.azureOpenAIServiceVersion);
     }
 
     public static Builder builder() {
@@ -222,21 +232,25 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             var eventHandler =
                     new ResponsesEventHandler(handler, responseIdRef, parameters.modelName(), streamingHandle);
 
-            // The forEach call blocks, so it is submitted to the executor service to run asynchronously.
-            // We keep this on our executor (instead of OpenAIClientAsync callbacks) to ensure that user
-            // handlers execute on a single, controlled thread rather than SDK/OkHttp threads.
-            streamingFuture = executorService.submit(() -> {
-                try (streamResponse) {
-                    streamResponse.stream().forEach(eventHandler::handleEvent);
-                } catch (CancellationException e) {
-                    withLoggingExceptions(() -> handler.onError(e));
-                } catch (Exception e) {
-                    RuntimeException mappedException = ExceptionMapper.DEFAULT.mapException(e);
-                    withLoggingExceptions(() -> handler.onError(mappedException));
-                } finally {
-                    streamingHandle.markCompleted();
-                }
-            });
+            // The forEach call blocks, so it runs asynchronously on our executor. We keep this on our executor
+            // (instead of OpenAIClientAsync callbacks) to ensure that user handlers execute on a single,
+            // controlled thread rather than SDK/OkHttp threads. Cancellation aborts the stream by closing
+            // streamResponse (see streamingHandle's cancel callback), which unblocks the forEach — so a plain
+            // Executor suffices; no ExecutorService/Future interruption is required.
+            streamingFuture = CompletableFuture.runAsync(
+                    () -> {
+                        try (streamResponse) {
+                            streamResponse.stream().forEach(eventHandler::handleEvent);
+                        } catch (CancellationException e) {
+                            withLoggingExceptions(() -> handler.onError(e));
+                        } catch (Exception e) {
+                            RuntimeException mappedException = ExceptionMapper.DEFAULT.mapException(e);
+                            withLoggingExceptions(() -> handler.onError(mappedException));
+                        } finally {
+                            streamingHandle.markCompleted();
+                        }
+                    },
+                    executor);
             streamingHandle.setStreamingFuture(streamingFuture);
         } catch (Exception e) {
             RuntimeException mappedException = ExceptionMapper.DEFAULT.mapException(e);
@@ -259,7 +273,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
     @Override
     public ModelProvider provider() {
-        return ModelProvider.OPEN_AI;
+        return modelProvider;
     }
 
     @Override
@@ -366,16 +380,23 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         return builder.build();
     }
 
-    static String mapStatusToFinishReason(String status, boolean hasToolCalls) {
+    static String mapStatusToFinishReason(String status, String incompleteReason, boolean hasToolCalls) {
         if (status == null) {
             return null;
         }
         return switch (status) {
             case "completed" -> hasToolCalls ? "TOOL_EXECUTION" : "STOP";
-            case "incomplete" -> "LENGTH";
+            case "incomplete" -> "content_filter".equals(incompleteReason) ? "CONTENT_FILTER" : "LENGTH";
             case "failed" -> "OTHER";
             default -> "OTHER";
         };
+    }
+
+    static String extractIncompleteReason(com.openai.models.responses.Response response) {
+        return response.incompleteDetails()
+                .flatMap(com.openai.models.responses.Response.IncompleteDetails::reason)
+                .map(com.openai.models.responses.Response.IncompleteDetails.Reason::asString)
+                .orElse(null);
     }
 
     static OpenAiOfficialTokenUsage extractTokenUsage(com.openai.models.responses.Response response) {
@@ -386,6 +407,12 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                         .totalTokenCount(usage.totalTokens())
                         .inputTokensDetails(OpenAiOfficialTokenUsage.InputTokensDetails.builder()
                                 .cachedTokens(usage.inputTokensDetails().cachedTokens())
+                                // read through the JsonField so that "not reported" stays distinct from
+                                // a reported zero: the accessor returns a primitive long
+                                .cacheWriteTokens(usage.inputTokensDetails()
+                                        ._cacheWriteTokens()
+                                        .asKnown()
+                                        .orElse(null))
                                 .build())
                         .outputTokensDetails(OpenAiOfficialTokenUsage.OutputTokensDetails.builder()
                                 .reasoningTokens(usage.outputTokensDetails().reasoningTokens())
@@ -450,6 +477,9 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             paramsBuilder.putAdditionalBodyProperty(
                     PROMPT_CACHE_RETENTION_FIELD, JsonValue.from(parameters.promptCacheRetention()));
         }
+        if (parameters.promptCacheOptions() != null) {
+            paramsBuilder.promptCacheOptions(toPromptCacheOptions(parameters.promptCacheOptions()));
+        }
         if (parameters.reasoningEffort() != null || parameters.reasoningSummary() != null) {
             Reasoning.Builder reasoningBuilder = Reasoning.builder();
             if (parameters.reasoningEffort() != null) {
@@ -507,10 +537,31 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
     private static List<ResponseInputItem> toResponseInputItems(ChatMessage msg) {
         if (msg instanceof SystemMessage systemMessage) {
+            if (OpenAiOfficialPromptCacheBreakpoint.isMarked(systemMessage.attributes())) {
+                // the string form of "content" cannot carry a "prompt_cache_breakpoint",
+                // so the block form is used
+                return List.of(ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
+                        .role(EasyInputMessage.Role.SYSTEM)
+                        .content(EasyInputMessage.Content.ofResponseInputMessageContentList(List.of(
+                                ResponseInputContent.ofInputText(ResponseInputText.builder()
+                                        .text(systemMessage.text())
+                                        .promptCacheBreakpoint(ResponseInputText.PromptCacheBreakpoint.builder()
+                                                .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                                                .build())
+                                        .build()))))
+                        .build()));
+            }
             return List.of(createTextMessage(EasyInputMessage.Role.SYSTEM, systemMessage.text()));
         } else if (msg instanceof UserMessage userMessage) {
             return List.of(createUserMessage(userMessage));
         } else if (msg instanceof AiMessage aiMessage) {
+            if (OpenAiOfficialPromptCacheBreakpoint.isMarked(aiMessage.attributes())) {
+                throw new UnsupportedFeatureException("OpenAI does not support a \""
+                        + OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY
+                        + "\" on an AiMessage. Mark a SystemMessage, a UserMessage "
+                        + "or a ToolExecutionResultMessage instead.");
+            }
+
             var items = new ArrayList<ResponseInputItem>();
 
             // Add reasoning item (with encrypted_content and summary) if present
@@ -545,7 +596,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         } else if (msg instanceof ToolExecutionResultMessage toolResultMessage) {
             var outputBuilder = ResponseInputItem.FunctionCallOutput.builder().callId(toolResultMessage.id());
 
-            if (toolResultMessage.hasSingleText()) {
+            boolean promptCacheBreakpoint =
+                    OpenAiOfficialPromptCacheBreakpoint.isMarked(toolResultMessage.attributes());
+
+            if (toolResultMessage.hasSingleText() && !promptCacheBreakpoint) {
                 outputBuilder.output(toolResultMessage.text());
             } else {
                 var outputItems = new ArrayList<ResponseFunctionCallOutputItem>();
@@ -565,13 +619,21 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                                 + ". Only TextContent and ImageContent are supported.");
                     }
                 }
+                if (promptCacheBreakpoint) {
+                    // the string form of "output" cannot carry a "prompt_cache_breakpoint",
+                    // so the block form is used
+                    int lastIndex = outputItems.size() - 1;
+                    outputItems.set(lastIndex, withPromptCacheBreakpoint(outputItems.get(lastIndex)));
+                }
                 outputBuilder.output(
                         ResponseInputItem.FunctionCallOutput.Output.ofResponseFunctionCallOutputItemList(outputItems));
             }
 
             return List.of(ResponseInputItem.ofFunctionCallOutput(outputBuilder.build()));
         } else {
-            return List.of(createTextMessage(EasyInputMessage.Role.USER, msg.toString()));
+            throw new UnsupportedFeatureException(
+                    "Unsupported message type: " + msg.getClass().getName()
+                            + ". Only SystemMessage, UserMessage, AiMessage, and ToolExecutionResultMessage are supported.");
         }
     }
 
@@ -587,6 +649,65 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                 .encryptedContent(encryptedContent)
                 .build();
         return ResponseInputItem.ofReasoning(reasoningItem);
+    }
+
+    private static ResponseCreateParams.PromptCacheOptions toPromptCacheOptions(
+            OpenAiOfficialPromptCacheOptions promptCacheOptions) {
+        ResponseCreateParams.PromptCacheOptions.Builder builder = ResponseCreateParams.PromptCacheOptions.builder();
+        if (promptCacheOptions.mode() != null) {
+            builder.mode(ResponseCreateParams.PromptCacheOptions.Mode.of(promptCacheOptions.mode()));
+        }
+        if (promptCacheOptions.ttl() != null) {
+            builder.ttl(ResponseCreateParams.PromptCacheOptions.Ttl.of(promptCacheOptions.ttl()));
+        }
+        return builder.build();
+    }
+
+    private static ResponseInputContent withPromptCacheBreakpoint(ResponseInputContent content) {
+        if (content.isInputText()) {
+            return ResponseInputContent.ofInputText(content.asInputText().toBuilder()
+                    .promptCacheBreakpoint(ResponseInputText.PromptCacheBreakpoint.builder()
+                            .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                            .build())
+                    .build());
+        }
+        if (content.isInputImage()) {
+            return ResponseInputContent.ofInputImage(content.asInputImage().toBuilder()
+                    .promptCacheBreakpoint(ResponseInputImage.PromptCacheBreakpoint.builder()
+                            .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                            .build())
+                    .build());
+        }
+        if (content.isInputFile()) {
+            return ResponseInputContent.ofInputFile(content.asInputFile().toBuilder()
+                    .promptCacheBreakpoint(ResponseInputFile.PromptCacheBreakpoint.builder()
+                            .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                            .build())
+                    .build());
+        }
+        throw new UnsupportedFeatureException("OpenAI does not support a \""
+                + OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY
+                + "\" on this content block. Supported content blocks: input_text, input_image and input_file.");
+    }
+
+    private static ResponseFunctionCallOutputItem withPromptCacheBreakpoint(ResponseFunctionCallOutputItem item) {
+        if (item.isInputText()) {
+            return ResponseFunctionCallOutputItem.ofInputText(item.asInputText().toBuilder()
+                    .promptCacheBreakpoint(ResponseInputTextContent.PromptCacheBreakpoint.builder()
+                            .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                            .build())
+                    .build());
+        }
+        if (item.isInputImage()) {
+            return ResponseFunctionCallOutputItem.ofInputImage(item.asInputImage().toBuilder()
+                    .promptCacheBreakpoint(ResponseInputImageContent.PromptCacheBreakpoint.builder()
+                            .mode(JsonValue.from(OpenAiOfficialPromptCacheBreakpoint.MODE_EXPLICIT))
+                            .build())
+                    .build());
+        }
+        throw new UnsupportedFeatureException("OpenAI does not support a \""
+                + OpenAiOfficialPromptCacheBreakpoint.ATTRIBUTE_KEY
+                + "\" on this content block. Supported content blocks: input_text and input_image.");
     }
 
     private static ResponseInputItem createTextMessage(EasyInputMessage.Role role, String text) {
@@ -623,7 +744,18 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
                     throw new IllegalArgumentException("PDF must have either url or base64Data");
                 }
                 contentList.add(ResponseInputContent.ofInputFile(pdfInput.build()));
+            } else {
+                throw new UnsupportedFeatureException("Unsupported content type: "
+                        + content.getClass().getName()
+                        + ". Only TextContent, ImageContent, and PdfFileContent are supported.");
             }
+        }
+
+        if (OpenAiOfficialPromptCacheBreakpoint.isMarked(userMessage.attributes())) {
+            // prompt caching is prefix-based, so the breakpoint goes on the last content block of the
+            // marked message: that makes the whole message part of the cached prefix
+            int lastIndex = contentList.size() - 1;
+            contentList.set(lastIndex, withPromptCacheBreakpoint(contentList.get(lastIndex)));
         }
 
         return ResponseInputItem.ofEasyInputMessage(EasyInputMessage.builder()
@@ -672,11 +804,14 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
             if (toolSpec.parameters() != null) {
                 toMap(toolSpec.parameters(), effectiveStrict)
                         .forEach((key, value) -> parametersBuilder.putAdditionalProperty(key, JsonValue.from(value)));
-            } else if (effectiveStrict) {
+            } else {
                 parametersBuilder
                         .putAdditionalProperty("type", JsonValue.from("object"))
                         .putAdditionalProperty("properties", JsonValue.from(Collections.emptyMap()))
-                        .putAdditionalProperty("additionalProperties", JsonValue.from(false));
+                        .putAdditionalProperty("required", JsonValue.from(Collections.emptyList()));
+                if (effectiveStrict) {
+                    parametersBuilder.putAdditionalProperty("additionalProperties", JsonValue.from(false));
+                }
             }
             return FunctionTool.builder()
                     .name(toolSpec.name())
@@ -790,6 +925,7 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         private String safetyIdentifier;
         private String promptCacheKey;
         private String promptCacheRetention;
+        private OpenAiOfficialPromptCacheOptions promptCacheOptions;
         private ReasoningEffort reasoningEffort;
         private Reasoning.Summary reasoningSummary;
         private String textVerbosity;
@@ -954,6 +1090,14 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
         public Builder promptCacheKey(String promptCacheKey) {
             this.promptCacheKey = promptCacheKey;
+            return this;
+        }
+
+        /**
+         * @since 1.21.0
+         */
+        public Builder promptCacheOptions(OpenAiOfficialPromptCacheOptions promptCacheOptions) {
+            this.promptCacheOptions = promptCacheOptions;
             return this;
         }
 
@@ -1242,7 +1386,8 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
 
             // Extract status and map to finish reason
             response.status().ifPresent(status -> {
-                this.finishReason = mapStatusToFinishReason(status.asString(), !completedToolCalls.isEmpty());
+                this.finishReason = mapStatusToFinishReason(
+                        status.asString(), extractIncompleteReason(response), !completedToolCalls.isEmpty());
             });
 
             // Extract token usage and complete
@@ -1269,12 +1414,10 @@ public class OpenAiOfficialResponsesStreamingChatModel implements StreamingChatM
         }
 
         private void handleIncomplete(ResponseIncompleteEvent event) {
-            // Incomplete is not an error - it just means the response was cut off due to token limits
-            // Treat it as a normal completion with finish reason LENGTH
-            finishReason = "LENGTH";
+            var response = event.response();
+            finishReason = mapStatusToFinishReason("incomplete", extractIncompleteReason(response), false);
 
-            // Complete the response normally
-            extractTokenUsageAndComplete(event.response());
+            extractTokenUsageAndComplete(response);
         }
 
         private void extractTokenUsageAndComplete(com.openai.models.responses.Response response) {

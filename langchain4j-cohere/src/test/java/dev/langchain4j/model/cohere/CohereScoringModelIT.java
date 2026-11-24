@@ -3,6 +3,8 @@ package dev.langchain4j.model.cohere;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
+import dev.langchain4j.model.scoring.request.ScoringRequest;
+import dev.langchain4j.model.scoring.response.ScoringResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
@@ -10,6 +12,7 @@ import java.time.Duration;
 import java.util.List;
 
 import static java.util.Arrays.asList;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.data.Percentage.withPercentage;
 
@@ -72,5 +75,37 @@ class CohereScoringModelIT {
         assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(1);
 
         assertThat(response.finishReason()).isNull();
+    }
+
+    @Test
+    void scoreAsync_should_score_multiple_segments() throws Exception {
+
+        // given
+        ScoringModel model = CohereScoringModel.builder()
+                .apiKey(System.getenv("COHERE_API_KEY"))
+                .modelName("rerank-english-v3.0")
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        TextSegment catSegment = TextSegment.from("maine coon");
+        TextSegment dogSegment = TextSegment.from("labrador retriever");
+        List<TextSegment> segments = asList(catSegment, dogSegment);
+
+        String query = "tell me about dogs";
+
+        // when
+        ScoringResponse response = model.scoreAsync(ScoringRequest.builder()
+                        .documents(segments.stream().map(TextSegment::text).toList())
+                        .query(query)
+                        .build())
+                .get(30, SECONDS);
+
+        // then
+        List<Double> scores = response.scores();
+        assertThat(scores).hasSize(2);
+        assertThat(scores.get(0)).isLessThan(scores.get(1));
+
+        assertThat(response.tokenUsage().totalTokenCount()).isEqualTo(1);
     }
 }

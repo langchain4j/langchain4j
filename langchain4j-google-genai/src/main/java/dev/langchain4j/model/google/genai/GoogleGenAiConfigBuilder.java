@@ -1,19 +1,25 @@
 package dev.langchain4j.model.google.genai;
 
+import static dev.langchain4j.internal.JsonSchemaElementUtils.toMap;
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
+import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCallingConfig;
 import com.google.genai.types.FunctionDeclaration;
 import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GoogleMaps;
 import com.google.genai.types.GoogleSearch;
+import com.google.genai.types.HttpOptions;
 import com.google.genai.types.Retrieval;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Schema;
+import com.google.genai.types.SpeechConfig;
 import com.google.genai.types.ThinkingConfig;
 import com.google.genai.types.ThinkingLevel;
 import com.google.genai.types.Tool;
+import com.google.genai.types.ToolCodeExecution;
 import com.google.genai.types.ToolConfig;
 import com.google.genai.types.UrlContext;
 import com.google.genai.types.VertexAISearch;
@@ -22,9 +28,12 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.request.json.JsonSchemaElement;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 class GoogleGenAiConfigBuilder {
@@ -59,6 +68,10 @@ class GoogleGenAiConfigBuilder {
                 vertexSearchDatastore,
                 labels,
                 cachedContent,
+                null,
+                null,
+                null,
+                null,
                 null);
     }
 
@@ -77,6 +90,131 @@ class GoogleGenAiConfigBuilder {
             String vertexSearchDatastore,
             Map<String, String> labels,
             String cachedContent,
+            Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
+        return buildConfig(
+                parameters,
+                systemInstruction,
+                safetySettings,
+                thinkingBudget,
+                thinkingLevel,
+                includeThoughts,
+                seed,
+                googleSearchEnabled,
+                googleMapsEnabled,
+                urlContextEnabled,
+                allowedFunctionNames,
+                vertexSearchDatastore,
+                labels,
+                cachedContent,
+                null,
+                null,
+                null,
+                null,
+                generateContentConfigCustomizer);
+    }
+
+    static GenerateContentConfig buildConfig(
+            ChatRequestParameters parameters,
+            Content systemInstruction,
+            List<SafetySetting> safetySettings,
+            Integer thinkingBudget,
+            String thinkingLevel,
+            Boolean includeThoughts,
+            Integer seed,
+            boolean googleSearchEnabled,
+            boolean googleMapsEnabled,
+            boolean urlContextEnabled,
+            List<String> allowedFunctionNames,
+            String vertexSearchDatastore,
+            Map<String, String> labels,
+            String cachedContent,
+            AudioTranscriptionConfig audioTranscriptionConfig,
+            Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
+        return buildConfig(
+                parameters,
+                systemInstruction,
+                safetySettings,
+                thinkingBudget,
+                thinkingLevel,
+                includeThoughts,
+                seed,
+                googleSearchEnabled,
+                googleMapsEnabled,
+                urlContextEnabled,
+                allowedFunctionNames,
+                vertexSearchDatastore,
+                labels,
+                cachedContent,
+                audioTranscriptionConfig,
+                null,
+                null,
+                null,
+                generateContentConfigCustomizer);
+    }
+
+    static GenerateContentConfig buildConfig(
+            ChatRequestParameters parameters,
+            Content systemInstruction,
+            List<SafetySetting> safetySettings,
+            Integer thinkingBudget,
+            String thinkingLevel,
+            Boolean includeThoughts,
+            Integer seed,
+            boolean googleSearchEnabled,
+            boolean googleMapsEnabled,
+            boolean urlContextEnabled,
+            List<String> allowedFunctionNames,
+            String vertexSearchDatastore,
+            Map<String, String> labels,
+            String cachedContent,
+            AudioTranscriptionConfig audioTranscriptionConfig,
+            SpeechConfig speechConfig,
+            List<String> responseModalities,
+            Boolean automaticContinuation,
+            Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
+        return buildConfig(
+                parameters,
+                systemInstruction,
+                safetySettings,
+                thinkingBudget,
+                thinkingLevel,
+                includeThoughts,
+                seed,
+                googleSearchEnabled,
+                googleMapsEnabled,
+                urlContextEnabled,
+                false,
+                allowedFunctionNames,
+                vertexSearchDatastore,
+                labels,
+                cachedContent,
+                audioTranscriptionConfig,
+                speechConfig,
+                responseModalities,
+                automaticContinuation,
+                generateContentConfigCustomizer);
+    }
+
+    static GenerateContentConfig buildConfig(
+            ChatRequestParameters parameters,
+            Content systemInstruction,
+            List<SafetySetting> safetySettings,
+            Integer thinkingBudget,
+            String thinkingLevel,
+            Boolean includeThoughts,
+            Integer seed,
+            boolean googleSearchEnabled,
+            boolean googleMapsEnabled,
+            boolean urlContextEnabled,
+            boolean codeExecutionEnabled,
+            List<String> allowedFunctionNames,
+            String vertexSearchDatastore,
+            Map<String, String> labels,
+            String cachedContent,
+            AudioTranscriptionConfig audioTranscriptionConfig,
+            SpeechConfig speechConfig,
+            List<String> responseModalities,
+            Boolean automaticContinuation,
             Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer) {
 
         GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
@@ -110,10 +248,15 @@ class GoogleGenAiConfigBuilder {
         ResponseFormat responseFormat = parameters.responseFormat();
         if (responseFormat != null && responseFormat.type() == ResponseFormatType.JSON) {
             configBuilder.responseMimeType("application/json");
-            if (responseFormat.jsonSchema() != null) {
-                Schema googleSchema = GoogleGenAiToolMapper.convertToGoogleSchema(
-                        responseFormat.jsonSchema().rootElement());
-                configBuilder.responseSchema(googleSchema);
+            if (responseFormat.jsonSchema() != null
+                    && responseFormat.jsonSchema().rootElement() != null) {
+                JsonSchemaElement rootElement = responseFormat.jsonSchema().rootElement();
+                if (GoogleGenAiToolMapper.canBeMapped(rootElement)) {
+                    Schema googleSchema = GoogleGenAiToolMapper.convertToGoogleSchema(rootElement);
+                    configBuilder.responseSchema(googleSchema);
+                } else {
+                    configBuilder.responseJsonSchema(toMap(rootElement));
+                }
             }
         }
 
@@ -143,12 +286,38 @@ class GoogleGenAiConfigBuilder {
             configBuilder.systemInstruction(systemInstruction);
         }
 
-        if (labels != null) {
-            configBuilder.labels(labels);
+        Map<String, String> effectiveLabels = labels;
+        String effectiveCachedContent = cachedContent;
+        Boolean effectiveAutomaticContinuation = automaticContinuation;
+        if (parameters instanceof GoogleGenAiChatRequestParameters googleGenAiParameters) {
+            effectiveLabels = getOrDefault(googleGenAiParameters.labels(), effectiveLabels);
+            effectiveCachedContent = getOrDefault(googleGenAiParameters.cachedContent(), effectiveCachedContent);
+            effectiveAutomaticContinuation =
+                    getOrDefault(googleGenAiParameters.automaticContinuation(), effectiveAutomaticContinuation);
         }
 
-        if (cachedContent != null && !cachedContent.trim().isEmpty()) {
-            configBuilder.cachedContent(cachedContent);
+        if (effectiveLabels != null) {
+            configBuilder.labels(effectiveLabels);
+        }
+
+        if (effectiveCachedContent != null && !effectiveCachedContent.trim().isEmpty()) {
+            configBuilder.cachedContent(effectiveCachedContent);
+        }
+
+        if (audioTranscriptionConfig != null) {
+            configBuilder.audioTranscriptionConfig(audioTranscriptionConfig);
+        }
+
+        if (speechConfig != null) {
+            configBuilder.speechConfig(speechConfig);
+        }
+
+        if (!isNullOrEmpty(responseModalities)) {
+            configBuilder.responseModalities(responseModalities);
+        }
+
+        if (effectiveAutomaticContinuation != null) {
+            configBuilder.automaticContinuation(effectiveAutomaticContinuation);
         }
 
         buildTools(
@@ -157,6 +326,7 @@ class GoogleGenAiConfigBuilder {
                 googleSearchEnabled,
                 googleMapsEnabled,
                 urlContextEnabled,
+                codeExecutionEnabled,
                 allowedFunctionNames,
                 vertexSearchDatastore);
 
@@ -172,6 +342,7 @@ class GoogleGenAiConfigBuilder {
             boolean googleSearchEnabled,
             boolean googleMapsEnabled,
             boolean urlContextEnabled,
+            boolean codeExecutionEnabled,
             List<String> allowedFunctionNames,
             String vertexSearchDatastore) {
 
@@ -203,6 +374,11 @@ class GoogleGenAiConfigBuilder {
         if (urlContextEnabled) {
             requestTools.add(
                     Tool.builder().urlContext(UrlContext.builder().build()).build());
+        }
+        if (codeExecutionEnabled) {
+            requestTools.add(Tool.builder()
+                    .codeExecution(ToolCodeExecution.builder().build())
+                    .build());
         }
         if (vertexSearchDatastore != null && !vertexSearchDatastore.isEmpty()) {
             requestTools.add(Tool.builder()
@@ -238,6 +414,19 @@ class GoogleGenAiConfigBuilder {
                     .functionCallingConfig(funcConfig.build())
                     .build());
         }
+    }
+
+    static GenerateContentConfig withMaskedHttpHeaders(GenerateContentConfig config) {
+        Optional<HttpOptions> httpOptions = config.httpOptions();
+        Optional<Map<String, String>> headers = httpOptions.flatMap(HttpOptions::headers);
+        if (headers.isEmpty()) {
+            return config;
+        }
+        Map<String, String> maskedHeaders = new LinkedHashMap<>();
+        headers.get().keySet().forEach(name -> maskedHeaders.put(name, "***"));
+        return config.toBuilder()
+                .httpOptions(httpOptions.get().toBuilder().headers(maskedHeaders).build())
+                .build();
     }
 
     private GoogleGenAiConfigBuilder() {}

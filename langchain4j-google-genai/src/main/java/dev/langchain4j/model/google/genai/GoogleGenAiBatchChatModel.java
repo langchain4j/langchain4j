@@ -4,9 +4,11 @@ import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.google.genai.GoogleGenAiClientFactory.DEFAULT_TIMEOUT;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
+import com.google.genai.types.AudioTranscriptionConfig;
 import com.google.genai.types.BatchJob;
 import com.google.genai.types.BatchJobSource;
 import com.google.genai.types.CancelBatchJobConfig;
@@ -20,6 +22,7 @@ import com.google.genai.types.InlinedRequest;
 import com.google.genai.types.JobState;
 import com.google.genai.types.JobState.Known;
 import com.google.genai.types.SafetySetting;
+import com.google.genai.types.SpeechConfig;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.batch.BatchItemResult;
@@ -44,6 +47,7 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Provides an interface for interacting with the Google GenAI Batch API for
@@ -71,6 +75,9 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
     private final String vertexSearchDatastore;
     private final Map<String, String> labels;
     private final String cachedContent;
+    private final AudioTranscriptionConfig audioTranscriptionConfig;
+    private final SpeechConfig speechConfig;
+    private final List<String> responseModalities;
     private final ChatRequestParameters defaultRequestParameters;
     private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
@@ -91,6 +98,9 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         this.vertexSearchDatastore = builder.vertexSearchDatastore;
         this.labels = builder.labels != null ? new HashMap<>(builder.labels) : null;
         this.cachedContent = builder.cachedContent;
+        this.audioTranscriptionConfig = builder.audioTranscriptionConfig;
+        this.speechConfig = builder.speechConfig;
+        this.responseModalities = copy(builder.responseModalities);
         this.defaultRequestParameters = builder.defaultRequestParameters;
         this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
 
@@ -101,9 +111,10 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
                         builder.googleCredentials,
                         builder.projectId,
                         builder.location,
-                        builder.timeout,
+                        getOrDefault(builder.timeout, DEFAULT_TIMEOUT),
                         builder.customHeaders,
-                        builder.apiEndpoint);
+                        builder.apiEndpoint,
+                        builder.apiVersion);
     }
 
     public static Builder builder() {
@@ -216,6 +227,10 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
                 vertexSearchDatastore,
                 labels,
                 cachedContent,
+                audioTranscriptionConfig,
+                speechConfig,
+                responseModalities,
+                null,
                 generateContentConfigCustomizer);
 
         return InlinedRequest.builder().contents(contents).config(config).build();
@@ -290,8 +305,12 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
         private String vertexSearchDatastore;
         private Map<String, String> labels;
         private String apiEndpoint;
+        private @Nullable String apiVersion;
         private Map<String, String> customHeaders;
         private String cachedContent;
+        private AudioTranscriptionConfig audioTranscriptionConfig;
+        private SpeechConfig speechConfig;
+        private List<String> responseModalities;
         private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
 
         public Builder client(Client client) {
@@ -329,6 +348,17 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
             return this;
         }
 
+        /**
+         * Sets the timeout of each HTTP request to the Google GenAI API.
+         * It limits each request (submitting, retrieving, listing or cancelling a batch),
+         * not how long a batch job runs.
+         * A request that times out is retried (see {@link #maxRetries(Integer)}), and each retry gets the full timeout.
+         * Defaults to 20 minutes.
+         * Ignored when {@link #client(Client)} is set.
+         *
+         * @param timeout the timeout
+         * @return {@code this}
+         */
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -347,7 +377,7 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
          * The thinking level to use. This is the recommended parameter for Gemini 3.x
          * models.
          * Allowed values are {@code "MINIMAL"}, {@code "LOW"}, {@code "MEDIUM"},
-         * {@code "HIGH"}.
+         * {@code "HIGH"}, {@code "XHIGH"}.
          * Note that this cannot be used together with {@link #thinkingBudget(Integer)}.
          */
         public Builder thinkingLevel(String thinkingLevel) {
@@ -392,7 +422,10 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
          * Controls whether to send thinking/reasoning text to the LLM in follow-up requests.
          * <p>
          * Disabled by default.
-         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request.
+         * If enabled, the contents of {@link AiMessage#thinking()} will be sent in the API request,
+         * together with the thought signature that Gemini returned for the answer, if there was one.
+         * A thought signature is an opaque token that lets the model resume its own reasoning
+         * on the next turn; sending it back keeps reasoning continuous across turns.
          * <p>
          * Thought signatures required for function calling are handled independently of this setting.
          *
@@ -454,6 +487,17 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
             return this;
         }
 
+        /**
+         * The version of the API to call, for example {@code v1beta} or {@code v1}. When not set ({@code null}), the
+         * version set in the {@code GOOGLE_GENAI_API_VERSION} environment variable is used, otherwise {@code v1beta}
+         * on the Gemini Developer API and the default of the Google GenAI SDK on Vertex AI. Ignored when a client is
+         * set with {@code client(...)}.
+         */
+        public Builder apiVersion(@Nullable String apiVersion) {
+            this.apiVersion = apiVersion;
+            return this;
+        }
+
         public Builder customHeaders(Map<String, String> customHeaders) {
             this.customHeaders = customHeaders;
             return this;
@@ -461,6 +505,21 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
 
         public Builder cachedContent(String cachedContent) {
             this.cachedContent = cachedContent;
+            return this;
+        }
+
+        public Builder audioTranscriptionConfig(AudioTranscriptionConfig audioTranscriptionConfig) {
+            this.audioTranscriptionConfig = audioTranscriptionConfig;
+            return this;
+        }
+
+        public Builder speechConfig(SpeechConfig speechConfig) {
+            this.speechConfig = speechConfig;
+            return this;
+        }
+
+        public Builder responseModalities(List<String> responseModalities) {
+            this.responseModalities = responseModalities;
             return this;
         }
 

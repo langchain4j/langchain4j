@@ -1,16 +1,23 @@
 package dev.langchain4j.agentic.scope;
 
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyDefaultValue;
 import static dev.langchain4j.agentic.internal.AgentUtil.keyName;
+import static dev.langchain4j.agentic.observability.ListenerNotifierUtil.onAgenticSystemSuspended;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.agent.AgentInvocationException;
-import dev.langchain4j.agentic.agent.ChatMessagesAccess;
 import dev.langchain4j.agentic.agent.ErrorContext;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.declarative.TypedKey;
+import dev.langchain4j.agentic.internal.AsyncResponse;
 import dev.langchain4j.agentic.internal.DeferredResponse;
 import dev.langchain4j.agentic.internal.DelayedResponse;
+import dev.langchain4j.agentic.internal.SuspendedResponse;
+import dev.langchain4j.agentic.internal.UserMessageTransformer;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.data.message.AiMessage;
@@ -19,37 +26,50 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.internal.Utils;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.decision.DecisionResult;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Future;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @Internal
+@JsonInclude(NON_NULL)
 public class DefaultAgenticScope implements AgenticScope {
 
     private static final Logger LOG = LoggerFactory.getLogger(DefaultAgenticScope.class);
 
-    public record AgentMessage(String agentName, String agentId, ChatMessage message) {}
+    @JsonInclude(NON_NULL)
+    public record AgentMessage(
+            @JsonProperty("agentName") String agentName,
+            @JsonProperty("agentId") String agentId,
+            @JsonProperty("message") ChatMessage message) {}
 
     private final Object memoryId;
     private final Map<String, Object> state = new ConcurrentHashMap<>();
-    private final List<AgentInvocation> agentInvocations = Collections.synchronizedList(new ArrayList<>());
-    private final List<AgentMessage> context = Collections.synchronizedList(new ArrayList<>());
+    // Iterators are snapshots, so a reader can walk either list while another thread registers an
+    // invocation or appends messages, without ConcurrentModificationException.
+    private final List<AgentInvocation> agentInvocations = new CopyOnWriteArrayList<>();
+    private final List<AgentMessage> context = new CopyOnWriteArrayList<>();
 
     private final transient Map<String, Object> agents = new ConcurrentHashMap<>();
     private final transient Map<String, Object> executionContexts = new ConcurrentHashMap<>();
@@ -61,9 +81,28 @@ public class DefaultAgenticScope implements AgenticScope {
 
     private transient Function<ErrorContext, ErrorRecoveryResult> errorHandler = DEFAULT_ERROR_RECOVERY;
 
+    /**
+     * The registry where a persistent scope is saved again when an asynchronous agent, which the root call does not
+     * wait for, completes after the end of that call: set at the end of the root call and cleared at the start of
+     * the next one, so that it also tells whether the root call ended, see {@link #asyncEnded(String, AsyncResponse)}.
+     */
+    private transient volatile AgenticScopeRegistry registryAfterRootCall;
+
+    /**
+     * The asynchronous agents of this scope still running, by name: the next root call on this scope waits for them,
+     * see {@link #rootCallStarted(AgenticScopeRegistry)}.
+     */
+    private final transient Map<CompletableFuture<Void>, String> runningAsyncAgents = new ConcurrentHashMap<>();
+
+    private transient boolean evicted;
+
     private static Predicate<Object> serializableStateFilter = Predicate.not(DefaultAgenticScope::isProxy)
             .and(Predicate.not(DefaultAgenticScope::isTokenStream))
-            .and(Predicate.not(DefaultAgenticScope::isFuture));
+            .and(Predicate.not(DefaultAgenticScope::isFuture))
+            // the raw response of a decision model, written by decision agents returning a DecisionResult, and the
+            // records answering several questions with Choice, Scale or YesNoAnswer fields, which cannot be converted
+            .and(Predicate.not(
+                    value -> value instanceof DecisionResult<?> || PersistedDecisionAnswers.isCompositeAnswer(value)));
 
     private static boolean isProxy(Object obj) {
         return Proxy.isProxyClass(obj.getClass());
@@ -85,14 +124,28 @@ public class DefaultAgenticScope implements AgenticScope {
 
     private final Kind kind;
 
-    DefaultAgenticScope serializableCopy() {
+    /**
+     * Replaces every registered invocation with the one returned by the given converter, for a JSON codec adapting
+     * the values of the invocations before writing the scope or after reading it.
+     */
+    void replaceAgentInvocations(UnaryOperator<AgentInvocation> converter) {
+        agentInvocations.replaceAll(converter);
+    }
+
+    /**
+     * The state that is safe to persist. Public so that a JSON codec supplied through the SPI can
+     * reach it from another package.
+     */
+    public DefaultAgenticScope serializableCopy() {
         DefaultAgenticScope copy = new DefaultAgenticScope(memoryId, kind);
         state.forEach((key, value) -> {
-            if (isSerializable(value)) {
+            // the response of an asynchronous agent is left out while it is still running or when it failed, since
+            // the scope can be saved without waiting for it: its result takes its place when it completes
+            if (isSerializable(value) && !(value instanceof AsyncResponse)) {
                 copy.state.put(key, value);
             }
         });
-        copy.agentInvocations.addAll(agentInvocations);
+        agentInvocations.forEach(invocation -> copy.agentInvocations.add(invocation.persistable()));
         copy.context.addAll(context);
         return copy;
     }
@@ -118,7 +171,8 @@ public class DefaultAgenticScope implements AgenticScope {
         this(Utils.randomUUID(), kind);
     }
 
-    DefaultAgenticScope(Object memoryId, Kind kind) {
+    @JsonCreator
+    DefaultAgenticScope(@JsonProperty("memoryId") Object memoryId, @JsonProperty("kind") Kind kind) {
         this.memoryId = memoryId;
         this.kind = kind;
         this.lock = (kind == Kind.PERSISTENT) ? new ReentrantReadWriteLock() : null;
@@ -217,61 +271,246 @@ public class DefaultAgenticScope implements AgenticScope {
         return (T) agents.computeIfAbsent(agentId, id -> agentFactory.apply(this));
     }
 
-    public void registerAgentInvocation(AgentInvocation agentInvocation, Object agent) {
+    /**
+     * The agents created for this scope only, by {@link #getOrCreateAgent}: the AI agents whose configuration
+     * depends on the scope, and the planner agent of a supervisor. They are not part of the agent tree of the
+     * agentic system, so they have to be reached through the scope, for instance to evict their chat memories.
+     */
+    public Collection<Object> cachedAgents() {
+        return Collections.unmodifiableCollection(agents.values());
+    }
+
+    public void registerAgentInvocation(AgentInvocation agentInvocation) {
+        withReadLock(() -> agentInvocations.add(agentInvocation));
+    }
+
+    /**
+     * Adds to the context of this scope the messages exchanged by an AI agent in the invocation that just
+     * completed: the last user message and the last answer of its chat memory when it has one, otherwise the user
+     * message of its last model call, when known, and its output. Other kinds of agents have no messages to add.
+     */
+    public void registerContext(AgentInstance agent, Object agentObject, UserMessage userMessage, Object output) {
+        if (!(agentObject instanceof ChatMemoryAccess agentWithMemory)) {
+            return;
+        }
         withReadLock(() -> {
-            agentInvocations.add(agentInvocation);
-            registerContext(agentInvocation, agent);
+            ChatMemory chatMemory = agentWithMemory.getChatMemory(memoryId);
+            if (chatMemory != null) {
+                registerContextFromChatMemory(agent.name(), agent.agentId(), chatMemory);
+            } else if (output != null) {
+                Object outputText = isSerializable(output) ? output : "<unknown>";
+                addToContext(agent.name(), agent.agentId(), userMessage, AiMessage.aiMessage(outputText.toString()));
+            }
         });
     }
 
-    public void rootCallStarted(AgenticScopeRegistry registry) {}
+    private void addToContext(String agentName, String agentId, UserMessage userMessage, AiMessage aiMessage) {
+        AgentMessage agentAiMessage = new AgentMessage(agentName, agentId, aiMessage);
+        // added together, so that the messages of concurrent invocations do not interleave in the context
+        context.addAll(
+                userMessage == null
+                        ? List.of(agentAiMessage)
+                        : List.of(new AgentMessage(agentName, agentId, userMessage), agentAiMessage));
+    }
 
-    public void rootCallEnded(AgenticScopeRegistry registry, AgentListener agentListener) {
-        // ensure that all pending async operations are completed before ending the root call
+    /**
+     * Starts a root call, once the asynchronous agents of the previous call on this scope still running completed:
+     * one root call at a time runs on a scope, since those agents would otherwise share with the new call the chat
+     * memory of their agents, the context and the compensations of the scope and the execution recorded by an
+     * {@code AgentMonitor}. The tool executions of the agents completed after the end of the previous call are then
+     * dropped, as those of a completed root call are: a failure of this call does not compensate them. The failed
+     * responses of those agents are dropped too, as the saved copy of a persistent scope never contains them: their
+     * failure was reported, and an agent of this call must not fail for it, like a skipped agent returning the
+     * current value of its output key would.
+     */
+    public void rootCallStarted(AgenticScopeRegistry registry) {
+        if (!runningAsyncAgents.isEmpty()) {
+            Map<CompletableFuture<Void>, String> running = Map.copyOf(runningAsyncAgents);
+            LOG.debug(
+                    "Root call on AgenticScope '{}' waits for the asynchronous agents {} of the previous call, still running",
+                    memoryId,
+                    running.values());
+            running.keySet().forEach(CompletableFuture::join);
+        }
+        compensableExecutions.clear();
+        withReadLock(() ->
+                state.values().removeIf(value -> value instanceof AsyncResponse<?> response && response.isFailed()));
+        registryAfterRootCall = null;
+    }
+
+    /**
+     * Suspends the root call, which returns to its caller to be resumed by a later call on this scope, and notifies
+     * the listener of the suspension. As after a completed call, the failure of an asynchronous agent completing
+     * afterwards is reported, and a persistent scope is saved again with its result. The suspension of an asynchronous
+     * agent is reported only when the scope then has a pending response that was not pending yet when the root call
+     * notified its suspension: an agent leaves its pending response just before it completes, so the root call may
+     * have suspended on it, and notified it, while the agent was still running. The pending responses are taken
+     * before notifying, so that one left while the listener runs is notified again rather than never.
+     */
+    public void rootCallSuspended(AgenticScopeRegistry registry, AgentListener agentListener) {
+        Set<String> notifiedResponseIds = pendingResponseIds();
+        onAgenticSystemSuspended(agentListener, this);
         Map.copyOf(state).forEach((key, value) -> {
-            if (value instanceof DelayedResponse<?> pending) {
+            if (value instanceof AsyncResponse<?> unread) {
+                unread.onComplete(completed -> {
+                    boolean leftNewPendingResponse = !notifiedResponseIds.containsAll(pendingResponseIds());
+                    reportUnreadFailure(key, completed, leftNewPendingResponse ? agentListener : null, false);
+                });
+            }
+        });
+        if (kind == Kind.PERSISTENT) {
+            registryAfterRootCall = registry;
+        }
+    }
+
+    /**
+     * Ends the root call, which {@code failed} tells whether it ended with an exception. The responses of the
+     * asynchronous agents that no agent of the root call read are left in place, and the root call does not wait
+     * for them: their failure is logged on completion when the call succeeded, since no agent would observe it
+     * otherwise, while a failed root call already surfaced the failure of the response it read, and a suspension of
+     * the agentic system by one of them, which the call returned without noticing, is notified to the listener.
+     */
+    public void rootCallEnded(AgenticScopeRegistry registry, AgentListener agentListener, boolean failed) {
+        // ensure that all pending streaming and deferred responses are completed before ending the root call
+        List<String> stillRunning = new ArrayList<>();
+        Map.copyOf(state).forEach((key, value) -> {
+            if (value instanceof AsyncResponse<?> unread) {
+                if (!unread.isDone()) {
+                    stillRunning.add(key);
+                }
+                unread.onComplete(completed -> reportUnreadFailure(key, completed, agentListener, failed));
+            } else if (value instanceof DelayedResponse<?> pending && !suspendsTheSystem(pending)) {
                 writeState(key, pending.blockingGet());
             }
         });
+        if (!stillRunning.isEmpty()) {
+            LOG.debug(
+                    "Root call on AgenticScope '{}' ended without waiting for the asynchronous agents producing {}, still running",
+                    memoryId,
+                    stillRunning);
+        }
 
         if (kind == Kind.EPHEMERAL) {
             // Ephemeral agenticScope are for single-use and can be evicted immediately
             registry.evict(memoryId, agentListener);
         } else if (kind == Kind.PERSISTENT) {
+            // saved now without the results still pending, and again when each of them arrives: the registry is
+            // published before saving, so that a result arriving during the save is saved again by its agent
+            registryAfterRootCall = registry;
             flush(registry);
         }
 
         compensableExecutions.clear();
     }
 
-    private void flush(AgenticScopeRegistry registry) {
+    /**
+     * A suspended response not yet completed is meant to suspend the agentic system, never to be awaited: it is left
+     * in place for the next root call on this scope to resume from it.
+     */
+    private static boolean suspendsTheSystem(DelayedResponse<?> response) {
+        return response instanceof SuspendedResponse<?> suspended && !suspended.isDone();
+    }
+
+    /**
+     * Reports once the failure of the response of an asynchronous agent that no agent of the root call read: a
+     * suspension of the agentic system is notified to the listener, as the root call returned without noticing it
+     * and its caller cannot get it anymore, while any other failure is logged, unless the root call failed, since
+     * the failure it surfaced may be the one of the response it read.
+     */
+    private void reportUnreadFailure(
+            String outputKey, AsyncResponse<?> response, AgentListener agentListener, boolean rootCallFailed) {
+        if (!response.reportFailureOnce()) {
+            return;
+        }
+        try {
+            response.blockingGet();
+        } catch (AgenticSystemSuspendedException e) {
+            onAgenticSystemSuspended(agentListener, this);
+        } catch (RuntimeException e) {
+            if (!rootCallFailed) {
+                LOG.warn(
+                        "Asynchronous agent producing '{}' failed and the agentic system did not read its result",
+                        outputKey,
+                        e);
+            }
+        }
+    }
+
+    /**
+     * Tracks the response of an asynchronous agent just written to this scope: its result takes the place of the
+     * response when it completes, see {@link #asyncEnded(String, AsyncResponse)}, and until then the next root call
+     * on this scope waits for it. Called after the write, so that the result of an agent completing before it is
+     * settled anyway.
+     */
+    public void asyncPending(String agentName, String outputKey, AsyncResponse<?> response) {
+        CompletableFuture<Void> ended = new CompletableFuture<>();
+        runningAsyncAgents.put(ended, agentName);
+        response.onComplete(completed -> {
+            try {
+                asyncEnded(outputKey, completed);
+            } finally {
+                runningAsyncAgents.remove(ended);
+                ended.complete(null);
+            }
+        });
+    }
+
+    /**
+     * Completes an asynchronous agent, on the thread of its executor. Its result replaces the response under its
+     * output key, if the key still holds that response, as reading it would have done, while a failure is left in
+     * place, so that reading it still fails, until the next root call on this scope drops it. A persistent scope
+     * whose root call already ended is then saved again, with the result.
+     */
+    public void asyncEnded(String outputKey, AsyncResponse<?> response) {
+        if (outputKey != null && !outputKey.isBlank() && !response.isFailed()) {
+            Object result = response.blockingGet();
+            withReadLock(() -> {
+                if (result == null) {
+                    state.remove(outputKey, response);
+                } else {
+                    state.replace(outputKey, response, result);
+                }
+            });
+        }
+        AgenticScopeRegistry registry = registryAfterRootCall;
+        if (registry != null) {
+            try {
+                flush(registry);
+            } catch (RuntimeException e) {
+                LOG.error(
+                        "Failed to save AgenticScope '{}' after the completion of its asynchronous agent", memoryId, e);
+            }
+        }
+    }
+
+    /**
+     * Called by the registry when it evicts this scope, before deleting it from the store, so that an asynchronous
+     * agent completing afterwards does not save it again.
+     */
+    void markEvicted() {
+        if (kind != Kind.PERSISTENT) {
+            return;
+        }
         lock.writeLock().lock();
         try {
-            registry.update(this);
+            evicted = true;
         } finally {
             lock.writeLock().unlock();
         }
     }
 
-    private void registerContext(AgentInvocation agentInvocation, Object agent) {
-        ChatMemory chatMemory =
-                agent instanceof ChatMemoryAccess agentWithMemory ? agentWithMemory.getChatMemory(memoryId) : null;
-        if (chatMemory != null) {
-            registerContextFromChatMemory(agentInvocation, chatMemory);
-        } else if (agentInvocation.output() != null && agent instanceof ChatMessagesAccess chatMessagesAccess) {
-            context.add(new AgentMessage(
-                    agentInvocation.agentName(),
-                    agentInvocation.agentId(),
-                    chatMessagesAccess.lastUserMessage(memoryId())));
-            context.add(new AgentMessage(
-                    agentInvocation.agentName(),
-                    agentInvocation.agentId(),
-                    AiMessage.aiMessage(agentInvocation.output().toString())));
-            chatMessagesAccess.removeLastResponseEvent(memoryId());
+    private void flush(AgenticScopeRegistry registry) {
+        lock.writeLock().lock();
+        try {
+            if (!evicted) {
+                registry.update(this);
+            }
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
-    private void registerContextFromChatMemory(AgentInvocation agentInvocation, ChatMemory chatMemory) {
+    private void registerContextFromChatMemory(String agentName, String agentId, ChatMemory chatMemory) {
         List<ChatMessage> agentMessages = chatMemory.messages();
         if (Utils.isNullOrEmpty(agentMessages)) {
             return;
@@ -284,10 +523,9 @@ public class DefaultAgenticScope implements AgenticScope {
 
         for (int i = agentMessages.size() - 1; i >= 0; i--) {
             if (agentMessages.get(i) instanceof UserMessage userMessage) {
-                // Only add to the agenticScope's context the last UserMessage ...
-                context.add(new AgentMessage(agentInvocation.agentName(), agentInvocation.agentId(), userMessage));
-                // ... and last AiMessage response, all other messages are local to the invoked agent internals
-                context.add(new AgentMessage(agentInvocation.agentName(), agentInvocation.agentId(), aiMessage));
+                // Only add to the agenticScope's context the last UserMessage and the last AiMessage response, all
+                // other messages are local to the invoked agent internals
+                addToContext(agentName, agentId, userMessage, aiMessage);
                 return;
             }
         }
@@ -324,7 +562,7 @@ public class DefaultAgenticScope implements AgenticScope {
             }
             ChatMessage message = agentMessage.message();
             if (message instanceof UserMessage userMessage) {
-                sb.append("User: \"").append(userMessage.singleText()).append("\"\n");
+                sb.append("User: \"").append(text(userMessage)).append("\"\n");
             } else if (message instanceof AiMessage aiMessage) {
                 sb.append(agentMessage.agentName())
                         .append(" agent: \"")
@@ -338,9 +576,24 @@ public class DefaultAgenticScope implements AgenticScope {
         return contextAsConversation;
     }
 
+    /**
+     * The same text of the given user message that a {@link UserMessageTransformer} transforms, or, for a message
+     * without any text, like a message made only of an image, the types of its contents, like {@code [image]}, so
+     * that the conversation still tells that the user sent something.
+     */
+    private static String text(UserMessage userMessage) {
+        String text = UserMessageTransformer.text(userMessage);
+        if (!text.isEmpty() || userMessage.contents().isEmpty()) {
+            return text;
+        }
+        return userMessage.contents().stream()
+                .map(content -> "[" + content.type().name().toLowerCase(Locale.ROOT) + "]")
+                .collect(Collectors.joining(" "));
+    }
+
     @Override
     public List<AgentInvocation> agentInvocations() {
-        return agentInvocations;
+        return Collections.unmodifiableList(agentInvocations);
     }
 
     @Override
@@ -359,7 +612,22 @@ public class DefaultAgenticScope implements AgenticScope {
 
     @Override
     public String toString() {
-        return "AgenticScope{" + "memoryId='" + memoryId + '\'' + ", state=" + state + '}';
+        StringBuilder sb =
+                new StringBuilder("AgenticScope{memoryId='").append(memoryId).append("', state={");
+        boolean first = true;
+        for (Map.Entry<String, Object> e : state.entrySet()) {
+            if (!first) sb.append(", ");
+            first = false;
+            sb.append(e.getKey()).append('=');
+            // Guard against circular references (e.g. ResultWithAgenticScope holding this scope)
+            if (e.getValue() instanceof ResultWithAgenticScope<?>) {
+                sb.append("<ResultWithAgenticScope>");
+            } else {
+                sb.append(e.getValue());
+            }
+        }
+        sb.append("}}");
+        return sb.toString();
     }
 
     private void withReadLock(Runnable action) {
@@ -438,7 +706,7 @@ public class DefaultAgenticScope implements AgenticScope {
                     && deferred.responseId().equals(responseId)) {
                 boolean completed = ((DeferredResponse<Object>) deferred).complete(value);
                 if (completed) {
-                    withReadLock(() -> state.put(entry.getKey(), value));
+                    writeState(entry.getKey(), value);
                 }
                 return completed;
             }

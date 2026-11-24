@@ -1,0 +1,70 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.internal.Json.JsonCodec",
+          "justification": "This module exists to implement the LangChain4j codec SPI; implementing it necessarily exposes the SPI type."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.data.message.ChatMessageJsonCodec",
+          "justification": "This module exists to implement the LangChain4j codec SPI; implementing it necessarily exposes the SPI type."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.data.message.ChatMessage",
+          "justification": "ChatMessage is part of the ChatMessageJsonCodec contract this module implements."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class tools.jackson.databind.ObjectMapper",
+          "justification": "The codec takes an ObjectMapper the way the Jackson 2 codec takes one. The class is @Internal, so this is framework plumbing rather than supported API."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class tools.jackson.databind.json.JsonMapper.Builder",
+          "justification": "The chat message mapper builder is reachable the way the Jackson 2 codec exposes its own. The class is @Internal, so this is framework plumbing rather than supported API."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.internal.ProviderJsonSpec",
+          "justification": "This module exists to implement the LangChain4j wire-codec SPI; implementing it necessarily exposes the spec type."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.agent.tool.ToolSpecificationJsonCodec",
+          "justification": "This module exists to implement the LangChain4j codec SPIs; implementing this one necessarily exposes the SPI type."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.model.input.Prompt",
+          "justification": "Prompt is part of the StructuredPromptFactory contract this module implements."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStoreJsonCodec",
+          "justification": "This module exists to implement the LangChain4j codec SPIs; implementing this one necessarily exposes the SPI types."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore",
+          "justification": "This module exists to implement the LangChain4j codec SPIs; implementing this one necessarily exposes the SPI types."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.data.segment.TextSegment",
+          "justification": "This module exists to implement the LangChain4j codec SPIs; implementing this one necessarily exposes the SPI types."
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.internal.TypeAllowlist",
+          "justification": "This module exists to implement the LangChain4j codec SPIs; implementing the polymorphic one necessarily exposes the allowlist it is configured with."
+        }
+      ]
+    }
+  }
+]

@@ -6,10 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -17,11 +19,17 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.ibm.watsonx.ai.CloudRegion;
+import com.ibm.watsonx.ai.chat.ChatModeration;
 import com.ibm.watsonx.ai.chat.ChatResponse;
 import com.ibm.watsonx.ai.chat.ChatResponse.ResultChoice;
 import com.ibm.watsonx.ai.chat.ChatService;
-import com.ibm.watsonx.ai.chat.EmptyChatResponseException;
 import com.ibm.watsonx.ai.chat.TextChatResponse;
+import com.ibm.watsonx.ai.chat.TextChatResponse.DetectionEntry;
+import com.ibm.watsonx.ai.chat.TextChatResponse.DetectionResult;
+import com.ibm.watsonx.ai.chat.TextChatResponse.ModerationResult;
+import com.ibm.watsonx.ai.chat.TextChatResponse.ModerationResult.Position;
+import com.ibm.watsonx.ai.chat.exception.EmptyChatResponseException;
+import com.ibm.watsonx.ai.chat.exception.ModerationException;
 import com.ibm.watsonx.ai.chat.model.AssistantMessage;
 import com.ibm.watsonx.ai.chat.model.ChatMessage;
 import com.ibm.watsonx.ai.chat.model.ChatUsage;
@@ -87,8 +95,8 @@ public class WatsonxChatModelTest {
         when(mockChatServiceBuilder.spaceId(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.timeout(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.version(any())).thenReturn(mockChatServiceBuilder);
-        when(mockChatServiceBuilder.logRequests(any())).thenReturn(mockChatServiceBuilder);
-        when(mockChatServiceBuilder.logResponses(any())).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.logRequests(nullable(Boolean.class))).thenReturn(mockChatServiceBuilder);
+        when(mockChatServiceBuilder.logResponses(nullable(Boolean.class))).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.authenticator(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.apiKey(any())).thenReturn(mockChatServiceBuilder);
         when(mockChatServiceBuilder.httpClient(any())).thenReturn(mockChatServiceBuilder);
@@ -496,8 +504,8 @@ public class WatsonxChatModelTest {
             var metadata = (WatsonxChatResponseMetadata) response.metadata();
             assertEquals("id", response.id());
             assertEquals("modelId", response.modelName());
-            assertEquals("modelVersion", metadata.getModelVersion());
-            assertEquals(1L, metadata.getCreated());
+            assertEquals("modelVersion", metadata.modelVersion());
+            assertEquals(1L, metadata.created());
             assertEquals(FinishReason.STOP, response.finishReason());
             assertEquals(10, response.tokenUsage().inputTokenCount());
             assertEquals(10, response.tokenUsage().outputTokenCount());
@@ -548,8 +556,6 @@ public class WatsonxChatModelTest {
                             .guidedChoice("a", "b")
                             .guidedGrammar("guidedGrammar")
                             .guidedRegex("guidedRegex")
-                            .repetitionPenalty(1.1)
-                            .lengthPenalty(1.2)
                             .build())
                     .build();
 
@@ -573,8 +579,6 @@ public class WatsonxChatModelTest {
             assertEquals(Set.of("a", "b"), parameters.guidedChoice());
             assertEquals("guidedGrammar", parameters.guidedGrammar());
             assertEquals("guidedRegex", parameters.guidedRegex());
-            assertEquals(1.1, parameters.repetitionPenalty());
-            assertEquals(1.2, parameters.lengthPenalty());
         });
     }
 
@@ -613,8 +617,6 @@ public class WatsonxChatModelTest {
                     .guidedChoice("a", "b")
                     .guidedGrammar("guidedGrammar")
                     .guidedRegex("guidedRegex")
-                    .repetitionPenalty(1.1)
-                    .lengthPenalty(1.2)
                     .build();
 
             var chatRequest = ChatRequest.builder()
@@ -645,8 +647,6 @@ public class WatsonxChatModelTest {
             assertEquals(Set.of("a", "b"), parameters.guidedChoice());
             assertEquals("guidedGrammar", parameters.guidedGrammar());
             assertEquals("guidedRegex", parameters.guidedRegex());
-            assertEquals(1.1, parameters.repetitionPenalty());
-            assertEquals(1.2, parameters.lengthPenalty());
         });
 
         withChatServiceMock(() -> {
@@ -676,8 +676,6 @@ public class WatsonxChatModelTest {
                             .guidedChoice("a", "b")
                             .guidedGrammar("guidedGrammar")
                             .guidedRegex("guidedRegex")
-                            .repetitionPenalty(1.1)
-                            .lengthPenalty(1.2)
                             .build())
                     .supportedCapabilities(Capability.RESPONSE_FORMAT_JSON_SCHEMA)
                     .build();
@@ -713,8 +711,6 @@ public class WatsonxChatModelTest {
             assertEquals(Set.of("a", "b"), parameters.guidedChoice());
             assertEquals("guidedGrammar", parameters.guidedGrammar());
             assertEquals("guidedRegex", parameters.guidedRegex());
-            assertEquals(1.1, parameters.repetitionPenalty());
-            assertEquals(1.2, parameters.lengthPenalty());
         });
 
         withChatServiceMock(() -> {
@@ -811,8 +807,6 @@ public class WatsonxChatModelTest {
                     .guidedChoice("defaultValue1", "defaultValue2")
                     .guidedGrammar("defaultGuidedGrammar")
                     .guidedRegex("defaultGuidedRegex")
-                    .repetitionPenalty(1.0)
-                    .lengthPenalty(1.0)
                     .build();
 
             var chatRequest = ChatRequest.builder()
@@ -846,8 +840,6 @@ public class WatsonxChatModelTest {
                             .guidedChoice("value1", "value2")
                             .guidedGrammar("guidedGrammar")
                             .guidedRegex("guidedRegex")
-                            .repetitionPenalty(1.1)
-                            .lengthPenalty(1.2)
                             .build())
                     .build();
 
@@ -876,8 +868,6 @@ public class WatsonxChatModelTest {
             assertEquals(Set.of("value1", "value2"), parameters.guidedChoice());
             assertEquals("guidedGrammar", parameters.guidedGrammar());
             assertEquals("guidedRegex", parameters.guidedRegex());
-            assertEquals(1.1, parameters.repetitionPenalty());
-            assertEquals(1.2, parameters.lengthPenalty());
             // ----------------
         });
     }
@@ -911,6 +901,47 @@ public class WatsonxChatModelTest {
                         .defaultRequestParameters(
                                 ChatRequestParameters.builder().topK(10).build())
                         .build());
+    }
+
+    @Test
+    @SuppressWarnings("removal")
+    void should_throw_exception_when_repetition_or_length_penalty_is_set() {
+
+        var repetitionPenalty = assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxChatModel.builder()
+                        .baseUrl("https://test.com")
+                        .modelName("modelId")
+                        .projectId("project-id")
+                        .apiKey("api-key")
+                        .repetitionPenalty(1.1)
+                        .build());
+        assertTrue(repetitionPenalty.getMessage().startsWith("'repetitionPenalty' is not supported"));
+
+        var lengthPenalty = assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxChatModel.builder()
+                        .baseUrl("https://test.com")
+                        .modelName("modelId")
+                        .projectId("project-id")
+                        .apiKey("api-key")
+                        .lengthPenalty(1.2)
+                        .build());
+        assertTrue(lengthPenalty.getMessage().startsWith("'lengthPenalty' is not supported"));
+
+        assertThrows(
+                UnsupportedFeatureException.class,
+                () -> WatsonxChatRequestParameters.builder().repetitionPenalty(1.1).build());
+
+        var chatModel = WatsonxChatModel.builder()
+                .baseUrl("https://test.com")
+                .modelName("modelId")
+                .projectId("project-id")
+                .apiKey("api-key")
+                .repetitionPenalty(null)
+                .lengthPenalty(null)
+                .build();
+        assertNotNull(chatModel);
     }
 
     @Test
@@ -1042,6 +1073,182 @@ public class WatsonxChatModelTest {
             assertFalse(jsonSchema.strict());
             assertEquals(List.of("content"), schema.get("required"));
             assertFalse(schema.containsKey("additionalProperties"));
+        });
+    }
+
+    @Test
+    void should_do_chat_with_inline_moderation() {
+
+        var moderation = ChatModeration.builder()
+                .pii(p -> p.input(true).output(true))
+                .hap(h -> h.output(0.8f))
+                .build();
+
+        var moderationResult = new ModerationResult(0.98f, false, new Position(11, 23), "PhoneNumber", "555-123-4567");
+        var detectionEntry = new DetectionEntry(
+                0, List.of(new DetectionResult("granite_guardian", "risk", "Yes", 0.9, "Call me", 0, 7)));
+
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Call me at 555-123-4567", null, null, null);
+        var resultChoice = new ResultChoice(0, resultMessage, "stop");
+        chatResponse
+                .choices(List.of(resultChoice))
+                .moderations(Map.of("pii", List.of(moderationResult)))
+                .detections(Map.of("output", List.of(detectionEntry)));
+
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .moderations(moderation)
+                    .build();
+
+            var defaultRequestParameters =
+                    assertInstanceOf(WatsonxChatRequestParameters.class, chatModel.defaultRequestParameters());
+            assertSame(moderation, defaultRequestParameters.moderations());
+
+            var response = chatModel.chat(ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("Give me a phone number"))
+                    .build());
+
+            assertSame(moderation, chatRequestCaptor.getValue().moderations());
+
+            var metadata = assertInstanceOf(WatsonxChatResponseMetadata.class, response.metadata());
+            assertEquals(Map.of("pii", List.of(moderationResult)), metadata.moderations());
+            assertEquals(Map.of("output", List.of(detectionEntry)), metadata.detections());
+            assertEquals("Call me at 555-123-4567", response.aiMessage().text());
+        });
+    }
+
+    @Test
+    void should_override_the_inline_moderation_of_the_builder() {
+
+        var builderModeration = ChatModeration.builder().pii(p -> p.input(true)).build();
+        var requestModeration =
+                ChatModeration.builder().hap(h -> h.output(0.5f)).build();
+
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
+        var resultChoice = new ResultChoice(0, resultMessage, "stop");
+        chatResponse.choices(List.of(resultChoice));
+
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .moderations(builderModeration)
+                    .build();
+
+            chatModel.chat(ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                    .parameters(WatsonxChatRequestParameters.builder()
+                            .moderations(requestModeration)
+                            .build())
+                    .build());
+
+            assertSame(requestModeration, chatRequestCaptor.getValue().moderations());
+
+            chatModel.chat(ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                    .parameters(WatsonxChatRequestParameters.builder()
+                            .temperature(0.5)
+                            .build())
+                    .build());
+
+            assertSame(builderModeration, chatRequestCaptor.getValue().moderations());
+        });
+    }
+
+    @Test
+    void should_not_send_any_moderation_when_it_is_not_configured() {
+
+        var resultMessage = new ResultMessage(AssistantMessage.ROLE, "Hello", null, null, null);
+        var resultChoice = new ResultChoice(0, resultMessage, "stop");
+        chatResponse.choices(List.of(resultChoice));
+
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .build();
+
+            var response = chatModel.chat(ChatRequest.builder()
+                    .messages(dev.langchain4j.data.message.UserMessage.from("Hello"))
+                    .build());
+
+            assertNull(chatRequestCaptor.getValue().moderations());
+
+            var metadata = assertInstanceOf(WatsonxChatResponseMetadata.class, response.metadata());
+            assertNull(metadata.moderations());
+            assertNull(metadata.detections());
+        });
+    }
+
+    @Test
+    void should_map_a_moderation_block_to_a_content_filtered_exception() {
+
+        var moderationResult = new ModerationResult(0.8f, true, new Position(46, 56), "PhoneNumber", "3572865321");
+        var detectionEntry = new DetectionEntry(
+                0, List.of(new DetectionResult("en_syntax_rbr_pii", "pii", "PhoneNumber", 0.8, "3572865321", 46, 56)));
+
+        var resultChoice = new ResultChoice(0, null, null);
+        chatResponse
+                .choices(List.of(resultChoice))
+                .moderations(Map.of("pii", List.of(moderationResult)))
+                .detections(Map.of("input", List.of(detectionEntry)));
+
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .moderations(
+                            ChatModeration.builder().pii(p -> p.input(true)).build())
+                    .build();
+
+            var ex = assertThrows(ContentFilteredException.class, () -> chatModel.chat("hello"));
+            assertEquals(
+                    "The chat response was blocked by the moderation system (policies triggered: pii)",
+                    ex.getMessage());
+
+            var cause = assertInstanceOf(ModerationException.class, ex.getCause());
+            assertEquals(Map.of("pii", List.of(moderationResult)), cause.moderations());
+        });
+    }
+
+    @Test
+    void should_propagate_the_empty_response_when_the_moderation_did_not_block_the_generation() {
+
+        var moderationResult = new ModerationResult(0.8f, false, new Position(0, 10), "PhoneNumber", "3572865321");
+        var resultChoice = new ResultChoice(0, null, "length");
+        chatResponse.choices(List.of(resultChoice)).moderations(Map.of("pii", List.of(moderationResult)));
+
+        when(mockChatService.chat(chatRequestCaptor.capture())).thenReturn(chatResponse.build());
+
+        withChatServiceMock(() -> {
+            var chatModel = WatsonxChatModel.builder()
+                    .baseUrl("https://test.com")
+                    .modelName("modelId")
+                    .projectId("project-id")
+                    .apiKey("api-key")
+                    .moderations(
+                            ChatModeration.builder().pii(p -> p.output(true)).build())
+                    .build();
+
+            assertThrows(EmptyChatResponseException.class, () -> chatModel.chat("hello"));
         });
     }
 

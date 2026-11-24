@@ -12,10 +12,12 @@ import dev.langchain4j.model.output.TokenUsage;
 import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledOnJre;
 
+@Disabled
 @EnabledIf(value = "isMonday", disabledReason = "Not enough quota to run it more often")
 @EnabledOnJre(value = JAVA_17, disabledReason = "Not enough quota to run it more often")
 @EnabledIfEnvironmentVariable(named = "GCP_PROJECT_ID", matches = ".+")

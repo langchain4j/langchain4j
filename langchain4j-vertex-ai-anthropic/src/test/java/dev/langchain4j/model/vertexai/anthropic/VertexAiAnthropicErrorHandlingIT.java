@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.condition.EnabledOnJre;
 /**
  * Error handling and edge case tests for VertexAiAnthropic models
  */
+@Disabled
 @EnabledIf(
         value = "dev.langchain4j.model.vertexai.anthropic.VertexAiAnthropicChatModelIT#isMonday",
         disabledReason = "Not enough quota to run it more often")

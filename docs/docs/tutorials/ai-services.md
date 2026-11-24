@@ -394,8 +394,14 @@ for more details on the available content types.
 
 AI Service method can return one of the following types:
 - `String` - in this case LLM-generated output is returned without any processing/parsing
+- `AiMessage` or `ChatResponse` - in this case the LLM response is returned as-is, without any processing/parsing.
+`ChatResponse` also carries metadata, such as `TokenUsage` and `FinishReason`.
+If AI service did multiple calls to the LLM (e.g., because tools were executed), the `TokenUsage` is the sum of all calls
 - Any type supported by [Structured Outputs](/tutorials/structured-outputs#supported-types) - in this case
 AI service will parse LLM-generated output into a desired type before returning
+- `TokenStream` - to receive the response [as it is generated](/tutorials/ai-services#streaming)
+- `CompletableFuture<T>` / `CompletionStage<T>` or `Flow.Publisher<...>` - to run the interaction
+[without blocking the calling thread](/tutorials/non-blocking) (experimental)
 
 Any type can be additionally wrapped into a `Result<T>` to get extra metadata about AI Service invocation:
 - `TokenUsage` - total number of tokens used during AI service invocation. If AI service did multiple calls to
@@ -422,6 +428,18 @@ List<Content> sources = result.sources();
 List<ToolExecution> toolExecutions = result.toolExecutions();
 FinishReason finishReason = result.finishReason();
 ```
+
+:::note
+`T` in `Result<T>` is the content the LLM produces, so it has to be a type the LLM can actually generate:
+a `String`, an enum, a POJO, a collection of those, etc.
+LangChain4j's own types, such as `ChatResponse`, `ChatMessage`, `TextSegment`, `Embedding` or `TokenUsage`,
+cannot be used as `T` (nor as an element of a `List<T>`/`Set<T>` return type):
+the AI Service will fail with an `IllegalConfigurationException` when it is created.
+Everything the final `ChatResponse` carries is already available on `Result<T>` itself, for example:
+```java
+ChatResponse chatResponse = result.finalResponse();
+```
+:::
 
 ## Structured Outputs
 
@@ -468,6 +486,13 @@ PriorityAnalyzer priorityAnalyzer = AiServices.create(PriorityAnalyzer.class, mo
 Priority priority = priorityAnalyzer.analyzePriority("The main payment gateway is down, and customers cannot process transactions.");
 // CRITICAL
 ```
+
+:::tip
+For yes/no questions and choices between fixed options (like the examples above), you can also consider
+[Decision Services](/tutorials/decision-services), which use a [decision model](/tutorials/decision-models)
+instead of a chat model: they can return a probability for each answer and, with dedicated decision models,
+are typically faster and cheaper.
+:::
 
 ### POJO as a return type
 ```java
@@ -646,7 +671,10 @@ prompt engineering is your best bet. Also, try lowering the `temperature` for mo
 ## Streaming
 
 The AI Service can [stream response](/tutorials/response-streaming) token-by-token
-when using the `TokenStream` return type:
+when using the `TokenStream` return type.
+A `Flow.Publisher` return type streams the same interaction without blocking the calling thread -
+see [Non-blocking and Reactive](/tutorials/non-blocking).
+
 ```java
 interface Assistant {
 
@@ -684,6 +712,17 @@ tokenStream
 futureResponse.join(); // Blocks the main thread until the streaming process (running in another thread) is complete
 ```
 
+A failure of the model call, including an invalid request, is not thrown from `start()`:
+it is passed to `onError`, possibly before `start()` returns.
+`start()` throws only if the `TokenStream` is not configured correctly (an `IllegalConfigurationException`,
+for example if neither or both of `onError(...)` and `ignoreErrors()` are called),
+or if your `onRetrieved` callback or the chat request transformer of the AI Service throws.
+If your `onError` callback throws an exception, it is logged and not thrown from `start()`,
+but an `Error` that it throws on the calling thread before `start()` returns comes out of `start()`.
+If you call `ignoreErrors()` instead of `onError(...)`, failures are only logged,
+and after a failure of the model call no other callback is called,
+so code that waits for `onCompleteResponse` (like the `futureResponse.join()` above) would wait forever.
+
 ### Streaming Cancellation
 
 If you wish to cancel the streaming, you can do so from one of the following callbacks:
@@ -704,17 +743,29 @@ tokenStream
     .start();
 ```
 
-When `StreamingHandle.cancel()` is called, LangChain4j will close the connection and stop the streaming.
-Once `StreamingHandle.cancel()` has been called, `TokenStream` will not receive any further callbacks.
+When `StreamingHandle.cancel()` is called, LangChain4j will close the connection and stop the streaming,
+so the response that is being streamed delivers no further partial responses.
+Work that is already under way still reports through its callbacks:
+- a tool call that is already running calls `onToolExecuted` when it finishes;
+- a response that had fully arrived and is being processed when you cancel is processed to the end:
+  `onIntermediateResponse`, `beforeToolExecution` and `onToolExecuted` for its tool calls,
+  `onCompleteResponse` when it is the final answer,
+  and `onError` when one of its tool calls fails with an error that ends the call.
+
+If the AI Service is built with `.compensateOnToolErrors(true)`, such a response is the last one:
+no further request is sent to the LLM, and cancelling also rolls back the tool calls that already succeeded
+(see [Compensating Tool Actions](/tutorials/tools#compensating-tool-actions)).
 
 ### Flux
 You can also use `Flux<String>` instead of `TokenStream`.
+(`Flow.Publisher<String>` gives you the same stream without an extra module -
+see [Non-blocking and Reactive](/tutorials/non-blocking).)
 For this, please import `langchain4j-reactor` module:
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>1.19.0-beta29</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 ```java
@@ -723,6 +774,10 @@ interface Assistant {
   Flux<String> chat(String message);
 }
 ```
+
+`Flux<String>` is backed by `TokenStream`, so it works with every provider. The same module also carries the
+Reactor bindings for the [non-blocking modes](/tutorials/non-blocking) — `Mono<T>` and
+`Flux<AiServiceStreamingEvent>` — which work only with providers that have implemented them.
 
 [Streaming example](https://github.com/langchain4j/langchain4j-examples/blob/main/other-examples/src/main/java/ServiceWithStreamingExample.java)
 
@@ -771,6 +826,8 @@ String answerToFrancine = assistant.chat(2, "Hello, my name is Francine");
 List<ChatMessage> messagesWithKlaus = assistant.getChatMemory(1).messages();
 boolean chatMemoryWithFrancineEvicted = assistant.evictChatMemory(2);
 ```
+
+Only the chat memories created by a `ChatMemoryProvider` can be evicted. When an AI Service is configured with a single `ChatMemory`, shared by all its invocations, `evictChatMemory` throws an `UnsupportedOperationException`.
 
 :::note
 Please note that if an AI Service method does not have a parameter annotated with `@MemoryId`,
@@ -1054,7 +1111,7 @@ or, in the long run, even fine-tune a small specialized model for each specific 
 
 ## Testing
 
-- [An example of integration testing for a Customer Support Agent](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentIT.java)
+- [Testing](/tutorials/testing): how to test AI Services, with model mocks, checks of what they did and model judges
 
 
 ## Related Tutorials

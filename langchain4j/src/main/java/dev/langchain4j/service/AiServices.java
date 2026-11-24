@@ -6,7 +6,9 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactory;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.ReturnBehavior;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -28,6 +30,7 @@ import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.input.structured.StructuredPrompt;
@@ -41,6 +44,8 @@ import dev.langchain4j.rag.RetrievalAugmentor;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
+import dev.langchain4j.service.guardrail.InputGuardrails;
+import dev.langchain4j.service.guardrail.OutputGuardrails;
 import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
@@ -60,6 +65,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -90,6 +96,8 @@ import java.util.function.UnaryOperator;
  * - Tools, configured via {@link #tools(Collection)}, {@link #tools(Object...)}, {@link #tools(Map)} or {@link #toolProvider(ToolProvider)} and methods annotated with @{@link Tool}
  * - Various method return types (output parsers), see more details below
  * - Streaming (use {@link TokenStream} as a return type)
+ * - Non-blocking invocation (use {@link java.util.concurrent.CompletableFuture} or
+ *   {@link java.util.concurrent.Flow.Publisher} as a return type; experimental)
  * - Structured prompts as method arguments (see @{@link StructuredPrompt})
  * - Auto-moderation, configured via @{@link Moderate} annotation
  * </pre>
@@ -110,13 +118,16 @@ import java.util.function.UnaryOperator;
  *
  * <pre>
  * The return type of methods in your AI Service can be any of the following:
- * - a {@link String} or an {@link AiMessage}, if you want to get the answer from the LLM as-is
+ * - a {@link String}, an {@link AiMessage} or a {@link ChatResponse}, if you want to get the answer from the LLM as-is
  * - a {@code List<String>} or {@code Set<String>}, if you want to receive the answer as a collection of items or bullet points
  * - any {@link Enum} or a {@code boolean}, if you want to use the LLM for classification
  * - a primitive or boxed Java type: {@code int}, {@code Double}, etc., if you want to use the LLM for data extraction
  * - many default Java types: {@code Date}, {@code LocalDateTime}, {@code BigDecimal}, etc., if you want to use the LLM for data extraction
  * - any custom POJO, if you want to use the LLM for data extraction.
  * - Result&lt;T&gt; if you want to access {@link TokenUsage} or sources ({@link Content}s retrieved during RAG), aside from T, which can be of any type listed above. For example: Result&lt;String&gt;, Result&lt;MyCustomPojo&gt;
+ * - {@link TokenStream}, if you want to receive the answer token by token via callbacks
+ * - {@link java.util.concurrent.CompletableFuture}&lt;T&gt; or {@link java.util.concurrent.CompletionStage}&lt;T&gt;, if you want one answer without blocking the calling thread (experimental)
+ * - {@link java.util.concurrent.Flow.Publisher}&lt;{@link AiServiceStreamingEvent}&gt; or {@link java.util.concurrent.Flow.Publisher}&lt;{@link String}&gt;, if you want the interaction streamed without blocking the calling thread (experimental)
  * For POJOs, it is advisable to use the "json mode" feature if the LLM provider supports it. For OpenAI, this can be enabled by calling {@code responseFormat("json_object")} during model construction.
  *
  * </pre>
@@ -153,6 +164,14 @@ import java.util.function.UnaryOperator;
  * </pre>
  * <p>
  * See more examples <a href="https://github.com/langchain4j/langchain4j-examples/tree/main/other-examples/src/main/java">here</a>.
+ * <p>
+ * <b>Asynchronous and reactive return types are experimental.</b> Alongside the synchronous return types and
+ * {@link TokenStream}, an AI Service method can return a {@link java.util.concurrent.CompletableFuture} (one
+ * response, produced without blocking the calling thread) or a {@link java.util.concurrent.Flow.Publisher}
+ * (a stream of {@link AiServiceStreamingEvent}s, or of {@link String} text chunks). These two modes, and the
+ * asynchronous counterparts they build on across the stack - chat models, chat memory, guardrails, tools and
+ * RAG - are annotated {@link dev.langchain4j.Experimental}: their APIs and behavior may still change in a
+ * future release. The synchronous and {@link TokenStream} APIs are unaffected.
  *
  * @param <T> The interface for which AiServices will provide an implementation.
  */
@@ -612,7 +631,10 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * By default, when the LLM calls multiple tools, the AI Service executes them sequentially.
+     * By default, when the LLM calls multiple tools, the synchronous and {@link TokenStream} modes execute them
+     * sequentially. (The asynchronous and reactive modes always run tools on an {@link Executor} and therefore
+     * execute them concurrently by default; pass a single-threaded {@link Executor} to
+     * {@link #executeToolsConcurrently(Executor)} to serialize them there.)
      * If you enable this option, tools will be executed concurrently (with one exception - see below),
      * using the default {@link Executor}.
      * You can also specify your own {@link Executor}, see {@link #executeToolsConcurrently(Executor)}.
@@ -651,6 +673,22 @@ public abstract class AiServices<T> {
      * See {@link #executeToolsConcurrently()}'s Javadoc for more info.
      * <p>
      * If {@code null} is specified, the default {@link Executor} will be used.
+     * <p>
+     * <b>Running tools sequentially.</b> The asynchronous AI Service modes (methods returning a
+     * {@link java.util.concurrent.CompletableFuture} or a reactive {@link java.util.concurrent.Flow.Publisher})
+     * execute tools concurrently by default. To run them one at a time instead — e.g. for tools that are not
+     * thread-safe, that must preserve the order of their side effects, or that need to be rate-limited — pass a
+     * single-threaded executor such as {@link java.util.concurrent.Executors#newSingleThreadExecutor()}. Tools
+     * are then submitted in request order and executed serially, while still being kept off the
+     * model-response thread. (The synchronous and {@link TokenStream} modes already execute tools sequentially
+     * by default.)
+     * <p>
+     * <b>Rejected tool calls.</b> When the {@code executor} rejects a tool call (it throws a
+     * {@link RejectedExecutionException}), the rejected tool call counts as a tool call that failed: the other tool
+     * calls of the same response still run, also the ones requested after the rejected one, the AI Service waits for
+     * all of them, and then fails with the rejection (or with the error of a tool call requested before the rejected
+     * one, when that error ends the call). With {@link #compensateOnToolErrors(boolean)} enabled, the tool calls that
+     * succeeded, also the ones that ran after the rejected one, are rolled back first.
      *
      * @param executor The {@link Executor} to be used to execute tools.
      * @return builder
@@ -679,6 +717,26 @@ public abstract class AiServices<T> {
      */
     public AiServices<T> maxToolCallingRoundTrips(int maxToolCallingRoundTrips) {
         context.toolService.maxToolCallingRoundTrips(maxToolCallingRoundTrips);
+        return this;
+    }
+
+    /**
+     * Sets the size of the bounded back-pressure buffer used by the reactive ({@code Flow.Publisher}) streaming
+     * path. Events are relayed to the subscriber through this buffer; if the subscriber consumes slower than the
+     * model produces and the buffer overflows, the stream terminates with an {@link IllegalStateException}.
+     * <p>
+     * The default is {@value AiServiceStreamingEventPublisher#DEFAULT_BUFFER_SIZE}. Raise it for a slow-but-correct
+     * consumer on long responses, or set it to {@link Integer#MAX_VALUE} for an effectively unbounded buffer
+     * (accepting the {@link OutOfMemoryError} risk). Has no effect on the synchronous, {@code CompletableFuture}
+     * or {@code TokenStream} return types.
+     *
+     * @param streamingBufferSize the buffer size; must be greater than zero
+     * @return the builder instance
+     * @since 1.20.0
+     */
+    @Experimental
+    public AiServices<T> streamingBufferSize(int streamingBufferSize) {
+        context.streamingBufferSize = streamingBufferSize;
         return this;
     }
 
@@ -747,7 +805,8 @@ public abstract class AiServices<T> {
      * and LLMs can typically self-correct when given a clear error message. Configuring a handler
      * that returns the error text via {@link ToolErrorHandlerResult#text(String)} lets the LLM retry,
      * which is more in line with how agentic systems are expected to behave.
-     * The default will change to "Return a text message" in LangChain4j 2.0.
+     * The default will change to {@link ToolArgumentsErrorHandler#sendExceptionMessageToLlm()}
+     * in an upcoming release.
      * <p>
      * Example:
      * <pre>{@code
@@ -759,8 +818,16 @@ public abstract class AiServices<T> {
      * For {@link DefaultToolExecutor}, you can enable this by setting
      * {@link DefaultToolExecutor.Builder#wrapToolArgumentsExceptions(Boolean)} to {@code true}.
      *
+     * <p>
+     * <b>Defaults differ by mode.</b> Without an explicit handler, the synchronous and {@link TokenStream}
+     * modes fail the invocation on a tool argument-parse error, while the asynchronous and reactive modes
+     * ({@link java.util.concurrent.CompletableFuture}, {@link java.util.concurrent.Flow.Publisher}) send the error to the LLM so it can retry with corrected arguments.
+     * A handler set here is used by every mode.
+     *
      * @param handler The handler responsible for processing tool argument errors
      * @return builder
+     * @see ToolArgumentsErrorHandler#sendExceptionMessageToLlm()
+     * @see ToolArgumentsErrorHandler#failInvocation()
      * @see #hallucinatedToolNameStrategy(Function)
      * @see #toolExecutionErrorHandler(ToolExecutionErrorHandler)
      */
@@ -788,7 +855,9 @@ public abstract class AiServices<T> {
      * and the LLM provider's logs. For production use, configure a handler that returns either a
      * generic message or a sanitized/curated description of the failure, and rely on logs/events for
      * the underlying detail.
-     * The default will change to "Throw an exception" in LangChain4j 2.0.
+     * The default will change to {@link ToolExecutionErrorHandler#failInvocationUnlessVisibleToLlm()}
+     * in an upcoming release: the invocation fails, unless the exception itself says what
+     * the LLM may be told (see {@link dev.langchain4j.exception.ToolErrorVisibleToLlm}).
      * <p>
      * Example:
      * <pre>{@code
@@ -800,8 +869,18 @@ public abstract class AiServices<T> {
      * For {@link DefaultToolExecutor}, you can enable this by setting
      * {@link DefaultToolExecutor.Builder#propagateToolExecutionExceptions(Boolean)} to {@code true}.
      *
+     * <p>
+     * <b>Defaults differ by mode.</b> Without an explicit handler, the synchronous and {@link TokenStream}
+     * modes send a tool execution error to the LLM, while the asynchronous and reactive modes
+     * ({@link java.util.concurrent.CompletableFuture}, {@link java.util.concurrent.Flow.Publisher}) fail the invocation, rather than hiding the error from you.
+     * A handler set here is used by every mode.
+     *
      * @param handler The handler responsible for processing tool execution errors
      * @return builder
+     * @see ToolExecutionErrorHandler#failInvocationUnlessVisibleToLlm()
+     * @see ToolExecutionErrorHandler#failInvocation()
+     * @see ToolExecutionErrorHandler#sendExceptionMessageToLlm()
+     * @see dev.langchain4j.exception.ToolErrorVisibleToLlm
      * @see #hallucinatedToolNameStrategy(Function)
      * @see #toolArgumentsErrorHandler(ToolArgumentsErrorHandler)
      */
@@ -842,6 +921,11 @@ public abstract class AiServices<T> {
      * This method provides a straightforward approach for those who do not require
      * a customized {@link RetrievalAugmentor}.
      * It configures a {@link DefaultRetrievalAugmentor} with the provided {@link ContentRetriever}.
+     * <br>
+     * On the asynchronous/reactive return types, if the retriever is not genuinely non-blocking the pipeline fails
+     * loudly. To offload a blocking retriever instead, build the augmentor explicitly and pass it via
+     * {@link #retrievalAugmentor(RetrievalAugmentor)}:
+     * {@code DefaultRetrievalAugmentor.builder().contentRetriever(r).offloadBlocking(true).build()}.
      *
      * @param contentRetriever The content retriever to be used by the AI Service.
      * @return builder
@@ -944,6 +1028,10 @@ public abstract class AiServices<T> {
 
     /**
      * Configures the input guardrails for the AI service context by setting the provided InputGuardrailsConfig.
+     * <p>
+     *     The configuration set this way applies to every method of the AI service, including methods whose input
+     *     guardrails are declared in an {@link InputGuardrails} annotation.
+     * </p>
      *
      * @param inputGuardrailsConfig the configuration object that defines input guardrails for the AI service
      * @return the current instance of {@link AiServices} to allow method chaining
@@ -955,6 +1043,11 @@ public abstract class AiServices<T> {
 
     /**
      * Configures the output guardrails for AI services.
+     * <p>
+     *     The configuration set this way applies to every method of the AI service and takes precedence over the
+     *     configuration declared in any {@link OutputGuardrails} annotation on the AI service methods or class, such
+     *     as its {@link OutputGuardrails#maxRetries() maxRetries}.
+     * </p>
      *
      * @param outputGuardrailsConfig the configuration object specifying the output guardrails
      * @return the current instance of {@link AiServices} to allow for method chaining
@@ -967,8 +1060,8 @@ public abstract class AiServices<T> {
     /**
      * Configures the input guardrail classes for the AI services.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.InputGuardrails InptputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Input guardrails set this way replace the ones declared in {@link InputGuardrails} annotations, for every
+     *     method of the AI service. See {@link InputGuardrails} for the exact rules.
      * </p>
      * <p>
      *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
@@ -984,8 +1077,8 @@ public abstract class AiServices<T> {
      *     they are listed.
      * </p>
      *
-     * @param guardrailClasses A list of {@link InputGuardrailsConfig} classes, which will be used for input validation.
-     *                         The list can be {@code null} if no guardrails are to be applied.
+     * @param guardrailClasses A list of {@link InputGuardrail} classes, which will be used for input validation.
+     *                         Can be {@code null}.
      * @param <I> The type of {@link InputGuardrail}
      * @return The instance of {@link AiServices} to allow method chaining.
      */
@@ -997,8 +1090,8 @@ public abstract class AiServices<T> {
     /**
      * Configures input guardrail classes for the AI service.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.InputGuardrails InptputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Input guardrails set this way replace the ones declared in {@link InputGuardrails} annotations, for every
+     *     method of the AI service. See {@link InputGuardrails} for the exact rules.
      * </p>
      * <p>
      *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
@@ -1014,8 +1107,8 @@ public abstract class AiServices<T> {
      *     they are listed.
      * </p>
      *
-     * @param guardrailClasses A list of {@link InputGuardrail} classes, which
-     *                         can include {@code null} to indicate no guardrails or optional configurations.
+     * @param guardrailClasses The {@link InputGuardrail} classes, which will be used for input validation.
+     *                         Can be {@code null}.
      * @param <I> The type of {@link InputGuardrail}
      * @return the current instance of {@link AiServices} for chaining further configurations.
      */
@@ -1027,8 +1120,8 @@ public abstract class AiServices<T> {
     /**
      * Sets the input guardrails to be used by the guardrail service builder in the current context.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.InputGuardrails InptputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Input guardrails set this way replace the ones declared in {@link InputGuardrails} annotations, for every
+     *     method of the AI service. See {@link InputGuardrails} for the exact rules.
      * </p>
      * <p>
      *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
@@ -1053,10 +1146,10 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Adds the specified input guardrails to the context's guardrail service builder.
+     * Sets the specified input guardrails on the context's guardrail service builder.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.InputGuardrails InptputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Input guardrails set this way replace the ones declared in {@link InputGuardrails} annotations, for every
+     *     method of the AI service. See {@link InputGuardrails} for the exact rules.
      * </p>
      * <p>
      *     An input guardrail is a rule that is applied to the input of the model (essentially the user message) to ensure
@@ -1083,11 +1176,12 @@ public abstract class AiServices<T> {
     /**
      * Configures the output guardrail classes for the AI services.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Output guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations, for every
+     *     method of the AI service. See {@link OutputGuardrails} for the exact rules, including which
+     *     {@code maxRetries} applies.
      * </p>
      * <p>
-     *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
+     *     An output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
      *     certain expectations.
      * </p>
      * <p>
@@ -1119,11 +1213,12 @@ public abstract class AiServices<T> {
     /**
      * Sets the output guardrail classes to be used in the guardrail service.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Output guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations, for every
+     *     method of the AI service. See {@link OutputGuardrails} for the exact rules, including which
+     *     {@code maxRetries} applies.
      * </p>
      * <p>
-     *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
+     *     An output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
      *     certain expectations.
      * </p>
      * <p>
@@ -1156,11 +1251,12 @@ public abstract class AiServices<T> {
     /**
      * Configures the output guardrails for the AI service.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Output guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations, for every
+     *     method of the AI service. See {@link OutputGuardrails} for the exact rules, including which
+     *     {@code maxRetries} applies.
      * </p>
      * <p>
-     *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
+     *     An output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
      *     certain expectations.
      * </p>
      * <p>
@@ -1190,11 +1286,12 @@ public abstract class AiServices<T> {
     /**
      * Configures output guardrails for the AI services.
      * <p>
-     *     Configuring this way is exactly the same as using the {@link dev.langchain4j.service.guardrail.OutputGuardrails OutputGuardrails}
-     *     annotation at the class level. Using the annotation takes precedence.
+     *     Output guardrails set this way replace the ones declared in {@link OutputGuardrails} annotations, for every
+     *     method of the AI service. See {@link OutputGuardrails} for the exact rules, including which
+     *     {@code maxRetries} applies.
      * </p>
      * <p>
-     *     Am output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
+     *     An output guardrail is a rule that is applied to the output of the model to ensure that the output is safe and meets
      *     certain expectations.
      * </p>
      * <p>
@@ -1245,12 +1342,16 @@ public abstract class AiServices<T> {
     }
 
     /**
-     * Enables or disables compensating actions on tool errors.
-     * When enabled, if any tool execution fails, all previously executed tools'
-     * compensating actions (declared via {@link dev.langchain4j.agent.tool.CompensateFor}) are called
-     * in reverse order to undo the effects of the successful tool calls.
+     * Enables or disables compensating actions on tool errors and on cancellation.
+     * When enabled, if a tool fails or the invocation is cancelled, the compensating actions (declared with
+     * {@link CompensateFor}) of the tool calls that succeeded in the same invocation are called in reverse order, to
+     * undo their effects.
+     * A tool error starts the rollback also when it ends the invocation (for example when the
+     * {@link ToolExecutionErrorHandler} or the {@link ToolArgumentsErrorHandler} rethrows it, or when the LLM calls a
+     * tool that does not exist): the tool calls are rolled back before the error reaches the caller.
      *
-     * @param compensateOnToolErrors whether to run compensating actions on tool errors
+     * @param compensateOnToolErrors whether to run compensating actions when a tool fails or the invocation is
+     *                               cancelled
      * @return builder
      */
     public AiServices<T> compensateOnToolErrors(boolean compensateOnToolErrors) {
@@ -1281,14 +1382,17 @@ public abstract class AiServices<T> {
     public static void verifyModerationIfNeeded(Future<Moderation> moderationFuture) {
         if (moderationFuture != null) {
             try {
-                Moderation moderation = moderationFuture.get();
-                if (moderation.flagged()) {
-                    throw new ModerationException(
-                            String.format("Text \"%s\" violates content policy", moderation.flaggedText()), moderation);
-                }
+                verifyModeration(moderationFuture.get());
             } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    static void verifyModeration(Moderation moderation) {
+        if (moderation.flagged()) {
+            throw new ModerationException(
+                    String.format("Text \"%s\" violates content policy", moderation.flaggedText()), moderation);
         }
     }
 }

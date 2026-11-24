@@ -1,9 +1,15 @@
 package dev.langchain4j.http.client;
 
+import dev.langchain4j.Experimental;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.sse.DefaultServerSentEventParser;
+import dev.langchain4j.http.client.sse.HttpErrorResponseReceived;
+import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
+import dev.langchain4j.internal.AsyncNotSupported;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Flow.Publisher;
 
 /**
  * A client for executing HTTP requests both synchronously and asynchronously.
@@ -21,6 +27,25 @@ public interface HttpClient {
      * @throws RuntimeException if an unexpected error occurs during request execution (e.g., network issues, timeouts)
      */
     SuccessfulHttpResponse execute(HttpRequest request) throws HttpException, RuntimeException;
+
+    /**
+     * Non-blocking counterpart of {@link #execute(HttpRequest)}.
+     * Returns immediately with a {@link CompletableFuture} that completes with the
+     * {@link SuccessfulHttpResponse} once the full response has been received, without blocking the
+     * calling thread. The future completes exceptionally with an {@link HttpException} for non-2XX
+     * responses, or with the underlying error (e.g. a timeout or network failure) otherwise.
+     * <p>
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid request
+     * (for example an invalid URL or header), completes the returned future exceptionally.
+     *
+     * @param request the HTTP request to be executed.
+     * @return a {@link CompletableFuture} of the {@link SuccessfulHttpResponse}.
+     * @since 1.20.0
+     */
+    @Experimental
+    default CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
+        return AsyncNotSupported.failedFuture(getClass(), "executeAsync");
+    }
 
     /**
      * Executes a given HTTP request asynchronously with server-sent events (SSE) handling.
@@ -60,10 +85,52 @@ public interface HttpClient {
      * <p>
      * If any exception is thrown from the listener's methods, the stream processing
      * will be terminated and no further events will be processed.
+     * <p>
+     * An implementation does not throw: every failure, including an invalid request (for example an invalid URL or
+     * header), is passed to {@link ServerSentEventListener#onError(Throwable)}, possibly before this method returns.
+     * If {@code onError} throws while it is called on the calling thread, that exception is thrown from this method.
      *
      * @param request  the HTTP request to be executed.
      * @param parser   the parser to process incoming server-sent events.
      * @param listener the listener to receive parsed events and error notifications.
      */
     void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener listener);
+
+    /**
+     * Executes a streaming HTTP request and exposes the parsed events as a cold
+     * {@link Publisher} of {@link HttpStreamingEvent}s. Nothing happens until you subscribe: each
+     * {@code subscribe()} initiates a new request.
+     * <p>
+     * This interface gives no guarantee about thread-pinning or whether events are delivered incrementally;
+     * such guarantees depend on the implementation. Consult the chosen implementation's javadoc.
+     * <p>
+     * If the server answers with an error status (not 2xx), the publisher fails with an {@link HttpException}
+     * that contains the status code and the response body. Some implementations first emit an
+     * {@link HttpErrorResponseReceived} as soon as the response headers arrive, so that the subscriber can
+     * react to the status code without waiting for the body.
+     * <p>
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid request
+     * (for example an invalid URL or header), reaches the subscriber's {@code onError}, after {@code onSubscribe}.
+     * <p>
+     * Uses {@link DefaultServerSentEventParser} for SSE parsing.
+     *
+     * @since 1.20.0
+     */
+    @Experimental
+    default Publisher<HttpStreamingEvent> stream(HttpRequest request) {
+        return stream(request, new DefaultServerSentEventParser());
+    }
+
+    /**
+     * Like {@link #stream(HttpRequest)}, but with a caller-supplied {@link ServerSentEventParser}.
+     * <p>
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid request,
+     * reaches the subscriber's {@code onError}, after {@code onSubscribe}.
+     *
+     * @since 1.20.0
+     */
+    @Experimental
+    default Publisher<HttpStreamingEvent> stream(HttpRequest request, ServerSentEventParser parser) {
+        return AsyncNotSupported.failingPublisher(getClass(), "stream");
+    }
 }

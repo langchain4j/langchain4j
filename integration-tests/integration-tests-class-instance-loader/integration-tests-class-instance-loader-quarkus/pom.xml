@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-integration-tests-parent</artifactId>
-        <version>1.20.0-beta30-SNAPSHOT</version>
+        <version>1.25.0-beta35-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -25,11 +25,22 @@
     <properties>
         <quarkus.platform.artifact-id>quarkus-bom</quarkus.platform.artifact-id>
         <quarkus.platform.group-id>io.quarkus.platform</quarkus.platform.group-id>
-        <quarkus.platform.version>3.26.3</quarkus.platform.version>
+        <quarkus.platform.version>3.40.1.2</quarkus.platform.version>
+        <!-- the build goal of quarkus-maven-plugin 3.40 rejects the epoch seconds set in langchain4j-parent (SRCFG00039 for
+             quarkus.package.output-timestamp); this module is never released, so it needs no reproducible timestamp -->
+        <project.build.outputTimestamp/>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <!-- Imported first so that it wins over the Jackson version managed by the framework BOM below -->
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>${quarkus.platform.group-id}</groupId>
                 <artifactId>${quarkus.platform.artifact-id}</artifactId>
@@ -49,12 +60,12 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-core</artifactId>
-            <version>1.20.0-SNAPSHOT</version>
+            <version>1.25.0-SNAPSHOT</version>
         </dependency>
 
         <dependency>
             <groupId>io.quarkus</groupId>
-            <artifactId>quarkus-junit5</artifactId>
+            <artifactId>quarkus-junit</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

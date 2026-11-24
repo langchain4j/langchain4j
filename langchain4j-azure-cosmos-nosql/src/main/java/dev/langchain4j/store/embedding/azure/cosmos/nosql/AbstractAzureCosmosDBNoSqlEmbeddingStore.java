@@ -337,7 +337,8 @@ public class AbstractAzureCosmosDBNoSqlEmbeddingStore implements EmbeddingStore<
                             String metadataKey = this.partitionKeyPath.substring("/metadata/".length());
 
                             // Run a reactive query to fetch the document by ID
-                            String query = String.format("SELECT * FROM c WHERE c.id = '%s'", id);
+                            SqlQuerySpec query =
+                                    new SqlQuerySpec("SELECT * FROM c WHERE c.id = @id", new SqlParameter("@id", id));
                             CosmosPagedFlux<JsonNode> queryFlux =
                                     this.container.queryItems(query, new CosmosQueryRequestOptions(), JsonNode.class);
 

@@ -19,10 +19,15 @@ import dev.langchain4j.store.embedding.EmbeddingStoreWithFilteringIT;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.hibernate.DatabaseKind;
 import dev.langchain4j.store.embedding.hibernate.HibernateEmbeddingStore;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -78,6 +83,74 @@ class PgVectorHibernateEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
     @Override
     protected boolean supportsContains() {
         return true;
+    }
+
+    @Test
+    void should_skip_rows_without_an_embedding() throws SQLException {
+        String table = "test_without_embedding";
+        HibernateEmbeddingStore<?> store = HibernateEmbeddingStore.dynamicBuilder()
+                .databaseKind(DatabaseKind.POSTGRESQL)
+                .host(databaseContainer.getHost())
+                .port(databaseContainer.getFirstMappedPort())
+                .database(databaseContainer.getDatabaseName())
+                .user(databaseContainer.getUsername())
+                .password(databaseContainer.getPassword())
+                .table(table)
+                .dimension(embeddingModel.dimension())
+                .createTable(true)
+                .dropTableFirst(true)
+                .build();
+        try {
+            Embedding embedding = embeddingModel.embed("hello").content();
+            String id = store.add(embedding, TextSegment.from("hello"));
+            // a row whose embedding is not computed yet, for example
+            try (Connection connection = DriverManager.getConnection(
+                            databaseContainer.getJdbcUrl(),
+                            databaseContainer.getUsername(),
+                            databaseContainer.getPassword());
+                    Statement statement = connection.createStatement()) {
+                statement.execute(
+                        "insert into " + table + " (id, text) values ('" + UUID.randomUUID() + "', 'no embedding')");
+            }
+
+            EmbeddingSearchResult<TextSegment> result = store.search(EmbeddingSearchRequest.builder()
+                    .queryEmbedding(embedding)
+                    .maxResults(10)
+                    .build());
+
+            assertThat(result.matches()).extracting(EmbeddingMatch::embeddingId).containsExactly(id);
+        } finally {
+            store.close();
+        }
+    }
+
+    @Test
+    void should_detect_the_database_kind_from_the_jdbc_url() {
+        HibernateEmbeddingStore<?> store = HibernateEmbeddingStore.dynamicBuilder()
+                .jdbcUrl(databaseContainer.getJdbcUrl())
+                .user(databaseContainer.getUsername())
+                .password(databaseContainer.getPassword())
+                .table("test_detected_kind")
+                .dimension(embeddingModel.dimension())
+                .createIndex(true)
+                .indexType("ivfflat")
+                .indexOptions("lists = 1")
+                .createTable(true)
+                .dropTableFirst(true)
+                .build();
+        try {
+            Embedding embedding = embeddingModel.embed("hello").content();
+            String id = store.add(embedding, TextSegment.from("hello"));
+
+            EmbeddingSearchResult<TextSegment> result = store.search(EmbeddingSearchRequest.builder()
+                    .queryEmbedding(embedding)
+                    .maxResults(1)
+                    .build());
+
+            assertThat(result.matches()).extracting(EmbeddingMatch::embeddingId).containsExactly(id);
+        } finally {
+            store.close();
+        }
     }
 
     @Test

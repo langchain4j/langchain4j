@@ -5,9 +5,8 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.google.genai.GoogleGenAiClientFactory.DEFAULT_TIMEOUT;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.genai.Client;
 import com.google.genai.types.Candidate;
@@ -22,6 +21,9 @@ import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Tool;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.ProviderJson;
+import dev.langchain4j.internal.ProviderJsonSpec;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.Response;
 import java.time.Duration;
@@ -30,6 +32,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,9 +64,10 @@ public class GoogleGenAiImageModel implements ImageModel {
                         builder.googleCredentials,
                         builder.projectId,
                         builder.location,
-                        builder.timeout,
+                        getOrDefault(builder.timeout, DEFAULT_TIMEOUT),
                         builder.customHeaders,
-                        builder.apiEndpoint);
+                        builder.apiEndpoint,
+                        builder.apiVersion);
 
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
@@ -85,8 +89,10 @@ public class GoogleGenAiImageModel implements ImageModel {
     public Response<Image> generate(String prompt) {
         ensureNotBlank(prompt, "prompt");
 
-        Content content =
-                Content.builder().parts(List.of(Part.fromText(prompt))).build();
+        Content content = Content.builder()
+                .role("user")
+                .parts(List.of(Part.fromText(prompt)))
+                .build();
 
         return generateImageResponse(List.of(content));
     }
@@ -100,7 +106,7 @@ public class GoogleGenAiImageModel implements ImageModel {
         parts.add(Part.fromText(prompt));
         parts.add(createImagePart(image));
 
-        Content content = Content.builder().parts(parts).build();
+        Content content = Content.builder().role("user").parts(parts).build();
 
         return generateImageResponse(List.of(content));
     }
@@ -116,7 +122,7 @@ public class GoogleGenAiImageModel implements ImageModel {
         parts.add(createImagePart(image));
         parts.add(createImagePart(mask));
 
-        Content content = Content.builder().parts(parts).build();
+        Content content = Content.builder().role("user").parts(parts).build();
 
         return generateImageResponse(List.of(content));
     }
@@ -191,7 +197,8 @@ public class GoogleGenAiImageModel implements ImageModel {
         return Part.fromBytes(imageBytes, mimeType);
     }
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final Json.JsonCodec CODEC =
+            ProviderJson.codec(ProviderJsonSpec.builder().build());
 
     private Response<Image> toResponse(GenerateContentResponse response) {
         if (response.parts() == null || response.parts().isEmpty()) {
@@ -204,8 +211,7 @@ public class GoogleGenAiImageModel implements ImageModel {
             if (candidate.groundingMetadata().isPresent()) {
                 GroundingMetadata gm = candidate.groundingMetadata().get();
                 try {
-                    Map<String, Object> groundingMap =
-                            OBJECT_MAPPER.readValue(gm.toJson(), new TypeReference<Map<String, Object>>() {});
+                    Map<String, Object> groundingMap = CODEC.fromJson(gm.toJson(), Map.class);
                     metadata.put("groundingMetadata", groundingMap);
                 } catch (Exception e) {
                     throw new RuntimeException("Failed to parse grounding metadata", e);
@@ -251,6 +257,7 @@ public class GoogleGenAiImageModel implements ImageModel {
         private Boolean logRequests;
         private Boolean logResponses;
         private String apiEndpoint;
+        private @Nullable String apiVersion;
         private Map<String, String> customHeaders;
         private Map<String, String> labels;
 
@@ -279,6 +286,16 @@ public class GoogleGenAiImageModel implements ImageModel {
             return this;
         }
 
+        /**
+         * Sets the timeout of each HTTP request to the Google GenAI API.
+         * It limits the whole request: connecting, waiting for the model and receiving the response.
+         * A request that times out is retried (see {@link #maxRetries(Integer)}), and each retry gets the full timeout.
+         * Defaults to 20 minutes.
+         * Ignored when {@link #client(Client)} is set.
+         *
+         * @param timeout the timeout
+         * @return {@code this}
+         */
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -337,6 +354,17 @@ public class GoogleGenAiImageModel implements ImageModel {
 
         public Builder apiEndpoint(String apiEndpoint) {
             this.apiEndpoint = apiEndpoint;
+            return this;
+        }
+
+        /**
+         * The version of the API to call, for example {@code v1beta} or {@code v1}. When not set ({@code null}), the
+         * version set in the {@code GOOGLE_GENAI_API_VERSION} environment variable is used, otherwise {@code v1beta}
+         * on the Gemini Developer API and the default of the Google GenAI SDK on Vertex AI. Ignored when a client is
+         * set with {@code client(...)}.
+         */
+        public Builder apiVersion(@Nullable String apiVersion) {
+            this.apiVersion = apiVersion;
             return this;
         }
 

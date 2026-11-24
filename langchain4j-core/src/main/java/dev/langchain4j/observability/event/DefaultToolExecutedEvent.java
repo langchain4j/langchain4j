@@ -18,10 +18,12 @@ public class DefaultToolExecutedEvent extends AbstractAiServiceEvent implements 
 
     private final ToolExecutionRequest request;
     private final List<Content> resultContents;
+    private final Boolean isError;
 
     public DefaultToolExecutedEvent(ToolExecutedEventBuilder builder) {
         super(builder);
         this.request = ensureNotNull(builder.request(), "request");
+        this.isError = builder.isError();
 
         boolean hasResultText = builder.resultText() != null;
         boolean hasResultContents = builder.resultContents() != null && !builder.resultContents().isEmpty();
@@ -56,5 +58,16 @@ public class DefaultToolExecutedEvent extends AbstractAiServiceEvent implements 
     @Experimental
     public List<Content> resultContents() {
         return resultContents;
+    }
+
+    @Override
+    @Experimental
+    public boolean isError() {
+        if (isError == null) {
+            throw new UnsupportedOperationException(
+                    "This ToolExecutedEvent of the tool '%s' does not report whether the tool execution failed: the integration that created it does not set it"
+                            .formatted(request.name()));
+        }
+        return isError;
     }
 }

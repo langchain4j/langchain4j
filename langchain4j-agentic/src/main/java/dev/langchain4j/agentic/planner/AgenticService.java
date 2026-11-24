@@ -8,6 +8,7 @@ import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.Collection;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * Fluent builder interface for configuring and assembling an agentic service
@@ -120,6 +121,29 @@ public interface AgenticService<T, A> {
      * @return this builder for fluent chaining
      */
     T compensateOnError(boolean compensateOnError);
+
+    /**
+     * Sets the condition under which this agentic service runs when it is invoked as a subagent of another agentic
+     * system. When the condition is false the service is skipped: none of its subagents is invoked and nothing is
+     * written to the {@link AgenticScope}. The condition is ignored when this service is invoked directly. It can
+     * be evaluated more than once, so it must be free of side effects.
+     *
+     * @param activationCondition the predicate deciding whether this agentic service runs
+     * @return this builder for fluent chaining
+     */
+    T activationCondition(Predicate<AgenticScope> activationCondition);
+
+    /**
+     * Sets the condition under which this agentic service runs when it is invoked as a subagent of another agentic
+     * system. When the condition is false the service is skipped: none of its subagents is invoked and nothing is
+     * written to the {@link AgenticScope}. The condition is ignored when this service is invoked directly. It can
+     * be evaluated more than once, so it must be free of side effects.
+     *
+     * @param description a human-readable description of the condition, used in logs, listeners and reports
+     * @param activationCondition the predicate deciding whether this agentic service runs
+     * @return this builder for fluent chaining
+     */
+    T activationCondition(String description, Predicate<AgenticScope> activationCondition);
 
     /**
      * Registers an {@link AgentListener} to observe agent invocations, tool

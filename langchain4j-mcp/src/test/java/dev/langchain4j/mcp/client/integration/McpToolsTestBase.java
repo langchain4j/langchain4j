@@ -1,5 +1,6 @@
 package dev.langchain4j.mcp.client.integration;
 
+import static dev.langchain4j.data.message.ImageContent.DetailLevel.AUTO;
 import static dev.langchain4j.model.openai.OpenAiChatModelName.GPT_4_O_MINI;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -8,10 +9,13 @@ import static org.hamcrest.Matchers.is;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.exception.ToolErrorVisibleToLlm;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.McpToolExecutor;
 import dev.langchain4j.mcp.McpToolProvider;
+import dev.langchain4j.mcp.client.McpApplicationErrorException;
 import dev.langchain4j.mcp.client.McpClient;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
@@ -38,7 +42,7 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         ToolProviderResult toolProviderResult = obtainTools();
 
         Map<ToolSpecification, ToolExecutor> tools = toolProviderResult.tools();
-        assertThat(tools).hasSize(13);
+        assertThat(tools).hasSize(14);
 
         ToolSpecification echoString = toolProviderResult.toolSpecificationByName("echoString");
         assertThat(echoString.description()).isEqualTo("Echoes a string");
@@ -88,6 +92,18 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     }
 
     @Test
+    public void executeToolThatReturnsNativeImage() {
+        ToolProviderResult toolProviderResult = obtainTools();
+        McpToolExecutor executor = (McpToolExecutor) toolProviderResult.toolExecutorByName("getImage");
+        ToolExecutionRequest request =
+                ToolExecutionRequest.builder().name("getImage").arguments("{}").build();
+        ToolExecutionResult result =
+                executor.executeWithContext(request, InvocationContext.builder().build());
+        assertThat(result.resultContents()).containsExactly(ImageContent.from("AQID", "image/png", AUTO));
+        assertThat(result.isError()).isFalse();
+    }
+
+    @Test
     public void executeToolThatReturnsStructuredContent() {
         ToolProviderResult toolProviderResult = obtainTools();
         McpToolExecutor executor = (McpToolExecutor) toolProviderResult.toolExecutorByName("structuredContent");
@@ -122,6 +138,8 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
                 ToolExecutionRequest.builder().arguments("{}").build();
         assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
                 .isExactlyInstanceOf(ToolExecutionException.class)
+                .as("a protocol error is not written for the model and must not reach it")
+                .isNotInstanceOf(ToolErrorVisibleToLlm.class)
                 .hasMessage("Internal error")
                 .hasFieldOrPropertyWithValue("errorCode", -32603);
     }
@@ -133,7 +151,9 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
         ToolExecutionRequest toolExecutionRequest =
                 ToolExecutionRequest.builder().arguments("{}").build();
         assertThatThrownBy(() -> executor.execute(toolExecutionRequest, null))
-                .isExactlyInstanceOf(ToolExecutionException.class)
+                .isExactlyInstanceOf(McpApplicationErrorException.class)
+                .as("the text of an application-level error is written by the server for the model")
+                .isInstanceOf(ToolErrorVisibleToLlm.class)
                 .hasMessage("This is an actual error");
     }
 
@@ -214,6 +234,16 @@ public abstract class McpToolsTestBase extends AbstractAiServicesWithToolErrorHa
     @Override
     protected void configureGetImageTool(AiServices<?> aiServiceBuilder) {
         aiServiceBuilder.toolProvider(createMcpToolProvider());
+    }
+
+    @Override
+    protected String toolNameThrowingExceptionWithoutCause() {
+        return "getAudio";
+    }
+
+    @Override
+    protected String exceptionWithoutCauseMessage() {
+        return "Unsupported content type: \"audio\"";
     }
 
     private static McpToolProvider createMcpToolProvider() {

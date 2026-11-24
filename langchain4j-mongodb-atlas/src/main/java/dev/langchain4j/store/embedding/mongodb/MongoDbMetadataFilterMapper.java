@@ -15,6 +15,7 @@ import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 import java.util.regex.Pattern;
+import org.bson.Document;
 import org.bson.conversions.Bson;
 
 class MongoDbMetadataFilterMapper {
@@ -55,7 +56,8 @@ class MongoDbMetadataFilterMapper {
     }
 
     private static Bson mapEqual(IsEqualTo filter) {
-        return Filters.eq(getFieldName(filter.key()), filter.comparisonValue());
+        // Filters.eq writes {field: value}, where a document value would be read as query operators
+        return new Document(getFieldName(filter.key()), new Document("$eq", filter.comparisonValue()));
     }
 
     private static Bson mapNotEqual(IsNotEqualTo filter) {

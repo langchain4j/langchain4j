@@ -86,4 +86,63 @@ class OpenAiResponsesChatRequestParametersTest {
 
         assertThat(parameters.serverTools()).containsExactlyElementsOf(serverTools);
     }
+
+    @Test
+    void should_override_prompt_cache_options() {
+        OpenAiResponsesChatRequestParameters defaults = OpenAiResponsesChatRequestParameters.builder()
+                .modelName("gpt-5.6")
+                .promptCacheOptions(OpenAiPromptCacheOptions.implicit())
+                .build();
+
+        OpenAiResponsesChatRequestParameters override = OpenAiResponsesChatRequestParameters.builder()
+                .promptCacheOptions(OpenAiPromptCacheOptions.explicit())
+                .build();
+
+        assertThat(defaults.overrideWith(override).promptCacheOptions()).isEqualTo(OpenAiPromptCacheOptions.explicit());
+        assertThat(defaults.overrideWith(
+                                OpenAiResponsesChatRequestParameters.builder().build())
+                        .promptCacheOptions())
+                .isEqualTo(OpenAiPromptCacheOptions.implicit());
+    }
+
+    @Test
+    void should_include_prompt_cache_options_in_equals_and_hash_code() {
+        OpenAiResponsesChatRequestParameters withOptions = OpenAiResponsesChatRequestParameters.builder()
+                .promptCacheOptions(OpenAiPromptCacheOptions.explicit())
+                .build();
+        OpenAiResponsesChatRequestParameters withoutOptions =
+                OpenAiResponsesChatRequestParameters.builder().build();
+
+        assertThat(withOptions)
+                .isNotEqualTo(withoutOptions)
+                .doesNotHaveSameHashCodeAs(withoutOptions)
+                .isEqualTo(OpenAiResponsesChatRequestParameters.builder()
+                        .promptCacheOptions(OpenAiPromptCacheOptions.explicit())
+                        .build());
+    }
+
+    @Test
+    void should_store_prompt_cache_options_in_model_default_request_parameters() {
+        OpenAiPromptCacheOptions promptCacheOptions = OpenAiPromptCacheOptions.builder()
+                .mode(OpenAiPromptCacheOptions.MODE_EXPLICIT)
+                .ttl(OpenAiPromptCacheOptions.TTL_30M)
+                .build();
+
+        OpenAiResponsesChatModel chatModel = OpenAiResponsesChatModel.builder()
+                .apiKey("test")
+                .modelName("gpt-5.6")
+                .promptCacheOptions(promptCacheOptions)
+                .build();
+        OpenAiResponsesStreamingChatModel streamingChatModel = OpenAiResponsesStreamingChatModel.builder()
+                .apiKey("test")
+                .modelName("gpt-5.6")
+                .promptCacheOptions(promptCacheOptions)
+                .build();
+
+        assertThat(((OpenAiResponsesChatRequestParameters) chatModel.defaultRequestParameters()).promptCacheOptions())
+                .isEqualTo(promptCacheOptions);
+        assertThat(((OpenAiResponsesChatRequestParameters) streamingChatModel.defaultRequestParameters())
+                        .promptCacheOptions())
+                .isEqualTo(promptCacheOptions);
+    }
 }

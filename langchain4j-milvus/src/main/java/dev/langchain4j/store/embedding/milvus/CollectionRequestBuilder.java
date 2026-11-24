@@ -58,7 +58,8 @@ class CollectionRequestBuilder {
             Filter filter,
             int maxResults,
             MetricType metricType,
-            ConsistencyLevelEnum consistencyLevel) {
+            ConsistencyLevelEnum consistencyLevel,
+            MilvusServerVersion serverVersion) {
         SearchParam.Builder builder = SearchParam.newBuilder()
                 .withCollectionName(collectionName)
                 .withFloatVectors(singletonList(vector))
@@ -72,7 +73,8 @@ class CollectionRequestBuilder {
                         fieldDefinition.getMetadataFieldName()));
 
         if (filter != null) {
-            builder.withExpr(MilvusMetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName()));
+            builder.withExpr(
+                    MilvusMetadataFilterMapper.map(filter, fieldDefinition.getMetadataFieldName(), serverVersion));
         }
 
         return builder.build();

@@ -19,6 +19,8 @@ import static org.mockito.Mockito.when;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.internal.CurrentInvocation;
+import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.aggregator.ContentAggregator;
 import dev.langchain4j.rag.content.injector.ContentInjector;
@@ -33,6 +35,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
@@ -399,5 +402,50 @@ class DefaultRetrievalAugmentorTest {
                     contents.stream().map(it -> it.textSegment().text()).collect(joining("\n"));
             return UserMessage.from(((UserMessage) chatMessage).singleText() + "\n" + joinedContents);
         }
+    }
+
+    @Test
+    void should_run_every_component_of_augmentation_as_work_of_the_invocation() {
+
+        // given
+        InvocationContext invocationContext =
+                InvocationContext.builder().invocationId(UUID.randomUUID()).build();
+        Map<String, UUID> seen = new HashMap<>(); // allows null, when a component runs outside of the invocation
+        ContentRetriever retriever = query -> {
+            seen.put("retriever", CurrentInvocation.invocationId());
+            return singletonList(Content.from("source"));
+        };
+        DefaultRetrievalAugmentor augmentor = DefaultRetrievalAugmentor.builder()
+                .queryTransformer(query -> {
+                    seen.put("transformer", CurrentInvocation.invocationId());
+                    return singletonList(query);
+                })
+                .queryRouter(query -> {
+                    seen.put("router", CurrentInvocation.invocationId());
+                    return singletonList(retriever);
+                })
+                .contentAggregator(queryToContents -> {
+                    seen.put("aggregator", CurrentInvocation.invocationId());
+                    return queryToContents.values().iterator().next().iterator().next();
+                })
+                .contentInjector((contents, chatMessage) -> {
+                    seen.put("injector", CurrentInvocation.invocationId());
+                    return chatMessage;
+                })
+                .build();
+        UserMessage userMessage = UserMessage.from("Hello");
+        Metadata metadata = Metadata.builder()
+                .chatMessage(userMessage)
+                .invocationContext(invocationContext)
+                .build();
+
+        // when
+        augmentor.augment(new AugmentationRequest(userMessage, metadata));
+
+        // then
+        assertThat(seen)
+                .containsOnlyKeys("transformer", "router", "retriever", "aggregator", "injector")
+                .allSatisfy((component, id) -> assertThat(id).isEqualTo(invocationContext.invocationId()));
+        assertThat(CurrentInvocation.invocationId()).isNull();
     }
 }

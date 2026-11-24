@@ -1,5 +1,6 @@
 package dev.langchain4j.store.embedding.milvus.v2;
 
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.buildHybridSearchRequest;
 import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.buildQueryRequest;
 import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.buildSearchRequest;
@@ -9,8 +10,10 @@ import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder
 import static dev.langchain4j.store.embedding.milvus.v2.CollectionRequestBuilder.createSparseAnnSearchReq;
 
 import dev.langchain4j.data.embedding.Embedding;
+import dev.langchain4j.store.embedding.filter.Filter;
 import io.milvus.v2.common.ConsistencyLevel;
 import io.milvus.v2.common.IndexParam;
+import io.milvus.v2.service.vector.request.AnnSearchReq;
 import io.milvus.v2.service.vector.request.HybridSearchReq;
 import io.milvus.v2.service.vector.request.QueryReq;
 import io.milvus.v2.service.vector.request.SearchReq;
@@ -24,6 +27,15 @@ class CollectionRequestBuilderTest implements WithAssertions {
     private static final String COLLECTION_NAME = "test_collection";
     private static final FieldDefinition FIELD_DEFINITION =
             new FieldDefinition("id", "text", "metadata", "vector", "sparse_vector");
+
+    private static final MilvusServerVersion MILVUS_2 = MilvusServerVersion.from("2.6.26");
+    private static final MilvusServerVersion MILVUS_3 = MilvusServerVersion.from("3.0.4");
+
+    private static final Filter FILTER = Filter.not(metadataKey("k").containsString("a\\b"));
+
+    // Milvus 3 needs one more level of escaping for the backslash in the LIKE pattern
+    private static final String FILTER_EXPRESSION_FOR_MILVUS_3 =
+            "not(((exists metadata[\"k\"]) and metadata[\"k\"] LIKE \"%a\\\\\\\\b%\"))";
 
     @Test
     void should_build_vector_search_request() {
@@ -41,7 +53,8 @@ class CollectionRequestBuilderTest implements WithAssertions {
                 COLLECTION_NAME,
                 FIELD_DEFINITION,
                 IndexParam.MetricType.COSINE,
-                ConsistencyLevel.STRONG);
+                ConsistencyLevel.STRONG,
+                MILVUS_2);
 
         // then
         assertThat(result.getCollectionName()).isEqualTo(COLLECTION_NAME);
@@ -85,7 +98,8 @@ class CollectionRequestBuilderTest implements WithAssertions {
                 IndexParam.MetricType.COSINE,
                 IndexParam.MetricType.IP,
                 ranker,
-                ConsistencyLevel.STRONG);
+                ConsistencyLevel.STRONG,
+                MILVUS_2);
 
         // then
         assertThat(result.getCollectionName()).isEqualTo(COLLECTION_NAME);
@@ -144,7 +158,7 @@ class CollectionRequestBuilderTest implements WithAssertions {
                 null,
                 IndexParam.MetricType.COSINE,
                 IndexParam.MetricType.IP,
-                null, // filter
+                null, // filter expression
                 20,
                 COLLECTION_NAME,
                 ranker,
@@ -179,7 +193,7 @@ class CollectionRequestBuilderTest implements WithAssertions {
                 FIELD_DEFINITION,
                 queryEmbedding,
                 IndexParam.MetricType.COSINE,
-                null, // filter
+                null, // filter expression
                 5);
 
         // then
@@ -198,12 +212,55 @@ class CollectionRequestBuilderTest implements WithAssertions {
                 FIELD_DEFINITION,
                 sparseEmbedding,
                 IndexParam.MetricType.IP,
-                null, // filter
+                null, // filter expression
                 10);
 
         // then
         assertThat(result.getVectorFieldName()).isEqualTo("sparse_vector");
         assertThat(result.getMetricType()).isEqualTo(IndexParam.MetricType.IP);
         assertThat(result.getLimit()).isEqualTo(10);
+    }
+
+    @Test
+    void should_put_the_filter_expression_on_the_search_request() {
+        MilvusV2EmbeddingSearchRequest searchRequest = MilvusV2EmbeddingSearchRequest.milvusBuilder()
+                .queryEmbedding(Embedding.from(Arrays.asList(1.0f, 2.0f, 3.0f)))
+                .filter(FILTER)
+                .maxResults(5)
+                .build();
+
+        SearchReq result = buildSearchRequest(
+                searchRequest,
+                COLLECTION_NAME,
+                FIELD_DEFINITION,
+                IndexParam.MetricType.COSINE,
+                ConsistencyLevel.STRONG,
+                MILVUS_3);
+
+        assertThat(result.getFilter()).isEqualTo(FILTER_EXPRESSION_FOR_MILVUS_3);
+    }
+
+    @Test
+    void should_put_the_filter_expression_on_every_ann_search_request_of_a_hybrid_search() {
+        MilvusV2EmbeddingSearchRequest searchRequest = MilvusV2EmbeddingSearchRequest.milvusBuilder()
+                .queryEmbedding(Embedding.from(Arrays.asList(1.0f, 2.0f, 3.0f)))
+                .sparseEmbedding(new SparseEmbedding(new long[] {1L}, new float[] {0.1f}))
+                .filter(FILTER)
+                .maxResults(5)
+                .build();
+
+        HybridSearchReq result = buildHybridSearchRequest(
+                searchRequest,
+                COLLECTION_NAME,
+                FIELD_DEFINITION,
+                IndexParam.MetricType.COSINE,
+                IndexParam.MetricType.IP,
+                MilvusV2Ranker.rrf(60),
+                ConsistencyLevel.STRONG,
+                MILVUS_3);
+
+        assertThat(result.getSearchRequests())
+                .extracting(AnnSearchReq::getFilter)
+                .containsExactly(FILTER_EXPRESSION_FOR_MILVUS_3, FILTER_EXPRESSION_FOR_MILVUS_3);
     }
 }

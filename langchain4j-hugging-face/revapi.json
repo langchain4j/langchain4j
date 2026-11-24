@@ -8,6 +8,36 @@
           "code": "java.class.externalClassExposedInAPI",
           "new": "missing-class dev.langchain4j.http.client.HttpClientBuilder",
           "justification": "HttpClientBuilder is intentionally exposed by the HuggingFace integration for custom HTTP client configuration"
+        },
+        {
+          "code": "java.annotation.removed",
+          "old": "class dev.langchain4j.model.huggingface.client.EmbeddingRequest",
+          "annotationType": "com.fasterxml.jackson.databind.annotation.JsonNaming",
+          "justification": "Removed from the wire DTOs; the snake_case naming strategy now lives on the codec, which is what allows the JSON library to be swapped - @JsonNaming is in Jackson 2's databind package and is ignored rather than honoured under Jackson 3. Wire format is unchanged and pinned by HuggingFaceJsonUtilsTest."
+        },
+        {
+          "code": "java.annotation.removed",
+          "old": "class dev.langchain4j.model.huggingface.client.Options",
+          "annotationType": "com.fasterxml.jackson.databind.annotation.JsonNaming",
+          "justification": "Removed from the wire DTOs; the snake_case naming strategy now lives on the codec, which is what allows the JSON library to be swapped - @JsonNaming is in Jackson 2's databind package and is ignored rather than honoured under Jackson 3. Wire format is unchanged and pinned by HuggingFaceJsonUtilsTest."
+        },
+        {
+          "code": "java.annotation.removed",
+          "old": "class dev.langchain4j.model.huggingface.client.Parameters",
+          "annotationType": "com.fasterxml.jackson.databind.annotation.JsonNaming",
+          "justification": "Removed from the wire DTOs; the snake_case naming strategy now lives on the codec, which is what allows the JSON library to be swapped - @JsonNaming is in Jackson 2's databind package and is ignored rather than honoured under Jackson 3. Wire format is unchanged and pinned by HuggingFaceJsonUtilsTest."
+        },
+        {
+          "code": "java.annotation.removed",
+          "old": "class dev.langchain4j.model.huggingface.client.TextGenerationRequest",
+          "annotationType": "com.fasterxml.jackson.databind.annotation.JsonNaming",
+          "justification": "Removed from the wire DTOs; the snake_case naming strategy now lives on the codec, which is what allows the JSON library to be swapped - @JsonNaming is in Jackson 2's databind package and is ignored rather than honoured under Jackson 3. Wire format is unchanged and pinned by HuggingFaceJsonUtilsTest."
+        },
+        {
+          "code": "java.annotation.removed",
+          "old": "class dev.langchain4j.model.huggingface.client.TextGenerationResponse",
+          "annotationType": "com.fasterxml.jackson.databind.annotation.JsonNaming",
+          "justification": "Removed from the wire DTOs; the snake_case naming strategy now lives on the codec, which is what allows the JSON library to be swapped - @JsonNaming is in Jackson 2's databind package and is ignored rather than honoured under Jackson 3. Wire format is unchanged and pinned by HuggingFaceJsonUtilsTest."
         }
       ]
     }

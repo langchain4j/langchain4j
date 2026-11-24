@@ -6,6 +6,7 @@ import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 
 import java.nio.file.Path;
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -32,7 +33,7 @@ public class RunShellCommandToolConfig {
     final int maxStdOutChars;
     final int maxStdErrChars;
     final Path workingDirectory;
-    final ExecutorService executorService;
+    final Executor executor;
     final boolean throwToolArgumentsExceptions;
 
     private RunShellCommandToolConfig(Builder builder) {
@@ -45,7 +46,7 @@ public class RunShellCommandToolConfig {
         this.maxStdOutChars = getOrDefault(builder.maxStdOutChars, DEFAULT_MAX_STDOUT_CHARS);
         this.maxStdErrChars = getOrDefault(builder.maxStdErrChars, DEFAULT_MAX_STDERR_CHARS);
         this.workingDirectory = getOrDefault(builder.workingDirectory, () -> Path.of(System.getProperty("user.dir")));
-        this.executorService = getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutorService);
+        this.executor = getOrDefault(builder.executorService, DefaultExecutorProvider::getDefaultExecutor);
         this.throwToolArgumentsExceptions = getOrDefault(builder.throwToolArgumentsExceptions, false);
     }
 
@@ -163,7 +164,7 @@ public class RunShellCommandToolConfig {
          * Sets the {@link ExecutorService} used to read the stdout and stderr streams
          * of shell commands submitted via the {@code run_shell_command} tool.
          * <p>
-         * By default, {@link dev.langchain4j.internal.DefaultExecutorProvider#getDefaultExecutorService()} is used.
+         * By default, {@link dev.langchain4j.internal.DefaultExecutorProvider#getDefaultExecutor()} is used.
          */
         public Builder executorService(ExecutorService executorService) {
             this.executorService = executorService;

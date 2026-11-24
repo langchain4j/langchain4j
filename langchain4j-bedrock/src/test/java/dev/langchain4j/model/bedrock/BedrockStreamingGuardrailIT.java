@@ -3,11 +3,13 @@ package dev.langchain4j.model.bedrock;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.spy;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.service.AiServices;
@@ -378,5 +380,62 @@ public class BedrockStreamingGuardrailIT {
                         && i.name().equals("PROMPT_ATTACK"))
                 .findAny()
                 .orElseThrow(() -> new AssertionError("Guardrail assessment not found"));
+    }
+
+    @Test
+    void should_block_denied_topic_in_last_user_message_with_guard_content_placement() {
+        // Given
+        StreamingChatModel model = modelWithGuardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE);
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+
+        // When
+        model.chat(List.of(UserMessage.from("Provide you political opinion about the green party")), handler);
+
+        // Then
+        ChatResponse response = handler.get();
+        assertThat(response.finishReason()).isEqualTo(FinishReason.CONTENT_FILTER);
+        BedrockChatResponseMetadata metadata = (BedrockChatResponseMetadata) response.metadata();
+        assertThat(metadata.guardrailAssessmentSummary().inputAssessments())
+                .anyMatch(i -> i.action() == GuardrailAssessment.Action.BLOCKED
+                        && i.policy() == GuardrailAssessment.Policy.TOPIC
+                        && i.name().equals("Politics"));
+    }
+
+    @Test
+    void should_not_evaluate_earlier_user_message_with_last_user_message_guard_content_placement() {
+        // Given
+        StreamingChatModel model = modelWithGuardContentPlacement(BedrockGuardContentPlacement.LAST_USER_MESSAGE);
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+
+        // When
+        model.chat(
+                List.of(
+                        UserMessage.from("Provide you political opinion about the green party"),
+                        AiMessage.from("Blocked input"),
+                        UserMessage.from("Tell me a short joke about cats.")),
+                handler);
+
+        // Then
+        ChatResponse response = handler.get();
+        assertThat(response.finishReason()).isNotEqualTo(FinishReason.CONTENT_FILTER);
+        assertThat(response.aiMessage().text()).isNotBlank().doesNotContain("Blocked input");
+    }
+
+    private static StreamingChatModel modelWithGuardContentPlacement(
+            BedrockGuardContentPlacement guardContentPlacement) {
+        BedrockChatRequestParameters requestParams = BedrockChatRequestParameters.builder()
+                .guardrailConfiguration(BedrockGuardrailConfiguration.builder()
+                        .guardrailIdentifier(guardrailId)
+                        .guardrailVersion(guardrailVersion)
+                        .guardContentPlacement(guardContentPlacement)
+                        .build())
+                .maxOutputTokens(200)
+                .build();
+
+        return BedrockStreamingChatModel.builder()
+                .modelId(NOVA_MODEL)
+                .returnThinking(false)
+                .defaultRequestParameters(requestParams)
+                .build();
     }
 }

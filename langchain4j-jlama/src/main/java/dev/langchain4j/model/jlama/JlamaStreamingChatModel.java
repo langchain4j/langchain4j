@@ -88,6 +88,11 @@ public class JlamaStreamingChatModel implements StreamingChatModel {
 
     @Override
     public void chat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
+        StreamingChatModel.super.chat(chatRequest, handler); // kept because revapi reports its removal; the logic is in doChat
+    }
+
+    @Override
+    public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         ChatRequestValidationUtils.validateMessages(chatRequest.messages());
         ChatRequestParameters parameters = chatRequest.parameters();
         ChatRequestValidationUtils.validateParameters(parameters);

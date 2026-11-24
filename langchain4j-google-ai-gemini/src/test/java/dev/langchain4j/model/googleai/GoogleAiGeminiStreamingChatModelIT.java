@@ -8,6 +8,7 @@ import static dev.langchain4j.model.googleai.GeminiHarmCategory.HARM_CATEGORY_HA
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.langchain4j.agent.tool.P;
@@ -44,6 +45,7 @@ import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -338,7 +340,7 @@ class GoogleAiGeminiStreamingChatModelIT {
     void should_deserialize_to_POJO() throws Exception {
 
         // given
-        record Person(String name, int age) {}
+        record Person(@JsonProperty(required = true) String name, @JsonProperty(required = true) int age) {}
 
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
                 .apiKey(GOOGLE_AI_GEMINI_API_KEY)
@@ -355,6 +357,8 @@ class GoogleAiGeminiStreamingChatModelIT {
         TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
         gemini.chat("Klaus is 37 years old", handler);
         ChatResponse response = handler.get();
+
+        System.out.println("response = " + response);
 
         Person person = new ObjectMapper().readValue(response.aiMessage().text(), Person.class);
 
@@ -469,6 +473,10 @@ class GoogleAiGeminiStreamingChatModelIT {
     }
 
     @Test
+    @DisabledIfEnvironmentVariable(
+            named = "LC4J_SKIP_IMAGE_GENERATION_ITS",
+            matches = "true",
+            disabledReason = "Image generation is expensive: CI runs it only in one nightly and when a Google module changes")
     void should_generate_image_streaming() {
         // given
         GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
@@ -495,6 +503,73 @@ class GoogleAiGeminiStreamingChatModelIT {
         }
 
         assertThat(aiMessage.text() != null || !aiMessage.images().isEmpty()).isTrue();
+    }
+
+    @Test
+    void should_report_grounding_metadata_when_streaming() {
+        // given
+        GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash")
+                .allowGoogleSearch(true)
+                .logRequests(true)
+                .logResponses(true)
+                .timeout(Duration.ofMinutes(1))
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat("Who won the last Formula 1 race?", handler);
+        ChatResponse response = handler.get();
+
+        // then
+        assertThat(response.metadata()).isInstanceOf(GoogleAiGeminiChatResponseMetadata.class);
+        GroundingMetadata grounding = ((GoogleAiGeminiChatResponseMetadata) response.metadata()).groundingMetadata();
+
+        assertThat(grounding).isNotNull();
+        assertThat(grounding.webSearchQueries()).isNotEmpty();
+        assertThat(grounding.searchEntryPoint()).isNotNull();
+        assertThat(grounding.searchEntryPoint().renderedContent()).isNotBlank();
+        assertThat(grounding.groundingChunks()).isNotEmpty();
+        assertThat(grounding.groundingSupports()).isNotEmpty();
+
+        assertThat(grounding.groundingSupports())
+                .allSatisfy(support -> assertThat(support.groundingChunkIndices())
+                        .isNotEmpty()
+                        .allSatisfy(index -> assertThat(index)
+                                .isNotNull()
+                                .isBetween(0, grounding.groundingChunks().size() - 1)));
+    }
+
+    @Test
+    void should_report_url_context_metadata_when_streaming() {
+        // given
+        GoogleAiGeminiStreamingChatModel gemini = GoogleAiGeminiStreamingChatModel.builder()
+                .apiKey(GOOGLE_AI_GEMINI_API_KEY)
+                .modelName("gemini-2.5-flash")
+                .allowUrlContext(true)
+                .logRequests(true)
+                .logResponses(true)
+                .timeout(Duration.ofMinutes(1))
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        gemini.chat("Summarize https://example.com in one sentence.", handler);
+        ChatResponse response = handler.get();
+
+        // then
+        assertThat(response.metadata()).isInstanceOf(GoogleAiGeminiChatResponseMetadata.class);
+        UrlContextMetadata urlContext = ((GoogleAiGeminiChatResponseMetadata) response.metadata()).urlContextMetadata();
+
+        assertThat(urlContext).isNotNull();
+        assertThat(urlContext.urlMetadata()).isNotEmpty();
+        assertThat(urlContext.urlMetadata())
+                .anySatisfy(
+                        urlMetadata -> assertThat(urlMetadata.retrievedUrl()).contains("example.com"));
+        assertThat(urlContext.urlMetadata())
+                .allSatisfy(urlMetadata ->
+                        assertThat(urlMetadata.urlRetrievalStatus()).isNotBlank());
     }
 
     @AfterEach

@@ -57,7 +57,7 @@ class ChromaMetadataFilterMapper {
     }
 
     private static Map<String, Object> mapEqual(IsEqualTo filter) {
-        return singletonMap(filter.key(), filter.comparisonValue());
+        return singletonMap(filter.key(), singletonMap("$eq", filter.comparisonValue()));
     }
 
     private static Map<String, Object> mapNotEqual(IsNotEqualTo filter) {

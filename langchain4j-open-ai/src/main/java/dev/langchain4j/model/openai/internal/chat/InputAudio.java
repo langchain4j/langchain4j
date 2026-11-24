@@ -1,21 +1,21 @@
 package dev.langchain4j.model.openai.internal.chat;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 
 import java.util.Objects;
 
 @JsonDeserialize(builder = InputAudio.Builder.class)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-@JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class InputAudio {
 
     private final String data;
     private final String format;
 
+    @JsonCreator
     public InputAudio(Builder builder) {
         data = builder.data;
         format = builder.format;
@@ -64,6 +64,8 @@ public class InputAudio {
     public static Builder builder() {
         return new Builder();
     }
+    
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY)
     
     public static final class Builder {
         

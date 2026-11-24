@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.hibernate;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
+import java.util.Map;
 import org.hibernate.dialect.CockroachDialect;
 import org.hibernate.dialect.DB2Dialect;
 import org.hibernate.dialect.Dialect;
@@ -12,6 +13,7 @@ import org.hibernate.dialect.MySQLDialect;
 import org.hibernate.dialect.OracleDialect;
 import org.hibernate.dialect.PostgreSQLDialect;
 import org.hibernate.dialect.SQLServerDialect;
+import jakarta.persistence.Index;
 
 /**
  * Database kind
@@ -163,6 +165,48 @@ public interface DatabaseKind {
             String indexOptions);
 
     String getSetupSql();
+
+    /**
+     * Returns the options of a vector index that is declared on the embedding table, see {@link Index#options()}.
+     * This is for databases that create the vector index together with the table, instead of with a separate
+     * statement from {@link #createIndexDDL(DistanceFunction, String, String, String, String)}.
+     * Only the dynamic builders use it, when they map the embedding table.
+     * <p>
+     * The built-in database kinds return {@code null}, because they create the vector index with a separate statement.
+     *
+     * @param createIndex      whether the builder is configured to create a vector index,
+     *                         see {@link HibernateEmbeddingStore.BaseBuilder#createIndex(Boolean)}
+     * @param distanceFunction the distance function of the store
+     * @param indexType        the index type set on the builder, or {@code null}
+     * @param table            the name of the embedding table
+     * @param embeddingColumn  the name of the embedding column
+     * @param indexOptions     the index options set on the builder, or {@code null}
+     * @return the index options, or {@code null} to declare no vector index on the table
+     * @throws IllegalArgumentException if the database does not support the distance function
+     * @see HibernateEmbeddingStore.BaseBuilder#indexOptions(String)
+     */
+    default String tableIndexOptions(
+            boolean createIndex,
+            DistanceFunction distanceFunction,
+            String indexType,
+            String table,
+            String embeddingColumn,
+            String indexOptions) {
+        return null;
+    }
+
+    /**
+     * Returns the query hints that every similarity search uses by default, for example a consistency level.
+     * A hint with the same name that is passed to the {@code queryHints(...)} builder method replaces the default one.
+     * <p>
+     * The built-in database kinds have no default hints.
+     *
+     * @return the default query hints, never {@code null}
+     * @see HibernateEmbeddingStore.BaseBuilder#queryHints(Map)
+     */
+    default Map<String, Object> defaultQueryHints() {
+        return Map.of();
+    }
 
     static DatabaseKind determineDatabaseKind(String jdbcUrl) {
         if (DB2.isJdbcUrl(jdbcUrl)) {

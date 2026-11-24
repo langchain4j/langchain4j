@@ -7,6 +7,7 @@ import static dev.langchain4j.rag.content.retriever.ContentRetrieverListenerUtil
 import static dev.langchain4j.rag.content.retriever.ContentRetrieverListenerUtils.onResponse;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverErrorContext;
 import dev.langchain4j.rag.content.retriever.listener.ContentRetrieverListener;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Internal
@@ -42,10 +44,12 @@ final class ListeningContentRetriever implements ContentRetriever {
     @Override
     public List<Content> retrieve(Query query) {
         Map<Object, Object> attributes = new ConcurrentHashMap<>();
+        UUID invocationId = CurrentInvocation.invocationId();
         ContentRetrieverRequestContext requestContext = ContentRetrieverRequestContext.builder()
                 .query(query)
                 .contentRetriever(this)
                 .attributes(attributes)
+                .invocationId(invocationId)
                 .build();
         onRequest(requestContext, listeners);
         try {
@@ -56,6 +60,7 @@ final class ListeningContentRetriever implements ContentRetriever {
                             .query(query)
                             .contentRetriever(this)
                             .attributes(attributes)
+                            .invocationId(invocationId)
                             .build(),
                     listeners);
             return contents;
@@ -66,6 +71,7 @@ final class ListeningContentRetriever implements ContentRetriever {
                             .query(query)
                             .contentRetriever(this)
                             .attributes(attributes)
+                            .invocationId(invocationId)
                             .build(),
                     listeners);
             throw error;

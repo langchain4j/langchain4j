@@ -1,7 +1,10 @@
 package dev.langchain4j.data.message;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.audio.Audio;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
 
@@ -113,5 +116,22 @@ class AiMessageTest implements WithAssertions {
         assertThatThrownBy(() -> AiMessage.from((String) null))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
                 .hasMessage("text cannot be null");
+    }
+
+    @Test
+    void should_return_generated_audio() {
+        Audio audio = Audio.builder().base64Data("AAEC").mimeType("audio/wav").build();
+
+        AiMessage message = AiMessage.builder()
+                .text("text")
+                .attributes(Map.of(AiMessage.GENERATED_AUDIO_KEY, List.of(audio)))
+                .build();
+
+        assertThat(message.audios()).containsExactly(audio);
+    }
+
+    @Test
+    void should_return_empty_list_when_no_generated_audio() {
+        assertThat(AiMessage.from("text").audios()).isEmpty();
     }
 }

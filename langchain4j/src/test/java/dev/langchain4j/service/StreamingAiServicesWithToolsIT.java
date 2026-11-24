@@ -20,7 +20,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
-import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,7 +38,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatRequestOptions;
 import dev.langchain4j.model.chat.StreamingChatModel;
-import dev.langchain4j.model.chat.mock.StreamingChatModelMock;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
@@ -229,7 +228,7 @@ class StreamingAiServicesWithToolsIT {
             String getCurrentTime(String city) throws InterruptedException {
                 getCurrentTimeThreads.add(Thread.currentThread());
                 latch.countDown();
-                latch.await(); // to make sure both tools overlap in time and are executed in different threads
+                assertThat(latch.await(10, SECONDS)).isTrue(); // to make sure both tools overlap in time and are executed in different threads
                 return CURRENT_TIME;
             }
 
@@ -237,7 +236,7 @@ class StreamingAiServicesWithToolsIT {
             String getCurrentTemperature(String city) throws InterruptedException {
                 getCurrentTemperatureThreads.add(Thread.currentThread());
                 latch.countDown();
-                latch.await(); // to make sure both tools overlap in time and are executed in different threads
+                assertThat(latch.await(10, SECONDS)).isTrue(); // to make sure both tools overlap in time and are executed in different threads
                 return CURRENT_TEMPERATURE;
             }
         }
@@ -1106,12 +1105,13 @@ class StreamingAiServicesWithToolsIT {
 
         // given
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("1")
                 .name("getWeather")
                 .arguments("{ invalid json }")
                 .build();
 
         StreamingChatModel spyModel =
-                spy(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(toolExecutionRequest)));
+                spy(MockStreamingChatModel.thatResponds(AiMessage.from(toolExecutionRequest)));
 
         class WeatherTool {
 
@@ -1154,8 +1154,7 @@ class StreamingAiServicesWithToolsIT {
         Throwable error = futureError.get(60, SECONDS);
 
         assertThat(error)
-                .isExactlyInstanceOf(RuntimeException.class)
-                .hasCauseExactlyInstanceOf(JsonParseException.class)
+                .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Unexpected character");
 
         verifyNoInteractions(spyTool);
@@ -1174,16 +1173,18 @@ class StreamingAiServicesWithToolsIT {
 
         // given
         ToolExecutionRequest toolExecutionRequest1 = ToolExecutionRequest.builder()
+                .id("1")
                 .name("getWeather")
                 .arguments("{ invalid json }")
                 .build();
 
         ToolExecutionRequest toolExecutionRequest2 = ToolExecutionRequest.builder()
+                .id("2")
                 .name("getWeather")
                 .arguments("{\"arg0\":\"Munich\"}")
                 .build();
 
-        StreamingChatModel spyModel = spy(StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModel spyModel = spy(MockStreamingChatModel.thatResponds(
                 AiMessage.from(toolExecutionRequest1), AiMessage.from(toolExecutionRequest2), AiMessage.from("sunny")));
 
         class WeatherTool {
@@ -1199,9 +1200,7 @@ class StreamingAiServicesWithToolsIT {
         String customizedErrorMessage = "Invalid JSON, try again";
 
         ToolArgumentsErrorHandler toolArgumentsErrorHandler = (error, context) -> {
-            assertThat(error)
-                    .isExactlyInstanceOf(JsonParseException.class)
-                    .hasMessageContaining("Unexpected character");
+            assertThat(error).hasMessageContaining("Unexpected character");
 
             assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest1);
             assertThat(context.memoryId()).isEqualTo("default");
@@ -1276,12 +1275,13 @@ class StreamingAiServicesWithToolsIT {
 
         // given
         ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("1")
                 .name("getWeather")
                 .arguments("{ invalid json }")
                 .build();
 
         StreamingChatModel spyModel =
-                spy(StreamingChatModelMock.thatAlwaysStreams(AiMessage.from(toolExecutionRequest)));
+                spy(MockStreamingChatModel.thatResponds(AiMessage.from(toolExecutionRequest)));
 
         class WeatherTool {
 
@@ -1296,9 +1296,7 @@ class StreamingAiServicesWithToolsIT {
         RuntimeException customException = new RuntimeException("Can't parse JSON arguments");
 
         ToolArgumentsErrorHandler toolArgumentsErrorHandler = (error, context) -> {
-            assertThat(error)
-                    .isExactlyInstanceOf(JsonParseException.class)
-                    .hasMessageContaining("Unexpected character");
+            assertThat(error).hasMessageContaining("Unexpected character");
 
             assertThat(context.toolExecutionRequest()).isEqualTo(toolExecutionRequest);
             assertThat(context.memoryId()).isEqualTo("default");
@@ -1486,7 +1484,7 @@ class StreamingAiServicesWithToolsIT {
             }
         });
 
-        StreamingChatModel streamingModel = new StreamingChatModelMock(List.of(
+        StreamingChatModel streamingModel = MockStreamingChatModel.thatResponds(List.of(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("getWeather")
@@ -1559,7 +1557,7 @@ class StreamingAiServicesWithToolsIT {
             }
         });
 
-        StreamingChatModel streamingModel = StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModel streamingModel = MockStreamingChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("getWeather")
@@ -1638,7 +1636,7 @@ class StreamingAiServicesWithToolsIT {
             }
         });
 
-        StreamingChatModel streamingModel = StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModel streamingModel = MockStreamingChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("getWeather")
@@ -1688,7 +1686,7 @@ class StreamingAiServicesWithToolsIT {
 
         ToolReturningImage tools = spy(new ToolReturningImage());
 
-        StreamingChatModel streamingModel = spy(StreamingChatModelMock.thatAlwaysStreams(
+        StreamingChatModel streamingModel = spy(MockStreamingChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("takePhoto")

@@ -39,4 +39,30 @@ class OpenAiOfficialBringYourOwnClientTest {
         assertThat(model.provider()).isEqualTo(ModelProvider.OPEN_AI);
         assertThat(model.supportedCapabilities()).isNotNull();
     }
+
+    @Test
+    void should_detect_provider_when_responses_chat_model_is_configured_for_github_models() {
+        OpenAIClient openAIClient = Mockito.mock(OpenAIClient.class);
+
+        OpenAiOfficialResponsesChatModel model = OpenAiOfficialResponsesChatModel.builder()
+                .client(openAIClient)
+                .isGitHubModels(true)
+                .modelName("gpt-4o-mini")
+                .build();
+
+        assertThat(model.provider()).isEqualTo(ModelProvider.GITHUB_MODELS);
+    }
+
+    @Test
+    void should_detect_provider_when_responses_streaming_chat_model_is_configured_for_microsoft_foundry() {
+        OpenAIClient openAIClient = Mockito.mock(OpenAIClient.class);
+
+        OpenAiOfficialResponsesStreamingChatModel model = OpenAiOfficialResponsesStreamingChatModel.builder()
+                .client(openAIClient)
+                .isMicrosoftFoundry(true)
+                .modelName("gpt-4o-mini")
+                .build();
+
+        assertThat(model.provider()).isEqualTo(ModelProvider.MICROSOFT_FOUNDRY);
+    }
 }

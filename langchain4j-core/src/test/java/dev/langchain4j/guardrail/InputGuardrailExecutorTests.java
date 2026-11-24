@@ -7,11 +7,15 @@ import static org.mockito.Mockito.verify;
 
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
+import dev.langchain4j.internal.CancellationChain;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.event.InputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.listener.InputGuardrailExecutedListener;
+import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -73,6 +77,63 @@ class InputGuardrailExecutorTests {
         var result = executor.execute(request);
 
         assertThat(result).isSuccessful();
+    }
+
+    @Test
+    void executeAsync_cancellation_aborts_the_in_flight_guardrail_validation() {
+        // a guardrail whose async validation never completes, so we can cancel it while in flight
+        var pending = new CompletableFuture<InputGuardrailResult>();
+        var blockingAsyncGuardrail = new InputGuardrail() {
+            @Override
+            public InputGuardrailResult validate(InputGuardrailRequest request) {
+                throw new UnsupportedOperationException("blocking path not used in this test");
+            }
+
+            @Override
+            public CompletableFuture<InputGuardrailResult> validateAsync(InputGuardrailRequest request) {
+                return pending;
+            }
+        };
+
+        var executor =
+                InputGuardrailExecutor.builder().guardrails(blockingAsyncGuardrail).build();
+
+        var future = executor.executeAsync(from(UserMessage.from("test")));
+
+        org.assertj.core.api.Assertions.assertThat(future).isNotDone();
+        org.assertj.core.api.Assertions.assertThat(pending).isNotDone();
+
+        future.cancel(true);
+
+        // cancelling the caller-facing future aborts the in-flight guardrail validation (best-effort)
+        org.assertj.core.api.Assertions.assertThat(pending).isCancelled();
+    }
+
+    @Test
+    void executeAsync_should_return_failed_future_for_null_request() {
+        var executor = InputGuardrailExecutor.builder().build();
+
+        CompletableFuture<InputGuardrailResult> future = executor.executeAsync(null);
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void validateAsync_should_return_failed_future_for_null_request() {
+        var executor = InputGuardrailExecutor.builder().build();
+        InputGuardrail guardrail = new InputGuardrail() {};
+
+        CompletableFuture<InputGuardrailResult> future =
+                executor.validateAsync(null, guardrail, new CancellationChain(new CompletableFuture<>()));
+
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(1))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class)
+                .withMessageContaining("request");
     }
 
     @Test

@@ -1,9 +1,12 @@
 package dev.langchain4j.guardrail;
 
+import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.Experimental;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -13,11 +16,13 @@ public final class OutputGuardrailRequest implements GuardrailRequest<OutputGuar
     private final ChatResponse responseFromLLM;
     private final ChatExecutor chatExecutor;
     private final GuardrailRequestParams requestParams;
+    private final ChatRequest chatRequest;
 
     private OutputGuardrailRequest(Builder builder) {
         this.responseFromLLM = ensureNotNull(builder.responseFromLLM, "responseFromLLM");
         this.requestParams = ensureNotNull(builder.requestParams, "requestParams");
         this.chatExecutor = ensureNotNull(builder.chatExecutor, "chatExecutor");
+        this.chatRequest = builder.chatRequest;
     }
 
     /**
@@ -27,6 +32,21 @@ public final class OutputGuardrailRequest implements GuardrailRequest<OutputGuar
      */
     public ChatResponse responseFromLLM() {
         return responseFromLLM;
+    }
+
+    /**
+     * Returns the request that was sent to the model to produce {@link #responseFromLLM()}, if known: when the
+     * response is the result of a tool-calling loop, the last request of the loop, whose messages include the tool
+     * calls and tool results of all rounds; when the model was asked again after a guardrail failure (reprompt), the
+     * request of that call, whose messages include the reprompt. The request is not known, for example, when that
+     * call was made by a {@link ChatExecutor} that does not override {@link ChatExecutor#exchange(List)}.
+     *
+     * @return the request, or {@code null} if it is not known
+     * @since 1.23.0
+     */
+    @Experimental
+    public ChatRequest chatRequest() {
+        return chatRequest;
     }
 
     /**
@@ -66,6 +86,7 @@ public final class OutputGuardrailRequest implements GuardrailRequest<OutputGuar
                 .responseFromLLM(chatResponse)
                 .chatExecutor(this.chatExecutor)
                 .requestParams(this.requestParams)
+                .chatRequest(this.chatRequest)
                 .build();
     }
 
@@ -85,6 +106,7 @@ public final class OutputGuardrailRequest implements GuardrailRequest<OutputGuar
         private ChatResponse responseFromLLM;
         private ChatExecutor chatExecutor;
         private GuardrailRequestParams requestParams;
+        private ChatRequest chatRequest;
 
         private Builder() {}
 
@@ -118,6 +140,19 @@ public final class OutputGuardrailRequest implements GuardrailRequest<OutputGuar
          */
         public Builder requestParams(GuardrailRequestParams requestParams) {
             this.requestParams = requestParams;
+            return this;
+        }
+
+        /**
+         * Sets the request that was sent to the model to produce the response.
+         *
+         * @param chatRequest the request, or {@code null} if it is not known
+         * @return this builder
+         * @since 1.23.0
+         */
+        @Experimental
+        public Builder chatRequest(ChatRequest chatRequest) {
+            this.chatRequest = chatRequest;
             return this;
         }
 

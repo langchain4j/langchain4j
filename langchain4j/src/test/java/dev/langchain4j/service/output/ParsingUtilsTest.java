@@ -3,7 +3,6 @@ package dev.langchain4j.service.output;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -113,7 +112,7 @@ class ParsingUtilsTest {
         // when/then
         assertThatThrownBy(() -> ParsingUtils.parseAsStringOrJson(text, parser, String.class))
                 .isInstanceOf(OutputParsingException.class)
-                .hasRootCauseInstanceOf(JsonProcessingException.class);
+                .hasRootCauseInstanceOf(Exception.class);
     }
 
     @Test

@@ -7,6 +7,7 @@ import static dev.langchain4j.service.AiServicesWithToolSearchToolIT.containsToo
 import static dev.langchain4j.service.AiServicesWithToolsIT.TransactionService.EXPECTED_SPECIFICATION;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonMap;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 import static org.assertj.core.data.MapEntry.entry;
@@ -43,7 +44,7 @@ import dev.langchain4j.invocation.InvocationParameters;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.model.chat.mock.ChatModelMock;
+import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.json.JsonArraySchema;
 import dev.langchain4j.model.chat.request.json.JsonIntegerSchema;
@@ -67,8 +68,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -123,6 +126,8 @@ class AiServicesWithToolsIT {
     interface Assistant {
 
         Result<String> chat(String userMessage);
+
+        CompletableFuture<Result<String>> chatAsync(String userMessage);
     }
 
     static class TransactionService {
@@ -246,6 +251,222 @@ class AiServicesWithToolsIT {
 
         assertThat(toolCalls).hasSize(1).contains("getTransactionAmount");
         assertThat(toolResults).hasSize(1).containsKey("getTransactionAmount").containsValue(11.1);
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_execute_a_tool_then_answer_async(ChatModel chatModel) throws Exception {
+
+        TransactionService transactionService = spy(new TransactionService());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        ChatModel spyChatModel = spy(chatModel);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(spyChatModel)
+                .chatMemory(chatMemory)
+                .tools(transactionService)
+                .build();
+
+        String userMessage = "What is the amounts of transaction T001?";
+
+        Result<String> result = assistant.chatAsync(userMessage).get(60, SECONDS);
+
+        assertThat(result.content()).contains("11.1");
+        assertThat(result.finishReason()).isEqualTo(STOP);
+
+        verify(transactionService).getTransactionAmount("T001");
+        verifyNoMoreInteractions(transactionService);
+
+        // without a tool executor, the tool runs on the thread that delivered the model response,
+        // never on the calling thread
+        assertThat(transactionService.threads).hasSize(1);
+        assertThat(transactionService.threads.poll()).isNotEqualTo(Thread.currentThread());
+
+        List<ChatMessage> messages = chatMemory.messages();
+        assertThat(messages).hasSize(4);
+        assertThat(((UserMessage) messages.get(0)).singleText()).isEqualTo(userMessage);
+        AiMessage aiMessage = (AiMessage) messages.get(1);
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+        assertThat(messages.get(2)).isInstanceOf(ToolExecutionResultMessage.class);
+        assertThat(((AiMessage) messages.get(3)).text()).contains("11.1");
+
+        assertThat(result.toolExecutions()).hasSize(1);
+        assertThat(result.toolExecutions().get(0).result()).isEqualTo("11.1");
+
+        assertThat(result.intermediateResponses()).hasSize(1);
+        ChatResponse intermediateResponse = result.intermediateResponses().get(0);
+
+        TokenUsage tokenUsage = result.tokenUsage();
+        assertThat(tokenUsage.inputTokenCount())
+                .isEqualTo(intermediateResponse.tokenUsage().inputTokenCount()
+                        + result.finalResponse().tokenUsage().inputTokenCount());
+        assertThat(tokenUsage.outputTokenCount())
+                .isEqualTo(intermediateResponse.tokenUsage().outputTokenCount()
+                        + result.finalResponse().tokenUsage().outputTokenCount());
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+
+        verify(spyChatModel)
+                .chatAsync(ChatRequest.builder()
+                        .messages(messages.get(0))
+                        .toolSpecifications(EXPECTED_SPECIFICATION)
+                        .build());
+
+        verify(spyChatModel)
+                .chatAsync(ChatRequest.builder()
+                        .messages(messages.get(0), messages.get(1), messages.get(2))
+                        .toolSpecifications(EXPECTED_SPECIFICATION)
+                        .build());
+    }
+
+    static class AsyncTransactionService {
+
+        final AtomicInteger invocations = new AtomicInteger();
+
+        @Tool("returns amount of a given transaction")
+        CompletableFuture<Double> getTransactionAmount(@P("ID of a transaction") String id) {
+            invocations.incrementAndGet();
+            return CompletableFuture.supplyAsync(() -> switch (id) {
+                case "T001" -> 11.1;
+                case "T002" -> 22.2;
+                default -> throw new IllegalArgumentException("Unknown transaction ID: " + id);
+            });
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    void should_execute_tool_returning_completable_future_then_answer_async(ChatModel chatModel) throws Exception {
+
+        AsyncTransactionService transactionService = new AsyncTransactionService();
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(10))
+                .tools(transactionService)
+                .build();
+
+        Result<String> result = assistant.chatAsync("What is the amounts of transaction T001?")
+                .get(60, SECONDS);
+
+        assertThat(result.content()).contains("11.1");
+        assertThat(transactionService.invocations).hasValue(1);
+
+        assertThat(result.toolExecutions()).hasSize(1);
+        // the tool's future is unwrapped: the LLM receives the value, not the future
+        assertThat(result.toolExecutions().get(0).result()).isEqualTo("11.1");
+    }
+
+    @ParameterizedTest
+    @MethodSource("modelsWithoutParallelToolCalling")
+    void should_execute_multiple_tools_sequentially_then_answer_async(ChatModel chatModel) throws Exception {
+
+        TransactionService transactionService = spy(new TransactionService());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(chatModel)
+                .chatMemory(chatMemory)
+                .tools(transactionService)
+                .build();
+
+        String userMessage = "What are the amounts of transactions T001 and T002?";
+
+        Result<String> result = assistant.chatAsync(userMessage).get(60, SECONDS);
+
+        assertThat(result.content()).contains("11.1", "22.2");
+        assertThat(result.finishReason()).isEqualTo(STOP);
+
+        verify(transactionService).getTransactionAmount("T001");
+        verify(transactionService).getTransactionAmount("T002");
+        verifyNoMoreInteractions(transactionService);
+
+        assertThat(result.toolExecutions()).hasSize(2);
+        assertThat(result.intermediateResponses()).hasSize(2);
+
+        TokenUsage tokenUsage = result.tokenUsage();
+        int expectedInputTokenCount = result.intermediateResponses().stream()
+                        .mapToInt(response -> response.tokenUsage().inputTokenCount())
+                        .sum()
+                + result.finalResponse().tokenUsage().inputTokenCount();
+        int expectedOutputTokenCount = result.intermediateResponses().stream()
+                        .mapToInt(response -> response.tokenUsage().outputTokenCount())
+                        .sum()
+                + result.finalResponse().tokenUsage().outputTokenCount();
+        assertThat(tokenUsage.inputTokenCount()).isEqualTo(expectedInputTokenCount);
+        assertThat(tokenUsage.outputTokenCount()).isEqualTo(expectedOutputTokenCount);
+        assertThat(tokenUsage.totalTokenCount())
+                .isEqualTo(tokenUsage.inputTokenCount() + tokenUsage.outputTokenCount());
+    }
+
+    @ParameterizedTest
+    @MethodSource("executors")
+    void should_execute_multiple_tools_in_parallel_concurrently_then_answer_async(Executor executor)
+            throws Exception {
+
+        // given
+        class Tools {
+
+            static final String CURRENT_TIME = "16:28";
+            static final String CURRENT_TEMPERATURE = "17";
+
+            final Queue<Thread> getCurrentTimeThreads = new ConcurrentLinkedQueue<>();
+            final Queue<Thread> getCurrentTemperatureThreads = new ConcurrentLinkedQueue<>();
+
+            final CountDownLatch latch = new CountDownLatch(2);
+
+            @Tool
+            String getCurrentTime(String city) throws InterruptedException {
+                getCurrentTimeThreads.add(Thread.currentThread());
+                latch.countDown();
+                assertThat(latch.await(10, SECONDS)).isTrue(); // to make sure both tools overlap in time and are executed in different threads
+                return CURRENT_TIME;
+            }
+
+            @Tool
+            String getCurrentTemperature(String city) throws InterruptedException {
+                getCurrentTemperatureThreads.add(Thread.currentThread());
+                latch.countDown();
+                assertThat(latch.await(10, SECONDS)).isTrue(); // to make sure both tools overlap in time and are executed in different threads
+                return CURRENT_TEMPERATURE;
+            }
+        }
+
+        Tools spyTools = spy(new Tools());
+
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(models().findFirst().get())
+                .chatMemory(chatMemory)
+                .tools(spyTools)
+                .executeToolsConcurrently(executor)
+                .build();
+
+        String userMessage = "What is the current time and temperature in Munich?";
+
+        // when
+        Result<String> result = assistant.chatAsync(userMessage).get(60, SECONDS);
+
+        // then
+        assertThat(result.content()).contains(Tools.CURRENT_TIME, Tools.CURRENT_TEMPERATURE);
+
+        verify(spyTools).getCurrentTime("Munich");
+        verify(spyTools).getCurrentTemperature("Munich");
+        verifyNoMoreInteractions(spyTools);
+
+        assertThat(spyTools.getCurrentTimeThreads).hasSize(1);
+        Thread getCurrentTimeThread = spyTools.getCurrentTimeThreads.poll();
+        assertThat(getCurrentTimeThread).isNotEqualTo(Thread.currentThread());
+
+        assertThat(spyTools.getCurrentTemperatureThreads).hasSize(1);
+        Thread getCurrentTemperatureThread = spyTools.getCurrentTemperatureThreads.poll();
+        assertThat(getCurrentTemperatureThread).isNotEqualTo(Thread.currentThread());
+
+        assertThat(getCurrentTimeThread).isNotEqualTo(getCurrentTemperatureThread);
     }
 
     @ParameterizedTest
@@ -427,7 +648,7 @@ class AiServicesWithToolsIT {
     @ParameterizedTest
     @NullSource
     @MethodSource("executors")
-    void should_execute_multiple_tools_in_parallel_concurrently_then_answer(Executor executor) {
+    void should_execute_multiple_tools_in_parallel_concurrently_then_answer(Executor executor) throws Exception {
 
         // given
         class Tools {
@@ -438,15 +659,21 @@ class AiServicesWithToolsIT {
             final Queue<Thread> getCurrentTimeThreads = new ConcurrentLinkedQueue<>();
             final Queue<Thread> getCurrentTemperatureThreads = new ConcurrentLinkedQueue<>();
 
+            final CountDownLatch latch = new CountDownLatch(2);
+
             @Tool
-            String getCurrentTime(String city) {
+            String getCurrentTime(String city) throws InterruptedException {
                 getCurrentTimeThreads.add(Thread.currentThread());
+                latch.countDown();
+                assertThat(latch.await(10, SECONDS)).isTrue(); // to make sure both tools overlap in time and are executed in different threads
                 return CURRENT_TIME;
             }
 
             @Tool
-            String getCurrentTemperature(String city) {
+            String getCurrentTemperature(String city) throws InterruptedException {
                 getCurrentTemperatureThreads.add(Thread.currentThread());
+                latch.countDown();
+                assertThat(latch.await(10, SECONDS)).isTrue(); // to make sure both tools overlap in time and are executed in different threads
                 return CURRENT_TEMPERATURE;
             }
         }
@@ -824,7 +1051,7 @@ class AiServicesWithToolsIT {
                     .build();
         };
 
-        ChatModelMock chatModelMock = ChatModelMock.thatAlwaysResponds("does not matter");
+        MockChatModel chatModelMock = MockChatModel.thatResponds("does not matter");
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(chatModelMock)
@@ -1158,7 +1385,7 @@ class AiServicesWithToolsIT {
             return ToolProviderResult.builder().build();
         };
 
-        ChatModel spyModel = spy(ChatModelMock.thatAlwaysResponds("does not matter"));
+        ChatModel spyModel = spy(MockChatModel.thatResponds("does not matter").thenRepeats());
 
         Assistant assistant = AiServices.builder(Assistant.class)
                 .chatModel(spyModel)
@@ -1660,7 +1887,7 @@ class AiServicesWithToolsIT {
             }
         });
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("getWeather")
@@ -1728,7 +1955,7 @@ class AiServicesWithToolsIT {
             }
         });
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("getWeather")
@@ -1800,7 +2027,7 @@ class AiServicesWithToolsIT {
             }
         });
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("getWeather")
@@ -1845,7 +2072,7 @@ class AiServicesWithToolsIT {
 
         ToolReturningNull tools = spy(new ToolReturningNull());
 
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = spy(MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("doSomething")
@@ -1891,7 +2118,7 @@ class AiServicesWithToolsIT {
 
         ToolReturningNull tools = spy(new ToolReturningNull());
 
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = spy(MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("doSomething")
@@ -1937,7 +2164,7 @@ class AiServicesWithToolsIT {
 
         ToolReturningObjectThatIsImage tools = spy(new ToolReturningObjectThatIsImage());
 
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = spy(MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("takePhoto")
@@ -1986,7 +2213,7 @@ class AiServicesWithToolsIT {
 
         ToolReturningNullImage tools = spy(new ToolReturningNullImage());
 
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = spy(MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("takePhoto")
@@ -2033,7 +2260,7 @@ class AiServicesWithToolsIT {
 
         ToolThrowingException tools = spy(new ToolThrowingException());
 
-        ChatModel chatModel = spy(ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = spy(MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("takePhoto")
@@ -2230,7 +2457,7 @@ class AiServicesWithToolsIT {
         // given
         BankAccountService bankService = spy(new BankAccountService());
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = MockChatModel.thatResponds(
                 // First LLM response: credit Dmytro's account
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
@@ -2277,7 +2504,7 @@ class AiServicesWithToolsIT {
         // given
         BankAccountService bankService = spy(new BankAccountService());
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("credit")
@@ -2352,7 +2579,7 @@ class AiServicesWithToolsIT {
 
         CompensatingBankService bankService = new CompensatingBankService();
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("credit")
@@ -2446,7 +2673,7 @@ class AiServicesWithToolsIT {
         // given
         TravelBookingService travelService = new TravelBookingService("rentCar");
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(
                         ToolExecutionRequest.builder().id("1").name("bookFlight")
                                 .arguments("{\"destination\": \"Paris\"}").build(),
@@ -2482,7 +2709,7 @@ class AiServicesWithToolsIT {
         // given
         TravelBookingService travelService = new TravelBookingService("bookHotel");
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(
                         ToolExecutionRequest.builder().id("1").name("bookFlight")
                                 .arguments("{\"destination\": \"Rome\"}").build(),
@@ -2518,7 +2745,7 @@ class AiServicesWithToolsIT {
         // given
         TravelBookingService travelService = new TravelBookingService("bookFlight");
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(
                         ToolExecutionRequest.builder().id("1").name("bookFlight")
                                 .arguments("{\"destination\": \"Tokyo\"}").build(),
@@ -2554,7 +2781,7 @@ class AiServicesWithToolsIT {
         // given
         BankAccountService bankService = spy(new BankAccountService());
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = MockChatModel.thatResponds(
                 // Round 1: credit succeeds
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
@@ -2614,7 +2841,7 @@ class AiServicesWithToolsIT {
 
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(
                         ToolExecutionRequest.builder().id("1").name("bookFlight")
                                 .arguments("{\"destination\": \"Berlin\"}").build(),
@@ -2675,7 +2902,7 @@ class AiServicesWithToolsIT {
         BankAccountService bankService = spy(new BankAccountService());
         ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(20);
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = MockChatModel.thatResponds(
                 // Round 1: LLM calls credit (succeeds)
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
@@ -2758,7 +2985,7 @@ class AiServicesWithToolsIT {
 
         assertThatExceptionOfType(IllegalConfigurationException.class)
                 .isThrownBy(() -> AiServices.builder(Assistant.class)
-                        .chatModel(ChatModelMock.thatAlwaysResponds("ok"))
+                        .chatModel(MockChatModel.thatResponds("ok"))
                         .tools(new MisconfiguredService())
                         .compensateOnToolErrors(true)
                         .build())
@@ -2783,7 +3010,7 @@ class AiServicesWithToolsIT {
         // Should NOT throw — the user never enabled compensateOnToolErrors,
         // so the mismatched @CompensateFor should be silently ignored
         AiServices.builder(Assistant.class)
-                .chatModel(ChatModelMock.thatAlwaysResponds("ok"))
+                .chatModel(MockChatModel.thatResponds("ok"))
                 .tools(new MisconfiguredService())
                 .build();
     }
@@ -2832,7 +3059,7 @@ class AiServicesWithToolsIT {
         // given
         ExtendedBankAccountService bankService = spy(new ExtendedBankAccountService());
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(ToolExecutionRequest.builder()
                         .id("1")
                         .name("credit")
@@ -2906,7 +3133,7 @@ class AiServicesWithToolsIT {
 
         FaultyCompensationService travelService = new FaultyCompensationService();
 
-        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(
+        ChatModel chatModel = MockChatModel.thatResponds(
                 AiMessage.from(
                         ToolExecutionRequest.builder().id("1").name("bookFlight")
                                 .arguments("{\"destination\": \"Paris\"}").build(),

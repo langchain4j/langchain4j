@@ -75,9 +75,9 @@ class MistralAiChatModelIT {
 
         String expectedJson = "{\"name\":\"Klaus\",\"age\":42}";
 
-        ChatModel mistralLargeModel = MistralAiChatModel.builder()
+        ChatModel mistralSmallModel = MistralAiChatModel.builder()
                 .apiKey(System.getenv("MISTRAL_AI_API_KEY"))
-                .modelName("mistral-medium-2508")
+                .modelName(MISTRAL_SMALL_LATEST)
                 .temperature(0.0)
                 .responseFormat(ResponseFormat.JSON)
                 .logRequests(true)
@@ -85,7 +85,7 @@ class MistralAiChatModelIT {
                 .build();
 
         // when
-        String json = mistralLargeModel.chat(userMessage);
+        String json = mistralSmallModel.chat(userMessage);
 
         // then
         assertThat(json).isEqualToIgnoringWhitespace(expectedJson);

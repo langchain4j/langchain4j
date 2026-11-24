@@ -64,6 +64,17 @@ class OutputGuardrailResultTest {
     }
 
     @Test
+    void successWithResult_shouldNotMarkOutputAsRewritten() {
+        Object value = 42;
+        OutputGuardrailResult result = OutputGuardrailResult.successWithResult(value);
+
+        assertThat(result.result()).isEqualTo(OutputGuardrailResult.Result.SUCCESS);
+        assertThat(result.hasRewrittenResult()).isFalse();
+        assertThat(result.successfulResult()).isEqualTo(value);
+        assertThat(result.failures()).isEmpty();
+    }
+
+    @Test
     void equalsAndHashCode_shouldBeConsistent() {
         OutputGuardrailResult r1 = OutputGuardrailResult.successWith("Hi");
         OutputGuardrailResult r2 = OutputGuardrailResult.successWith("Hi");

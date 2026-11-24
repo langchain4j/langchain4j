@@ -1,5 +1,7 @@
 package dev.langchain4j.model.googleai;
 
+import java.util.Locale;
+
 enum GeminiType {
     STRING,
     NUMBER,
@@ -11,6 +13,6 @@ enum GeminiType {
 
     @Override
     public String toString() {
-        return this.name().toLowerCase();
+        return this.name().toLowerCase(Locale.ROOT);
     }
 }

@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.InternalFlowUtils.failPublisherOnThrow;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
@@ -18,10 +19,12 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ToolChoice;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Flow.Publisher;
 import java.util.function.Supplier;
 
 @Experimental
@@ -39,6 +42,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 .organizationId(builder.organizationId)
                 .logRequests(builder.logRequests)
                 .logResponses(builder.logResponses)
+                .streamingBufferSize(builder.streamingBufferSize)
                 .customHeaders(builder.customHeadersSupplier)
                 .build();
 
@@ -74,6 +78,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
                 .promptCacheKey(getOrDefault(builder.promptCacheKey, responsesParameters.promptCacheKey()))
                 .promptCacheRetention(
                         getOrDefault(builder.promptCacheRetention, responsesParameters.promptCacheRetention()))
+                .promptCacheOptions(getOrDefault(builder.promptCacheOptions, responsesParameters.promptCacheOptions()))
                 .reasoningEffort(getOrDefault(builder.reasoningEffort, responsesParameters.reasoningEffort()))
                 .reasoningSummary(getOrDefault(builder.reasoningSummary, responsesParameters.reasoningSummary()))
                 .textVerbosity(getOrDefault(builder.textVerbosity, responsesParameters.textVerbosity()))
@@ -98,6 +103,16 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         OpenAiResponsesChatRequestParameters parameters =
                 (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
         client.streamingChat(chatRequest, parameters, handler);
+    }
+
+    @Override
+    public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
+        return failPublisherOnThrow(() -> {
+            validate(chatRequest.parameters());
+            OpenAiResponsesChatRequestParameters parameters =
+                    (OpenAiResponsesChatRequestParameters) chatRequest.parameters();
+            return client.streamingChatPublisher(chatRequest, parameters);
+        });
     }
 
     private static void validate(final ChatRequestParameters parameters) {
@@ -157,6 +172,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private String safetyIdentifier;
         private String promptCacheKey;
         private String promptCacheRetention;
+        private OpenAiPromptCacheOptions promptCacheOptions;
         private String reasoningEffort;
         private String reasoningSummary;
         private String textVerbosity;
@@ -172,6 +188,7 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
         private Boolean logResponses;
         private List<ChatModelListener> listeners;
         private ChatRequestParameters defaultRequestParameters;
+        private Integer streamingBufferSize;
         private Supplier<Map<String, String>> customHeadersSupplier;
 
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
@@ -191,6 +208,17 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
         public Builder organizationId(String organizationId) {
             this.organizationId = organizationId;
+            return this;
+        }
+
+        /**
+         * Sets the size of the bounded back-pressure buffer for the reactive streaming path. Defaults to
+         * {@value dev.langchain4j.model.openai.internal.OpenAiClient#DEFAULT_STREAMING_BUFFER_SIZE}.
+         * @since 1.20.0
+         */
+        @Experimental
+        public Builder streamingBufferSize(Integer streamingBufferSize) {
+            this.streamingBufferSize = streamingBufferSize;
             return this;
         }
 
@@ -261,6 +289,14 @@ public class OpenAiResponsesStreamingChatModel implements StreamingChatModel {
 
         public Builder promptCacheRetention(String promptCacheRetention) {
             this.promptCacheRetention = promptCacheRetention;
+            return this;
+        }
+
+        /**
+         * @since 1.21.0
+         */
+        public Builder promptCacheOptions(OpenAiPromptCacheOptions promptCacheOptions) {
+            this.promptCacheOptions = promptCacheOptions;
             return this;
         }
 

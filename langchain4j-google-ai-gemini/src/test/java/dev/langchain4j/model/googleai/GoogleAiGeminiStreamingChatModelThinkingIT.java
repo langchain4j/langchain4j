@@ -52,7 +52,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                 .build();
 
         SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(JdkHttpClient.builder().build());
+                new SpyingHttpClient(JdkHttpClient.builder());
 
         StreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -127,7 +127,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                 .build();
 
         SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(JdkHttpClient.builder().build());
+                new SpyingHttpClient(JdkHttpClient.builder());
 
         StreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -188,7 +188,7 @@ class GoogleAiGeminiStreamingChatModelThinkingIT {
                 .build();
 
         SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(JdkHttpClient.builder().build());
+                new SpyingHttpClient(JdkHttpClient.builder());
 
         StreamingChatModel model = GoogleAiGeminiStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

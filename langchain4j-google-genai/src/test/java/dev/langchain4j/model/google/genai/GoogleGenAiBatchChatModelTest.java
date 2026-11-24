@@ -68,7 +68,7 @@ class GoogleGenAiBatchChatModelTest {
 
         GoogleGenAiBatchChatModel batchModel = GoogleGenAiBatchChatModel.builder()
                 .client(client)
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.8-flash")
                 .build();
 
         BatchPage<ChatResponse> response = batchModel.list(new BatchPagination(10, null));
@@ -84,7 +84,7 @@ class GoogleGenAiBatchChatModelTest {
         RuntimeException fromCustomizer = new RuntimeException("customizer invoked");
         GoogleGenAiBatchChatModel batchModel = GoogleGenAiBatchChatModel.builder()
                 .apiKey("test-key")
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.8-flash")
                 .generateContentConfigCustomizer(config -> {
                     throw fromCustomizer;
                 })
@@ -117,7 +117,7 @@ class GoogleGenAiBatchChatModelTest {
 
         GoogleGenAiBatchChatModel batchModel = GoogleGenAiBatchChatModel.builder()
                 .client(client)
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.8-flash")
                 .includeThoughts(true)
                 .sendThinking(true)
                 .build();
@@ -125,7 +125,7 @@ class GoogleGenAiBatchChatModelTest {
         AiMessage previousAnswer =
                 AiMessage.builder().text("42").thinking("Six times seven.").build();
         ChatRequest request = ChatRequest.builder()
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.8-flash")
                 .messages(UserMessage.from("What is 6 times 7?"), previousAnswer, UserMessage.from("Are you sure?"))
                 .build();
 
@@ -163,7 +163,7 @@ class GoogleGenAiBatchChatModelTest {
                 .build();
         BatchJob batchJob = BatchJob.builder()
                 .name("batches/1")
-                .model("gemini-2.5-flash")
+                .model("gemini-3.8-flash")
                 .state(new JobState(Known.JOB_STATE_SUCCEEDED.toString()))
                 .dest(BatchJobDestination.builder()
                         .inlinedResponses(
@@ -174,7 +174,7 @@ class GoogleGenAiBatchChatModelTest {
 
         GoogleGenAiBatchChatModel batchModel = GoogleGenAiBatchChatModel.builder()
                 .client(client)
-                .modelName("gemini-2.5-flash")
+                .modelName("gemini-3.8-flash")
                 .returnThinking(true)
                 .build();
 
