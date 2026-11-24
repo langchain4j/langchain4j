@@ -23,6 +23,8 @@ public class AnthropicRequest {
     public Integer topK;
     public List<AnthropicTool> tools;
     public AnthropicToolChoice toolChoice;
+    public AnthropicThinking thinking;
+    public AnthropicOutputConfig outputConfig;
 
     public AnthropicRequest() {}
 
@@ -86,6 +88,14 @@ public class AnthropicRequest {
         return toolChoice;
     }
 
+    public AnthropicThinking getThinking() {
+        return thinking;
+    }
+
+    public AnthropicOutputConfig getOutputConfig() {
+        return outputConfig;
+    }
+
     @Override
     public String toString() {
         return new StringJoiner(", ", "AnthropicRequest [", "]")
@@ -99,6 +109,8 @@ public class AnthropicRequest {
                 .add("topK=" + this.getTopK())
                 .add("tools=" + this.getTools())
                 .add("toolsChoice=" + this.getToolChoice())
+                .add("thinking=" + this.getThinking())
+                .add("outputConfig=" + this.getOutputConfig())
                 .toString();
     }
 }

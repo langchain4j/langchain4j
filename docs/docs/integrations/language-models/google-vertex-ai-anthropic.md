@@ -226,6 +226,37 @@ a pricing premium over the global one. See
 [Global, multi-region, and regional endpoints](https://platform.claude.com/docs/en/build-with-claude/claude-on-vertex-ai#global-multi-region-and-regional-endpoints)
 for details.
 
+### Thinking and effort
+
+You can configure [thinking](https://platform.claude.com/docs/en/build-with-claude/extended-thinking)
+and [effort](https://platform.claude.com/docs/en/build-with-claude/effort) on both the chat and the streaming chat model:
+
+```java
+ChatModel model = VertexAiAnthropicChatModel.builder()
+    .project(PROJECT_ID)
+    .location(LOCATION)
+    .modelName(MODEL_NAME)
+    .thinkingType("adaptive")       // sent as "thinking": {"type": "adaptive"}
+    .thinkingDisplay("summarized")  // optional: "summarized" or "omitted"
+    .effort("high")                 // sent as "output_config": {"effort": "high"}
+    .build();
+```
+
+- `thinkingType(String)` sets the thinking type, for example `"adaptive"`, `"disabled"` or `"enabled"`.
+- `thinkingBudgetTokens(Integer)` sets `budget_tokens`, used with type `"enabled"`. Only older models accept it;
+  current models reject it and use adaptive thinking with `effort` instead.
+- `thinkingDisplay(String)` sets `display`; it is only sent together with a thinking type or budget.
+- `effort(String)` sets the effort level, for example `"low"`, `"medium"`, `"high"`, `"xhigh"` or `"max"`.
+
+When none of these is set, the request is unchanged and the model uses its defaults.
+The values are sent as is, without validation, because the accepted values differ per model
+(for example, some current models think by default and reject `"disabled"`). Check the
+[Claude documentation](https://platform.claude.com/docs/en/build-with-claude/extended-thinking) for the model you use.
+Current models also reject `temperature`, `topP` and `topK`, so leave them unset when you use them.
+
+Thinking content is not returned: thinking blocks are left out of the `AiMessage`
+and are not passed to `onPartialResponse`.
+
 ## More examples
 
 Claude is a powerful multimodal model that accepts both text and images as input.
