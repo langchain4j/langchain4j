@@ -50,10 +50,8 @@ public class ParallelMapperServiceImpl<T> extends AbstractServiceBuilder<T, Para
                     "A parallel mapper service requires exactly one subagent, but " + subagents.size()
                             + " were provided.");
         }
-        boolean isArrayResult = isArrayResult();
-        Class<? extends Object[]> arrayclass =
-                isArrayResult ? (Class<? extends Object[]>) agenticMethod.getReturnType() : null;
-        return build(() -> new ParallelMapperPlanner(itemsProvider(), isArrayResult, arrayclass));
+        Class<?> arrayClass = isArrayResult() ? agenticMethod.getReturnType() : null;
+        return build(() -> new ParallelMapperPlanner(itemsProvider(), arrayClass));
     }
 
     private String itemsProvider() {

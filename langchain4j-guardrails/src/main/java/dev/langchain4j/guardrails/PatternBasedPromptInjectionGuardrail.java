@@ -51,7 +51,7 @@ public class PatternBasedPromptInjectionGuardrail implements InputGuardrail {
     private static final List<Pattern> DEFAULT_PATTERNS = List.of(
             // Instruction override
             Pattern.compile(
-                    "ignore\\s+(all\\s+|previous\\s+|prior\\s+|the\\s+)*(instructions?|rules?|context|prompt)",
+                    "ignore\\s+(all\\s+|previous\\s+|prior\\s+|the\\s+)*+(instructions?|rules?|context|prompt)",
                     CASE_INSENSITIVE),
             Pattern.compile("forget\\s+(everything|all\\s+(rules|instructions)|prior\\s+context)", CASE_INSENSITIVE),
             Pattern.compile(

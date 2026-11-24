@@ -13,7 +13,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -364,27 +363,12 @@ class GoogleAiGeminiChatModelIT {
         assertThat(diceRolls.length).isEqualTo(3);
     }
 
-    private static class Color {
-        private String name;
-        private int red;
-        private int green;
-        private int blue;
-        private boolean muted;
-
-        @JsonCreator
-        public Color(
-                @JsonProperty("name") String name,
-                @JsonProperty("red") int red,
-                @JsonProperty("green") int green,
-                @JsonProperty("blue") int blue,
-                @JsonProperty("muted") boolean muted) {
-            this.name = name;
-            this.red = red;
-            this.green = green;
-            this.blue = blue;
-            this.muted = muted;
-        }
-    }
+    private record Color(
+            @JsonProperty(required = true) String name,
+            @JsonProperty(required = true) int red,
+            @JsonProperty(required = true) int green,
+            @JsonProperty(required = true) int blue,
+            @JsonProperty(required = true) boolean muted) {}
 
     @Test
     void should_deserialize_to_POJO() throws JsonProcessingException {
