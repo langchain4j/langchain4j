@@ -383,6 +383,9 @@ Bot bot = AiServices.builder(Bot.class)
     .build();
 ```
 
+`ToolSource.mcp(..)` requires a non-blank key. Set the key of the client with `DefaultMcpClient.Builder#key(..)`:
+without it, the key is a random UUID, which a guardrail cannot recognize the server by.
+
 More information on tool support in LangChain4j can be found [here](/tutorials/tools).
 
 ### Guarding MCP tools

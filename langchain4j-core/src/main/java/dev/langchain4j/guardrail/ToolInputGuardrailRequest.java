@@ -74,8 +74,8 @@ public final class ToolInputGuardrailRequest implements GuardrailRequest<ToolInp
 
     /**
      * Parses the tool arguments JSON into a read-only map, using the same lenient parsing as the default executor
-     * of local {@code @Tool} methods (null or blank arguments give an empty map; surrounding quotes, escaped quotes
-     * and trailing commas are normalized when the strict parse fails).
+     * of local {@code @Tool} methods (null or blank arguments, and the JSON literal {@code null}, give an empty map;
+     * surrounding quotes, escaped quotes and trailing commas are normalized when the strict parse fails).
      * <p>
      * This parity holds only for local {@code @Tool} methods. Other executors, such as MCP or programmatic ones,
      * may parse the raw arguments differently (for example strictly); {@link #arguments()} is the exact raw JSON
@@ -97,7 +97,7 @@ public final class ToolInputGuardrailRequest implements GuardrailRequest<ToolInp
      *
      * @return the parsed arguments, never null
      * @throws ToolArgumentsException if the arguments are not a valid JSON object (malformed
-     *         JSON, a non-object root, or the JSON literal {@code null})
+     *         JSON or a non-object root)
      * @since 1.25.0
      */
     public Map<String, Object> argumentsAsMap() {

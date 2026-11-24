@@ -1,7 +1,5 @@
 package dev.langchain4j.guardrail;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
-
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.internal.ToolArgumentsParser;
 import java.util.Collections;
@@ -25,9 +23,7 @@ final class ToolGuardrailArguments {
      */
     static Map<String, Object> asMap(String arguments) {
         try {
-            Map<String, Object> parsed = ToolArgumentsParser.argumentsAsMap(arguments);
-            // the JSON literal `null` parses to a null map
-            return freezeMap(ensureNotNull(parsed, "parsed arguments"));
+            return freezeMap(ToolArgumentsParser.argumentsAsMap(arguments));
         } catch (RuntimeException e) {
             throw new ToolArgumentsException(
                     "Tool arguments are not a valid JSON object: %s".formatted(e.getMessage()), e);

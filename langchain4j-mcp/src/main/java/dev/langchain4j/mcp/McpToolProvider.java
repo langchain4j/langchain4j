@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -278,33 +279,35 @@ public class McpToolProvider implements ToolProvider {
      * The server keys of the {@link ToolSource} of the tools of a client: its key, or none when it has no key.
      */
     private List<String> serverKeys(McpClient mcpClient) {
-        Objects.requireNonNull(mcpClient, "mcpClient");
-        String key;
+        return key(mcpClient).map(List::of).orElseGet(List::of);
+    }
+
+    /**
+     * The key of a client, or empty when its {@code key()} throws or is null or blank, which is logged once per client.
+     */
+    private Optional<String> key(McpClient mcpClient) {
+        Optional<String> key;
+
         try {
-            key = mcpClient.key();
+            key = Optional.ofNullable(mcpClient.key()).filter(it -> !isNullOrBlank(it));
         } catch (RuntimeException e) {
             // the key only labels the tools for tool guardrails: the tools of the client are still provided
+            key = Optional.empty();
             if (keylessClientsReported.add(mcpClient)) {
                 log.warn("Failed to get the key() of MCP client {}: tool guardrails see its tools as an MCP source "
                         + "without server keys", mcpClient.getClass().getName(), e);
             }
-            return List.of();
-        }
-        List<String> serverKeys = List.of();
-
-        if (isNullOrBlank(key)) {
-            if (keylessClientsReported.add(mcpClient)) {
-                log.warn(
-                        "MCP client {} has a null or blank key(): tool guardrails see its tools as an MCP source "
-                                + "without server keys, so a guardrail cannot route on this server. Set a key on the "
-                                + "client to route on it",
-                        mcpClient.getClass().getName());
-            }
-        } else {
-            serverKeys = List.of(key);
         }
 
-        return serverKeys;
+        if (key.isEmpty() && keylessClientsReported.add(mcpClient)) {
+            log.warn(
+                    "MCP client {} has a null or blank key(): tool guardrails see its tools as an MCP source "
+                            + "without server keys, so a guardrail cannot route on this server. Set a key on the "
+                            + "client to route on it",
+                    mcpClient.getClass().getName());
+        }
+
+        return key;
     }
 
     private static ToolSpecification addSearchBehaviorMetadata(ToolSpecification toolSpecification) {

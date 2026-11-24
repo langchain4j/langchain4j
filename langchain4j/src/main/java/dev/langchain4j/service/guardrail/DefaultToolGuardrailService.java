@@ -95,17 +95,15 @@ final class DefaultToolGuardrailService implements ToolGuardrailService {
     private static <P extends GuardrailRequest<P>, R extends GuardrailResult<R>> R execute(
             Optional<? extends GuardrailExecutor<?, P, R, ?, ?>> executor, P request, R noGuardrailsResult) {
         // a null result of an executor must not pass as "no guardrails"
-        return executor.isPresent()
-                ? ensureNotNull(executor.get().execute(request), "result of the guardrail executor")
-                : noGuardrailsResult;
+        return executor.map(it -> ensureNotNull(it.execute(request), "result of the guardrail executor"))
+                .orElse(noGuardrailsResult);
     }
 
     private static <P extends GuardrailRequest<P>, R extends GuardrailResult<R>> CompletableFuture<R> executeAsync(
             Optional<? extends GuardrailExecutor<?, P, R, ?, ?>> executor, P request, R noGuardrailsResult) {
         // a null future of an executor fails the future of failOnThrow instead of passing as "no guardrails"
-        return executor.isPresent()
-                ? executor.get().executeAsync(request)
-                : CompletableFuture.completedFuture(noGuardrailsResult);
+        return executor.<CompletableFuture<R>>map(it -> it.executeAsync(request))
+                .orElseGet(() -> CompletableFuture.completedFuture(noGuardrailsResult));
     }
 
     private static boolean hasGuardrails(Optional<? extends GuardrailExecutor<?, ?, ?, ?, ?>> executor) {

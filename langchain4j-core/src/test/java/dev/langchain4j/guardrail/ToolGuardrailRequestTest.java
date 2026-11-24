@@ -165,11 +165,12 @@ class ToolGuardrailRequestTest {
         assertThat(inputWithArguments("").argumentsAsMap()).isEmpty();
         assertThat(inputWithArguments("  ").argumentsAsMap()).isEmpty();
         assertThat(inputWithArguments("{}").argumentsAsMap()).isEmpty();
+        assertThat(inputWithArguments("null").argumentsAsMap()).isEmpty();
     }
 
     @Test
     void input_arguments_as_map_rejects_invalid_and_non_object_with_a_tool_arguments_exception() {
-        for (String bad : List.of("{not json", "[1,2]", "42", "null")) {
+        for (String bad : List.of("{not json", "[1,2]", "42")) {
             assertThatThrownBy(() -> inputWithArguments(bad).argumentsAsMap())
                     .as(bad)
                     .isExactlyInstanceOf(ToolArgumentsException.class)

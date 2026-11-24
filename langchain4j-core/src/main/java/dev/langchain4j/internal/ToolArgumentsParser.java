@@ -1,11 +1,12 @@
 package dev.langchain4j.internal;
 
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static java.util.function.Predicate.not;
 
 import dev.langchain4j.Internal;
 import java.lang.reflect.Type;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
@@ -28,23 +29,27 @@ public class ToolArgumentsParser {
     private ToolArgumentsParser() {}
 
     /**
-     * Converts a JSON arguments string to a map. Null or blank input gives an empty map.
+     * Converts a JSON arguments string to a map. Null or blank input, and the JSON literal {@code null}, give an
+     * empty map.
      * If the first parse fails, the input is normalized (surrounding quotes removed, escaped quotes
      * unescaped, trailing commas removed) and parsed once more; a second failure propagates.
      *
      * @param arguments json string
-     * @return the parsed map (mutable; may be null if the JSON is the literal {@code null})
+     * @return the parsed map (mutable, unless it is empty), never {@code null}
      */
-    public static @Nullable Map<String, Object> argumentsAsMap(@Nullable String arguments) {
-        if (isNullOrBlank(arguments)) {
-            return Map.of();
-        }
+    public static Map<String, Object> argumentsAsMap(@Nullable String arguments) {
+        // the JSON literal null parses to a null map, which Optional.map turns into an empty Optional
+        return Optional.ofNullable(arguments)
+                .filter(not(Utils::isNullOrBlank))
+                .map(ToolArgumentsParser::parseLeniently)
+                .orElseGet(Map::of);
+    }
 
+    private static @Nullable Map<String, Object> parseLeniently(String arguments) {
         try {
             return Json.fromJson(arguments, MAP_TYPE);
         } catch (Exception ignored) {
-            String normalizedArguments = removeTrailingComma(normalizeJsonString(arguments));
-            return Json.fromJson(normalizedArguments, MAP_TYPE);
+            return Json.fromJson(removeTrailingComma(normalizeJsonString(arguments)), MAP_TYPE);
         }
     }
 

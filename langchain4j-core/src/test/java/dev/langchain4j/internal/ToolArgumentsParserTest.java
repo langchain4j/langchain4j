@@ -20,6 +20,11 @@ class ToolArgumentsParserTest {
     }
 
     @Test
+    void the_json_literal_null_gives_an_empty_map() {
+        assertThat(ToolArgumentsParser.argumentsAsMap("null")).isNotNull().isEmpty();
+    }
+
+    @Test
     void strict_and_lenient_forms() {
         assertThat(ToolArgumentsParser.argumentsAsMap("{\"a\":1}")).containsEntry("a", 1);
         assertThat(ToolArgumentsParser.argumentsAsMap("{\"a\":1,}")).containsEntry("a", 1);

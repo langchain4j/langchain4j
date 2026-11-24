@@ -615,13 +615,15 @@ public final class ToolRound {
 
     private static Optional<ToolGuardrailStage> fatalStage(Throwable error) {
         Throwable cause = unwrapCompletionException(error);
+        ToolGuardrailStage stage = null;
+
         if (cause instanceof ToolInputGuardrailException) {
-            return Optional.of(ToolGuardrailStage.INPUT);
+            stage = ToolGuardrailStage.INPUT;
+        } else if (cause instanceof ToolOutputGuardrailException) {
+            stage = ToolGuardrailStage.OUTPUT;
         }
-        if (cause instanceof ToolOutputGuardrailException) {
-            return Optional.of(ToolGuardrailStage.OUTPUT);
-        }
-        return Optional.empty();
+
+        return Optional.ofNullable(stage);
     }
 
     private static CompensationReason compensationReason(ToolGuardrailStage stage) {
