@@ -3,9 +3,7 @@ package dev.langchain4j.model.bedrock;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.bedrock.AbstractBedrockChatModel.THINKING_SIGNATURE_KEY;
-import static dev.langchain4j.model.bedrock.AbstractBedrockChatModel.IMAGE_URL_NOT_SUPPORTED;
-import static dev.langchain4j.model.bedrock.AbstractBedrockChatModel.PDF_URL_NOT_SUPPORTED;
-import static dev.langchain4j.model.bedrock.AbstractBedrockChatModel.documentName;
+import static dev.langchain4j.model.bedrock.AbstractBedrockChatModel.base64Data;
 import static dev.langchain4j.model.bedrock.Utils.extractAndValidateFormat;
 
 import dev.langchain4j.Internal;
@@ -143,13 +141,13 @@ final class BedrockBatchConverseMapper {
             if (content instanceof TextContent text) {
                 blocks.add(Map.of("text", text.text()));
             } else if (content instanceof ImageContent image) {
-                String bytes = base64(image.image().base64Data(), IMAGE_URL_NOT_SUPPORTED);
+                String bytes = base64Data(image.image());
                 String format = extractAndValidateFormat(image.image());
                 blocks.add(Map.of("image", Map.of("format", format, "source", Map.of("bytes", bytes))));
             } else if (content instanceof PdfFileContent pdf) {
-                String bytes = base64(pdf.pdfFile().base64Data(), PDF_URL_NOT_SUPPORTED);
+                String bytes = base64Data(pdf.pdfFile());
                 String name = documentNames.distinct(
-                        documentName(pdf.pdfFile(), Base64.getDecoder().decode(bytes)));
+                        DocumentNames.nameOf(pdf.pdfFile(), () -> Base64.getDecoder().decode(bytes)));
                 blocks.add(Map.of("document", Map.of("format", "pdf", "name", name, "source", Map.of("bytes", bytes))));
             } else {
                 throw new UnsupportedFeatureException(
@@ -260,13 +258,6 @@ final class BedrockBatchConverseMapper {
     @SuppressWarnings("unchecked")
     private static Map<String, Object> cast(Map<?, ?> map) {
         return (Map<String, Object>) map;
-    }
-
-    private static String base64(@Nullable String base64Data, String urlNotSupported) {
-        if (base64Data == null) {
-            throw new UnsupportedFeatureException(urlNotSupported);
-        }
-        return base64Data;
     }
 
     private static void putIfNotNull(Map<String, Object> map, String key, @Nullable Object value) {

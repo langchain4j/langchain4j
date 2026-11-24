@@ -17,7 +17,6 @@ import static dev.langchain4j.model.bedrock.GuardrailAssessment.Policy.WORD;
 import static dev.langchain4j.model.bedrock.Utils.extractAndValidateFormat;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
-import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
 import static software.amazon.awssdk.core.SdkBytes.fromByteArray;
 import static software.amazon.awssdk.services.bedrockruntime.model.OutputFormatType.JSON_SCHEMA;
@@ -25,6 +24,7 @@ import static software.amazon.awssdk.services.bedrockruntime.model.OutputFormatT
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -64,6 +64,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
@@ -364,26 +365,31 @@ abstract class AbstractBedrockChatModel {
 
     private static List<Message> withDistinctDocumentNames(List<Message> messages) {
         DocumentNames documentNames = new DocumentNames();
-        List<Message> result = new ArrayList<>(messages.size());
-        for (Message message : messages) {
-            List<ContentBlock> blocks = new ArrayList<>(message.content().size());
-            boolean renamed = false;
-            for (ContentBlock block : message.content()) {
-                DocumentBlock document = block.document();
-                if (document != null && document.name() != null) {
-                    String name = documentNames.distinct(document.name());
-                    if (!name.equals(document.name())) {
-                        block = block.toBuilder()
-                                .document(document.toBuilder().name(name).build())
-                                .build();
-                        renamed = true;
-                    }
+        for (int i = 0; i < messages.size(); i++) {
+            List<ContentBlock> blocks = messages.get(i).content();
+            List<ContentBlock> renamedBlocks = null;
+            for (int j = 0; j < blocks.size(); j++) {
+                DocumentBlock document = blocks.get(j).document();
+                if (document == null || document.name() == null) {
+                    continue;
                 }
-                blocks.add(block);
+                String name = documentNames.distinct(document.name());
+                if (!name.equals(document.name())) {
+                    if (renamedBlocks == null) {
+                        renamedBlocks = new ArrayList<>(blocks);
+                    }
+                    renamedBlocks.set(
+                            j,
+                            blocks.get(j).toBuilder()
+                                    .document(document.toBuilder().name(name).build())
+                                    .build());
+                }
             }
-            result.add(renamed ? message.toBuilder().content(blocks).build() : message);
+            if (renamedBlocks != null) {
+                messages.set(i, messages.get(i).toBuilder().content(renamedBlocks).build());
+            }
         }
-        return result;
+        return messages;
     }
 
     private boolean shouldUseGuardContent(
@@ -446,6 +452,7 @@ abstract class AbstractBedrockChatModel {
             return null;
         }
         if (content instanceof ImageContent imageContent) {
+            base64Data(imageContent.image());
             String imgFormat = extractAndValidateFormat(imageContent.image());
             if (isGuardContentImageFormatSupported(imgFormat)) {
                 return null;
@@ -615,17 +622,14 @@ abstract class AbstractBedrockChatModel {
             return ContentBlock.builder().text(text.text()).build();
         } else if (content instanceof PdfFileContent pdfFileContent) {
             PdfFile pdfFile = pdfFileContent.pdfFile();
-            if (isNull(pdfFile.base64Data())) {
-                throw new UnsupportedFeatureException(PDF_URL_NOT_SUPPORTED);
-            }
-            byte[] bytes = Base64.getDecoder().decode(pdfFile.base64Data());
+            byte[] bytes = Base64.getDecoder().decode(base64Data(pdfFile));
             return ContentBlock.builder()
                     .document(DocumentBlock.builder()
                             .format(DocumentFormat.PDF)
                             .source(DocumentSource.builder()
                                     .bytes(fromByteArray(bytes))
                                     .build())
-                            .name(documentName(pdfFile, bytes))
+                            .name(DocumentNames.nameOf(pdfFile, () -> bytes))
                             .build())
                     .build();
         } else if (content instanceof ImageContent image) {
@@ -662,10 +666,26 @@ abstract class AbstractBedrockChatModel {
     }
 
     private static SdkBytes imageBytes(ImageContent imageContent) {
-        if (isNull(imageContent.image().base64Data())) {
-            throw new UnsupportedFeatureException(IMAGE_URL_NOT_SUPPORTED);
+        return fromByteArray(Base64.getDecoder().decode(base64Data(imageContent.image())));
+    }
+
+    static String base64Data(Image image) {
+        return base64Data(image.base64Data(), image.url(), "image", IMAGE_URL_NOT_SUPPORTED);
+    }
+
+    static String base64Data(PdfFile pdfFile) {
+        return base64Data(pdfFile.base64Data(), pdfFile.url(), "PDF file", PDF_URL_NOT_SUPPORTED);
+    }
+
+    private static String base64Data(
+            @Nullable String base64Data, @Nullable URI url, String mediaType, String urlNotSupportedMessage) {
+        if (base64Data != null) {
+            return base64Data;
         }
-        return fromByteArray(Base64.getDecoder().decode(imageContent.image().base64Data()));
+        if (url == null) {
+            throw new IllegalArgumentException("The " + mediaType + " has neither base64 data nor a URL");
+        }
+        throw new UnsupportedFeatureException(urlNotSupportedMessage);
     }
 
     private ContentBlock createGuardedImageBlock(ImageContent imageContent) {
@@ -1289,12 +1309,6 @@ abstract class AbstractBedrockChatModel {
         if (Objects.isNull(d)) {
             return null;
         } else return d.floatValue();
-    }
-
-    static String documentName(PdfFile pdfFile, byte[] content) {
-        return pdfFile.url() == null
-                ? DocumentNames.nameOf(content)
-                : extractFilenameWithoutExtensionFromUri(pdfFile.url());
     }
 
     protected static String extractFilenameWithoutExtensionFromUri(URI uri) {

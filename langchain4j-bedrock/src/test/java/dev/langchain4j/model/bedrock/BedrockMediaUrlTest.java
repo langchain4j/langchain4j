@@ -13,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
@@ -44,6 +45,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import software.amazon.awssdk.awscore.DefaultAwsResponseMetadata;
 import software.amazon.awssdk.core.SdkBytes;
@@ -118,8 +120,9 @@ class BedrockMediaUrlTest {
         verify(client, never()).converse(any(ConverseRequest.class));
     }
 
-    @Test
-    void chat_should_reject_guarded_images_given_by_url() {
+    @ParameterizedTest
+    @ValueSource(strings = {"https://example.com/cat.png", "https://example.com/images/42"})
+    void chat_should_reject_guarded_images_given_by_url(String url) {
 
         // given
         BedrockRuntimeClient client = mock(BedrockRuntimeClient.class);
@@ -136,10 +139,31 @@ class BedrockMediaUrlTest {
                 .build();
 
         // when-then
-        assertThatThrownBy(() -> model.chat(
-                        UserMessage.from(TextContent.from("describe"), ImageContent.from("https://example.com/cat.png"))))
+        assertThatThrownBy(() -> model.chat(UserMessage.from(TextContent.from("describe"), ImageContent.from(url))))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessage(IMAGE_URL_NOT_SUPPORTED);
+        verify(client, never()).converse(any(ConverseRequest.class));
+    }
+
+    @Test
+    void chat_should_reject_media_with_neither_base64_data_nor_a_url() {
+
+        // given
+        BedrockRuntimeClient client = mock(BedrockRuntimeClient.class);
+        ChatModel model =
+                BedrockChatModel.builder().modelId("test-model").client(client).build();
+
+        // when-then
+        assertThatThrownBy(() -> model.chat(UserMessage.from(
+                        TextContent.from("describe"),
+                        ImageContent.from(Image.builder().mimeType("image/png").build()))))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The image has neither base64 data nor a URL");
+        assertThatThrownBy(() -> model.chat(UserMessage.from(
+                        TextContent.from("describe"),
+                        PdfFileContent.from(PdfFile.builder().build()))))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The PDF file has neither base64 data nor a URL");
         verify(client, never()).converse(any(ConverseRequest.class));
     }
 
@@ -315,6 +339,25 @@ class BedrockMediaUrlTest {
     }
 
     @Test
+    void should_give_documents_distinct_names_when_a_suffix_matches_another_name() {
+
+        // given
+        BedrockRuntimeClient client = mock(BedrockRuntimeClient.class);
+        when(client.converse(any(ConverseRequest.class))).thenReturn(converseResponse());
+        ChatModel model =
+                BedrockChatModel.builder().modelId("test-model").client(client).build();
+
+        // when
+        model.chat(UserMessage.from(
+                pdf("https://example.com/annual.pdf", PDF_BYTES),
+                pdf("https://example.com/annual.pdf", IMAGE_BYTES),
+                pdf("https://example.com/annual-2.pdf", new byte[] {7})));
+
+        // then
+        assertThat(documentNames(capturedRequest(client).messages())).containsExactly("annual", "annual-2", "annual-2-2");
+    }
+
+    @Test
     void streaming_should_give_documents_distinct_names_after_their_content() throws Exception {
 
         // given
@@ -339,6 +382,13 @@ class BedrockMediaUrlTest {
         assertThat(handler.response).succeedsWithin(10, SECONDS);
         String expected = expectedDocumentName(PDF_BYTES);
         assertThat(documentNames(streamRequest.get().messages())).containsExactly(expected, expected + "-2");
+    }
+
+    private static PdfFileContent pdf(String url, byte[] content) {
+        return PdfFileContent.from(PdfFile.builder()
+                .url(url)
+                .base64Data(Base64.getEncoder().encodeToString(content))
+                .build());
     }
 
     private static String expectedMessage(Content content) {
