@@ -84,6 +84,11 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
     }
 
     @Override
+    protected boolean supportsSingleImageInputAsPublicURL() {
+        return false; // Bedrock needs the image content
+    }
+
+    @Override
     protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(ChatModel model) {
         return BedrockChatResponseMetadata.class;
     }

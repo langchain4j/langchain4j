@@ -1,12 +1,8 @@
 package dev.langchain4j.model.ollama;
 
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.model.ModelProvider.OLLAMA;
-import static dev.langchain4j.model.ollama.InternalOllamaHelper.images;
-import static dev.langchain4j.model.ollama.InternalOllamaHelper.toOllamaChatRequest;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
-import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.StreamingChatModel;
@@ -31,13 +27,7 @@ public class OllamaStreamingChatModel extends OllamaBaseChatModel implements Str
     @Override
     public void doChat(ChatRequest chatRequest, StreamingChatResponseHandler handler) {
         validate(chatRequest.parameters());
-        ensureNotEmpty(chatRequest.messages(), "messages");
-        MediaPrefetcher.prefetchThenStream(
-                mediaFetcher,
-                ImageUtils.mediaUrls(images(chatRequest.messages())),
-                handler,
-                prefetched -> client.streamingChat(
-                        toOllamaChatRequest(chatRequest, true, prefetched), this.returnThinking, handler));
+        client.streamingChat(chatRequest, this.returnThinking, handler);
     }
 
     @Override

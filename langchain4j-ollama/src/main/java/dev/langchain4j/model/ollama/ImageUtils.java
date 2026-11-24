@@ -1,49 +1,33 @@
 package dev.langchain4j.model.ollama;
 
-import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-
 import dev.langchain4j.Internal;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.media.MediaFetchRequest;
-import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.ImageContent;
-import java.net.URI;
-import java.util.ArrayList;
-import java.util.Base64;
+import dev.langchain4j.exception.UnsupportedFeatureException;
+
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Every download of an image in this module goes through {@link #base64Image(Image, MediaFetcher)}. The asynchronous
- * and streaming paths download the URLs of {@link #mediaUrls(List)} first, without blocking.
- */
 @Internal
 class ImageUtils {
 
-    static List<String> base64EncodeImageList(List<ImageContent> contentList, MediaFetcher mediaFetcher) {
+    static final String IMAGE_URL_NOT_SUPPORTED = "Ollama does not support images given by URL; it needs the image content."
+            + " Create the content from a file or from its bytes, for example ImageContent.from(Path, String)"
+            + " or ImageContent.from(String base64Data, String mimeType)";
+
+    static List<String> base64EncodeImageList(List<ImageContent> contentList) {
         return contentList.stream()
                 .map(ImageContent::image)
-                .map(image -> base64Image(image, mediaFetcher))
+                .map(ImageUtils::base64Image)
                 .collect(Collectors.toList());
     }
 
-    static String base64Image(Image image, MediaFetcher mediaFetcher) {
-        if (!isNullOrEmpty(image.base64Data())) {
-            return image.base64Data();
-        }
-        return Base64.getEncoder().encodeToString(mediaFetcher.fetch(MediaFetchRequest.from(image.url())).bytes());
-    }
+    static String base64Image(Image image) {
 
-    /**
-     * Returns the URLs of the images that {@link #base64Image(Image, MediaFetcher)} would download.
-     */
-    static List<URI> mediaUrls(List<Image> images) {
-        List<URI> urls = new ArrayList<>();
-        for (Image image : images) {
-            if (isNullOrEmpty(image.base64Data()) && image.url() != null) {
-                urls.add(image.url());
-            }
+        if (image.base64Data() != null && !image.base64Data().isEmpty()) {
+            return image.base64Data();
+        } else {
+            throw new UnsupportedFeatureException(IMAGE_URL_NOT_SUPPORTED);
         }
-        return urls;
     }
 }

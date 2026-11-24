@@ -24,9 +24,6 @@ import com.google.genai.types.WordInfo;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.media.DefaultMediaFetcher;
-import dev.langchain4j.data.media.FetchedMedia;
-import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
@@ -38,7 +35,6 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
-import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.net.URI;
@@ -46,25 +42,20 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class GoogleGenAiContentMapperTest {
-
-    private static final MediaFetcher NO_DOWNLOADS = request -> {
-        throw new AssertionError("Unexpected download of " + request.url());
-    };
 
     @Test
     void should_return_null_when_no_system_messages() {
@@ -104,7 +95,7 @@ class GoogleGenAiContentMapperTest {
         List<ChatMessage> messages =
                 List.of(SystemMessage.from("System"), UserMessage.from("Hello"), AiMessage.from("Hi"));
 
-        List<Content> result = GoogleGenAiContentMapper.toContents(messages, NO_DOWNLOADS);
+        List<Content> result = GoogleGenAiContentMapper.toContents(messages);
 
         assertThat(result).hasSize(2);
     }
@@ -113,7 +104,7 @@ class GoogleGenAiContentMapperTest {
     void should_convert_user_message_with_text() {
         UserMessage message = UserMessage.from("Hello world");
 
-        Content result = GoogleGenAiContentMapper.toContent(message, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(message);
 
         assertThat(result.role().get()).isEqualTo("user");
         assertThat(result.parts().get().get(0).text().get()).isEqualTo("Hello world");
@@ -126,7 +117,7 @@ class GoogleGenAiContentMapperTest {
                 Image.builder().base64Data(base64Data).mimeType("image/png").build();
         UserMessage message = UserMessage.from(new ImageContent(image));
 
-        Content result = GoogleGenAiContentMapper.toContent(message, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(message);
 
         assertThat(result.role().get()).isEqualTo("user");
         assertThat(result.parts().get()).hasSize(1);
@@ -137,33 +128,68 @@ class GoogleGenAiContentMapperTest {
         Image image = Image.builder().url(URI.create("gs://bucket/image.png")).build();
         UserMessage message = UserMessage.from(new ImageContent(image));
 
-        Content result = GoogleGenAiContentMapper.toContent(message, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(message);
 
         assertThat(result.role().get()).isEqualTo("user");
         assertThat(result.parts().get()).hasSize(1);
     }
 
     @Test
-    void should_convert_user_message_with_image_read_from_local_file(@TempDir Path tempDir) throws Exception {
+    void should_convert_user_message_with_image_read_from_a_local_file(@TempDir Path tempDir) throws Exception {
         Path imgFile = tempDir.resolve("test.png");
         Files.write(imgFile, "fake-image-data".getBytes());
 
         UserMessage message = UserMessage.from(ImageContent.from(imgFile, "image/png"));
 
-        Content result = GoogleGenAiContentMapper.toContent(message, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(message);
 
         assertThat(result.role().get()).isEqualTo("user");
-        assertThat(result.parts().get()).hasSize(1);
-        Blob inlineData = result.parts().get().get(0).inlineData().orElseThrow();
-        assertThat(inlineData.data().orElseThrow()).isEqualTo("fake-image-data".getBytes());
-        assertThat(inlineData.mimeType()).hasValue("image/png");
+        Blob blob = result.parts().get().get(0).inlineData().get();
+        assertThat(blob.data()).hasValue("fake-image-data".getBytes());
+        assertThat(blob.mimeType()).hasValue("image/png");
+    }
+
+    static Stream<Arguments> mediaGivenByUrl() {
+        return Stream.of(
+                Arguments.of(ImageContent.from("https://example.com/photos/cat.png"), "image/png"),
+                Arguments.of(ImageContent.from("http://example.com/photos/cat.png"), "image/png"),
+                Arguments.of(AudioContent.from("https://example.com/audio/speech.mp3"), "audio/mp3"),
+                Arguments.of(VideoContent.from("https://example.com/video/clip.mp4"), "video/mp4"),
+                Arguments.of(PdfFileContent.from("https://example.com/docs/report.pdf"), "application/pdf"),
+                Arguments.of(ImageContent.from("gs://bucket/image.png"), "image/png"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("mediaGivenByUrl")
+    void should_pass_media_urls_on_to_gemini(dev.langchain4j.data.message.Content content, String mimeType) {
+        Content result = GoogleGenAiContentMapper.toContent(UserMessage.from(content));
+
+        Part part = result.parts().get().get(0);
+        assertThat(part.inlineData()).isEmpty();
+        assertThat(part.fileData().get().fileUri()).hasValue(urlOf(content));
+        assertThat(part.fileData().get().mimeType()).hasValue(mimeType);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"file:///etc/hosts.png", "/home/me/cat.png", "cat.png", "ftp://example.com/cat.png"})
+    void should_reject_media_given_by_other_urls(String url) {
+        for (dev.langchain4j.data.message.Content content : List.of(
+                ImageContent.from(url),
+                AudioContent.from(url),
+                VideoContent.from(url),
+                PdfFileContent.from(url))) {
+
+            assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(UserMessage.from(content)))
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessage(GoogleGenAiContentMapper.URL_NOT_SUPPORTED);
+        }
     }
 
     @Test
     void should_convert_ai_message_with_text() {
         AiMessage message = AiMessage.from("I'm an AI");
 
-        Content result = GoogleGenAiContentMapper.toContent(message, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(message);
 
         assertThat(result.role().get()).isEqualTo("model");
         assertThat(result.parts().get().get(0).text().get()).isEqualTo("I'm an AI");
@@ -177,7 +203,7 @@ class GoogleGenAiContentMapperTest {
                 .build();
         AiMessage message = AiMessage.from(toolRequest);
 
-        Content result = GoogleGenAiContentMapper.toContent(message, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(message);
 
         assertThat(result.role().get()).isEqualTo("model");
         List<Part> parts = result.parts().get();
@@ -191,7 +217,7 @@ class GoogleGenAiContentMapperTest {
                 ToolExecutionRequest.builder().name("doSomething").arguments("").build();
         AiMessage message = AiMessage.from(toolRequest);
 
-        Content result = GoogleGenAiContentMapper.toContent(message, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(message);
 
         assertThat(result.role().get()).isEqualTo("model");
         assertThat(result.parts().get().get(0).functionCall().get().name().get())
@@ -208,7 +234,7 @@ class GoogleGenAiContentMapperTest {
 
         // Not asserted by exception type: the configured JSON codec decides that, and this module
         // is also run against the Jackson 3 codec, which reports a different one.
-        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message, NO_DOWNLOADS))
+        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message))
                 .isInstanceOf(RuntimeException.class)
                 .hasCauseInstanceOf(Exception.class);
     }
@@ -221,7 +247,7 @@ class GoogleGenAiContentMapperTest {
                 .build();
         AiMessage message = AiMessage.from(toolRequest);
 
-        Content result = GoogleGenAiContentMapper.toContent(message, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(message);
 
         assertThat(result.role().get()).isEqualTo("model");
     }
@@ -232,7 +258,7 @@ class GoogleGenAiContentMapperTest {
                 ToolExecutionResultMessage.from("call-1", "getWeather", "Sunny, 25C"),
                 ToolExecutionResultMessage.from("call-2", "getWeather", "Rainy, 15C"));
 
-        List<Content> results = GoogleGenAiContentMapper.toContents(messages, NO_DOWNLOADS);
+        List<Content> results = GoogleGenAiContentMapper.toContents(messages);
 
         assertThat(results).hasSize(1);
         Content result = results.get(0);
@@ -261,7 +287,7 @@ class GoogleGenAiContentMapperTest {
             }
         };
 
-        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(unknownMessage, NO_DOWNLOADS))
+        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(unknownMessage))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Unknown message type");
     }
@@ -562,264 +588,29 @@ class GoogleGenAiContentMapperTest {
     }
 
     @Test
-    void should_not_read_local_files_given_as_urls_with_default_media_fetcher(@TempDir Path tempDir)
-            throws Exception {
-        Path imgFile = tempDir.resolve("test.png");
-        Files.write(imgFile, "fake-image-data".getBytes());
-        MediaFetcher defaultMediaFetcher = DefaultMediaFetcher.builder().build();
-
-        for (UserMessage message : List.of(
-                UserMessage.from(ImageContent.from(imgFile.toUri())),
-                UserMessage.from(ImageContent.from(imgFile.toString())),
-                UserMessage.from(PdfFileContent.from(URI.create("file:///etc/passwd.pdf"))),
-                UserMessage.from(AudioContent.from("file:///etc/passwd.mp3")),
-                UserMessage.from(VideoContent.from("file:///etc/passwd.mp4")),
-                UserMessage.from(PdfFileContent.from(URI.create("file:///home/app/settings.json"))))) {
-            assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message, defaultMediaFetcher))
-                    .isExactlyInstanceOf(InvalidRequestException.class)
-                    .hasMessageContaining("Only http and https URLs can be fetched")
-                    .hasMessageContaining("ImageContent.from(Path, String)");
-        }
-    }
-
-    @Test
-    void should_download_media_urls_with_media_fetcher() {
-        List<URI> downloaded = new ArrayList<>();
-        MediaFetcher mediaFetcher = request -> {
-            downloaded.add(request.url());
-            return FetchedMedia.from(
-                    request.url().getPath().getBytes(StandardCharsets.UTF_8), "application/octet-stream");
-        };
-        UserMessage message = UserMessage.from(
-                ImageContent.from("https://example.com/cat.png"),
-                AudioContent.from("https://example.com/audio.mp3"),
-                VideoContent.from("https://example.com/video.mp4"),
-                PdfFileContent.from("https://example.com/document.pdf"));
-
-        Content result = GoogleGenAiContentMapper.toContent(message, mediaFetcher);
-
-        assertThat(downloaded)
-                .containsExactly(
-                        URI.create("https://example.com/cat.png"),
-                        URI.create("https://example.com/audio.mp3"),
-                        URI.create("https://example.com/video.mp4"),
-                        URI.create("https://example.com/document.pdf"));
-        assertThat(result.parts().get())
-                .extracting(part -> part.inlineData().orElseThrow().mimeType().orElseThrow())
-                .containsExactly("image/png", "audio/mp3", "video/mp4", "application/pdf");
-        assertThat(result.parts().get().get(0).inlineData().orElseThrow().data().orElseThrow())
-                .isEqualTo("/cat.png".getBytes(StandardCharsets.UTF_8));
-    }
-
-    @Test
-    void should_use_mime_type_of_download_when_url_has_no_extension() {
-        MediaFetcher mediaFetcher = request -> FetchedMedia.from("fake-image-data".getBytes(), "image/webp");
-        UserMessage message = UserMessage.from(ImageContent.from("https://example.com/images?id=42"));
-
-        Content result = GoogleGenAiContentMapper.toContent(message, mediaFetcher);
-
-        assertThat(result.parts().get().get(0).inlineData().orElseThrow().mimeType())
-                .hasValue("image/webp");
-    }
-
-    @Test
-    void should_fail_when_mime_type_is_unknown_after_download() {
-        MediaFetcher mediaFetcher = request -> FetchedMedia.from("fake-image-data".getBytes());
-        UserMessage message = UserMessage.from(ImageContent.from("https://example.com/images?id=42"));
-
-        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message, mediaFetcher))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unable to detect the MIME type");
-    }
-
-    @Test
     void should_convert_user_message_with_image_url_and_explicit_mime_type() {
-        MediaFetcher mediaFetcher = request -> FetchedMedia.from("fake-image-data".getBytes(), "image/webp");
         Image image = Image.builder()
-                .url("https://example.com/test.dat")
+                .url("https://example.com/photos?id=42")
                 .mimeType("image/png")
                 .build();
         UserMessage message = UserMessage.from(new ImageContent(image));
 
-        Content result = GoogleGenAiContentMapper.toContent(message, mediaFetcher);
+        Content result = GoogleGenAiContentMapper.toContent(message);
 
         assertThat(result.parts().get()).hasSize(1);
-        assertThat(result.parts().get().get(0).inlineData().orElseThrow().mimeType())
-                .hasValue("image/png");
+        assertThat(result.parts().get().get(0).fileData().get().fileUri()).hasValue("https://example.com/photos?id=42");
+        assertThat(result.parts().get().get(0).fileData().get().mimeType()).hasValue("image/png");
     }
 
-    @Test
-    void should_pass_cloud_storage_urls_on_without_downloading() {
-        UserMessage message = UserMessage.from(
-                ImageContent.from("gs://bucket/image.png"), PdfFileContent.from("gs://bucket/document.pdf"));
-
-        Content result = GoogleGenAiContentMapper.toContent(message, NO_DOWNLOADS);
-
-        assertThat(result.parts().get())
-                .extracting(part -> part.fileData().orElseThrow().fileUri().orElseThrow())
-                .containsExactly("gs://bucket/image.png", "gs://bucket/document.pdf");
-    }
-
-    @Test
-    void should_download_images_of_tool_execution_results_with_media_fetcher() {
-        List<URI> downloaded = new ArrayList<>();
-        MediaFetcher mediaFetcher = request -> {
-            downloaded.add(request.url());
-            return FetchedMedia.from("png-bytes".getBytes(), "image/png");
-        };
-        ToolExecutionResultMessage toolMessage = ToolExecutionResultMessage.builder()
-                .id("call-46")
-                .toolName("take_screenshot")
-                .contents(List.of(ImageContent.from("https://example.com/screenshot")))
-                .build();
-
-        List<Content> contents = GoogleGenAiContentMapper.toContents(List.of(toolMessage), false, mediaFetcher);
-
-        assertThat(downloaded).containsExactly(URI.create("https://example.com/screenshot"));
-        assertThat(contents.get(0).parts().orElseThrow().get(1).inlineData().orElseThrow().mimeType())
-                .hasValue("image/png");
-    }
-
-    static Stream<Arguments> contentsWithMimeTypeOfDownloadThatDoesNotFit() {
-        return Stream.of(
-                Arguments.of(VideoContent.from("https://www.youtube.com/watch?v=abc123"), "text/html"),
-                Arguments.of(VideoContent.from("https://www.youtube.com/watch?v=abc123"), "application/octet-stream"),
-                Arguments.of(ImageContent.from("https://www.youtube.com/watch?v=abc123"), "text/html"),
-                Arguments.of(ImageContent.from("https://www.youtube.com/watch?v=abc123"), "application/octet-stream"),
-                Arguments.of(AudioContent.from("https://www.youtube.com/watch?v=abc123"), "video/mp4"));
-    }
-
-    @ParameterizedTest
-    @MethodSource("contentsWithMimeTypeOfDownloadThatDoesNotFit")
-    void should_not_use_mime_type_of_download_that_does_not_fit_the_content(
-            dev.langchain4j.data.message.Content content, String reportedMimeType) {
-        MediaFetcher mediaFetcher = request -> FetchedMedia.from("<html></html>".getBytes(), reportedMimeType);
-        UserMessage message = UserMessage.from(content);
-
-        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message, mediaFetcher))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unable to detect the MIME type of 'https://www.youtube.com/...'")
-                .hasMessageContaining("the server answered with " + reportedMimeType)
-                .hasMessageNotContaining("watch")
-                .hasMessageNotContaining("abc123");
-    }
-
-    @Test
-    void should_use_mime_type_of_download_that_fits_the_content() {
-        MediaFetcher mediaFetcher = request -> FetchedMedia.from(new byte[] {1, 2, 3}, switch (request.url().getPath()) {
-            case "/audio" -> "audio/ogg";
-            case "/video" -> "video/webm";
-            case "/document" -> "application/pdf";
-            default -> "image/avif";
-        });
-        UserMessage message = UserMessage.from(
-                ImageContent.from("https://example.com/image"),
-                AudioContent.from("https://example.com/audio"),
-                VideoContent.from("https://example.com/video"),
-                PdfFileContent.from("https://example.com/document"));
-
-        Content result = GoogleGenAiContentMapper.toContent(message, mediaFetcher);
-
-        assertThat(result.parts().get())
-                .extracting(part -> part.inlineData().orElseThrow().mimeType().orElseThrow())
-                .containsExactly("image/avif", "audio/ogg", "video/webm", "application/pdf");
-    }
-
-    @Test
-    void should_show_only_scheme_and_host_of_cloud_storage_url_when_mime_type_is_unknown() {
-        UserMessage message = UserMessage.from(ImageContent.from("gs://bucket/private/object"));
-
-        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message, NO_DOWNLOADS))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Unable to detect the MIME type of 'gs://bucket/...'. Please provide it explicitly.");
-    }
-
-    @Test
-    void should_download_exactly_the_media_urls_that_are_prefetched() {
-        String base64 = Base64.getEncoder().encodeToString("bytes".getBytes(StandardCharsets.UTF_8));
-        List<ChatMessage> messages = List.of(
-                SystemMessage.from("system"),
-                UserMessage.from(
-                        TextContent.from("describe"),
-                        ImageContent.from("https://example.com/cat.png"),
-                        ImageContent.from("https://example.com/images?id=42"),
-                        ImageContent.from(base64, "image/png"),
-                        ImageContent.from("data:image/png;base64," + base64),
-                        ImageContent.from("gs://bucket/image.png"),
-                        ImageContent.from("file:///home/me/cat.png"),
-                        ImageContent.from("cat.png"),
-                        AudioContent.from("https://example.com/audio.mp3"),
-                        AudioContent.from(base64, "audio/mp3"),
-                        AudioContent.from(Audio.builder()
-                                .binaryData("bytes".getBytes(StandardCharsets.UTF_8))
-                                .mimeType("audio/wav")
-                                .build()),
-                        VideoContent.from("https://example.com/video.mp4"),
-                        VideoContent.from("gs://bucket/video.mp4"),
-                        VideoContent.from(base64, "video/mp4"),
-                        PdfFileContent.from("https://example.com/document.pdf"),
-                        PdfFileContent.from("file:///home/me/report.pdf"),
-                        PdfFileContent.from(base64, "application/pdf")),
-                AiMessage.from("answer"),
-                UserMessage.from(
-                        ImageContent.from("https://example.com/cat.png"), ImageContent.from("https://example.com/dog.jpg")),
-                AiMessage.from(ToolExecutionRequest.builder()
-                        .id("call-1")
-                        .name("take_screenshot")
-                        .arguments("{}")
-                        .build()),
-                ToolExecutionResultMessage.builder()
-                        .id("call-1")
-                        .toolName("take_screenshot")
-                        .contents(List.of(
-                                TextContent.from("done"),
-                                ImageContent.from("https://example.com/screenshot"),
-                                ImageContent.from(base64, "image/png")))
-                        .build());
-        List<URI> downloaded = new ArrayList<>();
-        MediaFetcher mediaFetcher = request -> {
-            downloaded.add(request.url());
-            return FetchedMedia.from("bytes".getBytes(StandardCharsets.UTF_8), "image/png");
-        };
-
-        GoogleGenAiContentMapper.toContents(messages, false, mediaFetcher);
-
-        assertThat(Set.copyOf(GoogleGenAiContentMapper.mediaUrls(messages)))
-                .hasSize(11)
-                .isEqualTo(Set.copyOf(downloaded));
-    }
-
-    @Test
-    void should_return_urls_of_media_that_are_downloaded() {
-        String base64Png = Base64.getEncoder().encodeToString("png-bytes".getBytes(StandardCharsets.UTF_8));
-        List<ChatMessage> messages = List.of(
-                SystemMessage.from("system"),
-                UserMessage.from(
-                        TextContent.from("describe"),
-                        ImageContent.from("https://example.com/cat.png"),
-                        ImageContent.from(base64Png, "image/png"),
-                        ImageContent.from("gs://bucket/image.png"),
-                        ImageContent.from("file:///etc/passwd"),
-                        ImageContent.from("/etc/passwd"),
-                        AudioContent.from("https://example.com/audio.mp3"),
-                        VideoContent.from("s3://bucket/video.mp4"),
-                        PdfFileContent.from("https://example.com/document.pdf")),
-                AiMessage.from("answer"),
-                ToolExecutionResultMessage.builder()
-                        .id("call-47")
-                        .toolName("take_screenshot")
-                        .contents(List.of(ImageContent.from("https://example.com/screenshot.png")))
-                        .build());
-
-        assertThat(GoogleGenAiContentMapper.mediaUrls(messages))
-                .containsExactly(
-                        URI.create("https://example.com/cat.png"),
-                        URI.create("file:///etc/passwd"),
-                        URI.create("/etc/passwd"),
-                        URI.create("https://example.com/audio.mp3"),
-                        URI.create("s3://bucket/video.mp4"),
-                        URI.create("https://example.com/document.pdf"),
-                        URI.create("https://example.com/screenshot.png"));
+    private static String urlOf(dev.langchain4j.data.message.Content content) {
+        if (content instanceof ImageContent image) {
+            return image.image().url().toString();
+        } else if (content instanceof AudioContent audio) {
+            return audio.audio().url().toString();
+        } else if (content instanceof VideoContent video) {
+            return video.video().url().toString();
+        }
+        return ((PdfFileContent) content).pdfFile().url().toString();
     }
 
     @Test
@@ -830,7 +621,7 @@ class GoogleGenAiContentMapperTest {
 
         UserMessage message = UserMessage.from(new TextContent("Describe this image"), new ImageContent(image));
 
-        Content result = GoogleGenAiContentMapper.toContent(message, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(message);
 
         assertThat(result.parts().get()).hasSize(2);
         assertThat(result.parts().get().get(0).text().get()).isEqualTo("Describe this image");
@@ -993,7 +784,7 @@ class GoogleGenAiContentMapperTest {
                 .thinking("Working it out.")
                 .build();
 
-        Content result = GoogleGenAiContentMapper.toContent(message, true, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(message, true);
 
         List<Part> parts = result.parts().orElseThrow();
         assertThat(parts).hasSize(2);
@@ -1010,7 +801,7 @@ class GoogleGenAiContentMapperTest {
                 .thinking("Working it out.")
                 .build();
 
-        Content result = GoogleGenAiContentMapper.toContent(message, false, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(message, false);
 
         List<Part> parts = result.parts().orElseThrow();
         assertThat(parts).hasSize(1);
@@ -1021,7 +812,7 @@ class GoogleGenAiContentMapperTest {
     void should_not_add_thought_part_when_message_has_no_thinking() {
         AiMessage message = AiMessage.from("The answer is 42.");
 
-        Content result = GoogleGenAiContentMapper.toContent(message, true, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(message, true);
 
         List<Part> parts = result.parts().orElseThrow();
         assertThat(parts).hasSize(1);
@@ -1040,7 +831,7 @@ class GoogleGenAiContentMapperTest {
                         Map.of("thought_signature_call_1", Base64.getEncoder().encodeToString("sig".getBytes())))
                 .build();
 
-        Content result = GoogleGenAiContentMapper.toContent(message, false, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(message, false);
 
         List<Part> parts = result.parts().orElseThrow();
         assertThat(parts).hasSize(1);
@@ -1051,7 +842,7 @@ class GoogleGenAiContentMapperTest {
     void should_preserve_empty_text_part_when_send_thinking_is_false() {
         AiMessage message = AiMessage.from("");
 
-        Content result = GoogleGenAiContentMapper.toContent(message, false, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(message, false);
 
         List<Part> parts = result.parts().orElseThrow();
         assertThat(parts).hasSize(1);
@@ -1186,7 +977,7 @@ class GoogleGenAiContentMapperTest {
                 .attributes(Map.of("thought_signature", Base64.getEncoder().encodeToString(signature)))
                 .build();
 
-        Content result = GoogleGenAiContentMapper.toContent(message, true, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(message, true);
 
         List<Part> parts = result.parts().orElseThrow();
         assertThat(parts).hasSize(1);
@@ -1202,7 +993,7 @@ class GoogleGenAiContentMapperTest {
                 .attributes(Map.of("thought_signature", signature))
                 .build();
 
-        Content result = GoogleGenAiContentMapper.toContent(message, false, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(message, false);
 
         List<Part> parts = result.parts().orElseThrow();
         assertThat(parts).hasSize(1);
@@ -1226,7 +1017,7 @@ class GoogleGenAiContentMapperTest {
 
         AiMessage aiMessage =
                 GoogleGenAiContentMapper.toChatResponse(response, "test-model").aiMessage();
-        Content result = GoogleGenAiContentMapper.toContent(aiMessage, true, NO_DOWNLOADS);
+        Content result = GoogleGenAiContentMapper.toContent(aiMessage, true);
 
         assertThat(result.parts().orElseThrow().get(0).thoughtSignature()).hasValue(signature);
     }
@@ -1252,7 +1043,7 @@ class GoogleGenAiContentMapperTest {
                 .aiMessage();
 
         assertThat(aiMessage.attributes()).doesNotContainKey("thought_signature");
-        assertThat(GoogleGenAiContentMapper.toContent(aiMessage, true, NO_DOWNLOADS).parts().orElseThrow())
+        assertThat(GoogleGenAiContentMapper.toContent(aiMessage, true).parts().orElseThrow())
                 .allSatisfy(part -> assertThat(part.thoughtSignature()).isEmpty());
     }
 
@@ -1512,7 +1303,7 @@ class GoogleGenAiContentMapperTest {
                 .contents(List.of(TextContent.from("Screenshot captured"), ImageContent.from(base64Png, "image/png")))
                 .build();
 
-        List<Content> contents = GoogleGenAiContentMapper.toContents(List.of(toolMessage), false, NO_DOWNLOADS);
+        List<Content> contents = GoogleGenAiContentMapper.toContents(List.of(toolMessage), false);
 
         assertThat(contents).hasSize(1);
         Content content = contents.get(0);
@@ -1536,7 +1327,7 @@ class GoogleGenAiContentMapperTest {
                 .contents(List.of(ImageContent.from(base64Png, "image/png")))
                 .build();
 
-        List<Content> contents = GoogleGenAiContentMapper.toContents(List.of(toolMessage), false, NO_DOWNLOADS);
+        List<Content> contents = GoogleGenAiContentMapper.toContents(List.of(toolMessage), false);
 
         assertThat(contents).hasSize(1);
         List<Part> parts = contents.get(0).parts().orElseThrow();
@@ -1557,7 +1348,7 @@ class GoogleGenAiContentMapperTest {
                         TextContent.from("Resolution: 1920x1080")))
                 .build();
 
-        List<Content> contents = GoogleGenAiContentMapper.toContents(List.of(toolMessage), false, NO_DOWNLOADS);
+        List<Content> contents = GoogleGenAiContentMapper.toContents(List.of(toolMessage), false);
 
         List<Part> parts = contents.get(0).parts().orElseThrow();
         assertThat(parts).hasSize(2);
@@ -1575,7 +1366,7 @@ class GoogleGenAiContentMapperTest {
                 .contents(List.of(AudioContent.from(base64Wav, "audio/wav")))
                 .build();
 
-        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContents(List.of(toolMessage), false, NO_DOWNLOADS))
+        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContents(List.of(toolMessage), false))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("does not support non-text content type 'AUDIO'");
     }

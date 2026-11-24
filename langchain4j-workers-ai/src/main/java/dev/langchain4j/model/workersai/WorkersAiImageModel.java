@@ -1,13 +1,9 @@
 package dev.langchain4j.model.workersai;
 
-import dev.langchain4j.Experimental;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.media.DefaultMediaFetcher;
-import dev.langchain4j.data.media.MediaFetchRequest;
-import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.exception.InvalidRequestException;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
-import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.Response;
@@ -26,19 +22,22 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.net.URI;
 import java.net.URL;
 import java.util.Base64;
 import java.util.Iterator;
 import java.util.List;
 
-import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * WorkerAI Image model.
+ * <p>
+ * To edit an image, give its content as base64 data, for example
+ * {@code Image.builder().base64Data(base64Data).mimeType("image/png").build()}. Images given by URL are not supported.
+ * Only PNG, JPEG, GIF, BMP and WebP images can be edited (WebP only if an image reader for it is installed), with at
+ * most 2048 x 2048 pixels, a limit of LangChain4j.
  */
 public class WorkersAiImageModel extends AbstractWorkersAIModel implements ImageModel {
 
@@ -56,11 +55,13 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
 
     /**
      * The image formats that this model decodes. Only the image readers of these formats are used, so that no other
-     * image reader that happens to be installed reads the downloaded content.
+     * image reader that happens to be installed reads the content.
      */
     private static final List<String> IMAGE_FORMATS = List.of("png", "jpeg", "gif", "bmp", "webp");
 
-    private final MediaFetcher mediaFetcher;
+    static final String IMAGE_URL_NOT_SUPPORTED = "Workers AI does not support images given by URL; it needs the image"
+            + " content. Create the image from the content of a file or from its bytes, for example"
+            + " Image.builder().base64Data(base64Data).mimeType(mimeType).build()";
 
     /**
      * Constructor with Builder.
@@ -70,7 +71,6 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
      */
     public WorkersAiImageModel(Builder builder) {
         super(builder.accountId, builder.modelName, builder.apiToken, builder.httpClientBuilder);
-        this.mediaFetcher = getOrDefault(builder.mediaFetcher, MediaPrefetcher.defaultMediaFetcher());
     }
 
     /**
@@ -85,7 +85,6 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
      */
     public WorkersAiImageModel(String accountId, String modelName, String apiToken) {
         super(accountId, modelName, apiToken);
-        this.mediaFetcher = MediaPrefetcher.defaultMediaFetcher();
     }
 
     /**
@@ -122,8 +121,6 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
          * The HTTP client builder used to create the underlying HTTP client.
          */
         public HttpClientBuilder httpClientBuilder;
-
-        private MediaFetcher mediaFetcher;
 
         /**
          * Simple constructor.
@@ -174,29 +171,6 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
          */
         public Builder httpClientBuilder(HttpClientBuilder httpClientBuilder) {
             this.httpClientBuilder = httpClientBuilder;
-            return this;
-        }
-
-        /**
-         * Sets the {@link MediaFetcher} that downloads the images given by URL to
-         * {@link WorkersAiImageModel#edit(Image, String)}, {@link WorkersAiImageModel#edit(Image, Image, String)} and
-         * {@link WorkersAiImageModel#getPixels(URL)}. They are downloaded and decoded before the request is sent. Only
-         * PNG, JPEG, GIF, BMP and WebP images are decoded (WebP only if an image reader for it is installed), and only
-         * images of at most 2048 x 2048 pixels, a limit of LangChain4j against very large decoded images.
-         * <p>
-         * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
-         * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To edit
-         * a local image, create the image from the content of the file with {@link Image.Builder#base64Data(String)}:
-         * it is decoded in the same way, with the same limits. To download from your own servers, or to change the
-         * limits, set a {@link DefaultMediaFetcher} with other settings, or your own {@link MediaFetcher}.
-         *
-         * @param mediaFetcher the fetcher, or {@code null} to use the default one.
-         * @return The current instance of {@link Builder}.
-         * @since 1.25.0
-         */
-        @Experimental
-        public Builder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {
-            this.mediaFetcher = mediaFetcher;
             return this;
         }
 
@@ -282,34 +256,27 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
     }
 
     /**
-     * Downloads the image at the given URL with the {@link Builder#mediaFetcher(MediaFetcher) media fetcher} and
-     * converts it into an array of numbers, supposedly the pixels.
+     * Convert an image into a array of number, supposedly the Pixels.
      * @param imageUrl
      *      current image URL
      * @return
      *      pixels of the image
-     * @throws InvalidRequestException
-     *      if the media fetcher does not allow the URL, if the image is not a PNG, JPEG, GIF, BMP or WebP image, or if
-     *      it has more than 2048 x 2048 pixels, the limit of LangChain4j for decoded images
      * @throws Exception
      *      return an exception if pixel not returned
      */
     public int[] getPixels(URL imageUrl) throws Exception {
-        return pixels(download(imageUrl.toURI()));
+        BufferedImage image = ImageIO.read(imageUrl);
+        return pixels(image);
     }
 
-    private int[] pixels(Image image) {
+    private static int[] pixels(Image image) {
         if (image.base64Data() != null) {
             return pixels(Base64.getDecoder().decode(image.base64Data()));
         }
         if (image.url() == null) {
             throw new IllegalArgumentException("The image has neither base64 data nor a URL");
         }
-        return pixels(download(image.url()));
-    }
-
-    private byte[] download(URI url) {
-        return mediaFetcher.fetch(MediaFetchRequest.from(url)).bytes();
+        throw new UnsupportedFeatureException(IMAGE_URL_NOT_SUPPORTED);
     }
 
     private static int[] pixels(byte[] imageBytes) {

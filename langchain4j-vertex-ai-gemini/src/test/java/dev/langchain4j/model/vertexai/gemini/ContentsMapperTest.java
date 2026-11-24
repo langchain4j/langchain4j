@@ -7,7 +7,6 @@ import com.google.cloud.vertexai.api.Content;
 import com.google.protobuf.Struct;
 import com.google.protobuf.Value;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -19,10 +18,6 @@ import org.junit.jupiter.api.Test;
 
 class ContentsMapperTest {
 
-    private static final MediaFetcher NO_DOWNLOADS = request -> {
-        throw new AssertionError("Unexpected download of " + request.url());
-    };
-
     @Test
     void should_split_instructions_and_other_messages() {
 
@@ -33,7 +28,7 @@ class ContentsMapperTest {
         msgs.add(AiMessage.from("Sure, how can I assist you?"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
         Content inst = instructionAndContent.systemInstruction;
         List<Content> contents = instructionAndContent.contents;
 
@@ -68,7 +63,7 @@ class ContentsMapperTest {
         msgs.add(AiMessage.from("3+4 is smaller than 5+6"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
         Content inst = instructionAndContent.systemInstruction;
         List<Content> contents = instructionAndContent.contents;
 
@@ -127,7 +122,7 @@ class ContentsMapperTest {
         List<ChatMessage> msgs = new ArrayList<>();
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         assertThat(instructionAndContent.systemInstruction).isNull();
@@ -141,7 +136,7 @@ class ContentsMapperTest {
         msgs.add(SystemMessage.from("Process data efficiently"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         assertThat(instructionAndContent.systemInstruction).isNotNull();
@@ -157,7 +152,7 @@ class ContentsMapperTest {
         msgs.add(UserMessage.from("Process this request"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         assertThat(instructionAndContent.systemInstruction).isNull();
@@ -174,7 +169,7 @@ class ContentsMapperTest {
         msgs.add(UserMessage.from("Input data"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         assertThat(instructionAndContent.systemInstruction).isNotNull();
@@ -191,7 +186,7 @@ class ContentsMapperTest {
         msgs.add(UserMessage.from("Third input"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         assertThat(instructionAndContent.systemInstruction).isNull();
@@ -210,7 +205,7 @@ class ContentsMapperTest {
         msgs.add(AiMessage.from("Additional output"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         assertThat(instructionAndContent.contents).hasSize(3);
@@ -227,7 +222,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "process", "{\"status\": \"complete\"}"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         assertThat(instructionAndContent.contents).hasSize(2);
@@ -253,7 +248,7 @@ class ContentsMapperTest {
         msgs.add(AiMessage.from(request));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         assertThat(instructionAndContent.contents).hasSize(2);
@@ -275,7 +270,7 @@ class ContentsMapperTest {
         msgs.add(AiMessage.from(request));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         assertThat(instructionAndContent.contents).hasSize(1);
@@ -305,7 +300,7 @@ class ContentsMapperTest {
         msgs.add(AiMessage.from(request));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         assertThat(instructionAndContent.contents).hasSize(1);
@@ -325,7 +320,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "getData", "{\"name\": \"John\", \"age\": 30}"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -345,7 +340,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "getList", "[1, 2, 3]"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -378,7 +373,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "calculate", "42"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -398,7 +393,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "checkStatus", "true"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -418,7 +413,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "getMessage", "\"hello world\""));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -438,7 +433,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "describe", "This is plain text output"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -458,7 +453,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "add", "The result is \"79376135377\"."));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -478,7 +473,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "findItem", "null"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -499,7 +494,7 @@ class ContentsMapperTest {
                 null, "getNestedData", "{\"user\": {\"name\": \"Alice\", \"address\": {\"city\": \"Paris\"}}}"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -521,7 +516,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "getDifference", "-42"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -540,7 +535,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "getFloat", "5.64659"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -559,7 +554,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "getEmptyList", "[]"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -579,7 +574,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "getUsers", "[{\"name\": \"Alice\"}, {\"name\": \"Bob\"}]"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -608,7 +603,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "getSpecial", "{\"text\": \"Line1\\nLine2\\tTabbed\"}"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -627,7 +622,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "getEmoji", "{\"message\": \"Hello 👋 World 🌍\"}"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -646,7 +641,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "getScientific", "1.5e10"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -665,7 +660,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "getPath", "{\"path\": \"C:\\\\Users\\\\test\"}"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -684,7 +679,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "getMixed", "[1, \"two\", true, null]"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -728,7 +723,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "getEmptyObject", "{}"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -747,7 +742,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "getInvalid", "{not valid json}"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -767,7 +762,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "getInvalidArray", "[not, valid, json"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -787,7 +782,7 @@ class ContentsMapperTest {
         msgs.add(ToolExecutionResultMessage.from(null, "getHtml", "<html><body>Hello</body></html>"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -808,7 +803,7 @@ class ContentsMapperTest {
                 null, "getXml", "<?xml version=\"1.0\"?><root><item>value</item></root>"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent
@@ -830,7 +825,7 @@ class ContentsMapperTest {
                 null, "getUrl", "{\"url\": \"https://example.com/path?query=value&other=123\"}"));
 
         // when
-        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs, NO_DOWNLOADS);
+        ContentsMapper.InstructionAndContent instructionAndContent = splitInstructionAndContent(msgs);
 
         // then
         Struct response = instructionAndContent

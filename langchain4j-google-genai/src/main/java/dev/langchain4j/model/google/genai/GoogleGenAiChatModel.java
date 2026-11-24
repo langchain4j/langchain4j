@@ -2,7 +2,6 @@ package dev.langchain4j.model.google.genai;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
-import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
 import static dev.langchain4j.internal.Utils.copy;
@@ -19,12 +18,7 @@ import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.SpeechConfig;
 import dev.langchain4j.Experimental;
-import dev.langchain4j.data.media.DefaultMediaFetcher;
-import dev.langchain4j.data.media.MediaFetchRequest;
-import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -34,8 +28,6 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import java.net.URI;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -79,7 +71,6 @@ public class GoogleGenAiChatModel implements ChatModel {
     private final List<String> responseModalities;
     private final Boolean automaticContinuation;
     private final Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
-    private final MediaFetcher mediaFetcher;
 
     private GoogleGenAiChatModel(Builder builder) {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
@@ -106,7 +97,6 @@ public class GoogleGenAiChatModel implements ChatModel {
         this.responseModalities = copy(builder.responseModalities);
         this.automaticContinuation = builder.automaticContinuation;
         this.generateContentConfigCustomizer = builder.generateContentConfigCustomizer;
-        this.mediaFetcher = getOrDefault(builder.mediaFetcher, MediaPrefetcher::defaultMediaFetcher);
 
         this.client = builder.client != null
                 ? builder.client
@@ -149,8 +139,7 @@ public class GoogleGenAiChatModel implements ChatModel {
 
     @Override
     public ChatResponse doChat(ChatRequest chatRequest) {
-        List<Content> contents =
-                GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking, mediaFetcher);
+        List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking);
         GenerateContentConfig config = buildConfigAndLogRequest(chatRequest);
 
         GenerateContentResponse response = withRetryMappingExceptions(
@@ -164,46 +153,20 @@ public class GoogleGenAiChatModel implements ChatModel {
     @Override
     public CompletableFuture<ChatResponse> doChatAsync(ChatRequest chatRequest) {
         return failOnThrow(() -> {
-            CompletableFuture<MediaFetcher> prefetch =
-                    MediaPrefetcher.prefetch(mediaFetcher, GoogleGenAiContentMapper.mediaUrls(chatRequest.messages()));
-            CompletableFuture<ChatResponse> result = new CompletableFuture<>();
-            propagateCancellation(result, prefetch);
-            prefetch.whenComplete((prefetched, prefetchError) -> {
-                if (prefetchError != null) {
-                    result.completeExceptionally(prefetchError);
-                    return;
-                }
-                if (result.isCancelled()) {
-                    return;
-                }
-                CompletableFuture<ChatResponse> response = failOnThrow(() -> chatAsync(chatRequest, prefetched));
-                propagateCancellation(result, response);
-                response.whenComplete((chatResponse, error) -> {
-                    if (error != null) {
-                        result.completeExceptionally(unwrapCompletionException(error));
-                    } else {
-                        result.complete(chatResponse);
-                    }
-                });
-            });
+            List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking);
+            GenerateContentConfig config = buildConfigAndLogRequest(chatRequest);
+
+            CompletableFuture<GenerateContentResponse> rawFuture = withRetryMappingExceptionsAsync(
+                    () -> client.async.models.generateContent(chatRequest.modelName(), contents, config),
+                    maxRetries,
+                    GoogleGenAiExceptionMapper.INSTANCE);
+
+            CompletableFuture<ChatResponse> result =
+                    rawFuture.thenApply(response -> toChatResponseAndLogResponse(response, chatRequest.modelName()));
+
+            propagateCancellation(result, rawFuture);
             return result;
         });
-    }
-
-    private CompletableFuture<ChatResponse> chatAsync(ChatRequest chatRequest, MediaFetcher prefetched) {
-        List<Content> contents = GoogleGenAiContentMapper.toContents(chatRequest.messages(), sendThinking, prefetched);
-        GenerateContentConfig config = buildConfigAndLogRequest(chatRequest);
-
-        CompletableFuture<GenerateContentResponse> rawFuture = withRetryMappingExceptionsAsync(
-                () -> client.async.models.generateContent(chatRequest.modelName(), contents, config),
-                maxRetries,
-                GoogleGenAiExceptionMapper.INSTANCE);
-
-        CompletableFuture<ChatResponse> result =
-                rawFuture.thenApply(response -> toChatResponseAndLogResponse(response, chatRequest.modelName()));
-
-        propagateCancellation(result, rawFuture);
-        return result;
     }
 
     private GenerateContentConfig buildConfigAndLogRequest(ChatRequest chatRequest) {
@@ -325,7 +288,6 @@ public class GoogleGenAiChatModel implements ChatModel {
         private List<String> responseModalities;
         private Boolean automaticContinuation;
         private Consumer<GenerateContentConfig.Builder> generateContentConfigCustomizer;
-        private @Nullable MediaFetcher mediaFetcher;
 
         /**
          * Sets a pre-configured Google GenAI {@link Client}.
@@ -907,37 +869,6 @@ public class GoogleGenAiChatModel implements ChatModel {
          */
         public Builder automaticContinuation(Boolean automaticContinuation) {
             this.automaticContinuation = automaticContinuation;
-            return this;
-        }
-
-        /**
-         * Sets the {@link MediaFetcher} that downloads media given by a URL, for example an image created with
-         * {@link ImageContent#from(URI)}. Gemini receives images, audio, video and PDF files as content, so media
-         * given by a URL is downloaded before the request is sent. Cloud Storage URLs ({@code gs://...}) are not
-         * downloaded: they are passed on to Gemini.
-         * <p>
-         * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
-         * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To send
-         * a local file, read it when you create the content, for example with {@link ImageContent#from(Path, String)}.
-         * To download from your own servers, or to change the limits, set a {@link DefaultMediaFetcher} with other
-         * settings, or your own {@link MediaFetcher}.
-         * For example, a fetcher that also downloads from one of your own servers:
-         * <pre>{@code
-         * MediaFetcher mediaFetcher = DefaultMediaFetcher.builder()
-         *         .allowNonPublicHosts("media.internal.example.com")
-         *         .build();
-         * }</pre>
-         * {@link GoogleGenAiChatModel#chatAsync(ChatRequest)} downloads with
-         * {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, so that it does not block the calling thread. A fetcher
-         * used there must implement that method.
-         *
-         * @param mediaFetcher the fetcher that downloads media, or {@code null} to use the default one.
-         * @return {@code this}.
-         * @since 1.25.0
-         */
-        @Experimental
-        public Builder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {
-            this.mediaFetcher = mediaFetcher;
             return this;
         }
 

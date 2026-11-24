@@ -1,7 +1,7 @@
 package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
-import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -9,8 +9,6 @@ import static dev.langchain4j.model.ModelProvider.AMAZON_BEDROCK;
 import static java.util.Objects.isNull;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.internal.CancellationChain;
-import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.ChatModel;
@@ -62,9 +60,8 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
     @Override
     public ChatResponse doChat(ChatRequest request) {
         validate(request.parameters());
-        validateTotalCachePoints(request);
 
-        ConverseRequest converseRequest = buildConverseRequest(request, new MediaDownloads(mediaFetcher));
+        ConverseRequest converseRequest = buildConverseRequest(request);
 
         ConverseResponse converseResponse = withRetryMappingExceptions(
                 () -> client.converse(converseRequest), maxRetries, BedrockExceptionMapper.INSTANCE);
@@ -76,26 +73,15 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
     public CompletableFuture<ChatResponse> doChatAsync(ChatRequest request) {
         return failOnThrow(() -> {
             validate(request.parameters());
-            validateTotalCachePoints(request);
 
-            CompletableFuture<ChatResponse> result = new CompletableFuture<>();
-            CancellationChain chain = new CancellationChain(result);
-            chain.track(MediaPrefetcher.prefetch(mediaFetcher, mediaUrls(request.messages())))
-                    .thenCompose(prefetched -> {
-                        ConverseRequest converseRequest = buildConverseRequest(request, new MediaDownloads(prefetched));
-                        return chain.track(withRetryMappingExceptionsAsync(
-                                        () -> asyncClient().converse(converseRequest),
-                                        maxRetries,
-                                        BedrockExceptionMapper.INSTANCE))
-                                .thenApply(response -> toChatResponse(converseRequest, response));
-                    })
-                    .whenComplete((response, error) -> {
-                        if (error != null) {
-                            result.completeExceptionally(unwrapCompletionException(error));
-                        } else {
-                            result.complete(response);
-                        }
-                    });
+            ConverseRequest converseRequest = buildConverseRequest(request);
+
+            CompletableFuture<ConverseResponse> future = withRetryMappingExceptionsAsync(
+                    () -> asyncClient().converse(converseRequest), maxRetries, BedrockExceptionMapper.INSTANCE);
+
+            CompletableFuture<ChatResponse> result = future.thenApply(response -> toChatResponse(converseRequest, response));
+
+            propagateCancellation(result, future);
             return result;
         });
     }
@@ -118,7 +104,7 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
         return defaultRequestParameters;
     }
 
-    private ConverseRequest buildConverseRequest(ChatRequest chatRequest, MediaDownloads media) {
+    private ConverseRequest buildConverseRequest(ChatRequest chatRequest) {
         BedrockChatRequestParameters parameters = (BedrockChatRequestParameters) chatRequest.parameters();
 
         BedrockCachePointPlacement cachePointPlacement = parameters.cachePointPlacement();
@@ -128,12 +114,17 @@ public class BedrockChatModel extends AbstractBedrockChatModel implements ChatMo
                 bedrockGuardrailConfiguration == null ? null : bedrockGuardrailConfiguration.guardContentPlacement();
         BedrockServiceTier bedrockServiceTier = parameters.serviceTier();
 
+        // Validate total cache points don't exceed AWS limit
+        boolean hasTools = chatRequest.toolSpecifications() != null
+                && !chatRequest.toolSpecifications().isEmpty();
+        validateTotalCachePoints(chatRequest.messages(), cachePointPlacement, hasTools);
+
         return ConverseRequest.builder()
                 .modelId(chatRequest.modelName())
                 .inferenceConfig(inferenceConfigFrom(chatRequest.parameters()))
                 .system(extractSystemMessages(chatRequest.messages(), cachePointPlacement, cacheTtl))
                 .messages(extractRegularMessages(
-                        chatRequest.messages(), cachePointPlacement, cacheTtl, guardContentPlacement, media))
+                        chatRequest.messages(), cachePointPlacement, cacheTtl, guardContentPlacement))
                 .toolConfig(extractToolConfigurationFrom(chatRequest, cachePointPlacement, cacheTtl))
                 .additionalModelRequestFields(additionalRequestModelFieldsFrom(chatRequest.parameters()))
                 .guardrailConfig(guardrailConfigFrom(bedrockGuardrailConfiguration))

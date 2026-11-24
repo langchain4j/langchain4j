@@ -13,8 +13,6 @@ import dev.langchain4j.internal.Types;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
@@ -53,34 +51,15 @@ class InternalOllamaHelper {
     private static final Predicate<UserMessage> hasImages =
             userMessage -> userMessage.contents().stream().anyMatch(content -> IMAGE.equals(content.type()));
 
-    static List<Message> toOllamaMessages(List<ChatMessage> messages, MediaFetcher mediaFetcher) {
-        ensureOnlyTextAndImageContent(messages);
-        return messages.stream()
-                .map(message -> isUserMessage.test(message) && hasImages.test((UserMessage) message)
-                        ? messagesWithImageSupport((UserMessage) message, mediaFetcher)
-                        : otherMessages(message))
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * Returns the images that {@link #toOllamaMessages(List, MediaFetcher)} sends, so that they can be downloaded
-     * first.
-     */
-    static List<Image> images(List<ChatMessage> messages) {
-        ensureOnlyTextAndImageContent(messages);
-        return messages.stream()
-                .filter(isUserMessage)
-                .map(UserMessage.class::cast)
-                .flatMap(userMessage -> userMessage.contents().stream())
-                .filter(ImageContent.class::isInstance)
-                .map(content -> ((ImageContent) content).image())
-                .collect(Collectors.toList());
-    }
-
-    private static void ensureOnlyTextAndImageContent(List<ChatMessage> messages) {
+    static List<Message> toOllamaMessages(List<ChatMessage> messages) {
         if (!messagesContainOnlyTextAndOrImageContentType(messages)) {
             throw new UnsupportedFeatureException("Ollama only supports message types Text and Image.");
         }
+        return messages.stream()
+                .map(message -> isUserMessage.test(message) && hasImages.test((UserMessage) message)
+                        ? messagesWithImageSupport((UserMessage) message)
+                        : otherMessages(message))
+                .collect(Collectors.toList());
     }
 
     static List<Tool> toOllamaTools(List<ToolSpecification> toolSpecifications) {
@@ -181,11 +160,11 @@ class InternalOllamaHelper {
                 new TokenUsage(ollamaChatResponse.getPromptEvalCount(), ollamaChatResponse.getEvalCount()));
     }
 
-    static OllamaChatRequest toOllamaChatRequest(ChatRequest chatRequest, boolean stream, MediaFetcher mediaFetcher) {
+    static OllamaChatRequest toOllamaChatRequest(ChatRequest chatRequest, boolean stream) {
         OllamaChatRequestParameters requestParameters = (OllamaChatRequestParameters) chatRequest.parameters();
         return OllamaChatRequest.builder()
                 .model(requestParameters.modelName())
-                .messages(toOllamaMessages(chatRequest.messages(), mediaFetcher))
+                .messages(toOllamaMessages(chatRequest.messages()))
                 .options(Options.builder()
                         .mirostat(requestParameters.mirostat())
                         .mirostatEta(requestParameters.mirostatEta())
@@ -227,7 +206,7 @@ class InternalOllamaHelper {
                 .build();
     }
 
-    private static Message messagesWithImageSupport(UserMessage userMessage, MediaFetcher mediaFetcher) {
+    private static Message messagesWithImageSupport(UserMessage userMessage) {
         Map<ContentType, List<Content>> groupedContents =
                 userMessage.contents().stream().collect(Collectors.groupingBy(Content::type));
 
@@ -240,7 +219,7 @@ class InternalOllamaHelper {
         return Message.builder()
                 .role(toOllamaRole(userMessage.type()))
                 .content(text)
-                .images(ImageUtils.base64EncodeImageList(imageContents, mediaFetcher))
+                .images(ImageUtils.base64EncodeImageList(imageContents))
                 .build();
     }
 

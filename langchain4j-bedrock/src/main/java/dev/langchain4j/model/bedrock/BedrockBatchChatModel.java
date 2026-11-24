@@ -14,12 +14,7 @@ import static dev.langchain4j.model.bedrock.BedrockBatchConverseMapper.toJsonLin
 import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.data.media.DefaultMediaFetcher;
-import dev.langchain4j.data.media.MediaFetcher;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.batch.BatchError;
 import dev.langchain4j.model.batch.BatchItemResult;
 import dev.langchain4j.model.batch.BatchPage;
@@ -34,8 +29,6 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.io.Closeable;
-import java.net.URI;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -125,7 +118,6 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
     private final int maxRetries;
     private final boolean returnThinking;
     private final boolean sendThinking;
-    private final MediaFetcher mediaFetcher;
     private final List<SdkAutoCloseable> createdClients = new ArrayList<>();
 
     private BedrockBatchChatModel(Builder builder) {
@@ -144,7 +136,6 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
         this.maxRetries = getOrDefault(builder.maxRetries, 2);
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.sendThinking = getOrDefault(builder.sendThinking, true);
-        this.mediaFetcher = getOrDefault(builder.mediaFetcher, MediaPrefetcher.defaultMediaFetcher());
         validateSupported(defaultRequestParameters);
 
         Region region = getOrDefault(builder.region, Region.US_EAST_1);
@@ -307,8 +298,7 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
                     BedrockBatchConverseMapper.toModelInput(
                             effectiveRequests.get(i),
                             additionalModelRequestFields(requests.get(i).parameters()),
-                            sendThinking,
-                            mediaFetcher));
+                            sendThinking));
             jsonl.append(toJsonLine(record)).append('\n');
         }
         return jsonl.toString();
@@ -597,7 +587,6 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
         private Boolean logRequests;
         private Boolean logResponses;
         private Logger logger;
-        private MediaFetcher mediaFetcher;
 
         private Builder() {}
 
@@ -804,27 +793,6 @@ public final class BedrockBatchChatModel implements BatchChatModel, Closeable {
          */
         public Builder logger(Logger logger) {
             this.logger = logger;
-            return this;
-        }
-
-        /**
-         * Sets the {@link MediaFetcher} that downloads the images and PDF files that the requests refer to by URL, for
-         * example an {@link ImageContent} created with {@link ImageContent#from(URI)}. Bedrock accepts them only as
-         * content, so they are downloaded by {@link BedrockBatchChatModel#submit(BatchRequest)}.
-         * <p>
-         * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
-         * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To send
-         * a local file, read it when you create the content, for example with {@link ImageContent#from(Path, String)}
-         * or {@link PdfFileContent#from(Path)}. To download from your own servers, or to change the limits, set a
-         * {@link DefaultMediaFetcher} with other settings, or your own {@link MediaFetcher}.
-         *
-         * @param mediaFetcher the fetcher, or {@code null} to use the default one
-         * @return {@code this}
-         * @since 1.25.0
-         */
-        @Experimental
-        public Builder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {
-            this.mediaFetcher = mediaFetcher;
             return this;
         }
 

@@ -36,7 +36,6 @@ ChatModel model = BedrockChatModel.builder()
         .logRequests(...)
         .logResponses(...)
         .listeners(...)
-        .mediaFetcher(...)
         .defaultRequestParameters(BedrockChatRequestParameters.builder()
                 .modelName(...)
                 .temperature(...)
@@ -75,7 +74,6 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
         .logRequests(...)
         .logResponses(...)
         .listeners(...)
-        .mediaFetcher(...)
         .defaultRequestParameters(BedrockChatRequestParameters.builder()
                 .modelName(...)
                 .temperature(...)
@@ -97,41 +95,17 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
 
 - [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockStreamingChatModelExample.java)
 
-## Images and PDF files given by URL
+## Images and PDF files
 
-This integration sends images and PDF files to Bedrock as bytes. When a message refers to one by URL, for example
-with `ImageContent.from("https://example.com/cat.png")`, `BedrockChatModel`, `BedrockStreamingChatModel` and
-`BedrockBatchChatModel` download it before sending the request, with the `MediaFetcher` set with `mediaFetcher(...)`.
-By default, only `http` and `https` URLs of public hosts are downloaded, with a timeout and a size limit, and local
-files are never read from a URL. To send a local file, create the content from its path, for example
-`ImageContent.from(Path.of("cat.png"), "image/png")` or `PdfFileContent.from(Path.of("report.pdf"))`.
-`chatAsync(...)` and `BedrockStreamingChatModel` download without blocking the calling thread.
+Bedrock needs the content of images and PDF files: create it from a local file, for example with
+`ImageContent.from(Path.of("cat.png"), "image/png")` or `PdfFileContent.from(Path.of("report.pdf"))`, or from base64
+data. An image or PDF file given by URL is rejected with an `UnsupportedFeatureException`, see
+[Media given by URL](/tutorials/chat-and-language-models#media-given-by-url).
 
-Bedrock needs a name for each document. A PDF file given by URL is named after its file name. A PDF file created from
-a local file or from base64 data is named `document-` followed by the first 12 hex digits of the SHA-256 hash of its
-content, so it gets the same name in every request; when the same content appears more than once in a request, the
-names get the suffixes `-2`, `-3`, and so on.
-
-The image format is taken from the MIME type of the `ImageContent`, then from the extension of the URL, and then from
-the MIME type of the downloaded image.
-
-To download from your own servers, set a `DefaultMediaFetcher` that allows them:
-
-```java
-ChatModel model = BedrockChatModel.builder()
-        .modelId("us.amazon.nova-lite-v1:0")
-        .mediaFetcher(DefaultMediaFetcher.builder()
-                .allowNonPublicHosts("files.internal.example.com")
-                .build())
-        .build();
-```
-
-:::tip
-When image or PDF URLs come from users, tools or retrieved content, allow only the hosts you expect, for example with
-`DefaultMediaFetcher.builder().allowedHosts("images.example.com")`.
-:::
-
-See [Media given by URL](/tutorials/chat-and-language-models#media-given-by-url) for all options of `DefaultMediaFetcher`.
+Bedrock needs a name for each document, and the names in one request must be distinct. A PDF file is named `document-`
+followed by the first 12 hex digits of the SHA-256 hash of its content, so the same document gets the same name in
+every request and prompt caching keeps working. When the same name appears more than once in a request, the later
+ones get the suffixes `-2`, `-3`, and so on.
 
 ## Amazon Bedrock Guardrails
 
@@ -246,7 +220,6 @@ BedrockBatchChatModel model = BedrockBatchChatModel.builder()
         .maxRetries(...)
         .logRequests(...)
         .logResponses(...)
-        .mediaFetcher(...)
         .build();
 ```
 

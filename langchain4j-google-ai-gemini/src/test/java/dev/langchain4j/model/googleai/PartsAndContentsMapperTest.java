@@ -6,11 +6,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.media.FetchedMedia;
-import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
-import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
@@ -21,24 +18,16 @@ import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiBlob;
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class PartsAndContentsMapperTest {
-
-    private static final MediaFetcher NO_DOWNLOADS = request -> {
-        throw new AssertionError("Unexpected download of " + request.url());
-    };
 
     @Test
     void fromGPartsToAiMessage_handlesNullParts() {
@@ -219,8 +208,7 @@ class PartsAndContentsMapperTest {
         AiMessage aiMessage = AiMessage.from(toolExecutionRequest);
 
         // When
-        List<GeminiContent> result =
-                PartsAndContentsMapper.fromMessageToGContent(List.of(aiMessage), null, false, NO_DOWNLOADS);
+        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(aiMessage), null, false);
 
         // Then
         assertThat(result).hasSize(1);
@@ -239,8 +227,7 @@ class PartsAndContentsMapperTest {
         AiMessage aiMessage = AiMessage.from(toolExecutionRequest);
 
         // When
-        List<GeminiContent> result =
-                PartsAndContentsMapper.fromMessageToGContent(List.of(aiMessage), null, false, NO_DOWNLOADS);
+        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(aiMessage), null, false);
 
         // Then
         assertThat(result).hasSize(1);
@@ -256,8 +243,8 @@ class PartsAndContentsMapperTest {
                 ToolExecutionResultMessage.from("call-1", "stringLength", "5");
 
         // When
-        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(
-                List.of(toolExecutionResultMessage), null, false, NO_DOWNLOADS);
+        List<GeminiContent> result =
+                PartsAndContentsMapper.fromMessageToGContent(List.of(toolExecutionResultMessage), null, false);
 
         // Then
         assertThat(result).hasSize(1);
@@ -275,8 +262,8 @@ class PartsAndContentsMapperTest {
                 .build();
 
         // When
-        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(
-                List.of(toolExecutionResultMessage), null, false, NO_DOWNLOADS);
+        List<GeminiContent> result =
+                PartsAndContentsMapper.fromMessageToGContent(List.of(toolExecutionResultMessage), null, false);
 
         // Then
         assertThat(result).hasSize(1);
@@ -295,8 +282,8 @@ class PartsAndContentsMapperTest {
                 .build();
 
         // When
-        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(
-                List.of(toolExecutionResultMessage), null, false, NO_DOWNLOADS);
+        List<GeminiContent> result =
+                PartsAndContentsMapper.fromMessageToGContent(List.of(toolExecutionResultMessage), null, false);
 
         // Then
         assertThat(result).hasSize(1);
@@ -308,8 +295,7 @@ class PartsAndContentsMapperTest {
     @Test
     void fromMessageToGContent_systemMessageWithText() {
         SystemMessage msg = new SystemMessage("system text");
-        List<GeminiContent> result =
-                PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false, NO_DOWNLOADS);
+        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
         assertThat(result).hasSize(1);
         assertThat(result.get(0).role()).isEqualTo("model");
         assertThat(result.get(0).parts().get(0).text()).isEqualTo("system text");
@@ -318,8 +304,7 @@ class PartsAndContentsMapperTest {
     @Test
     void fromMessageToGContent_userMessageWithTextContent() {
         UserMessage msg = new UserMessage(List.of(new dev.langchain4j.data.message.TextContent("user text")));
-        List<GeminiContent> result =
-                PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false, NO_DOWNLOADS);
+        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
         assertThat(result).hasSize(1);
         assertThat(result.get(0).role()).isEqualTo("user");
         assertThat(result.get(0).parts().get(0).text()).isEqualTo("user text");
@@ -333,8 +318,7 @@ class PartsAndContentsMapperTest {
                 new dev.langchain4j.data.message.TextContent("describe this image"),
                 ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.AUTO)));
 
-        List<GeminiContent> result =
-                PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false, NO_DOWNLOADS);
+        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(msg), null, false);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).role()).isEqualTo("user");
@@ -345,7 +329,7 @@ class PartsAndContentsMapperTest {
 
     @Test
     void fromMessageToGContent_emptyMessageListReturnsEmpty() {
-        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(), null, false, NO_DOWNLOADS);
+        List<GeminiContent> result = PartsAndContentsMapper.fromMessageToGContent(List.of(), null, false);
         assertThat(result).isEmpty();
     }
 
@@ -447,14 +431,14 @@ class PartsAndContentsMapperTest {
 
         // When
         List<GeminiContent.GeminiPart> parts = List.of(
-                PartsAndContentsMapper.fromContentToGPart(ImageContent.from(withoutExtension.toUri()), NO_DOWNLOADS),
+                PartsAndContentsMapper.fromContentToGPart(ImageContent.from(withoutExtension.toUri())),
                 PartsAndContentsMapper.fromContentToGPart(
-                        AudioContent.from(Audio.builder().url(withoutExtension.toUri()).build()), NO_DOWNLOADS),
+                        AudioContent.from(Audio.builder().url(withoutExtension.toUri()).build())),
                 PartsAndContentsMapper.fromContentToGPart(
-                        VideoContent.from(Video.builder().url(withoutExtension.toUri()).build()), NO_DOWNLOADS),
+                        VideoContent.from(Video.builder().url(withoutExtension.toUri()).build())),
                 PartsAndContentsMapper.fromContentToGPart(
-                        PdfFileContent.from(PdfFile.builder().url(withoutExtension.toUri()).build()), NO_DOWNLOADS),
-                PartsAndContentsMapper.fromContentToGPart(ImageContent.from(withExtension.toUri()), NO_DOWNLOADS));
+                        PdfFileContent.from(PdfFile.builder().url(withoutExtension.toUri()).build())),
+                PartsAndContentsMapper.fromContentToGPart(ImageContent.from(withExtension.toUri())));
 
         // Then
         assertThat(parts)
@@ -470,6 +454,37 @@ class PartsAndContentsMapperTest {
                 .containsExactly(null, null, null, null, "image/png");
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"https://example.com/photos/cat.png", "http://example.com/photos/cat.png"})
+    void fromContentToGPart_passesImageUrlsOnToGemini(String url) {
+        // When
+        GeminiContent.GeminiPart part = PartsAndContentsMapper.fromContentToGPart(
+                ImageContent.from(url, ImageContent.DetailLevel.HIGH), true);
+
+        // Then
+        assertThat(part.inlineData()).isNull();
+        assertThat(part.fileData().fileUri()).isEqualTo(url);
+        assertThat(part.fileData().mimeType()).isEqualTo("image/png");
+        assertThat(part.mediaResolution().level()).isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH);
+    }
+
+    @Test
+    void fromContentToGPart_passesImageUrlsOnToGeminiWithTheGivenMimeType() {
+        // Given
+        Image image = Image.builder()
+                .url("https://example.com/photos?id=42")
+                .mimeType("image/webp")
+                .build();
+
+        // When
+        GeminiContent.GeminiPart part = PartsAndContentsMapper.fromContentToGPart(ImageContent.from(image));
+
+        // Then
+        assertThat(part.inlineData()).isNull();
+        assertThat(part.fileData().fileUri()).isEqualTo("https://example.com/photos?id=42");
+        assertThat(part.fileData().mimeType()).isEqualTo("image/webp");
+    }
+
     @Test
     void fromContentToGPart_handlesDataUriImage() {
         // Given - Create a simple base64 encoded 1x1 red pixel PNG
@@ -482,7 +497,7 @@ class PartsAndContentsMapperTest {
         ImageContent imageContent = ImageContent.from(dataUri);
 
         // When - This should not throw NullPointerException
-        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent, NO_DOWNLOADS);
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent);
 
         // Then
         assertThat(result).isNotNull();
@@ -501,7 +516,7 @@ class PartsAndContentsMapperTest {
         AudioContent audioContent = new AudioContent(audio);
 
         // When
-        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(audioContent, NO_DOWNLOADS);
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(audioContent);
 
         // Then
         assertThat(result).isNotNull();
@@ -520,7 +535,7 @@ class PartsAndContentsMapperTest {
         VideoContent videoContent = new VideoContent(video);
 
         // When
-        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(videoContent, NO_DOWNLOADS);
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(videoContent);
 
         // Then
         assertThat(result).isNotNull();
@@ -539,7 +554,7 @@ class PartsAndContentsMapperTest {
         PdfFileContent pdfFileContent = new PdfFileContent(pdfFile);
 
         // When
-        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(pdfFileContent, NO_DOWNLOADS);
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(pdfFileContent);
 
         // Then
         assertThat(result).isNotNull();
@@ -558,7 +573,7 @@ class PartsAndContentsMapperTest {
         ImageContent imageContent = ImageContent.from(dataUri);
 
         // When
-        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent, NO_DOWNLOADS);
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent);
 
         // Then
         assertThat(result).isNotNull();
@@ -577,7 +592,7 @@ class PartsAndContentsMapperTest {
         ImageContent imageContent = ImageContent.from(dataUri);
 
         // When
-        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent, NO_DOWNLOADS);
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent);
 
         // Then
         assertThat(result).isNotNull();
@@ -596,7 +611,7 @@ class PartsAndContentsMapperTest {
         AudioContent audioContent = new AudioContent(audio);
 
         // When
-        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(audioContent, NO_DOWNLOADS);
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(audioContent);
 
         // Then
         assertThat(result).isNotNull();
@@ -615,7 +630,7 @@ class PartsAndContentsMapperTest {
         VideoContent videoContent = new VideoContent(video);
 
         // When
-        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(videoContent, NO_DOWNLOADS);
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(videoContent);
 
         // Then
         assertThat(result).isNotNull();
@@ -634,7 +649,7 @@ class PartsAndContentsMapperTest {
         PdfFileContent pdfFileContent = new PdfFileContent(pdfFile);
 
         // When
-        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(pdfFileContent, NO_DOWNLOADS);
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(pdfFileContent);
 
         // Then
         assertThat(result).isNotNull();
@@ -651,7 +666,7 @@ class PartsAndContentsMapperTest {
         ImageContent imageContent = ImageContent.from(invalidDataUri);
 
         // When/Then
-        assertThatThrownBy(() -> PartsAndContentsMapper.fromContentToGPart(imageContent, NO_DOWNLOADS))
+        assertThatThrownBy(() -> PartsAndContentsMapper.fromContentToGPart(imageContent))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid data URI format");
     }
@@ -665,7 +680,7 @@ class PartsAndContentsMapperTest {
         AudioContent audioContent = new AudioContent(audio);
 
         // When/Then
-        assertThatThrownBy(() -> PartsAndContentsMapper.fromContentToGPart(audioContent, NO_DOWNLOADS))
+        assertThatThrownBy(() -> PartsAndContentsMapper.fromContentToGPart(audioContent))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid data URI format");
     }
@@ -679,7 +694,7 @@ class PartsAndContentsMapperTest {
         VideoContent videoContent = new VideoContent(video);
 
         // When/Then
-        assertThatThrownBy(() -> PartsAndContentsMapper.fromContentToGPart(videoContent, NO_DOWNLOADS))
+        assertThatThrownBy(() -> PartsAndContentsMapper.fromContentToGPart(videoContent))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid data URI format");
     }
@@ -693,7 +708,7 @@ class PartsAndContentsMapperTest {
         PdfFileContent pdfFileContent = new PdfFileContent(pdfFile);
 
         // When/Then
-        assertThatThrownBy(() -> PartsAndContentsMapper.fromContentToGPart(pdfFileContent, NO_DOWNLOADS))
+        assertThatThrownBy(() -> PartsAndContentsMapper.fromContentToGPart(pdfFileContent))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid data URI format");
     }
@@ -705,17 +720,17 @@ class PartsAndContentsMapperTest {
 
         // GIF
         ImageContent gifContent = ImageContent.from("data:image/gif;base64," + base64Data);
-        GeminiContent.GeminiPart gifResult = PartsAndContentsMapper.fromContentToGPart(gifContent, NO_DOWNLOADS);
+        GeminiContent.GeminiPart gifResult = PartsAndContentsMapper.fromContentToGPart(gifContent);
         assertThat(gifResult.inlineData().mimeType()).isEqualTo("image/gif");
 
         // WebP
         ImageContent webpContent = ImageContent.from("data:image/webp;base64," + base64Data);
-        GeminiContent.GeminiPart webpResult = PartsAndContentsMapper.fromContentToGPart(webpContent, NO_DOWNLOADS);
+        GeminiContent.GeminiPart webpResult = PartsAndContentsMapper.fromContentToGPart(webpContent);
         assertThat(webpResult.inlineData().mimeType()).isEqualTo("image/webp");
 
         // SVG
         ImageContent svgContent = ImageContent.from("data:image/svg+xml;base64," + base64Data);
-        GeminiContent.GeminiPart svgResult = PartsAndContentsMapper.fromContentToGPart(svgContent, NO_DOWNLOADS);
+        GeminiContent.GeminiPart svgResult = PartsAndContentsMapper.fromContentToGPart(svgContent);
         assertThat(svgResult.inlineData().mimeType()).isEqualTo("image/svg+xml");
     }
 
@@ -727,22 +742,19 @@ class PartsAndContentsMapperTest {
         // WAV
         Audio wavAudio =
                 Audio.builder().url("data:audio/wav;base64," + base64Data).build();
-        GeminiContent.GeminiPart wavResult =
-                PartsAndContentsMapper.fromContentToGPart(new AudioContent(wavAudio), NO_DOWNLOADS);
+        GeminiContent.GeminiPart wavResult = PartsAndContentsMapper.fromContentToGPart(new AudioContent(wavAudio));
         assertThat(wavResult.inlineData().mimeType()).isEqualTo("audio/wav");
 
         // OGG
         Audio oggAudio =
                 Audio.builder().url("data:audio/ogg;base64," + base64Data).build();
-        GeminiContent.GeminiPart oggResult =
-                PartsAndContentsMapper.fromContentToGPart(new AudioContent(oggAudio), NO_DOWNLOADS);
+        GeminiContent.GeminiPart oggResult = PartsAndContentsMapper.fromContentToGPart(new AudioContent(oggAudio));
         assertThat(oggResult.inlineData().mimeType()).isEqualTo("audio/ogg");
 
         // FLAC
         Audio flacAudio =
                 Audio.builder().url("data:audio/flac;base64," + base64Data).build();
-        GeminiContent.GeminiPart flacResult =
-                PartsAndContentsMapper.fromContentToGPart(new AudioContent(flacAudio), NO_DOWNLOADS);
+        GeminiContent.GeminiPart flacResult = PartsAndContentsMapper.fromContentToGPart(new AudioContent(flacAudio));
         assertThat(flacResult.inlineData().mimeType()).isEqualTo("audio/flac");
     }
 
@@ -754,22 +766,19 @@ class PartsAndContentsMapperTest {
         // MP4
         Video mp4Video =
                 Video.builder().url("data:video/mp4;base64," + base64Data).build();
-        GeminiContent.GeminiPart mp4Result =
-                PartsAndContentsMapper.fromContentToGPart(new VideoContent(mp4Video), NO_DOWNLOADS);
+        GeminiContent.GeminiPart mp4Result = PartsAndContentsMapper.fromContentToGPart(new VideoContent(mp4Video));
         assertThat(mp4Result.inlineData().mimeType()).isEqualTo("video/mp4");
 
         // WebM
         Video webmVideo =
                 Video.builder().url("data:video/webm;base64," + base64Data).build();
-        GeminiContent.GeminiPart webmResult =
-                PartsAndContentsMapper.fromContentToGPart(new VideoContent(webmVideo), NO_DOWNLOADS);
+        GeminiContent.GeminiPart webmResult = PartsAndContentsMapper.fromContentToGPart(new VideoContent(webmVideo));
         assertThat(webmResult.inlineData().mimeType()).isEqualTo("video/webm");
 
         // MPEG
         Video mpegVideo =
                 Video.builder().url("data:video/mpeg;base64," + base64Data).build();
-        GeminiContent.GeminiPart mpegResult =
-                PartsAndContentsMapper.fromContentToGPart(new VideoContent(mpegVideo), NO_DOWNLOADS);
+        GeminiContent.GeminiPart mpegResult = PartsAndContentsMapper.fromContentToGPart(new VideoContent(mpegVideo));
         assertThat(mpegResult.inlineData().mimeType()).isEqualTo("video/mpeg");
     }
 
@@ -781,38 +790,34 @@ class PartsAndContentsMapperTest {
 
         // Test LOW -> MEDIA_RESOLUTION_LOW
         ImageContent lowContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.LOW);
-        GeminiContent.GeminiPart lowResult = PartsAndContentsMapper.fromContentToGPart(lowContent, true, NO_DOWNLOADS);
+        GeminiContent.GeminiPart lowResult = PartsAndContentsMapper.fromContentToGPart(lowContent, true);
         assertThat(lowResult.mediaResolution()).isNotNull();
         assertThat(lowResult.mediaResolution().level()).isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_LOW);
 
         // Test MEDIUM -> MEDIA_RESOLUTION_MEDIUM
         ImageContent mediumContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.MEDIUM);
-        GeminiContent.GeminiPart mediumResult =
-                PartsAndContentsMapper.fromContentToGPart(mediumContent, true, NO_DOWNLOADS);
+        GeminiContent.GeminiPart mediumResult = PartsAndContentsMapper.fromContentToGPart(mediumContent, true);
         assertThat(mediumResult.mediaResolution()).isNotNull();
         assertThat(mediumResult.mediaResolution().level())
                 .isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_MEDIUM);
 
         // Test HIGH -> MEDIA_RESOLUTION_HIGH
         ImageContent highContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.HIGH);
-        GeminiContent.GeminiPart highResult =
-                PartsAndContentsMapper.fromContentToGPart(highContent, true, NO_DOWNLOADS);
+        GeminiContent.GeminiPart highResult = PartsAndContentsMapper.fromContentToGPart(highContent, true);
         assertThat(highResult.mediaResolution()).isNotNull();
         assertThat(highResult.mediaResolution().level()).isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH);
 
         // Test ULTRA_HIGH -> MEDIA_RESOLUTION_ULTRA_HIGH
         ImageContent ultraHighContent =
                 ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.ULTRA_HIGH);
-        GeminiContent.GeminiPart ultraHighResult =
-                PartsAndContentsMapper.fromContentToGPart(ultraHighContent, true, NO_DOWNLOADS);
+        GeminiContent.GeminiPart ultraHighResult = PartsAndContentsMapper.fromContentToGPart(ultraHighContent, true);
         assertThat(ultraHighResult.mediaResolution()).isNotNull();
         assertThat(ultraHighResult.mediaResolution().level())
                 .isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_ULTRA_HIGH);
 
         // Test AUTO -> MEDIA_RESOLUTION_UNSPECIFIED
         ImageContent autoContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.AUTO);
-        GeminiContent.GeminiPart autoResult =
-                PartsAndContentsMapper.fromContentToGPart(autoContent, true, NO_DOWNLOADS);
+        GeminiContent.GeminiPart autoResult = PartsAndContentsMapper.fromContentToGPart(autoContent, true);
         assertThat(autoResult.mediaResolution()).isNotNull();
         assertThat(autoResult.mediaResolution().level())
                 .isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_UNSPECIFIED);
@@ -826,7 +831,7 @@ class PartsAndContentsMapperTest {
         ImageContent highContent = ImageContent.from(base64Image, "image/png", ImageContent.DetailLevel.HIGH);
 
         // When - mediaResolutionPerPartEnabled is false (default)
-        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(highContent, false, NO_DOWNLOADS);
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(highContent, false);
 
         // Then
         assertThat(result.mediaResolution()).isNull();
@@ -841,7 +846,7 @@ class PartsAndContentsMapperTest {
         ImageContent imageContent = new ImageContent(dataUri, ImageContent.DetailLevel.ULTRA_HIGH);
 
         // When
-        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent, true, NO_DOWNLOADS);
+        GeminiContent.GeminiPart result = PartsAndContentsMapper.fromContentToGPart(imageContent, true);
 
         // Then
         assertThat(result.inlineData()).isNotNull();
@@ -859,7 +864,7 @@ class PartsAndContentsMapperTest {
 
         // When
         List<GeminiContent> result =
-                PartsAndContentsMapper.fromMessageToGContent(List.of(userMessage), null, false, true, NO_DOWNLOADS);
+                PartsAndContentsMapper.fromMessageToGContent(List.of(userMessage), null, false, true);
 
         // Then
         assertThat(result).hasSize(1);
@@ -867,205 +872,5 @@ class PartsAndContentsMapperTest {
         assertThat(result.get(0).parts().get(0).mediaResolution()).isNotNull();
         assertThat(result.get(0).parts().get(0).mediaResolution().level())
                 .isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH);
-    }
-
-    @Test
-    void fromContentToGPart_downloadsHttpImageWithMediaFetcher() {
-        // Given
-        byte[] bytes = "image bytes".getBytes(StandardCharsets.UTF_8);
-        List<URI> downloaded = new ArrayList<>();
-        MediaFetcher mediaFetcher = request -> {
-            downloaded.add(request.url());
-            return FetchedMedia.from(bytes, "image/webp");
-        };
-
-        // When
-        GeminiContent.GeminiPart part = PartsAndContentsMapper.fromContentToGPart(
-                ImageContent.from("https://example.com/cat.png"), mediaFetcher);
-
-        // Then
-        assertThat(downloaded).containsExactly(URI.create("https://example.com/cat.png"));
-        assertThat(part.inlineData().data()).isEqualTo(Base64.getEncoder().encodeToString(bytes));
-        assertThat(part.inlineData().mimeType()).isEqualTo("image/png");
-    }
-
-    @Test
-    void fromContentToGPart_usesMimeTypeOfDownloadWhenUrlHasNoExtension() {
-        // Given
-        MediaFetcher mediaFetcher = request -> FetchedMedia.from(new byte[] {1, 2, 3}, "image/jpeg");
-
-        // When
-        GeminiContent.GeminiPart part = PartsAndContentsMapper.fromContentToGPart(
-                ImageContent.from("https://example.com/images?id=42"), mediaFetcher);
-
-        // Then
-        assertThat(part.inlineData().mimeType()).isEqualTo("image/jpeg");
-    }
-
-    @Test
-    void fromContentToGPart_prefersMimeTypeOfImageOverMimeTypeOfDownload() {
-        // Given
-        MediaFetcher mediaFetcher = request -> FetchedMedia.from(new byte[] {1, 2, 3}, "image/jpeg");
-        Image image = Image.builder()
-                .url("https://example.com/images?id=42")
-                .mimeType("image/gif")
-                .build();
-
-        // When
-        GeminiContent.GeminiPart part =
-                PartsAndContentsMapper.fromContentToGPart(ImageContent.from(image), mediaFetcher);
-
-        // Then
-        assertThat(part.inlineData().mimeType()).isEqualTo("image/gif");
-    }
-
-    @Test
-    void fromContentToGPart_passesFileUrlsAndPlainPathsOfImagesOnWithoutReadingThem() {
-        // When
-        GeminiContent.GeminiPart fileUrl =
-                PartsAndContentsMapper.fromContentToGPart(ImageContent.from("file:///etc/passwd"), NO_DOWNLOADS);
-        GeminiContent.GeminiPart plainPath =
-                PartsAndContentsMapper.fromContentToGPart(ImageContent.from("/etc/passwd"), NO_DOWNLOADS);
-
-        // Then
-        assertThat(fileUrl.inlineData()).isNull();
-        assertThat(fileUrl.fileData().fileUri()).isEqualTo("file:///etc/passwd");
-        assertThat(plainPath.inlineData()).isNull();
-        assertThat(plainPath.fileData().fileUri()).isEqualTo("/etc/passwd");
-    }
-
-    @Test
-    void fromMessageToGContent_downloadsImagesOfToolResultsWithMediaFetcher() {
-        // Given
-        List<URI> downloaded = new ArrayList<>();
-        MediaFetcher mediaFetcher = request -> {
-            downloaded.add(request.url());
-            return FetchedMedia.from(new byte[] {1, 2, 3}, "image/png");
-        };
-        ToolExecutionResultMessage toolResult = ToolExecutionResultMessage.builder()
-                .id("call-1")
-                .toolName("takeScreenshot")
-                .contents(List.of(TextContent.from("done"), ImageContent.from("https://example.com/screenshot")))
-                .build();
-
-        // When
-        List<GeminiContent> result =
-                PartsAndContentsMapper.fromMessageToGContent(List.of(toolResult), null, false, mediaFetcher);
-
-        // Then
-        assertThat(downloaded).containsExactly(URI.create("https://example.com/screenshot"));
-        assertThat(result.get(0).parts().get(1).inlineData().mimeType()).isEqualTo("image/png");
-    }
-
-    @Test
-    void mediaUrls_returnsUrlsOfImagesThatAreDownloaded() {
-        // Given
-        String base64Image = Base64.getEncoder().encodeToString(new byte[] {1, 2, 3});
-        List<ChatMessage> messages = List.of(
-                SystemMessage.from("system"),
-                UserMessage.from(
-                        TextContent.from("describe"),
-                        ImageContent.from("https://example.com/cat.png"),
-                        ImageContent.from("http://example.com/dog.png"),
-                        ImageContent.from(base64Image, "image/png"),
-                        ImageContent.from("data:image/png;base64," + base64Image),
-                        ImageContent.from("file:///etc/passwd"),
-                        ImageContent.from("/etc/passwd"),
-                        AudioContent.from("https://example.com/audio.mp3"),
-                        VideoContent.from("https://example.com/video.mp4"),
-                        PdfFileContent.from("https://example.com/document.pdf")),
-                AiMessage.from("answer"),
-                ToolExecutionResultMessage.builder()
-                        .id("call-1")
-                        .toolName("takeScreenshot")
-                        .contents(List.of(ImageContent.from("https://example.com/screenshot.png")))
-                        .build());
-
-        // When
-        List<URI> urls = PartsAndContentsMapper.mediaUrls(messages);
-
-        // Then
-        assertThat(urls)
-                .containsExactly(
-                        URI.create("https://example.com/cat.png"),
-                        URI.create("http://example.com/dog.png"),
-                        URI.create("https://example.com/screenshot.png"));
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {"text/html", "application/octet-stream", "video/mp4"})
-    void fromContentToGPart_rejectsMimeTypeOfDownloadThatIsNotAnImageType(String reportedMimeType) {
-        // Given
-        MediaFetcher mediaFetcher = request -> FetchedMedia.from(new byte[] {1, 2, 3}, reportedMimeType);
-        ImageContent image = ImageContent.from("https://www.example.com/watch?v=abc123");
-
-        // When/Then
-        assertThatThrownBy(() -> PartsAndContentsMapper.fromContentToGPart(image, mediaFetcher))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unable to detect the MIME type of 'https://www.example.com/...'")
-                .hasMessageContaining("the server answered with " + reportedMimeType)
-                .hasMessageNotContaining("watch")
-                .hasMessageNotContaining("abc123");
-    }
-
-    @Test
-    void fromContentToGPart_leavesMimeTypeUnsetWhenNeitherUrlNorDownloadTellIt() {
-        // Given
-        MediaFetcher mediaFetcher = request -> FetchedMedia.from(new byte[] {1, 2, 3});
-
-        // When
-        GeminiContent.GeminiPart part = PartsAndContentsMapper.fromContentToGPart(
-                ImageContent.from("https://example.com/images?id=42"), mediaFetcher);
-
-        // Then
-        assertThat(part.inlineData().mimeType()).isNull();
-    }
-
-    @Test
-    void mediaUrls_returnsExactlyTheUrlsThatTheMappingDownloads() {
-        // Given
-        String base64Image = Base64.getEncoder().encodeToString(new byte[] {1, 2, 3});
-        List<ChatMessage> messages = List.of(
-                SystemMessage.from("system"),
-                UserMessage.from(
-                        TextContent.from("describe"),
-                        ImageContent.from("https://example.com/cat.png"),
-                        ImageContent.from("http://example.com/images?id=42"),
-                        ImageContent.from(base64Image, "image/png"),
-                        ImageContent.from("data:image/png;base64," + base64Image),
-                        ImageContent.from("gs://bucket/cat.png"),
-                        ImageContent.from("file:///home/me/cat.png"),
-                        ImageContent.from("cat.png"),
-                        AudioContent.from("https://example.com/audio.mp3"),
-                        AudioContent.from("data:audio/wav;base64," + base64Image),
-                        VideoContent.from("https://www.youtube.com/watch?v=abc123"),
-                        VideoContent.from("data:video/mp4;base64," + base64Image),
-                        PdfFileContent.from("https://example.com/document.pdf"),
-                        PdfFileContent.from("data:application/pdf;base64," + base64Image)),
-                AiMessage.from("answer"),
-                UserMessage.from(
-                        ImageContent.from("https://example.com/cat.png"),
-                        ImageContent.from("https://example.com/dog.jpg")),
-                ToolExecutionResultMessage.builder()
-                        .id("call-1")
-                        .toolName("takeScreenshot")
-                        .contents(List.of(
-                                TextContent.from("done"),
-                                ImageContent.from("https://example.com/screenshot.png"),
-                                ImageContent.from(base64Image, "image/png")))
-                        .build());
-        List<URI> downloaded = new ArrayList<>();
-        MediaFetcher mediaFetcher = request -> {
-            downloaded.add(request.url());
-            return FetchedMedia.from(new byte[] {1, 2, 3}, "image/png");
-        };
-
-        // When
-        PartsAndContentsMapper.fromMessageToGContent(messages, null, false, mediaFetcher);
-
-        // Then
-        assertThat(Set.copyOf(PartsAndContentsMapper.mediaUrls(messages)))
-                .hasSize(4)
-                .isEqualTo(Set.copyOf(downloaded));
     }
 }

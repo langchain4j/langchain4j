@@ -1,7 +1,6 @@
 package dev.langchain4j.model.googleai;
 
 import static dev.langchain4j.data.message.AiMessage.GENERATED_IMAGES_KEY;
-import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
@@ -12,9 +11,6 @@ import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.media.FetchedMedia;
-import dev.langchain4j.data.media.MediaFetchRequest;
-import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
@@ -38,16 +34,13 @@ import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFunctionCal
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFunctionResponse;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import org.jspecify.annotations.Nullable;
 
 final class PartsAndContentsMapper {
 
@@ -61,12 +54,11 @@ final class PartsAndContentsMapper {
     // Pattern to parse data URIs: data:[<mediatype>][;base64],<data>
     private static final Pattern DATA_URI_PATTERN = Pattern.compile("^data:([^;,]+)(?:;[^,]*)?,(.*)$");
 
-    static GeminiContent.GeminiPart fromContentToGPart(Content content, MediaFetcher mediaFetcher) {
-        return fromContentToGPart(content, false, mediaFetcher);
+    static GeminiContent.GeminiPart fromContentToGPart(Content content) {
+        return fromContentToGPart(content, false);
     }
 
-    static GeminiContent.GeminiPart fromContentToGPart(
-            Content content, boolean mediaResolutionPerPartEnabled, MediaFetcher mediaFetcher) {
+    static GeminiContent.GeminiPart fromContentToGPart(Content content, boolean mediaResolutionPerPartEnabled) {
         if (content instanceof TextContent textContent) {
             return GeminiContent.GeminiPart.builder().text(textContent.text()).build();
         } else if (content instanceof ImageContent imageContent) {
@@ -85,13 +77,6 @@ final class PartsAndContentsMapper {
                 if (url.getScheme() != null && url.getScheme().equals("data")) {
                     return GeminiContent.GeminiPart.builder()
                             .inlineData(parseDataUri(url))
-                            .mediaResolution(mediaResolution)
-                            .build();
-                } else if (isDownloaded(url)) {
-                    FetchedMedia media = fetch(mediaFetcher, url);
-                    String base64Data = Base64.getEncoder().encodeToString(media.bytes());
-                    return GeminiContent.GeminiPart.builder()
-                            .inlineData(new GeminiBlob(mimeType(image.mimeType(), url, media), base64Data))
                             .mediaResolution(mediaResolution)
                             .build();
                 } else {
@@ -165,76 +150,6 @@ final class PartsAndContentsMapper {
         } else {
             throw new UnsupportedFeatureException("Unsupported content type: " + content.type());
         }
-    }
-
-    private static FetchedMedia fetch(MediaFetcher mediaFetcher, URI url) {
-        return mediaFetcher.fetch(MediaFetchRequest.from(url));
-    }
-
-    /**
-     * Returns the URLs that {@link #fromMessageToGContent} downloads with its {@link MediaFetcher}: the URLs of images
-     * that are sent to Gemini as content.
-     */
-    static List<URI> mediaUrls(List<ChatMessage> messages) {
-        List<URI> urls = new ArrayList<>();
-        for (ChatMessage message : messages) {
-            List<Content> contents;
-            if (message instanceof UserMessage userMessage) {
-                contents = userMessage.contents();
-            } else if (message instanceof ToolExecutionResultMessage toolResultMessage) {
-                contents = toolResultMessage.contents();
-            } else {
-                continue;
-            }
-            for (Content content : contents) {
-                if (content instanceof ImageContent imageContent) {
-                    Image image = imageContent.image();
-                    if (isNullOrBlank(image.base64Data()) && image.url() != null && isDownloaded(image.url())) {
-                        urls.add(image.url());
-                    }
-                }
-            }
-        }
-        return urls;
-    }
-
-    private static boolean isDownloaded(URI url) {
-        return url.getScheme() != null && url.getScheme().startsWith("http");
-    }
-
-    /**
-     * Returns the MIME type of a downloaded image: the given one, otherwise the one of the file name in the URL,
-     * otherwise the one the server reported, but only if it is an image type (a web page is not sent as an image).
-     */
-    private static @Nullable String mimeType(@Nullable String mimeType, URI url, FetchedMedia media) {
-        if (mimeType != null) {
-            return mimeType;
-        }
-        String mimeTypeFromName = mimeTypeDetector.probeContentTypeFromName(url);
-        if (mimeTypeFromName != null) {
-            return mimeTypeFromName;
-        }
-        String reportedMimeType = media.mimeType();
-        if (reportedMimeType == null || reportedMimeType.toLowerCase(Locale.ROOT).startsWith("image/")) {
-            return reportedMimeType;
-        }
-        throw illegalArgument(
-                "Unable to detect the MIME type of '%s' (the server answered with %s). Please provide it explicitly.",
-                withoutPathAndQuery(url),
-                reportedMimeType);
-    }
-
-    /**
-     * Shows the scheme, the host and the port of the URL only, because the path and the query can contain
-     * credentials, for example in a presigned URL.
-     */
-    private static String withoutPathAndQuery(URI url) {
-        String scheme = url.getScheme() == null ? "" : url.getScheme() + ":";
-        if (url.getHost() == null) {
-            return scheme + "...";
-        }
-        String port = url.getPort() == -1 ? "" : ":" + url.getPort();
-        return scheme + "//" + url.getHost() + port + "/...";
     }
 
     /**
@@ -354,19 +269,15 @@ final class PartsAndContentsMapper {
     }
 
     static List<GeminiContent> fromMessageToGContent(
-            List<ChatMessage> messages,
-            GeminiContent systemInstruction,
-            boolean sendThinking,
-            MediaFetcher mediaFetcher) {
-        return fromMessageToGContent(messages, systemInstruction, sendThinking, false, mediaFetcher);
+            List<ChatMessage> messages, GeminiContent systemInstruction, boolean sendThinking) {
+        return fromMessageToGContent(messages, systemInstruction, sendThinking, false);
     }
 
     static List<GeminiContent> fromMessageToGContent(
             List<ChatMessage> messages,
             GeminiContent systemInstruction,
             boolean sendThinking,
-            boolean mediaResolutionPerPartEnabled,
-            MediaFetcher mediaFetcher) {
+            boolean mediaResolutionPerPartEnabled) {
         return messages.stream()
                 .map(msg -> {
                     switch (msg.type()) {
@@ -422,8 +333,7 @@ final class PartsAndContentsMapper {
 
                             return new GeminiContent(
                                     userMessage.contents().stream()
-                                            .map(content -> fromContentToGPart(
-                                                    content, mediaResolutionPerPartEnabled, mediaFetcher))
+                                            .map(content -> fromContentToGPart(content, mediaResolutionPerPartEnabled))
                                             .collect(Collectors.toList()),
                                     GeminiRole.USER.toString());
                         case TOOL_EXECUTION_RESULT:
@@ -436,8 +346,7 @@ final class PartsAndContentsMapper {
                                     if (content instanceof TextContent textContent) {
                                         responseMap.put("response", textContent.text());
                                     } else if (content instanceof ImageContent imageContent) {
-                                        toolParts.add(fromContentToGPart(
-                                                imageContent, mediaResolutionPerPartEnabled, mediaFetcher));
+                                        toolParts.add(fromContentToGPart(imageContent, mediaResolutionPerPartEnabled));
                                     } else {
                                         throw new UnsupportedFeatureException(
                                                 "Google AI Gemini does not support content type '" + content.type()

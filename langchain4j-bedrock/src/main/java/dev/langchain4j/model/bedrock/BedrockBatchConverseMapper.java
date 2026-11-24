@@ -3,13 +3,12 @@ package dev.langchain4j.model.bedrock;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.bedrock.AbstractBedrockChatModel.THINKING_SIGNATURE_KEY;
-import static dev.langchain4j.model.bedrock.AbstractBedrockChatModel.extractFilenameWithoutExtensionFromUri;
+import static dev.langchain4j.model.bedrock.AbstractBedrockChatModel.IMAGE_URL_NOT_SUPPORTED;
+import static dev.langchain4j.model.bedrock.AbstractBedrockChatModel.PDF_URL_NOT_SUPPORTED;
+import static dev.langchain4j.model.bedrock.AbstractBedrockChatModel.documentName;
 import static dev.langchain4j.model.bedrock.Utils.extractAndValidateFormat;
 
 import dev.langchain4j.Internal;
-import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.media.FetchedMedia;
-import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -19,7 +18,6 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
-import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.ProviderJson;
 import dev.langchain4j.internal.ProviderJsonSpec;
@@ -53,13 +51,10 @@ final class BedrockBatchConverseMapper {
     }
 
     static Map<String, Object> toModelInput(
-            ChatRequest chatRequest,
-            Map<String, Object> additionalModelRequestFields,
-            boolean sendThinking,
-            MediaFetcher mediaFetcher) {
+            ChatRequest chatRequest, Map<String, Object> additionalModelRequestFields, boolean sendThinking) {
 
         Map<String, Object> modelInput = new LinkedHashMap<>();
-        MediaDownloads media = new MediaDownloads(mediaFetcher);
+        DocumentNames documentNames = new DocumentNames();
 
         List<Map<String, Object>> messages = new ArrayList<>();
         List<Map<String, Object>> system = new ArrayList<>();
@@ -76,7 +71,7 @@ final class BedrockBatchConverseMapper {
                     }
                 }
             } else if (message instanceof UserMessage userMessage) {
-                messages.add(message("user", contentBlocks(userMessage.contents(), media)));
+                messages.add(message("user", contentBlocks(userMessage.contents(), documentNames)));
             } else if (message instanceof AiMessage aiMessage) {
                 messages.add(message("assistant", aiMessageBlocks(aiMessage, sendThinking)));
             } else if (message instanceof ToolExecutionResultMessage) {
@@ -142,24 +137,19 @@ final class BedrockBatchConverseMapper {
         return blocks;
     }
 
-    private static List<Map<String, Object>> contentBlocks(List<Content> contents, MediaDownloads media) {
+    private static List<Map<String, Object>> contentBlocks(List<Content> contents, DocumentNames documentNames) {
         List<Map<String, Object>> blocks = new ArrayList<>();
         for (Content content : contents) {
             if (content instanceof TextContent text) {
                 blocks.add(Map.of("text", text.text()));
-            } else if (content instanceof ImageContent imageContent) {
-                Image image = imageContent.image();
-                FetchedMedia fetched = image.base64Data() == null ? media.fetch(image.url()) : null;
-                String format = extractAndValidateFormat(image, fetched == null ? null : fetched.mimeType());
-                String bytes = fetched == null ? image.base64Data() : base64(fetched);
+            } else if (content instanceof ImageContent image) {
+                String bytes = base64(image.image().base64Data(), IMAGE_URL_NOT_SUPPORTED);
+                String format = extractAndValidateFormat(image.image());
                 blocks.add(Map.of("image", Map.of("format", format, "source", Map.of("bytes", bytes))));
             } else if (content instanceof PdfFileContent pdf) {
-                PdfFile pdfFile = pdf.pdfFile();
-                String bytes =
-                        pdfFile.base64Data() != null ? pdfFile.base64Data() : base64(media.fetch(pdfFile.url()));
-                String name = pdfFile.url() == null
-                        ? media.documentName(Base64.getDecoder().decode(bytes))
-                        : extractFilenameWithoutExtensionFromUri(pdfFile.url());
+                String bytes = base64(pdf.pdfFile().base64Data(), PDF_URL_NOT_SUPPORTED);
+                String name = documentNames.distinct(
+                        documentName(pdf.pdfFile(), Base64.getDecoder().decode(bytes)));
                 blocks.add(Map.of("document", Map.of("format", "pdf", "name", name, "source", Map.of("bytes", bytes))));
             } else {
                 throw new UnsupportedFeatureException(
@@ -272,8 +262,11 @@ final class BedrockBatchConverseMapper {
         return (Map<String, Object>) map;
     }
 
-    private static String base64(FetchedMedia media) {
-        return Base64.getEncoder().encodeToString(media.bytes());
+    private static String base64(@Nullable String base64Data, String urlNotSupported) {
+        if (base64Data == null) {
+            throw new UnsupportedFeatureException(urlNotSupported);
+        }
+        return base64Data;
     }
 
     private static void putIfNotNull(Map<String, Object> map, String key, @Nullable Object value) {

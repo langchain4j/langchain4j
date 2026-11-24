@@ -11,9 +11,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
-import dev.langchain4j.data.media.FetchedMedia;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.AuthenticationException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
@@ -29,7 +26,6 @@ import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
-import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -209,28 +205,6 @@ class BedrockBatchChatModelTest {
 
     private static String text(BatchItemResult<ChatResponse> result) {
         return result.response().aiMessage().text();
-    }
-
-    @Test
-    void should_download_media_given_by_url_with_the_configured_media_fetcher() throws Exception {
-        stubSubmit();
-        URI imageUrl = URI.create("https://example.com/cat.png");
-        BedrockBatchChatModel model = modelBuilder()
-                .mediaFetcher(request -> FetchedMedia.from(new byte[] {1, 2, 3}, "image/png"))
-                .build();
-
-        model.submit(new BatchRequest<>(List.of(ChatRequest.builder()
-                .messages(UserMessage.from(TextContent.from("describe"), ImageContent.from(imageUrl)))
-                .build())));
-
-        assertThat(modelInput(uploadedRecords().get(0)).get("messages"))
-                .isEqualTo(List.of(Map.of(
-                        "role",
-                        "user",
-                        "content",
-                        List.of(
-                                Map.of("text", "describe"),
-                                Map.of("image", Map.of("format", "png", "source", Map.of("bytes", "AQID")))))));
     }
 
     @Test

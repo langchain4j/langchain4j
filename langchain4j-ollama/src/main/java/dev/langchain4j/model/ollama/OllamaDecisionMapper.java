@@ -4,8 +4,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
-import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
@@ -40,20 +38,16 @@ class OllamaDecisionMapper {
 
     private OllamaDecisionMapper() {}
 
-    static void ensureModelName(DecisionRequest request) {
+    static OllamaDecisionRequest toOllamaRequest(DecisionRequest request, Integer keepAlive) {
         if (isNullOrBlank(request.modelName())) {
             throw new IllegalArgumentException("The model name must be set, either with "
                     + "OllamaDecisionModel.builder().modelName(...) or on the request with "
                     + "DecisionRequestParameters.builder().modelName(...)");
         }
-    }
-
-    static OllamaDecisionRequest toOllamaRequest(DecisionRequest request, Integer keepAlive, MediaFetcher mediaFetcher) {
-        ensureModelName(request);
         OllamaDecisionRequest ollamaRequest = new OllamaDecisionRequest();
         ollamaRequest.setModel(request.modelName());
         List<String> images = new ArrayList<>();
-        ollamaRequest.setState(state(request.input(), images, mediaFetcher));
+        ollamaRequest.setState(state(request.input(), images));
         ollamaRequest.setImages(images.isEmpty() ? null : images);
         Map<String, OllamaDecisionRequest.Question> questions = new LinkedHashMap<>();
         request.questions().forEach((name, question) -> questions.put(name, toQuestion(question)));
@@ -73,63 +67,31 @@ class OllamaDecisionMapper {
         return ollamaRequest;
     }
 
-    private static Object state(DecisionInput input, List<String> images, MediaFetcher mediaFetcher) {
+    private static Object state(DecisionInput input, List<String> images) {
         if (input instanceof TextInput text) {
             return text.text();
         } else if (input instanceof FieldsInput fields) {
             Map<String, Object> state = new LinkedHashMap<>();
             fields.fields().forEach((name, value) -> {
                 if (value instanceof Content content) {
-                    state.put(name, text(List.of(content), images, mediaFetcher));
+                    state.put(name, text(List.of(content), images));
                 } else if (isContents(value)) {
-                    state.put(name, text((List<?>) value, images, mediaFetcher));
+                    state.put(name, text((List<?>) value, images));
                 } else {
                     state.put(name, value);
                 }
             });
             return state;
         } else if (input instanceof ContentsInput contents) {
-            return text(contents.contents(), images, mediaFetcher);
+            return text(contents.contents(), images);
         } else if (input instanceof MessagesInput messages) {
             // a conversation is sent as a transcript, its images are sent like other images
             Transcript transcript = DecisionModelInputUtils.transcript(messages.messages(), "The Ollama decision model");
-            transcript.images().forEach(image -> images.add(ImageUtils.base64Image(image.image(), mediaFetcher)));
+            transcript.images().forEach(image -> images.add(ImageUtils.base64Image(image.image())));
             return Map.of("messages", transcript.messages());
         }
         throw new UnsupportedFeatureException(
                 "Ollama decision models do not support " + input.getClass().getName() + " as input");
-    }
-
-    /**
-     * Returns the images that {@link #toOllamaRequest(DecisionRequest, Integer, MediaFetcher)} sends, so that they can
-     * be downloaded first.
-     */
-    static List<Image> images(DecisionInput input) {
-        List<Image> images = new ArrayList<>();
-        if (input instanceof FieldsInput fields) {
-            fields.fields().values().forEach(value -> {
-                if (value instanceof ImageContent imageContent) {
-                    images.add(imageContent.image());
-                } else if (isContents(value)) {
-                    addImages((List<?>) value, images);
-                }
-            });
-        } else if (input instanceof ContentsInput contents) {
-            addImages(contents.contents(), images);
-        } else if (input instanceof MessagesInput messages) {
-            DecisionModelInputUtils.transcript(messages.messages(), "The Ollama decision model")
-                    .images()
-                    .forEach(imageContent -> images.add(imageContent.image()));
-        }
-        return images;
-    }
-
-    private static void addImages(List<?> contents, List<Image> images) {
-        for (Object content : contents) {
-            if (content instanceof ImageContent imageContent) {
-                images.add(imageContent.image());
-            }
-        }
     }
 
     private static boolean isContents(Object value) {
@@ -140,13 +102,13 @@ class OllamaDecisionMapper {
      * Images are sent separately from the state, so each one is referred to in the state by its position in the
      * images, for example {@code [image 1]}.
      */
-    private static String text(List<?> contents, List<String> images, MediaFetcher mediaFetcher) {
+    private static String text(List<?> contents, List<String> images) {
         List<String> parts = new ArrayList<>();
         for (Object content : contents) {
             if (content instanceof TextContent textContent) {
                 parts.add(textContent.text());
             } else if (content instanceof ImageContent imageContent) {
-                images.add(ImageUtils.base64Image(imageContent.image(), mediaFetcher));
+                images.add(ImageUtils.base64Image(imageContent.image()));
                 parts.add("[image " + images.size() + "]");
             } else {
                 throw new UnsupportedFeatureException(

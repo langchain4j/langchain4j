@@ -19,10 +19,8 @@ https://developers.cloudflare.com/workers-ai/
 
 - `WorkersAiImageModel`
 
-`WorkersAiImageModel` edits images given by URL or as base64 data. It downloads images given by URL with the
-`MediaFetcher` set with `mediaFetcher(...)` on the builder, which by default downloads only `http` and `https` URLs of
-public hosts and never reads local files, see [Media given by URL](/tutorials/chat-and-language-models#media-given-by-url).
-To edit a local image, create it from the content of the file:
+`WorkersAiImageModel` edits images given as base64 data. Images given by URL are not supported. To edit a local
+image, create it from the content of the file:
 
 ```java
 Image image = Image.builder()

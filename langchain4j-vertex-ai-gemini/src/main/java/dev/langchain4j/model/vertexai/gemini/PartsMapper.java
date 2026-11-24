@@ -13,9 +13,6 @@ import com.google.protobuf.Value;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.media.FetchedMedia;
-import dev.langchain4j.data.media.MediaFetchRequest;
-import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
@@ -37,11 +34,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import org.jspecify.annotations.Nullable;
+import java.util.Set;
 
 class PartsMapper {
 
     private static final Map<String, String> EXTENSION_TO_MIME_TYPE = new HashMap<>();
+
+    private static final Set<String> URL_SCHEMES_PASSED_ON = Set.of("gs", "http", "https");
+
+    static final String URL_NOT_SUPPORTED = "Vertex AI Gemini does not support media given by this kind of URL"
+            + " (only gs://, http:// and https:// URLs are passed on to Vertex AI). Create the content from a file or"
+            + " from its bytes, for example ImageContent.from(Path, String), PdfFileContent.from(Path),"
+            + " AudioContent.from(Path, String) or VideoContent.from(Path, String)";
 
     static {
         // see image requirements
@@ -87,7 +91,7 @@ class PartsMapper {
         EXTENSION_TO_MIME_TYPE.put("pdf", "application/pdf");
     }
 
-    static List<Part> map(ChatMessage message, MediaFetcher mediaFetcher) {
+    static List<Part> map(ChatMessage message) {
         if (message instanceof AiMessage aiMessage) {
 
             List<Part> parts = new ArrayList<>();
@@ -107,9 +111,7 @@ class PartsMapper {
 
             return parts;
         } else if (message instanceof UserMessage userMessage) {
-            return userMessage.contents().stream()
-                    .map(content -> map(content, mediaFetcher))
-                    .toList();
+            return userMessage.contents().stream().map(PartsMapper::map).toList();
         } else if (message instanceof SystemMessage systemMessage) {
             return singletonList(
                     Part.newBuilder().setText((systemMessage).text()).build());
@@ -133,17 +135,17 @@ class PartsMapper {
         }
     }
 
-    private static Part map(Content content, MediaFetcher mediaFetcher) {
+    private static Part map(Content content) {
         if (content instanceof TextContent text) {
             return map(text);
         } else if (content instanceof ImageContent image) {
-            return map(image, mediaFetcher);
+            return map(image);
         } else if (content instanceof AudioContent audio) {
-            return map(audio, mediaFetcher);
+            return map(audio);
         } else if (content instanceof VideoContent video) {
-            return map(video, mediaFetcher);
+            return map(video);
         } else if (content instanceof PdfFileContent pdf) {
-            return map(pdf, mediaFetcher);
+            return map(pdf);
         } else {
             throw illegalArgument("Unknown content type: " + content);
         }
@@ -153,157 +155,47 @@ class PartsMapper {
         return Part.newBuilder().setText(content.text()).build();
     }
 
-    static Part map(ImageContent content, MediaFetcher mediaFetcher) {
+    static Part map(ImageContent content) {
         Image image = content.image();
-        return getPart(image.url(), image.mimeType(), image.base64Data(), MediaKind.IMAGE, mediaFetcher);
+        return getPart(image.url(), image.mimeType(), image.base64Data());
     }
 
-    static Part map(AudioContent content, MediaFetcher mediaFetcher) {
+    static Part map(AudioContent content) {
         Audio audio = content.audio();
-        return getPart(audio.url(), audio.mimeType(), audio.base64Data(), MediaKind.AUDIO, mediaFetcher);
+        return getPart(audio.url(), audio.mimeType(), audio.base64Data());
     }
 
-    static Part map(VideoContent content, MediaFetcher mediaFetcher) {
+    static Part map(VideoContent content) {
         Video video = content.video();
-        return getPart(video.url(), video.mimeType(), video.base64Data(), MediaKind.VIDEO, mediaFetcher);
+        return getPart(video.url(), video.mimeType(), video.base64Data());
     }
 
-    static Part map(PdfFileContent content, MediaFetcher mediaFetcher) {
+    static Part map(PdfFileContent content) {
         PdfFile pdfFile = content.pdfFile();
-        return getPart(pdfFile.url(), pdfFile.mimeType(), pdfFile.base64Data(), MediaKind.PDF, mediaFetcher);
+        return getPart(pdfFile.url(), pdfFile.mimeType(), pdfFile.base64Data());
     }
 
-    private static Part getPart(
-            @Nullable URI url,
-            @Nullable String mimeType,
-            String base64data,
-            MediaKind mediaKind,
-            MediaFetcher mediaFetcher) {
+    private static Part getPart(URI url, String mimeType, String base64data) {
         if (url != null) {
-            if (isPassedOn(url)) {
-                return fromMimeTypeAndData(getOrDefault(mimeType, () -> detectMimeType(url)), url);
+            if (url.getScheme() == null || !URL_SCHEMES_PASSED_ON.contains(url.getScheme().toLowerCase(Locale.ROOT))) {
+                throw new UnsupportedFeatureException(URL_NOT_SUPPORTED);
             }
-            FetchedMedia media = fetch(mediaFetcher, url);
-            return fromMimeTypeAndData(mimeType(mimeType, url, media, mediaKind), media.bytes());
+            String effectiveMimeType = getOrDefault(mimeType, () -> detectMimeType(url));
+            return fromMimeTypeAndData(effectiveMimeType, url);
         }
         return fromMimeTypeAndData(mimeType, Base64.getDecoder().decode(base64data));
     }
 
-    private static FetchedMedia fetch(MediaFetcher mediaFetcher, URI url) {
-        return mediaFetcher.fetch(MediaFetchRequest.from(url));
-    }
-
-    /**
-     * Returns the URLs that {@link #map(ChatMessage, MediaFetcher)} downloads with its {@link MediaFetcher}: the URLs
-     * of all media in user messages, except Cloud Storage URLs, which are passed on to Gemini.
-     */
-    static List<URI> mediaUrls(List<ChatMessage> messages) {
-        List<URI> urls = new ArrayList<>();
-        for (ChatMessage message : messages) {
-            if (message instanceof UserMessage userMessage) {
-                for (Content content : userMessage.contents()) {
-                    URI url = mediaUrl(content);
-                    if (url != null && !isPassedOn(url)) {
-                        urls.add(url);
-                    }
-                }
-            }
-        }
-        return urls;
-    }
-
-    private static @Nullable URI mediaUrl(Content content) {
-        if (content instanceof ImageContent image) {
-            return image.image().url();
-        } else if (content instanceof AudioContent audio) {
-            return audio.audio().url();
-        } else if (content instanceof VideoContent video) {
-            return video.video().url();
-        } else if (content instanceof PdfFileContent pdf) {
-            return pdf.pdfFile().url();
-        }
-        return null;
-    }
-
-    private static boolean isPassedOn(URI url) {
-        return "gs".equals(url.getScheme());
-    }
-
-    /**
-     * Returns the MIME type of downloaded media: the given one, otherwise the one of the extension of the URL,
-     * otherwise the one the server reported, but only if it fits the kind of the content (for example, a web page
-     * given as a video is not sent as a video).
-     */
-    private static String mimeType(@Nullable String mimeType, URI url, FetchedMedia media, MediaKind mediaKind) {
-        if (mimeType != null) {
-            return mimeType;
-        }
-        String mimeTypeFromExtension = mimeTypeFromExtension(url);
-        if (mimeTypeFromExtension != null) {
-            return mimeTypeFromExtension;
-        }
-        String reportedMimeType = media.mimeType();
-        if (reportedMimeType != null && mediaKind.matches(reportedMimeType)) {
-            return reportedMimeType;
-        }
-        throw unknownMimeType(url, reportedMimeType);
-    }
-
     static String detectMimeType(URI url) {
-        String mimeType = mimeTypeFromExtension(url);
-        if (mimeType == null) {
-            throw unknownMimeType(url, null);
-        }
-        return mimeType;
-    }
-
-    private static @Nullable String mimeTypeFromExtension(URI url) {
-        if (url.getPath() == null) {
-            return null;
-        }
         String[] pathParts = url.getPath().split("\\.");
         if (pathParts.length > 1) {
             String extension = pathParts[pathParts.length - 1].toLowerCase(Locale.ROOT);
-            return EXTENSION_TO_MIME_TYPE.get(extension);
+            String mimeType = EXTENSION_TO_MIME_TYPE.get(extension);
+            if (mimeType != null) {
+                return mimeType;
+            }
         }
-        return null;
-    }
-
-    private static IllegalArgumentException unknownMimeType(URI url, @Nullable String reportedMimeType) {
-        return illegalArgument(
-                "Unable to detect the MIME type of '%s'%s. Please provide it explicitly.",
-                withoutPathAndQuery(url),
-                reportedMimeType == null ? "" : " (the server answered with " + reportedMimeType + ")");
-    }
-
-    /**
-     * Shows the scheme, the host and the port of the URL only, because the path and the query can contain
-     * credentials, for example in a presigned URL.
-     */
-    private static String withoutPathAndQuery(URI url) {
-        String scheme = url.getScheme() == null ? "" : url.getScheme() + ":";
-        if (url.getHost() == null) {
-            return scheme + "...";
-        }
-        String port = url.getPort() == -1 ? "" : ":" + url.getPort();
-        return scheme + "//" + url.getHost() + port + "/...";
-    }
-
-    private enum MediaKind {
-        IMAGE,
-        AUDIO,
-        VIDEO,
-        PDF;
-
-        boolean matches(String mimeType) {
-            String lowerCaseMimeType = mimeType.toLowerCase(Locale.ROOT);
-            return switch (this) {
-                case IMAGE -> lowerCaseMimeType.startsWith("image/");
-                case AUDIO -> lowerCaseMimeType.startsWith("audio/");
-                case VIDEO -> lowerCaseMimeType.startsWith("video/");
-                case PDF -> lowerCaseMimeType.equals("application/pdf");
-            };
-        }
+        throw illegalArgument("Unable to detect the MIME type of '%s'. Please provide it explicitly.", url);
     }
 
     private static Struct parseFunctionResponseToStruct(String functionResponseText) {

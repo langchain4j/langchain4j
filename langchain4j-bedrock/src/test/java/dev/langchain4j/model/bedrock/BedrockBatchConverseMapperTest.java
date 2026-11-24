@@ -4,8 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.data.media.FetchedMedia;
-import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ImageContent;
@@ -15,16 +13,12 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.pdf.PdfFile;
-import dev.langchain4j.exception.InvalidRequestException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
-import java.net.URI;
 import java.security.MessageDigest;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
@@ -32,15 +26,12 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class BedrockBatchConverseMapperTest {
 
-    private static final MediaFetcher NO_DOWNLOADS = request -> {
-        throw new AssertionError("Unexpected download of " + request.url());
-    };
-
     private static Map<String, Object> modelInput(ChatRequest request) {
-        return BedrockBatchConverseMapper.toModelInput(request, Map.of(), true, NO_DOWNLOADS);
+        return BedrockBatchConverseMapper.toModelInput(request, Map.of(), true);
     }
 
     private static ChatResponse chatResponse(String modelOutputJson, boolean returnThinking) {
@@ -190,52 +181,34 @@ class BedrockBatchConverseMapperTest {
         }
     }
 
-    @Test
-    void should_download_images_and_pdf_files_given_by_url_with_the_media_fetcher() {
-        URI imageUrl = URI.create("https://example.com/photo?id=1");
-        URI pdfUrl = URI.create("https://example.com/reports/annual.pdf");
-        List<URI> fetched = new ArrayList<>();
-        MediaFetcher mediaFetcher = request -> {
-            fetched.add(request.url());
-            return request.url().equals(imageUrl)
-                    ? FetchedMedia.from(new byte[] {1, 2, 3}, "image/jpeg")
-                    : FetchedMedia.from(new byte[] {4, 5, 6}, "application/pdf");
-        };
+    @ParameterizedTest
+    @ValueSource(strings = {"https://example.com/cat.png", "file:///etc/hosts", "cat.png"})
+    void should_reject_images_given_by_url(String url) {
         ChatRequest request = ChatRequest.builder()
-                .messages(UserMessage.from(ImageContent.from(imageUrl), PdfFileContent.from(pdfUrl)))
+                .messages(UserMessage.from(TextContent.from("describe"), ImageContent.from(url)))
                 .build();
 
-        Map<String, Object> modelInput = BedrockBatchConverseMapper.toModelInput(request, Map.of(), true, mediaFetcher);
-
-        assertThat(modelInput.get("messages"))
-                .isEqualTo(List.of(Map.of(
-                        "role",
-                        "user",
-                        "content",
-                        List.of(
-                                Map.of("image", Map.of("format", "jpeg", "source", Map.of("bytes", "AQID"))),
-                                Map.of(
-                                        "document",
-                                        Map.of("format", "pdf", "name", "annual", "source", Map.of("bytes", "BAUG")))))));
-        assertThat(fetched).containsExactly(imageUrl, pdfUrl);
+        assertThatExceptionOfType(UnsupportedFeatureException.class)
+                .isThrownBy(() -> modelInput(request))
+                .withMessage(AbstractBedrockChatModel.IMAGE_URL_NOT_SUPPORTED);
     }
 
-    @Test
-    void should_not_read_local_files_by_default() {
+    @ParameterizedTest
+    @ValueSource(strings = {"https://example.com/report.pdf", "file:///home/me/report.pdf", "report.pdf"})
+    void should_reject_pdf_files_given_by_url(String url) {
         ChatRequest request = ChatRequest.builder()
-                .messages(UserMessage.from(PdfFileContent.from(URI.create("file:///home/me/report.pdf"))))
+                .messages(UserMessage.from(PdfFileContent.from(url)))
                 .build();
 
-        assertThatExceptionOfType(InvalidRequestException.class)
-                .isThrownBy(() -> BedrockBatchConverseMapper.toModelInput(
-                        request, Map.of(), true, MediaPrefetcher.defaultMediaFetcher()))
-                .withMessageContaining("from(Path");
+        assertThatExceptionOfType(UnsupportedFeatureException.class)
+                .isThrownBy(() -> modelInput(request))
+                .withMessage(AbstractBedrockChatModel.PDF_URL_NOT_SUPPORTED);
     }
 
     @Test
     void should_send_the_additional_model_request_fields() {
         Map<String, Object> modelInput = BedrockBatchConverseMapper.toModelInput(
-                ChatRequest.builder().messages(UserMessage.from("hi")).build(), Map.of("top_k", 10), true, NO_DOWNLOADS);
+                ChatRequest.builder().messages(UserMessage.from("hi")).build(), Map.of("top_k", 10), true);
 
         assertThat(modelInput.get("additionalModelRequestFields")).isEqualTo(Map.of("top_k", 10));
     }
@@ -251,7 +224,7 @@ class BedrockBatchConverseMapperTest {
                 .messages(UserMessage.from("q"), aiMessage, UserMessage.from("again"))
                 .build();
 
-        assertThat(((List<?>) BedrockBatchConverseMapper.toModelInput(request, Map.of(), true, NO_DOWNLOADS)
+        assertThat(((List<?>) BedrockBatchConverseMapper.toModelInput(request, Map.of(), true)
                                 .get("messages"))
                         .get(1))
                 .isEqualTo(Map.of(
@@ -263,7 +236,7 @@ class BedrockBatchConverseMapperTest {
                                         "reasoningContent",
                                         Map.of("reasoningText", Map.of("text", "hmm", "signature", "sig"))),
                                 Map.of("text", "answer"))));
-        assertThat(((List<?>) BedrockBatchConverseMapper.toModelInput(request, Map.of(), false, NO_DOWNLOADS)
+        assertThat(((List<?>) BedrockBatchConverseMapper.toModelInput(request, Map.of(), false)
                                 .get("messages"))
                         .get(1))
                 .isEqualTo(Map.of("role", "assistant", "content", List.of(Map.of("text", "answer"))));

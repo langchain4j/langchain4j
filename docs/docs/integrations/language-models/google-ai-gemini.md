@@ -129,7 +129,6 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .mediaResolutionPerPartEnabled(true)
     .listeners(...)
     .supportedCapabilities(...)
-    .mediaFetcher(...)
     .build();
 ```
 
@@ -700,33 +699,11 @@ ChatResponse response = gemini.chat(
 );
 ```
 
-An image can also be given by an `http` or `https` URL, for example with
-`ImageContent.from("https://example.com/cat.png")`.
-This integration downloads such an image before it sends the request, and sends its content to Gemini.
-A `data:` URL, for example `data:image/png;base64,...`, is decoded locally and sent as content too.
-Other media URLs (of videos, audio and PDF files, and image URLs with another scheme) are passed on to Gemini as they are.
-By default, only URLs of public hosts are downloaded, with a timeout and a size limit.
-To download images from your own servers, or to change the limits, set a `MediaFetcher` on the model builder:
-
-```java
-ChatModel gemini = GoogleAiGeminiChatModel.builder()
-    .apiKey(System.getenv("GEMINI_AI_KEY"))
-    .modelName("gemini-2.5-flash")
-    .mediaFetcher(DefaultMediaFetcher.builder()
-        .allowNonPublicHosts("images.internal.example.com")
-        .build())
-    .build();
-```
-
-`GoogleAiGeminiStreamingChatModel`, `GoogleAiGeminiBatchChatModel`, `GoogleAiGeminiTokenCountEstimator`
-and `GeminiCaches` have the same option.
-
-:::tip
-When image URLs come from users, tools or retrieved content, allow only the hosts you expect, for example with
-`DefaultMediaFetcher.builder().allowedHosts("images.example.com")`.
-:::
-
-See [Media given by URL](/tutorials/chat-and-language-models#media-given-by-url) for all options of `DefaultMediaFetcher`.
+Media can also be given by URL, for example with `ImageContent.from("https://example.com/cat.png")`.
+This integration passes media URLs on to Gemini as they are, and Gemini downloads the media itself.
+See the [Gemini API documentation](https://ai.google.dev/gemini-api/docs/file-input-methods) for the URLs it accepts,
+such as public `https` URLs, Files API URIs and YouTube URLs.
+A `data:` URL, for example `data:image/png;base64,...`, is decoded and sent as content.
 
 ### Image Generation Output
 

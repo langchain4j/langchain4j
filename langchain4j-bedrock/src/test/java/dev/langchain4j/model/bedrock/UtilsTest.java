@@ -200,20 +200,6 @@ class UtilsTest {
     }
 
     @Test
-    void should_show_only_scheme_host_and_port_of_the_url_in_the_unsupported_format_message() {
-        assertThatExceptionOfType(UnsupportedFeatureException.class)
-                .isThrownBy(() -> Utils.extractAndValidateFormat(
-                        Image.builder()
-                                .url(new URI("https://bucket.example.com:8443/photos/cat.bmp?X-Amz-Signature=secret"))
-                                .build(),
-                        "image/bmp"))
-                .withMessageContaining("URI: https://bucket.example.com:8443/...")
-                .withMessageContaining("mime type of the downloaded image: image/bmp")
-                .withMessageNotContaining("photos")
-                .withMessageNotContaining("secret");
-    }
-
-    @Test
     void should_throw_exception_for_null_image() {
         assertThatExceptionOfType(IllegalArgumentException.class)
                 .isThrownBy(() -> Utils.extractAndValidateFormat(null));

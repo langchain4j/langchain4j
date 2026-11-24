@@ -20,9 +20,6 @@ import com.google.genai.types.Transcription;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.audio.Audio;
 import dev.langchain4j.data.image.Image;
-import dev.langchain4j.data.media.FetchedMedia;
-import dev.langchain4j.data.media.MediaFetchRequest;
-import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
@@ -47,9 +44,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import org.jspecify.annotations.Nullable;
 
 class GoogleGenAiContentMapper {
 
@@ -105,6 +102,13 @@ class GoogleGenAiContentMapper {
         EXTENSION_TO_MIME_TYPE.put("json", "text/plain");
     }
 
+    private static final Set<String> URL_SCHEMES_PASSED_ON = Set.of("gs", "http", "https");
+
+    static final String URL_NOT_SUPPORTED = "Google GenAI does not support media given by this kind of URL"
+            + " (only gs://, http:// and https:// URLs are passed on to Gemini). Create the content from a file or"
+            + " from its bytes, for example ImageContent.from(Path, String), PdfFileContent.from(Path),"
+            + " AudioContent.from(Path, String) or VideoContent.from(Path, String)";
+
     private static final String SYSTEM_ROLE = "system";
     private static final String USER_ROLE = "user";
     private static final String MODEL_ROLE = "model";
@@ -134,11 +138,11 @@ class GoogleGenAiContentMapper {
                 .build();
     }
 
-    static List<Content> toContents(List<ChatMessage> messages, MediaFetcher mediaFetcher) {
-        return toContents(messages, false, mediaFetcher);
+    static List<Content> toContents(List<ChatMessage> messages) {
+        return toContents(messages, false);
     }
 
-    static List<Content> toContents(List<ChatMessage> messages, boolean sendThinking, MediaFetcher mediaFetcher) {
+    static List<Content> toContents(List<ChatMessage> messages, boolean sendThinking) {
         List<Content> contents = new ArrayList<>();
         List<Part> currentFunctionParts = new ArrayList<>();
 
@@ -159,7 +163,7 @@ class GoogleGenAiContentMapper {
                         if (content instanceof TextContent textContent) {
                             texts.add(textContent.text());
                         } else if (content instanceof ImageContent imageContent) {
-                            extraParts.add(map(imageContent, mediaFetcher));
+                            extraParts.add(map(imageContent));
                         } else {
                             throw new UnsupportedFeatureException(
                                     "Google Gen AI currently does not support non-text content type '" + content.type()
@@ -187,7 +191,7 @@ class GoogleGenAiContentMapper {
                             .build());
                     currentFunctionParts = new ArrayList<>();
                 }
-                contents.add(toContent(message, sendThinking, mediaFetcher));
+                contents.add(toContent(message, sendThinking));
             }
         }
 
@@ -201,16 +205,13 @@ class GoogleGenAiContentMapper {
         return contents;
     }
 
-    static Content toContent(ChatMessage message, MediaFetcher mediaFetcher) {
-        return toContent(message, false, mediaFetcher);
+    static Content toContent(ChatMessage message) {
+        return toContent(message, false);
     }
 
-    static Content toContent(ChatMessage message, boolean sendThinking, MediaFetcher mediaFetcher) {
+    static Content toContent(ChatMessage message, boolean sendThinking) {
         if (message instanceof UserMessage userMessage) {
-            return Content.builder()
-                    .role(USER_ROLE)
-                    .parts(toParts(userMessage, mediaFetcher))
-                    .build();
+            return Content.builder().role(USER_ROLE).parts(toParts(userMessage)).build();
 
         } else if (message instanceof AiMessage aiMsg) {
             List<Part> parts = new ArrayList<>();
@@ -564,51 +565,39 @@ class GoogleGenAiContentMapper {
         textBuilder.append(text);
     }
 
-    private static List<Part> toParts(UserMessage userMessage, MediaFetcher mediaFetcher) {
+    private static List<Part> toParts(UserMessage userMessage) {
         return userMessage.contents().stream()
-                .map(content -> map(content, mediaFetcher))
+                .map(GoogleGenAiContentMapper::map)
                 .collect(Collectors.toList());
     }
 
-    private static Part map(dev.langchain4j.data.message.Content content, MediaFetcher mediaFetcher) {
+    private static Part map(dev.langchain4j.data.message.Content content) {
         if (content instanceof TextContent textContent) {
             return Part.builder().text(textContent.text()).build();
         } else if (content instanceof ImageContent imageContent) {
             Image image = imageContent.image();
-            return getPart(image.url(), image.mimeType(), image.base64Data(), null, MediaKind.IMAGE, mediaFetcher);
+            return getPart(image.url(), image.mimeType(), image.base64Data(), null);
         } else if (content instanceof AudioContent audioContent) {
             Audio audio = audioContent.audio();
-            return getPart(
-                    audio.url(),
-                    audio.mimeType(),
-                    audio.base64Data(),
-                    audio.binaryData(),
-                    MediaKind.AUDIO,
-                    mediaFetcher);
+            return getPart(audio.url(), audio.mimeType(), audio.base64Data(), audio.binaryData());
         } else if (content instanceof VideoContent videoContent) {
             Video video = videoContent.video();
-            return getPart(video.url(), video.mimeType(), video.base64Data(), null, MediaKind.VIDEO, mediaFetcher);
+            return getPart(video.url(), video.mimeType(), video.base64Data(), null);
         } else if (content instanceof PdfFileContent pdfFileContent) {
             PdfFile pdfFile = pdfFileContent.pdfFile();
-            return getPart(pdfFile.url(), pdfFile.mimeType(), pdfFile.base64Data(), null, MediaKind.PDF, mediaFetcher);
+            return getPart(pdfFile.url(), pdfFile.mimeType(), pdfFile.base64Data(), null);
         } else {
             throw illegalArgument("Unknown content type: " + content);
         }
     }
 
-    private static Part getPart(
-            @Nullable URI url,
-            @Nullable String mimeType,
-            String base64data,
-            byte[] binaryData,
-            MediaKind mediaKind,
-            MediaFetcher mediaFetcher) {
+    private static Part getPart(URI url, String mimeType, String base64data, byte[] binaryData) {
         if (url != null) {
-            if (isPassedOn(url)) {
-                return fromMimeTypeAndData(getOrDefault(mimeType, () -> detectMimeType(url)), url);
+            if (url.getScheme() == null || !URL_SCHEMES_PASSED_ON.contains(url.getScheme().toLowerCase(Locale.ROOT))) {
+                throw new UnsupportedFeatureException(URL_NOT_SUPPORTED);
             }
-            FetchedMedia media = fetch(mediaFetcher, url);
-            return fromMimeTypeAndData(mimeType(mimeType, url, media, mediaKind), media.bytes());
+            String effectiveMimeType = getOrDefault(mimeType, () -> detectMimeType(url));
+            return fromMimeTypeAndData(effectiveMimeType, url);
         } else if (binaryData != null) {
             return fromMimeTypeAndData(mimeType, binaryData);
         } else {
@@ -616,130 +605,16 @@ class GoogleGenAiContentMapper {
         }
     }
 
-    private static FetchedMedia fetch(MediaFetcher mediaFetcher, URI url) {
-        return mediaFetcher.fetch(MediaFetchRequest.from(url));
-    }
-
-    /**
-     * Returns the URLs that {@link #toContents} downloads with its {@link MediaFetcher}: the URLs of all media in user
-     * messages and of images in tool results, except Cloud Storage URLs, which are passed on to Gemini.
-     */
-    static List<URI> mediaUrls(List<ChatMessage> messages) {
-        List<URI> urls = new ArrayList<>();
-        for (ChatMessage message : messages) {
-            if (message instanceof UserMessage userMessage) {
-                for (dev.langchain4j.data.message.Content content : userMessage.contents()) {
-                    addDownloadedUrl(urls, mediaUrl(content));
-                }
-            } else if (message instanceof ToolExecutionResultMessage toolMessage && !toolMessage.hasSingleText()) {
-                for (dev.langchain4j.data.message.Content content : toolMessage.contents()) {
-                    if (content instanceof ImageContent imageContent) {
-                        addDownloadedUrl(urls, imageContent.image().url());
-                    }
-                }
-            }
-        }
-        return urls;
-    }
-
-    private static @Nullable URI mediaUrl(dev.langchain4j.data.message.Content content) {
-        if (content instanceof ImageContent imageContent) {
-            return imageContent.image().url();
-        } else if (content instanceof AudioContent audioContent) {
-            return audioContent.audio().url();
-        } else if (content instanceof VideoContent videoContent) {
-            return videoContent.video().url();
-        } else if (content instanceof PdfFileContent pdfFileContent) {
-            return pdfFileContent.pdfFile().url();
-        }
-        return null;
-    }
-
-    private static void addDownloadedUrl(List<URI> urls, @Nullable URI url) {
-        if (url != null && !isPassedOn(url)) {
-            urls.add(url);
-        }
-    }
-
-    private static boolean isPassedOn(URI url) {
-        return "gs".equals(url.getScheme());
-    }
-
-    /**
-     * Returns the MIME type of downloaded media: the given one, otherwise the one of the extension of the URL,
-     * otherwise the one the server reported, but only if it fits the kind of the content (for example, a web page
-     * given as a video is not sent as a video).
-     */
-    private static String mimeType(@Nullable String mimeType, URI url, FetchedMedia media, MediaKind mediaKind) {
-        if (mimeType != null) {
-            return mimeType;
-        }
-        String mimeTypeFromExtension = mimeTypeFromExtension(url);
-        if (mimeTypeFromExtension != null) {
-            return mimeTypeFromExtension;
-        }
-        String reportedMimeType = media.mimeType();
-        if (reportedMimeType != null && mediaKind.matches(reportedMimeType)) {
-            return reportedMimeType;
-        }
-        throw unknownMimeType(url, reportedMimeType);
-    }
-
     static String detectMimeType(URI url) {
-        String mimeType = mimeTypeFromExtension(url);
-        if (mimeType == null) {
-            throw unknownMimeType(url, null);
-        }
-        return mimeType;
-    }
-
-    private static @Nullable String mimeTypeFromExtension(URI url) {
-        if (url.getPath() == null) {
-            return null;
-        }
         String[] pathParts = url.getPath().split("\\.");
         if (pathParts.length > 1) {
             String extension = pathParts[pathParts.length - 1].toLowerCase(Locale.ROOT);
-            return EXTENSION_TO_MIME_TYPE.get(extension);
+            String mimeType = EXTENSION_TO_MIME_TYPE.get(extension);
+            if (mimeType != null) {
+                return mimeType;
+            }
         }
-        return null;
-    }
-
-    private static IllegalArgumentException unknownMimeType(URI url, @Nullable String reportedMimeType) {
-        return illegalArgument(
-                "Unable to detect the MIME type of '%s'%s. Please provide it explicitly.",
-                withoutPathAndQuery(url),
-                reportedMimeType == null ? "" : " (the server answered with " + reportedMimeType + ")");
-    }
-
-    /**
-     * Shows the scheme, the host and the port of the URL only, because the path and the query can contain
-     * credentials, for example in a presigned URL.
-     */
-    private static String withoutPathAndQuery(URI url) {
-        String scheme = url.getScheme() == null ? "" : url.getScheme() + ":";
-        if (url.getHost() == null) {
-            return scheme + "...";
-        }
-        String port = url.getPort() == -1 ? "" : ":" + url.getPort();
-        return scheme + "//" + url.getHost() + port + "/...";
-    }
-
-    private enum MediaKind {
-        IMAGE,
-        AUDIO,
-        VIDEO,
-        PDF;
-
-        boolean matches(String mimeType) {
-            String lowerCaseMimeType = mimeType.toLowerCase(Locale.ROOT);
-            return switch (this) {
-                case IMAGE -> lowerCaseMimeType.startsWith("image/");
-                case AUDIO -> lowerCaseMimeType.startsWith("audio/");
-                case VIDEO -> lowerCaseMimeType.startsWith("video/");
-                case PDF -> lowerCaseMimeType.equals("application/pdf");
-            };
-        }
+        throw illegalArgument("Unable to detect the MIME type of '%s'. Please provide it explicitly.", url);
     }
 
     static Part fromMimeTypeAndData(String mimeType, byte[] bytes) {

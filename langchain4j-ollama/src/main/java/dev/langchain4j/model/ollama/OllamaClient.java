@@ -15,6 +15,8 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.model.ollama.InternalOllamaHelper.toOllamaChatRequest;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
@@ -35,6 +37,7 @@ import dev.langchain4j.internal.ExceptionMapper;
 import dev.langchain4j.internal.MappingTrackingStreamingChatResponseHandler;
 import dev.langchain4j.internal.ToolCallBuilder;
 import dev.langchain4j.model.StreamingResponseHandler;
+import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.chat.response.StreamingHandle;
@@ -184,8 +187,11 @@ class OllamaClient {
         });
     }
 
-    void streamingChat(
-            OllamaChatRequest ollamaChatRequest, boolean returnThinking, StreamingChatResponseHandler handler) {
+    void streamingChat(ChatRequest request, boolean returnThinking, StreamingChatResponseHandler handler) {
+        ensureNotEmpty(request.messages(), "messages");
+
+        OllamaChatRequest ollamaChatRequest = toOllamaChatRequest(request, true);
+
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(POST)
                 .url(baseUrl, "api/chat")

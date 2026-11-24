@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.DisabledIf;
-import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InOrder;
@@ -162,12 +161,17 @@ class OllamaStreamingChatModelIT extends AbstractStreamingChatModelIT {
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    @EnabledIf("supportsSingleImageInputAsPublicURL")
-    protected void should_accept_single_image_as_public_URL(StreamingChatModel model) {
+    @DisabledIf("supportsSingleImageInputAsPublicURL")
+    protected void should_fail_if_images_as_public_URLs_are_not_supported(StreamingChatModel model) {
         if (model instanceof OpenAiStreamingChatModel) {
-            return; // OpenAI does not implement automatic image download
+            return; // not checked here: the OpenAI integration passes the URL on to Ollama
         }
-        super.should_accept_single_image_as_public_URL(model);
+        super.should_fail_if_images_as_public_URLs_are_not_supported(model);
+    }
+
+    @Override
+    protected boolean supportsSingleImageInputAsPublicURL() {
+        return false; // Ollama needs the image content
     }
 
     @Override

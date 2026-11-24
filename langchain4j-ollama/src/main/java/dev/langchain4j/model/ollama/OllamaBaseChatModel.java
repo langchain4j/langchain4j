@@ -4,16 +4,10 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static java.util.Arrays.asList;
 
-import dev.langchain4j.Experimental;
-import dev.langchain4j.data.media.DefaultMediaFetcher;
-import dev.langchain4j.data.media.MediaFetchRequest;
-import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.AiMessage;
-import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ChatRequestValidationUtils;
-import dev.langchain4j.internal.MediaPrefetcher;
 import dev.langchain4j.model.chat.Capability;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
@@ -21,15 +15,12 @@ import dev.langchain4j.model.chat.request.DefaultChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.response.PartialThinking;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import java.net.URI;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
 abstract class OllamaBaseChatModel {
@@ -39,7 +30,6 @@ abstract class OllamaBaseChatModel {
     protected boolean returnThinking;
     protected List<ChatModelListener> listeners;
     protected Set<Capability> supportedCapabilities;
-    MediaFetcher mediaFetcher;
 
     void init(Builder<? extends OllamaBaseChatModel, ? extends Builder<?, ?>> builder) {
         this.client = OllamaClient.builder()
@@ -98,7 +88,6 @@ abstract class OllamaBaseChatModel {
         this.returnThinking = getOrDefault(builder.returnThinking, false);
         this.listeners = copy(builder.listeners);
         this.supportedCapabilities = copy(builder.supportedCapabilities);
-        this.mediaFetcher = getOrDefault(builder.mediaFetcher, MediaPrefetcher.defaultMediaFetcher());
     }
 
     protected void validate(ChatRequestParameters chatRequestParameters) {
@@ -137,7 +126,6 @@ abstract class OllamaBaseChatModel {
         protected Logger logger;
         protected List<ChatModelListener> listeners;
         protected Set<Capability> supportedCapabilities;
-        private @Nullable MediaFetcher mediaFetcher;
 
         protected B self() {
             return (B) this;
@@ -342,30 +330,6 @@ abstract class OllamaBaseChatModel {
 
         public B supportedCapabilities(Capability... supportedCapabilities) {
             return supportedCapabilities(new HashSet<>(asList(supportedCapabilities)));
-        }
-
-        /**
-         * Sets the {@link MediaFetcher} that downloads the images that messages refer to by URL, for example an
-         * {@link ImageContent} created with {@link ImageContent#from(URI)}. Ollama accepts images only as content, so
-         * they are downloaded before the request is sent.
-         * <p>
-         * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
-         * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To send
-         * a local file, read it when you create the content, for example with {@link ImageContent#from(Path, String)}.
-         * To download from your own servers, or to change the limits, set a {@link DefaultMediaFetcher} with other
-         * settings, or your own {@link MediaFetcher}.
-         * <p>
-         * {@link OllamaStreamingChatModel} downloads with {@link MediaFetcher#fetchAsync(MediaFetchRequest)}, so that
-         * it does not block the calling thread. A fetcher used there must implement that method.
-         *
-         * @param mediaFetcher the fetcher, or {@code null} to use the default one
-         * @return {@code this}
-         * @since 1.25.0
-         */
-        @Experimental
-        public B mediaFetcher(@Nullable MediaFetcher mediaFetcher) {
-            this.mediaFetcher = mediaFetcher;
-            return self();
         }
 
         public abstract C build();

@@ -232,43 +232,10 @@ ChatResponse response = model.chat(userMessage);
 ```
 
 The URL can be a web URL, or can point at a file stored in Google Cloud Storage buckets,
-like `gs://my-bucket/my-image.png`.
-
-This integration downloads media given by a web URL before it sends the request, and sends its content to Gemini.
-It passes Cloud Storage URLs on to Gemini as they are.
-By default, only `http` and `https` URLs of public hosts are downloaded, with a timeout and a size limit,
-and local files given as URLs are never read.
-To send a local file, read it with `ImageContent.from(Path, String)`, `PdfFileContent.from(Path)`,
-`AudioContent.from(Path, String)` or `VideoContent.from(Path, String)`:
-
-```java
-UserMessage userMessage = UserMessage.from(
-        ImageContent.from(Paths.get("cat.png"), "image/png"),
-        TextContent.from("What do you see? Reply in one word.")
-);
-```
-
-To download media from your own servers, or to change the limits, set a `MediaFetcher` on the model builder
-(`VertexAiGeminiStreamingChatModel` has the same option; it downloads without blocking the calling thread, and waits
-for the downloads on its executor, which then reads the streamed response):
-
-```java
-ChatModel model = VertexAiGeminiChatModel.builder()
-        .project(PROJECT_ID)
-        .location(LOCATION)
-        .modelName(MODEL_NAME)
-        .mediaFetcher(DefaultMediaFetcher.builder()
-                .allowNonPublicHosts("media.internal.example.com")
-                .build())
-        .build();
-```
-
-:::tip
-When media URLs come from users, tools or retrieved content, allow only the hosts you expect, for example with
-`DefaultMediaFetcher.builder().allowedHosts("media.example.com")`.
-:::
-
-See [Media given by URL](/tutorials/chat-and-language-models#media-given-by-url) for all options of `DefaultMediaFetcher`.
+like `gs://my-bucket/my-image.png`. This integration passes such URLs on to Gemini as they are, and Gemini downloads
+the media itself. Any other URL, such as a `file:` URL, is rejected with an `UnsupportedFeatureException`.
+To send a local file, create the content from its path, with `ImageContent.from(Path, String)`,
+`PdfFileContent.from(Path)`, `AudioContent.from(Path, String)` or `VideoContent.from(Path, String)`.
 
 You can also pass the content of an image as Base64 encoded string:
 

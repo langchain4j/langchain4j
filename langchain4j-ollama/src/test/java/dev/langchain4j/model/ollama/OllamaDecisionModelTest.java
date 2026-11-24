@@ -56,6 +56,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class OllamaDecisionModelTest {
 
@@ -626,6 +627,29 @@ class OllamaDecisionModelTest {
         assertThat(body.get("state")).isEqualTo("[image 1]");
         assertThat(body.get("images"))
                 .isEqualTo(List.of(Base64.getEncoder().encodeToString(new byte[] {1, 2, 3})));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"https://example.com/photo.png", "http://localhost/photo.png", "file:///etc/hosts"})
+    void should_reject_images_given_by_url_without_calling_ollama(String url) {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        DecisionRequest request = DecisionRequest.builder()
+                .inputContents(List.of(TextContent.from("A photo."), ImageContent.from(url)))
+                .question("damaged", YesNoQuestion.from("Is the phone damaged?"))
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> model(httpClient).decide(request))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage(ImageUtils.IMAGE_URL_NOT_SUPPORTED)
+                .hasMessageNotContaining(url);
+        assertThat(model(httpClient).decideAsync(request))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseExactlyInstanceOf(UnsupportedFeatureException.class);
+        assertThat(httpClient.requests()).isEmpty();
     }
 
     @Test

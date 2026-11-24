@@ -176,7 +176,6 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     .allowedFunctionNames(List.of("getWeather"))
     .thinkingLevel("LOW")
     .listeners(...)
-    .mediaFetcher(...)
     .build();
 ```
 
@@ -860,35 +859,10 @@ ChatResponse response = gemini.chat(ChatRequest.builder()
     .build());
 ```
 
-This integration downloads media given by a URL and sends its content to Gemini,
-except Cloud Storage URLs (`gs://...`), which it passes on to Gemini as they are.
-By default, only `http` and `https` URLs of public hosts are downloaded, with a timeout and a size limit,
-and local files given as URLs are never read.
-To send a local file, read it with `ImageContent.from(Path, String)`, `PdfFileContent.from(Path)`,
-`AudioContent.from(Path, String)` or `VideoContent.from(Path, String)`.
-To download media from your own servers, or to change the limits, set a `MediaFetcher` on the model builder:
-
-```java
-ChatModel gemini = GoogleGenAiChatModel.builder()
-    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
-    .modelName("gemini-2.5-flash")
-    .mediaFetcher(DefaultMediaFetcher.builder()
-        .allowNonPublicHosts("media.internal.example.com")
-        .build())
-    .build();
-```
-
-`GoogleGenAiStreamingChatModel`, `GoogleGenAiBatchChatModel`, `GoogleGenAiTokenCountEstimator`
-and `GoogleGenAiCaches` have the same option.
-`chatAsync(...)` and `GoogleGenAiStreamingChatModel` download without blocking the calling thread:
-`GoogleGenAiStreamingChatModel` waits for the downloads on its executor, which then reads the streamed response.
-
-:::tip
-When media URLs come from users, tools or retrieved content, allow only the hosts you expect, for example with
-`DefaultMediaFetcher.builder().allowedHosts("media.example.com")`.
-:::
-
-See [Media given by URL](/tutorials/chat-and-language-models#media-given-by-url) for all options of `DefaultMediaFetcher`.
+This integration passes media given by a `gs://`, `http://` or `https://` URL on to Gemini as it is, and Gemini
+downloads the media itself. Any other URL, such as a `file:` URL, is rejected with an `UnsupportedFeatureException`.
+To send a local file, create the content from its path, with `ImageContent.from(Path, String)`,
+`PdfFileContent.from(Path)`, `AudioContent.from(Path, String)` or `VideoContent.from(Path, String)`.
 
 ## Audio Transcription
 

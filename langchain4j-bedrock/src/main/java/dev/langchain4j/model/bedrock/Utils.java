@@ -10,7 +10,6 @@ import java.net.URI;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import org.jspecify.annotations.Nullable;
 
 import software.amazon.awssdk.services.bedrockruntime.model.ImageFormat;
 
@@ -78,67 +77,28 @@ class Utils {
      * @throws IllegalArgumentException if the image is null
      */
     public static String extractAndValidateFormat(Image image) {
-        return extractAndValidateFormat(image, null);
-    }
-
-    /**
-     * Like {@link #extractAndValidateFormat(Image)}, but uses the MIME type of the downloaded image when neither the
-     * mime type nor the extension of the URI give a supported format.
-     *
-     * @param image             The Image object containing mime type and URI
-     * @param fetchedMimeType   The MIME type of the downloaded image, or {@code null} if it is not known
-     * @return The normalized ImageFormat
-     * @throws UnsupportedFeatureException if the format is not supported
-     * @throws IllegalArgumentException if the image is null
-     */
-    public static String extractAndValidateFormat(Image image, @Nullable String fetchedMimeType) {
         ensureNotNull(image, "image");
 
         // First try to extract from mime type
-        ImageFormat format = formatOfMimeType(image.mimeType());
-        if (format != null) {
-            return format.toString();
-        }
-
-        // If mime type fails, try to extract from URI
-        if (image.url() != null) {
-            String extension = Utils.extractExtension(image.url()).toLowerCase(Locale.ROOT);
-            format = EXTENSION_MAPPING.get(extension);
+        if (image.mimeType() != null && !image.mimeType().isBlank()) {
+            ImageFormat format = MIME_TYPE_MAPPING.get(image.mimeType().toLowerCase(Locale.ROOT));
             if (format != null) {
                 return format.toString();
             }
         }
 
-        format = formatOfMimeType(fetchedMimeType);
-        if (format != null) {
-            return format.toString();
+        // If mime type fails, try to extract from URI
+        if (image.url() != null) {
+            String extension = Utils.extractExtension(image.url()).toLowerCase(Locale.ROOT);
+            ImageFormat format = EXTENSION_MAPPING.get(extension);
+            if (format != null) {
+                return format.toString();
+            }
         }
 
         throw new UnsupportedFeatureException(String.format(
-                "Unsupported image format, should be one of png | jpeg | gif | webp. Mime type: %s, URI: %s%s",
-                image.mimeType(),
-                image.url() == null ? null : withoutPathAndQuery(image.url()),
-                fetchedMimeType == null ? "" : ", mime type of the downloaded image: " + fetchedMimeType));
-    }
-
-    /**
-     * Shows the scheme, the host and the port of the URL only, because the path and the query can contain
-     * credentials, for example in a presigned URL.
-     */
-    private static String withoutPathAndQuery(URI url) {
-        String scheme = url.getScheme() == null ? "" : url.getScheme() + ":";
-        if (url.getHost() == null) {
-            return scheme + "...";
-        }
-        String port = url.getPort() == -1 ? "" : ":" + url.getPort();
-        return scheme + "//" + url.getHost() + port + "/...";
-    }
-
-    private static @Nullable ImageFormat formatOfMimeType(@Nullable String mimeType) {
-        if (mimeType == null || mimeType.isBlank()) {
-            return null;
-        }
-        return MIME_TYPE_MAPPING.get(mimeType.toLowerCase(Locale.ROOT));
+                "Unsupported image format, should be one of png | jpeg | gif | webp. Mime type: %s, URI: %s",
+                image.mimeType(), image.url()));
     }
 
     /**

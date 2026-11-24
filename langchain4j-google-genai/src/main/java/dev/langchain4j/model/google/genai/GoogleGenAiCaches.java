@@ -14,14 +14,7 @@ import com.google.genai.types.DeleteCachedContentConfig;
 import com.google.genai.types.GetCachedContentConfig;
 import com.google.genai.types.ListCachedContentsConfig;
 import com.google.genai.types.UpdateCachedContentConfig;
-import dev.langchain4j.Experimental;
-import dev.langchain4j.data.media.DefaultMediaFetcher;
-import dev.langchain4j.data.media.MediaFetcher;
 import dev.langchain4j.data.message.ChatMessage;
-import dev.langchain4j.data.message.ImageContent;
-import dev.langchain4j.internal.MediaPrefetcher;
-import java.net.URI;
-import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +37,6 @@ import org.jspecify.annotations.Nullable;
 public final class GoogleGenAiCaches {
 
     private final Client client;
-    private final MediaFetcher mediaFetcher;
 
     private GoogleGenAiCaches(Builder builder) {
         this.client = builder.client != null
@@ -58,7 +50,6 @@ public final class GoogleGenAiCaches {
                         builder.customHeaders,
                         builder.apiEndpoint,
                         builder.apiVersion);
-        this.mediaFetcher = getOrDefault(builder.mediaFetcher, MediaPrefetcher::defaultMediaFetcher);
     }
 
     public static Builder builder() {
@@ -78,7 +69,7 @@ public final class GoogleGenAiCaches {
     public CachedContent createCache(String modelName, List<ChatMessage> messages, Duration ttl) {
         ensureNotBlank(modelName, "modelName");
         ensureNotEmpty(messages, "messages");
-        return client.caches.create(modelName, toCreateConfig(messages, ttl, mediaFetcher));
+        return client.caches.create(modelName, toCreateConfig(messages, ttl));
     }
 
     /** Retrieves a cache by name (e.g. {@code "cachedContents/abc123"}). */
@@ -108,9 +99,8 @@ public final class GoogleGenAiCaches {
         client.caches.delete(name, DeleteCachedContentConfig.builder().build());
     }
 
-    static CreateCachedContentConfig toCreateConfig(
-            List<ChatMessage> messages, Duration ttl, MediaFetcher mediaFetcher) {
-        List<Content> contents = GoogleGenAiContentMapper.toContents(messages, mediaFetcher);
+    static CreateCachedContentConfig toCreateConfig(List<ChatMessage> messages, Duration ttl) {
+        List<Content> contents = GoogleGenAiContentMapper.toContents(messages);
         Content systemInstruction = GoogleGenAiContentMapper.toSystemInstruction(messages);
 
         CreateCachedContentConfig.Builder config = CreateCachedContentConfig.builder();
@@ -133,7 +123,6 @@ public final class GoogleGenAiCaches {
         private Map<String, String> customHeaders;
         private Duration timeout;
         private Client client;
-        private @Nullable MediaFetcher mediaFetcher;
 
         public Builder apiKey(String apiKey) {
             this.apiKey = apiKey;
@@ -177,28 +166,6 @@ public final class GoogleGenAiCaches {
 
         public Builder client(Client client) {
             this.client = client;
-            return this;
-        }
-
-        /**
-         * Sets the {@link MediaFetcher} that downloads media given by a URL, for example an image created with
-         * {@link ImageContent#from(URI)}. Gemini receives images, audio, video and PDF files as content, so media
-         * given by a URL is downloaded before the cache is created. Cloud Storage URLs ({@code gs://...}) are not
-         * downloaded: they are passed on to Gemini.
-         * <p>
-         * If not set, a {@link DefaultMediaFetcher} with the default settings is used. It downloads only {@code http}
-         * and {@code https} URLs of public hosts, with a timeout and a size limit, and never reads local files. To send
-         * a local file, read it when you create the content, for example with {@link ImageContent#from(Path, String)}.
-         * To download from your own servers, or to change the limits, set a {@link DefaultMediaFetcher} with other
-         * settings, or your own {@link MediaFetcher}.
-         *
-         * @param mediaFetcher the fetcher that downloads media, or {@code null} to use the default one.
-         * @return {@code this}.
-         * @since 1.25.0
-         */
-        @Experimental
-        public Builder mediaFetcher(@Nullable MediaFetcher mediaFetcher) {
-            this.mediaFetcher = mediaFetcher;
             return this;
         }
 
