@@ -1,0 +1,22 @@
+[
+  {
+    "extension": "revapi.differences",
+    "configuration": {
+      "ignore": true,
+      "differences": [
+        {
+          "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class io.micrometer.core.instrument.MeterRegistry",
+          "justification": "This module integrates agents with Micrometer: the listener is created from the application's MeterRegistry, like MicrometerMetricsChatModelListener"
+        },
+        {
+          "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class io.micrometer.core.instrument.Tag",
+          "justification": "The listener builder takes a function returning Micrometer tags, which the listener adds to the meters it records"
+        }
+      ]
+    }
+  }
+]

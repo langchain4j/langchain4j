@@ -18,7 +18,17 @@ public enum OTelGenAiOperationName {
     /**
      * AI operation type for embeddings.
      */
-    EMBEDDINGS("embeddings");
+    EMBEDDINGS("embeddings"),
+
+    /**
+     * AI operation type for the invocation of an agent.
+     */
+    INVOKE_AGENT("invoke_agent"),
+
+    /**
+     * AI operation type for the invocation of a workflow coordinating several agents.
+     */
+    INVOKE_WORKFLOW("invoke_workflow");
 
     private final String value;
 

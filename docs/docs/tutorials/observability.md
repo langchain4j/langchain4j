@@ -899,6 +899,7 @@ The `langchain4j-micrometer-metrics` module provides a Micrometer-based metrics 
 Currently, it provides metrics for `ChatModel` and `StreamingChatModel` interactions
 using a `ChatModelListener` implementation, and for `EmbeddingModel` interactions
 using an `EmbeddingModelListener` implementation that collects metrics via Micrometer's `MeterRegistry`.
+The `langchain4j-agentic-micrometer` module adds metrics about agents, see [Agent metrics](#agent-metrics).
 
 The naming of the metrics follows the [OpenTelemetry Semantic Conventions for Generative AI Metrics](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-metrics/). (v1.39.0)
 
@@ -1019,6 +1020,120 @@ OpenAiEmbeddingModel embeddingModel = OpenAiEmbeddingModel.builder()
 // 3. Use the embedding model as usual - metrics are collected automatically
 Response<List<Embedding>> embeddings = embeddingModel.embedAll(List.of(TextSegment.from("Hello!")));
 ```
+
+### Agent metrics
+
+The `langchain4j-agentic-micrometer` module records metrics about the agents of an agentic system built with
+`langchain4j-agentic`, following the [agent metrics](https://github.com/open-telemetry/semantic-conventions-genai/blob/da2b5736d7a3533fd7d324872b77e4c2eabbe392/docs/gen-ai/gen-ai-metrics.md#generative-ai-agent-metrics)
+and [tool metrics](https://github.com/open-telemetry/semantic-conventions-genai/blob/da2b5736d7a3533fd7d324872b77e4c2eabbe392/docs/gen-ai/execute-tool.md)
+of the OpenTelemetry Semantic Conventions for Generative AI.
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-agentic-micrometer</artifactId>
+    <version>${latest version here}</version>
+</dependency>
+```
+
+Register a `MicrometerMetricsAgentListener` on the root agent: it is inherited by all its subagents.
+
+```java
+MeterRegistry meterRegistry = new SimpleMeterRegistry();
+
+UntypedAgent triage = AgenticServices.sequenceBuilder()
+        .name("triage")
+        .subAgents(classifier, router, responder)
+        .listener(new MicrometerMetricsAgentListener(meterRegistry))
+        .build();
+```
+
+| Metric Name | Type | Description |
+|-------------|------|-------------|
+| `gen_ai.invoke_agent.duration` | Timer | How long each invocation of an agent or of a workflow took |
+| `gen_ai.invoke_agent.inference_calls` | Histogram (DistributionSummary) | The model calls made by one invocation of an LLM-based agent itself, failed ones included |
+| `gen_ai.invoke_agent.tool_calls` | Histogram (DistributionSummary) | The tool calls made by one invocation of an LLM-based agent itself |
+| `gen_ai.execute_tool.duration` | Timer | How long each tool execution took |
+| `langchain4j.agent.token.usage` | Histogram (DistributionSummary) | The input and output tokens of the model calls made by one invocation of an agent itself. Not part of the conventions |
+| `langchain4j.agent.invocations` | Counter | The invocations of each agent by the agent coordinating it, for instance which subagents a supervisor calls. Not part of the conventions |
+| `langchain4j.agent.invocations.active` | LongTaskTimer | The invocations in progress: how many are running and for how long, to spot one that never ends. An invocation is active until its duration is recorded. Not part of the conventions |
+
+| Tag | On | Description | Example Values |
+|-----|----|-------------|----------------|
+| `gen_ai.operation.name` | agent durations, calls, tokens, active invocations | `invoke_workflow` for an agent coordinating subagents, `invoke_agent` otherwise | `invoke_agent`, `invoke_workflow` |
+| `gen_ai.agent.name` | all | The name of the agent | `classifier`, `triage` |
+| `gen_ai.tool.name`, `gen_ai.tool.type` | tool durations | The name of the tool, `_OTHER` for a tool the model asked for that was not offered to it, and `function` | `lookupOrder`, `_OTHER`, `function` |
+| `gen_ai.token.type` | tokens | The type of token counted | `input`, `output` |
+| `langchain4j.agent.parent.name` | invocations | The name of the agent that invoked it | `triage` |
+| `outcome` | durations, invocations | How the invocation ended | `SUCCESS`, `ERROR`, `CANCELLED`, `SUSPENDED` |
+| `error.type` | durations | The class name of the exception that caused the failure, not of the exceptions wrapping it, `none` on success, and `_OTHER` for a failed tool execution whose exception is not known, like a tool error sent to the model, or one of several tools running when they failed the agent | `none`, `java.net.SocketTimeoutException`, `_OTHER` |
+
+Every meter of a given name carries the same tags, and their values are names of definitions, never memory ids or
+users, so the number of series stays bounded.
+
+To add tags of your own to every meter, for instance the tenant an invocation runs for, build the listener with a
+function of the `AgenticScope`, called once when an invocation starts:
+
+```java
+MicrometerMetricsAgentListener listener = MicrometerMetricsAgentListener.builder()
+        .meterRegistry(meterRegistry)
+        .tags(agenticScope -> Tags.of("tenant", agenticScope.readState("tenant", "none")))
+        .build();
+```
+
+Return the same tag keys for every invocation, as Prometheus requires all the meters of a name to have the same tags,
+and values from a small, bounded set: every distinct value creates new series, so never use a user, a memory id or a
+request id. The tags of the listener win over added tags with the same key. If the function throws, the invocation is
+not recorded; the agent is not affected.
+
+How invocations are measured:
+- An LLM-based agent is timed by the invocation of its AI Service: a streaming agent until its stream completes, a
+  cancelled one with `outcome=CANCELLED`. A `TokenStream` that is never started is never recorded and stays among
+  the active invocations, as its AI Service invocation never ends, so always start the streams you create.
+- An LLM-based agent returning a `Flow.Publisher`, or another reactive stream, is timed once per subscription, from
+  the subscription until the stream completes; a stream that is never subscribed to is not recorded. A workflow
+  returning a stream is timed until it returns it.
+- A tool the model asks for that was not offered to it is reported as `gen_ai.tool.name=_OTHER`, as the model can
+  invent any name. When several tools running at once fail the agent, each is recorded with `error.type=_OTHER` and
+  a duration ending with the agent's invocation.
+- A remote A2A agent is timed from the caller's side by its invocation callbacks, and recorded under
+  `gen_ai.invoke_agent.duration` like the other agents.
+- The items of a parallel mapper are reported under the name of the mapped agent.
+- An asynchronous agent whose output is not read is recorded when it completes, also after the root call returned,
+  and the duration of its workflow does not include it.
+- A duration is one active run of an agent. When a human in the loop suspends the agentic system, the workflows
+  waiting for it, and an agent that suspended the system itself, are recorded with `outcome=SUSPENDED`, and the run
+  resumed later is a new invocation, so the time the human takes is never part of a duration. A suspended run
+  followed by a successful one is a single execution: count completed executions without the `SUSPENDED` samples.
+- The tokens of the model calls that a supervisor, or another agent coordinating subagents, makes itself to decide
+  what to do are recorded on its own invocation. They are reported as the responses of these calls arrive, so they are
+  not counted in `gen_ai.invoke_agent.inference_calls`, which includes the calls that fail.
+- `gen_ai.agent.name` is the name of the method of the agent or the name given to its builder; a workflow without a
+  name is named after its type, such as `Sequential`, so give your workflows a name.
+
+The listener does not configure histogram buckets. To compute percentiles, configure them in your `MeterRegistry`,
+for instance with the boundaries recommended by the conventions:
+
+```java
+meterRegistry.config().meterFilter(new MeterFilter() {
+    @Override
+    public DistributionStatisticConfig configure(Meter.Id id, DistributionStatisticConfig config) {
+        if (id.getName().equals("gen_ai.invoke_agent.duration")) {
+            return DistributionStatisticConfig.builder()
+                    .serviceLevelObjectives(DoubleStream.of(0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8, 25.6, 51.2,
+                                    102.4, 204.8, 409.6, 900, 1800, 3600, 7200, 14400, 43200, 86400)
+                            .map(seconds -> seconds * 1_000_000_000)
+                            .toArray())
+                    .build()
+                    .merge(config);
+        }
+        return config;
+    }
+});
+```
+
+With Prometheus, the rate of completed executions of each workflow is then
+`sum by (gen_ai_agent_name) (rate(gen_ai_invoke_agent_duration_seconds_count{gen_ai_operation_name="invoke_workflow", outcome!="SUSPENDED"}[5m]))`.
 
 ## Micrometer Observation API
 
