@@ -3,13 +3,16 @@ package dev.langchain4j.mcp.client.transport.websocket;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.mcp.client.McpCallContext;
 import dev.langchain4j.mcp.client.McpHeadersSupplier;
 import dev.langchain4j.mcp.client.logging.McpLoggers;
 import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.client.transport.McpTransportCustomizer;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import java.io.IOException;
@@ -19,6 +22,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
@@ -27,6 +31,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import javax.net.ssl.SSLContext;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +54,12 @@ public class WebSocketMcpTransport implements McpTransport {
     private volatile boolean closed = false;
     private volatile Runnable actionOnFailure;
 
-    public WebSocketMcpTransport(Builder builder) {
+    /**
+     * Creates the transport, after every {@link McpTransportCustomizer} had the chance to adjust a copy of the
+     * builder. {@link Builder#build()} calls this constructor.
+     */
+    public WebSocketMcpTransport(Builder configured) {
+        Builder builder = customized(configured);
         this.url = ensureNotNull(builder.url, "Missing server endpoint URL");
         this.logResponses = builder.logResponses;
         this.logRequests = builder.logRequests;
@@ -61,6 +71,19 @@ public class WebSocketMcpTransport implements McpTransport {
         this.executor = builder.executor;
         this.sslContext = builder.sslContext;
         this.httpClient = createHttpClient();
+    }
+
+    private static Builder customized(Builder configured) {
+        Collection<McpTransportCustomizer> customizers = loadFactories(McpTransportCustomizer.class);
+        if (customizers.isEmpty()) {
+            return configured;
+        }
+        Builder builder = configured.copy();
+        for (McpTransportCustomizer customizer : customizers) {
+            LOG.debug("Calling {} for a new WebSocket MCP transport", customizer.getClass().getName());
+            customizer.customize(builder);
+        }
+        return builder;
     }
 
     private HttpClient createHttpClient() {
@@ -294,6 +317,7 @@ public class WebSocketMcpTransport implements McpTransport {
         private boolean logResponses;
         private boolean logRequests;
         private String url;
+        private @Nullable String name;
         private Logger logger;
         private Executor executor;
         private Duration timeout;
@@ -314,6 +338,42 @@ public class WebSocketMcpTransport implements McpTransport {
         public Builder url(String url) {
             this.url = url;
             return this;
+        }
+
+        /**
+         * The URL of the MCP server that was set with {@link #url(String)}, or {@code null} if none was set yet.
+         * A {@link McpTransportCustomizer} uses this to find out where the transport is going to connect.
+         *
+         * @since 1.25.0
+         */
+        @Internal
+        public @Nullable String getUrl() {
+            return url;
+        }
+
+        /**
+         * An optional name that tells this transport apart from the others of the application, for example
+         * the {@code key} of the MCP client that uses it. The transport itself does not use the name and never
+         * sends it to the server: it is there for a {@link McpTransportCustomizer}, which reads it
+         * with {@link #getName()} to know which transport is being built.
+         *
+         * @param name the name of the transport, may be {@code null}
+         * @return this builder
+         * @since 1.25.0
+         */
+        public Builder name(@Nullable String name) {
+            this.name = name;
+            return this;
+        }
+
+        /**
+         * The name that was set with {@link #name(String)}, or {@code null} if none was set.
+         *
+         * @since 1.25.0
+         */
+        @Internal
+        public @Nullable String getName() {
+            return name;
         }
 
         /**
@@ -379,8 +439,27 @@ public class WebSocketMcpTransport implements McpTransport {
             return this;
         }
 
+        /**
+         * Creates the transport, after every {@link McpTransportCustomizer} had the chance to adjust a copy
+         * of this builder. This builder itself is never changed by a customizer.
+         */
         public WebSocketMcpTransport build() {
             return new WebSocketMcpTransport(this);
+        }
+
+        private Builder copy() {
+            Builder copy = new Builder();
+            copy.logResponses = logResponses;
+            copy.logRequests = logRequests;
+            copy.url = url;
+            copy.name = name;
+            copy.logger = logger;
+            copy.executor = executor;
+            copy.timeout = timeout;
+            copy.sslContext = sslContext;
+            copy.headersSupplier = headersSupplier;
+            copy.maxMessageSize = maxMessageSize;
+            return copy;
         }
     }
 

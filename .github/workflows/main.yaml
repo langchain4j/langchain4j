@@ -241,6 +241,15 @@ jobs:
             git branch __branch_before "$PR_BASE_SHA"
           fi
 
+      - name: Skip the image generation ITs unless a Google module changed
+        # Image generation is expensive. Changes to the core modules or to the root POM select every module,
+        # so without this check each of them would generate images too. The JDK 21 nightly always runs them.
+        run: |
+          if git rev-parse --verify --quiet __branch_before > /dev/null \
+              && ! git diff --name-only __branch_before HEAD | grep -qE '^langchain4j-(google|vertex)-'; then
+            echo "LC4J_SKIP_IMAGE_GENERATION_ITS=true" >> "$GITHUB_ENV"
+          fi
+
       - name: Set up JDK ${{ matrix.java_version }}
         uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:

@@ -118,6 +118,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(needs.discover-modules.outputs.matrix) }}
+    env:
+      # The Maven repository without the SNAPSHOTs that the nightlies install themselves. actions/cache archives a
+      # matched directory whole, so a "!" line only leaves out a sibling of what the lines above it match.
+      # All nightlies must use the same lines, to restore and to save: they are part of the cache version.
+      MAVEN_CACHE_PATHS: |
+        ~/.m2/repository/*
+        !~/.m2/repository/dev
+        ~/.m2/repository/dev/*
+        !~/.m2/repository/dev/langchain4j
+        ~/.m2/repository/dev/langchain4j/*/*
+        !~/.m2/repository/dev/langchain4j/*/*-SNAPSHOT
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -127,7 +138,22 @@ jobs:
         with:
           java-version: 17.0.21+9
           distribution: 'temurin'
-          cache: 'maven'
+
+      - name: Get the month for the Maven cache key
+        id: maven-cache-month
+        # A new month starts a fresh cache, so old dependency versions do not pile up in it
+        run: echo "month=$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Maven repository
+        id: maven-cache
+        # Not setup-java's cache: quick jobs that never install save its key first, so the install downloaded most of
+        # its plugins and dependencies from Maven Central, which rate-limits with HTTP 429.
+        # After a POM change, the restore key brings back the repository of the previous night.
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.MAVEN_CACHE_PATHS }}
+          key: maven-nightly-${{ steps.maven-cache-month.outputs.month }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: maven-nightly-${{ steps.maven-cache-month.outputs.month }}-
 
       - name: Authenticate to Google Cloud
         # Required for Google modules (e.g., langchain4j-vertex-ai)
@@ -159,6 +185,23 @@ jobs:
             echo "label=Jackson 2" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Install all modules with JDK 17
+        run: |
+          ## compile and install ALL modules to avoid running integration tests on dependent modules in the step below
+          ## retried once after 2 minutes, as a transient Maven Central failure would otherwise skip all tests of this job;
+          ## the retry clears MAVEN_ARGS (where setup-java puts -ntp), so that its log shows every download from Maven Central
+          ## before the wait, it logs what Maven Central answers for the files that failed to resolve and what the local Maven repository holds
+          mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install || { bash .github/scripts/maven-central-diagnostics.sh || true; sleep 120; MAVEN_ARGS= mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install; }
+
+      - name: Save the Maven repository
+        # After a successful install only, so that the cache is never incomplete, and by one job of the matrix.
+        # The first nightly after a POM change saves it, usually JDK 17, which does not build the JDK 21+ modules.
+        if: steps.maven-cache.outputs.cache-hit != 'true' && strategy.job-index == 0
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.MAVEN_CACHE_PATHS }}
+          key: ${{ steps.maven-cache.outputs.cache-primary-key }}
+
       - name: Build with JDK 17 on ${{ steps.jackson3.outputs.label }}
         run: |
           modules="${{ join(matrix.modules, ',') }}"
@@ -167,12 +210,6 @@ jobs:
             modules=$(echo "$modules" | sed "s/\b${ex}\b//g" | sed 's/,,/,/g' | sed 's/^,//' | sed 's/,$//')
           done
           echo "Building modules: $modules"
-          
-          ## compile and install ALL modules to avoid running integration tests on dependent modules in the step below
-          ## retried once after 2 minutes, as a transient Maven Central failure would otherwise skip all tests of this job;
-          ## the retry clears MAVEN_ARGS (where setup-java puts -ntp), so that its log shows every download from Maven Central
-          ## before the wait, it logs what Maven Central answers for the files that failed to resolve and what the local Maven repository holds
-          mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install || { bash .github/scripts/maven-central-diagnostics.sh || true; sleep 120; MAVEN_ARGS= mvn -B -U -T8C -DskipTests -DskipITs -DembeddingsSkipCache install; }
 
           ## kill a module's test JVM after 2 h (with a thread dump in target/*-reports), so that a hung test
           ## does not cost the rest of the modules (the slowest module, langchain4j-google-ai-gemini, takes ~80 min)
@@ -331,6 +368,8 @@ jobs:
           CI_DELAY_SECONDS_VERTEX_AI_ANTHROPIC: 12
           CI_DELAY_SECONDS_VERTEX_AI_GEMINI: 12
           CI_DELAY_SECONDS_VOYAGE_AI: 22
+          # image generation is expensive: only the JDK 21 nightly runs these ITs
+          LC4J_SKIP_IMAGE_GENERATION_ITS: true
 
       - name: Clean Docker
         run: docker system prune -af || true

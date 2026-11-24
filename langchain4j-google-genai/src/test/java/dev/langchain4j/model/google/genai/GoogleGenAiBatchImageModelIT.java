@@ -7,9 +7,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import dev.langchain4j.model.batch.BatchRequest;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
+@DisabledIfEnvironmentVariable(
+        named = "LC4J_SKIP_IMAGE_GENERATION_ITS",
+        matches = "true",
+        disabledReason = "Image generation is expensive: CI runs it only in one nightly and when a Google module changes")
 class GoogleGenAiBatchImageModelIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");
