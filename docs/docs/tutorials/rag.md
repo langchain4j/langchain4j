@@ -683,6 +683,9 @@ By default, it throws an `IllegalArgumentException` when a filter has more than 
 (each comparison, `IN` and `BETWEEN` counts as one),
 has parentheses nested more than 50 levels deep (parentheses of function calls and `IN` lists count too),
 or takes longer than 1 second to parse.
+Very large filters, for example with thousands of conditions or `IN` values,
+can take longer than a second to parse on a slow or busy machine,
+so increase the parse timeout too if you use such filters.
 You can change these limits:
 
 ```java

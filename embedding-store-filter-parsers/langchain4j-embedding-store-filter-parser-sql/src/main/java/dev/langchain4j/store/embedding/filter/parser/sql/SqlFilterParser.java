@@ -790,7 +790,8 @@ public class SqlFilterParser implements FilterParser {
          * <p>
          * Must be at least 1. Set it to {@link Integer#MAX_VALUE} to effectively remove the limit,
          * but keep in mind that a {@link Filter} with very many conditions can be too deep for some
-         * embedding stores to evaluate.
+         * embedding stores to evaluate, and that parsing thousands of conditions can take longer than the default
+         * {@link #parseTimeout(Duration)} on a slow or busy machine.
          * <p>
          * Default value is {@value SqlFilterParser#DEFAULT_MAX_CONDITIONS}.
          *
@@ -830,9 +831,14 @@ public class SqlFilterParser implements FilterParser {
          * If parsing takes longer, it is stopped and the filter is rejected with an {@link IllegalArgumentException}.
          * <p>
          * This is a backstop: most filters are parsed within a few milliseconds,
-         * and filters that are too large or nested too deep are rejected before they are parsed
-         * (see {@link #maxConditions(Integer)} and {@link #maxNestingDepth(Integer)}).
+         * filters nested too deep are rejected before they are parsed (see {@link #maxNestingDepth(Integer)}),
+         * and so are some constructs that are slow to parse and not supported
+         * ({@code CASE} and {@code CAST} expressions, nested {@code SELECT}s and arrays).
          * The timeout bounds the time spent on any other SQL that is slow to parse.
+         * <p>
+         * Very large filters, for example with thousands of conditions or {@code IN} values,
+         * can take longer than a second to parse on a slow or busy machine.
+         * If you use such filters, increase the timeout as well.
          * <p>
          * Must be greater than zero. Default value is 1 second.
          *

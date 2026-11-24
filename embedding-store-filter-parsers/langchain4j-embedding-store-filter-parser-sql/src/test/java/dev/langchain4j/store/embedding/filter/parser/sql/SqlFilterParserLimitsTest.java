@@ -85,8 +85,14 @@ class SqlFilterParserLimitsTest {
     @Test
     void should_count_each_comparison_IN_and_BETWEEN_as_one_condition() {
 
-        SqlFilterParser parser = SqlFilterParser.builder().maxConditions(3).build();
-        SqlFilterParser stricterParser = SqlFilterParser.builder().maxConditions(2).build();
+        SqlFilterParser parser = SqlFilterParser.builder()
+                .maxConditions(3)
+                .parseTimeout(Duration.ofMinutes(1))
+                .build();
+        SqlFilterParser stricterParser = SqlFilterParser.builder()
+                .maxConditions(2)
+                .parseTimeout(Duration.ofMinutes(1))
+                .build();
 
         String javadocExample = "name = 'Klaus' AND (age >= 18 OR city IN ('Berlin', 'Munich'))";
         assertThat(parser.parse(javadocExample)).isNotNull();
@@ -498,6 +504,7 @@ class SqlFilterParserLimitsTest {
         SqlFilterParser parser = SqlFilterParser.builder()
                 .maxConditions(Integer.MAX_VALUE)
                 .maxNestingDepth(Integer.MAX_VALUE)
+                .parseTimeout(Duration.ofMinutes(1))
                 .build();
 
         assertThat(parser.parse(conditions(5000))).isInstanceOf(And.class);
@@ -551,7 +558,7 @@ class SqlFilterParserLimitsTest {
         class ParserWithMoreConditions extends SqlFilterParser {
 
             ParserWithMoreConditions() {
-                super(SqlFilterParser.builder().maxConditions(5000));
+                super(SqlFilterParser.builder().maxConditions(5000).parseTimeout(Duration.ofMinutes(1)));
             }
         }
         SqlFilterParser parser = new ParserWithMoreConditions();
