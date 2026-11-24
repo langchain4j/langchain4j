@@ -8,6 +8,7 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.junit.jupiter.params.provider.Arguments.of;
 
 import dev.langchain4j.data.document.Metadata;
@@ -16,6 +17,7 @@ import dev.langchain4j.store.embedding.filter.FilterParser;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Or;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -25,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class SqlFilterParserTest {
 
@@ -1489,6 +1492,12 @@ class SqlFilterParserTest {
     @Test
     void should_parse_long_chain_of_AND_conditions() {
 
+        FilterParser parser = SqlFilterParser.builder()
+                .clock(clock)
+                .maxConditions(Integer.MAX_VALUE)
+                .parseTimeout(Duration.ofMinutes(1))
+                .build();
+
         Filter filter = parser.parse(chainOfConditions("AND", 50_000));
 
         for (int i = 49_999; i > 0; i--) {
@@ -1502,6 +1511,12 @@ class SqlFilterParserTest {
 
     @Test
     void should_parse_long_chain_of_OR_conditions() {
+
+        FilterParser parser = SqlFilterParser.builder()
+                .clock(clock)
+                .maxConditions(Integer.MAX_VALUE)
+                .parseTimeout(Duration.ofMinutes(1))
+                .build();
 
         Filter filter = parser.parse(chainOfConditions("OR", 50_000));
 
@@ -1525,8 +1540,54 @@ class SqlFilterParserTest {
     @Test
     void should_calculate_long_arithmetic_expression() {
 
+        FilterParser parser =
+                SqlFilterParser.builder().parseTimeout(Duration.ofMinutes(1)).build();
+
         assertThat(parser.parse("id = 0" + " + 2 - 1".repeat(25_000)))
                 .isEqualTo(metadataKey("id").isEqualTo(25_000L));
+    }
+
+    @Test
+    void should_calculate_arithmetic_expression_with_operator_precedence_and_left_associativity() {
+
+        assertThat(parser.parse("id = 1 + 2 * 3")).isEqualTo(metadataKey("id").isEqualTo(7L));
+        assertThat(parser.parse("id = 2 * 3 + 4 * 5")).isEqualTo(metadataKey("id").isEqualTo(26L));
+        assertThat(parser.parse("id = 100 / 10 / 2")).isEqualTo(metadataKey("id").isEqualTo(5L));
+        assertThat(parser.parse("weight = 1.5 + 0.5 - 1.0")).isEqualTo(metadataKey("weight").isEqualTo(1.0d));
+    }
+
+    @Test
+    void should_report_type_of_first_unsupported_expression() {
+
+        String issueLink = ". Please click the following link to open an issue on our GitHub: "
+                + "https://github.com/langchain4j/langchain4j/issues/new?labels=SqlFilterParser"
+                + "&title=SqlFilterParser:%20Support%20new%20expression%20type&body=";
+
+        assertThatThrownBy(() -> parser.parse("id = 1 AND name LIKE 'a' AND age = 'b' || 'c'"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Unsupported expression of type LikeExpression" + issueLink + "LikeExpression");
+
+        assertThatThrownBy(() -> parser.parse("id = 1 + 'x' + 2"))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Unsupported expression of type Addition" + issueLink + "Addition");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"id = 1", "(((((((((((id = 1)))))))))))"})
+    void should_keep_interrupt_flag_when_parsing_is_interrupted(String sql) {
+
+        Thread.currentThread().interrupt();
+        try {
+            // JSqlParser parses on another thread; if that thread is done before the interrupt is noticed,
+            // parsing succeeds and the interrupt flag is not touched
+            Throwable thrown = catchThrowable(() -> parser.parse(sql));
+            if (thrown != null) {
+                assertThat(thrown).hasRootCauseInstanceOf(InterruptedException.class);
+            }
+            assertThat(Thread.currentThread().isInterrupted()).isTrue();
+        } finally {
+            Thread.interrupted();
+        }
     }
 
     @Test
@@ -1662,7 +1723,7 @@ class SqlFilterParserTest {
 
         assertThatThrownBy(() -> parser.parse("age IN (SELECT age FROM other_table)"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unsupported expression");
+                .hasMessage("The SQL filter contains a nested SELECT, which is not supported");
 
         assertThatThrownBy(() -> parser.parse("age IN (other_column)"))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
