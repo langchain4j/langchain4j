@@ -236,6 +236,16 @@ like `gs://my-bucket/my-image.png`. This integration passes such URLs on to Gemi
 the media itself. Any other URL, such as a `file:` URL, is rejected with an `UnsupportedFeatureException`.
 To send a local file, create the content from its path, with `ImageContent.from(Path, String)`,
 `PdfFileContent.from(Path)`, `AudioContent.from(Path, String)` or `VideoContent.from(Path, String)`.
+Media that has both content and a URL is sent as content.
+
+Vertex AI must be able to read the URL, for example a public `https` URL, and its rules for media given by URL apply,
+such as the size of each file, the models that accept URLs and the number of files per request: see the
+[Vertex AI documentation](https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/inference).
+A chat memory sends the media URLs of earlier messages again with every request.
+Vertex AI reads a `gs://` URL with the permissions of your Google Cloud project, so pass on only `gs://` URLs that
+your application chose.
+The MIME type is taken from the file extension of the URL. When the URL has no known file extension, give the MIME
+type explicitly, for example `ImageContent.from(Image.builder().url(url).mimeType("image/jpeg").build())`.
 
 You can also pass the content of an image as Base64 encoded string:
 

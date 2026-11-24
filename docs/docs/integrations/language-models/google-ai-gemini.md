@@ -702,7 +702,8 @@ ChatResponse response = gemini.chat(
 Media can also be given by URL, for example with `ImageContent.from("https://example.com/cat.png")`.
 This integration passes media URLs on to Gemini as they are, and Gemini downloads the media itself.
 See the [Gemini API documentation](https://ai.google.dev/gemini-api/docs/file-input-methods) for the URLs it accepts,
-such as public `https` URLs, Files API URIs and YouTube URLs.
+such as public `https` URLs, Files API URIs and YouTube URLs, and for its rules for media given by URL, such as the
+size of each file and the media types. A chat memory sends the media URLs of earlier messages again with every request.
 A `data:` URL, for example `data:image/png;base64,...`, is decoded and sent as content.
 
 ### Image Generation Output
