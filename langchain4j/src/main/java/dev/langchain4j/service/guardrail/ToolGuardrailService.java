@@ -10,7 +10,6 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSource;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
-import dev.langchain4j.guardrail.ToolGuardrailStage;
 import dev.langchain4j.guardrail.ToolInputGuardrail;
 import dev.langchain4j.guardrail.ToolInputGuardrailException;
 import dev.langchain4j.guardrail.ToolInputGuardrailRequest;
@@ -21,7 +20,6 @@ import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
 import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.ToolOutputGuardrailsConfig;
-import dev.langchain4j.internal.Exceptions;
 import dev.langchain4j.service.guardrail.spi.ToolGuardrailServiceBuilderFactory;
 import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.ToolExecutionResult;
@@ -40,14 +38,13 @@ import dev.langchain4j.guardrail.InputGuardrailRequest;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.spi.classloading.ClassInstanceFactory;
 import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
-import java.util.concurrent.CompletionException;
 import org.jspecify.annotations.Nullable;
 
 /**
  * Executes the tool guardrails of the tools of an AI service: the {@link ToolInputGuardrail}s, which validate or
  * rewrite the arguments of a tool call before the tool runs, and the {@link ToolOutputGuardrail}s, which validate or
  * rewrite its result before the LLM sees it. It is the tool counterpart of {@link GuardrailService}, and its
- * {@link #targetClass()} is the AI service class.
+ * {@link #aiServiceClass()} is the AI service class.
  * <p>
  *     <strong>Keys.</strong> The key of a tool is the {@link ToolKey} that {@link #bind(Class, AiServiceTool)}
  *     returns for it: it is only meaningful to the service that created it. A tool provided anew for every
@@ -111,7 +108,7 @@ public interface ToolGuardrailService {
      *
      * @return The AI service class.
      */
-    Class<?> targetClass();
+    Class<?> aiServiceClass();
 
     /**
      * Binds a tool to this service: resolves the tool guardrails that apply to the tool, and returns the key to run
@@ -221,8 +218,8 @@ public interface ToolGuardrailService {
      *     <li>A fatal failure throws a {@link ToolInputGuardrailException} or a
      *     {@link ToolOutputGuardrailException}. It is thrown outside {@code tool}, so the
      *     error handling of the tool does not see it. An exception thrown by {@code tool} propagates as is. When a
-     *     fatal input failure ends the call, {@link #rejectedRequest(ToolExecutionRequest, Throwable)} gives the
-     *     request as the guardrails before it left it.</li>
+     *     fatal input failure ends the call, {@link ToolInputGuardrailException#arguments()} gives the arguments as
+     *     the guardrails before it left them.</li>
      *     <li>A {@link ToolArgumentsException} thrown by an input guardrail, for example by
      *     {@link ToolInputGuardrailRequest#argumentsAsMap()} for arguments that cannot be parsed, is not a guardrail
      *     failure: {@code tool} does not run, and the exception is thrown as is, so that the caller handles it like an
@@ -339,73 +336,6 @@ public interface ToolGuardrailService {
                     ? guardAsync(key, request, requestParams, tool)
                     : executeWithoutGuardrailsAsync(request, tool);
         });
-    }
-
-    /**
-     * The request of a call that a tool guardrail failure ended, as the guardrails left it, when the failure tells:
-     * after a fatal input failure, the call with the arguments the failing guardrail validated (as the guardrails
-     * before it rewrote them). It lets a caller report a call that
-     * {@link #executeGuardrails(ToolKey, ToolExecutionRequest, GuardrailRequestParams, Function)} or
-     * {@link #executeGuardrailsAsync(ToolKey, ToolExecutionRequest, GuardrailRequestParams, Function)} ended with an
-     * exception without knowing the exceptions of the guardrails.
-     * <p>
-     *     Empty for any other failure: a failure of the tool or of an output guardrail ends a call that the tool was
-     *     started with, and the caller knows that request from its {@code tool} function.
-     * </p>
-     *
-     * @param request The tool call of the LLM. Must not be null.
-     * @param failure The exception that ended the call, possibly wrapped in a
-     *                {@link CompletionException}; may be null.
-     * @return The request as the guardrails left it, if the failure tells.
-     */
-    default Optional<ToolExecutionRequest> rejectedRequest(ToolExecutionRequest request, @Nullable Throwable failure) {
-        ensureNotNull(request, "request");
-        return Optional.ofNullable(failure)
-                .map(Exceptions::unwrapCompletionException)
-                .filter(ToolInputGuardrailException.class::isInstance)
-                .map(ToolInputGuardrailException.class::cast)
-                .flatMap(ToolInputGuardrailException::arguments)
-                .map(arguments -> request.toBuilder().arguments(arguments).build());
-    }
-
-    /**
-     * The stage whose guardrails ended a call with a fatal failure, as {@link #rejectedRequest(ToolExecutionRequest,
-     * Throwable)} gives its request. It lets a caller tell what ended a call that
-     * {@link #executeGuardrails(ToolKey, ToolExecutionRequest, GuardrailRequestParams, Function)} or
-     * {@link #executeGuardrailsAsync(ToolKey, ToolExecutionRequest, GuardrailRequestParams, Function)} ended with an
-     * exception without knowing the exceptions of the guardrails, and
-     * without inferring it from what it saw of the call: a failure of the call before the guardrails ran, such as a
-     * callback that threw, is not one of a stage.
-     * <p>
-     *     Empty for any other failure, including a cancellation. A non-fatal failure returns an execution, which tells
-     *     its stage with {@link GuardedToolExecution#failedStage()}.
-     * </p>
-     *
-     * @param request The tool call of the LLM. Must not be null.
-     * @param failure The exception that ended the call, possibly wrapped in a
-     *                {@link CompletionException}; may be null.
-     * @return The stage of the fatal failure, if the failure is one.
-     */
-    default Optional<ToolGuardrailStage> rejectedStage(ToolExecutionRequest request, @Nullable Throwable failure) {
-        ensureNotNull(request, "request");
-        return Optional.ofNullable(failure)
-                .map(Exceptions::unwrapCompletionException)
-                .flatMap(ToolGuardrailService::stageOf);
-    }
-
-    /**
-     * The stage whose guardrails threw {@code error}, if a tool guardrail threw it.
-     */
-    private static Optional<ToolGuardrailStage> stageOf(Throwable error) {
-        ToolGuardrailStage stage = null;
-
-        if (error instanceof ToolInputGuardrailException) {
-            stage = ToolGuardrailStage.INPUT;
-        } else if (error instanceof ToolOutputGuardrailException) {
-            stage = ToolGuardrailStage.OUTPUT;
-        }
-
-        return Optional.ofNullable(stage);
     }
 
     private boolean hasGuardrails(ToolKey key) {
@@ -599,8 +529,8 @@ public interface ToolGuardrailService {
             return errorResult(outputResult.failureMessage());
         } else if (outputResult.hasRewrittenResult()) {
             return ToolExecutionResult.builder()
-                    .resultContents(outputResult.resultContents(guardrailRequest))
-                    .isError(outputResult.isError(guardrailRequest))
+                    .resultContents(outputResult.rewrittenContents(guardrailRequest))
+                    .isError(outputResult.rewrittenIsError(guardrailRequest))
                     .attributes(toolResult.attributes())
                     .build();
         }

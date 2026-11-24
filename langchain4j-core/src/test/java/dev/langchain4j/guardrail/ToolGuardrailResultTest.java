@@ -150,8 +150,8 @@ class ToolGuardrailResultTest {
         assertThat(result.hasRewrittenResult()).isTrue();
         assertThat(result.hasRewrittenContents()).isFalse();
         assertThat(result.successfulText()).isEqualTo("new");
-        assertThat(result.resultContents(request)).containsExactly(new TextContent("new"), IMAGE);
-        assertThat(result.isError(request)).isTrue();
+        assertThat(result.rewrittenContents(request)).containsExactly(new TextContent("new"), IMAGE);
+        assertThat(result.rewrittenIsError(request)).isTrue();
     }
 
     @Test
@@ -167,8 +167,8 @@ class ToolGuardrailResultTest {
         assertThat(result.hasRewrittenResult()).isTrue();
         assertThat(result.hasRewrittenContents()).isTrue();
         assertThat(result.successfulText()).isEqualTo("a\nb");
-        assertThat(result.resultContents(request)).containsExactly(new TextContent("a"), IMAGE, new TextContent("b"));
-        assertThat(result.isError(request)).isTrue();
+        assertThat(result.rewrittenContents(request)).containsExactly(new TextContent("a"), IMAGE, new TextContent("b"));
+        assertThat(result.rewrittenIsError(request)).isTrue();
     }
 
     @Test
@@ -184,7 +184,7 @@ class ToolGuardrailResultTest {
         var result = OUTPUT.successWith(List.of(IMAGE), false);
 
         assertThat(result.successfulText()).isEmpty();
-        assertThat(result.isError(request)).isFalse();
+        assertThat(result.rewrittenIsError(request)).isFalse();
     }
 
     @Test
@@ -198,7 +198,7 @@ class ToolGuardrailResultTest {
         var contents = new ArrayList<Content>(List.of(new TextContent("a")));
         var result = OUTPUT.successWith(contents, false);
         contents.add(IMAGE);
-        assertThat(result.resultContents(outputRequest(false, new TextContent("x"))))
+        assertThat(result.rewrittenContents(outputRequest(false, new TextContent("x"))))
                 .hasSize(1);
     }
 
@@ -207,8 +207,8 @@ class ToolGuardrailResultTest {
         var request = outputRequest(true, new TextContent("old"), IMAGE);
         var result = OUTPUT.success();
 
-        assertThat(result.resultContents(request)).isEqualTo(request.resultContents());
-        assertThat(result.isError(request)).isTrue();
+        assertThat(result.rewrittenContents(request)).isEqualTo(request.resultContents());
+        assertThat(result.rewrittenIsError(request)).isTrue();
         assertThat(result.apply(request)).isSameAs(request);
     }
 

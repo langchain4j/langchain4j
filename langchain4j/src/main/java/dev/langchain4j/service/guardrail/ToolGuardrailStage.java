@@ -1,6 +1,8 @@
-package dev.langchain4j.guardrail;
+package dev.langchain4j.service.guardrail;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.guardrail.ToolInputGuardrail;
+import dev.langchain4j.guardrail.ToolOutputGuardrail;
 
 /**
  * The stage of the guardrails of a tool call: the guardrails that run before the tool (input) or after it (output).

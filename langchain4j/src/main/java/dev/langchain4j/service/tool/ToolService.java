@@ -1146,7 +1146,6 @@ public class ToolService {
                         && !compensableExecutions.isEmpty()) {
                     return compensateOnCancellationAsync(
                                     null,
-                                    null,
                                     unsavedRoundRequests,
                                     compensableExecutions,
                                     chatMemory,
@@ -1629,74 +1628,25 @@ public class ToolService {
 
     /**
      * Non-blocking counterpart of {@link #compensateIfNeeded}, used by the {@code CompletableFuture} and reactive
-     * modes. The compensating actions and the chat-memory rewrite run without blocking the model-delivery thread: a
-     * compensating action that performs blocking I/O should return a {@link CompletableFuture}, and the rewrite uses
-     * {@link ChatMemory#setAsync(List)}. This round's {@code resultMessages} are rewritten once the compensating actions
+     * modes, for a completed {@link ToolRound} whose compensable tools were already collected with
+     * {@link #collectCompensableRound(ToolRound.Outcome, List, InvocationContext)}. The compensating actions and the
+     * chat-memory rewrite run without blocking the model-delivery thread: a compensating action that performs blocking
+     * I/O should return a {@link CompletableFuture}, and the rewrite uses {@link ChatMemory#setAsync(List)}. This round's {@code resultMessages} are rewritten once the compensating actions
      * have run, so they must be read after the returned future completes. A compensating action that fails is logged,
      * and the result of its tool says that the rollback failed; its error is also added as suppressed to
      * {@code invocationError}, and the events relayed into the event stream carry it
      * ({@link AiServiceStreamingEvent.ToolCompensatedEvent#compensationError()}). The events are fired once the chat
      * memory is rewritten, also when rewriting it fails; the returned future then fails with that failure.
      * <p>
-     * When {@code alreadyCollected} is {@code true}, this round's compensable tools have already been recorded into
-     * {@code compensableExecutions} (via {@link #collectCompensableRound}) and {@code preCollectedFailedToolName}
-     * carries the collect's result; the collection step is then skipped. The reactive streaming path uses this so a
-     * round's compensable tools are collected <em>before</em> the inflight-round handoff, closing the window where a
-     * concurrent cancellation could snapshot the accumulator before the collection.
+     * Whether a tool is compensable, and the result its compensating action gets, are the ones of the tool as it
+     * ran, and the reason of the {@link ToolCompensatedEvent}s tells whether a tool guardrail made the step fail.
      *
+     * @param round               the completed round
      * @param chatMemory                 the chat memory, or {@code null} when the AI Service has none
      * @param messages                   the messages of the invocation, rewritten when {@code chatMemory} is
      *                                   {@code null}; may be {@code null} when there is a chat memory
      * @param streamEventEmitter         receives an event per rolled-back tool to relay into the event stream, or
      *                                   {@code null} when there is no event stream
-     * @param preCollectedFailedToolName the name of the first tool of this round that failed, when
-     *                                   {@code alreadyCollected} is {@code true}; {@code null} when no tool failed or
-     *                                   when {@code alreadyCollected} is {@code false}
-     * @param invocationError            the error that fails the invocation after the rollback, or {@code null} when
-     *                                   the invocation goes on (the tool error is sent to the LLM)
-     * @since 1.25.0
-     */
-    @Internal
-    public CompletableFuture<Void> compensateIfNeededAsync(
-            List<ToolExecutionRequest> toolExecutionRequests,
-            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
-            List<ToolExecutionResultMessage> resultMessages,
-            List<CompensableToolExecution> compensableExecutions,
-            boolean anyToolErrored,
-            @Nullable ChatMemory chatMemory,
-            @Nullable List<ChatMessage> messages,
-            InvocationContext invocationContext,
-            AiServiceListenerRegistrar listenerRegistrar,
-            @Nullable Consumer<AiServiceStreamingEvent.ToolCompensatedEvent> streamEventEmitter,
-            boolean alreadyCollected,
-            @Nullable String preCollectedFailedToolName,
-            @Nullable Throwable invocationError) {
-        return rollBackIfNeededAsync(
-                ToolRoundCall.unguarded(toolExecutionRequests, toolResults),
-                resultMessages,
-                compensableExecutions,
-                anyToolErrored,
-                chatMemory,
-                messages,
-                invocationContext,
-                listenerRegistrar,
-                streamEventEmitter,
-                alreadyCollected,
-                Optional.ofNullable(preCollectedFailedToolName)
-                        .map(toolName -> new DefaultFailedStep(toolName, CompensationReason.TOOL_EXECUTION_FAILED))
-                        .orElse(null),
-                invocationError);
-    }
-
-    /**
-     * As {@link #compensateIfNeededAsync(List, Map, List, List, boolean, ChatMemory, List, InvocationContext,
-     * AiServiceListenerRegistrar, Consumer, boolean, String, Throwable)}, for a completed {@link ToolRound} whose
-     * compensable tools were already collected with
-     * {@link #collectCompensableRound(ToolRound.Outcome, List, InvocationContext)}: whether a tool is compensable, and
-     * the result its compensating action gets, are the ones of the tool as it ran, and the reason of the
-     * {@link ToolCompensatedEvent}s tells whether a tool guardrail made the step fail.
-     *
-     * @param round               the completed round
      * @param collectedFailedStep what {@link #collectCompensableRound(ToolRound.Outcome, List, InvocationContext)}
      *                            returned for the round
      * @param invocationError     the error that fails the invocation after the rollback, or {@code null} when the
@@ -1732,7 +1682,7 @@ public class ToolService {
     }
 
     /**
-     * {@link #compensateIfNeededAsync} for the calls of a round, which may have gone through tool guardrails.
+     * {@link #compensateCollectedRoundAsync} for the calls of a round, which may have gone through tool guardrails.
      *
      * @param preCollectedFailedStep the failed step collected for the round, when {@code alreadyCollected}; otherwise
      *                               ignored, may be {@code null}
@@ -1875,7 +1825,7 @@ public class ToolService {
     /**
      * Rolls back, on cancellation, every compensable tool that had already executed successfully - across all
      * rounds - implementing the "drain the round, then roll back" contract for the asynchronous and reactive modes.
-     * If the current (drained) round's requests/results are supplied, its successful compensable tools are recorded
+     * If the current (drained) round is supplied, its successful compensable tools are recorded
      * first so they roll back together with those accumulated from earlier rounds; pass {@code null} as the current
      * round when it was already collected, so that a round is never collected twice. Runs the compensating actions,
      * rewrites the results of the rolled-back tools in the chat memory, except those of {@code unsavedRequests},
@@ -1883,10 +1833,11 @@ public class ToolService {
      * {@link CompensationReason#INVOCATION_CANCELLED}), also when rewriting the chat memory fails. Nothing is relayed
      * into the event stream of the reactive mode, as it delivers nothing after a cancellation. A no-op when compensation
      * is disabled or nothing is pending.
+     * <p>
+     * The calls of the round may have gone through tool guardrails: a tool that ran successfully is rolled back
+     * whatever its output guardrails made of the result.
      *
-     * @param currentRoundRequests  the requests of the cancelled round, or {@code null} when it was already collected
-     * @param currentRoundResults   the results of the tools of the cancelled round, or {@code null} when it was already
-     *                              collected
+     * @param currentRound          the drained round, or {@code null} when there is none or it was already collected
      * @param unsavedRequests       the requests of the round whose results are not in the chat memory, or {@code null}
      *                              when all results are saved there
      * @param compensableExecutions the compensable tools collected across rounds, or {@code null} when compensation
@@ -1898,39 +1849,7 @@ public class ToolService {
      */
     @Internal
     public CompletableFuture<Void> compensateOnCancellationAsync(
-            @Nullable List<ToolExecutionRequest> currentRoundRequests,
-            @Nullable Map<ToolExecutionRequest, ToolExecutionResult> currentRoundResults,
-            @Nullable List<ToolExecutionRequest> unsavedRequests,
-            @Nullable List<CompensableToolExecution> compensableExecutions,
-            @Nullable ChatMemory chatMemory,
-            @Nullable List<ChatMessage> messages,
-            InvocationContext invocationContext,
-            AiServiceListenerRegistrar listenerRegistrar) {
-        return rollBackOnCancellationAsync(
-                ((currentRoundRequests != null) && (currentRoundResults != null))
-                        ? ToolRoundCall.unguarded(currentRoundRequests, currentRoundResults)
-                        : null,
-                unsavedRequests,
-                compensableExecutions,
-                chatMemory,
-                messages,
-                invocationContext,
-                listenerRegistrar);
-    }
-
-    /**
-     * As {@link #compensateOnCancellationAsync(List, Map, List, List, ChatMemory, List, InvocationContext,
-     * AiServiceListenerRegistrar)}, for a drained {@link ToolRound} whose calls may have gone through tool guardrails:
-     * a tool that ran successfully is rolled back whatever its output guardrails made of the result.
-     *
-     * @param currentRound    the drained round, or {@code null} when there is none or it was already collected
-     * @param unsavedRequests the requests of the round whose results are not in the chat memory, or {@code null} when
-     *                        all results are saved there
-     * @since 1.25.0
-     */
-    @Internal
-    public CompletableFuture<Void> compensateOnCancellationAsync(
-            ToolRound.Outcome currentRound,
+            ToolRound.@Nullable Outcome currentRound,
             @Nullable List<ToolExecutionRequest> unsavedRequests,
             @Nullable List<CompensableToolExecution> compensableExecutions,
             @Nullable ChatMemory chatMemory,
@@ -2032,7 +1951,7 @@ public class ToolService {
             InvocationContext invocationContext) {
         List<CompensableToolExecution> toCompensate = List.of();
         if (compensateOnToolErrors && (compensableExecutions != null)) {
-            // Same accumulator serialization as compensateIfNeededAsync (see its Javadoc): collect the drained round
+            // Same accumulator serialization as rollBackIfNeededAsync: collect the drained round
             // and snapshot+clear atomically so the async rollback runs on an immutable copy and each tool rolls back
             // once.
             synchronized (compensableExecutions) {

@@ -2,10 +2,11 @@ package dev.langchain4j.service.guardrail;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.guardrail.ToolGuardrailStage;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.Optional;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.guardrail.ToolInputGuardrailException;
+import dev.langchain4j.guardrail.ToolOutputGuardrailException;
 import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 
@@ -34,15 +35,6 @@ public sealed interface GuardedToolExecution permits DefaultGuardedToolExecution
     }
 
     /**
-     * Creates a builder initialized with the values of this execution.
-     *
-     * @return A new builder.
-     */
-    default Builder toBuilder() {
-        return new Builder(this);
-    }
-
-    /**
      * The tool call as the input guardrails left it: the request of the LLM, with the arguments rewritten by the input
      * guardrails if they rewrote them. For a call an input guardrail rejected, the arguments as the guardrails that
      * ran before the rejection left them.
@@ -67,7 +59,8 @@ public sealed interface GuardedToolExecution permits DefaultGuardedToolExecution
      * <p>
      *     Empty for every other call: a call without a guardrail failure, a tool that failed on its own (also when an
      *     output guardrail rewrote its error result), and a rewrite that keeps a success. A fatal failure does not
-     *     return an execution: see {@link ToolGuardrailService#rejectedStage(ToolExecutionRequest, Throwable)}.
+     *     return an execution: it throws a {@link ToolInputGuardrailException} or a
+     *     {@link ToolOutputGuardrailException}.
      * </p>
      *
      * @return The stage, empty if no guardrail failed the call.
@@ -86,12 +79,6 @@ public sealed interface GuardedToolExecution permits DefaultGuardedToolExecution
         ToolGuardrailStage failedStage;
 
         private Builder() {}
-
-        private Builder(GuardedToolExecution execution) {
-            this.request = execution.request();
-            this.result = execution.result();
-            this.failedStage = execution.failedStage().orElse(null);
-        }
 
         /**
          * @param request The tool call as the input guardrails left it. Must not be null.

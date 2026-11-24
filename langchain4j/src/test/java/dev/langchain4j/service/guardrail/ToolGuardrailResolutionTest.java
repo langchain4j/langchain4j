@@ -692,8 +692,8 @@ class ToolGuardrailResolutionTest {
     }
 
     @Test
-    void the_target_class_is_the_ai_service_class() {
-        assertThat(ToolGuardrailService.builder(Assistant.class).build().targetClass())
+    void the_ai_service_class_is_the_one_given_to_the_builder() {
+        assertThat(ToolGuardrailService.builder(Assistant.class).build().aiServiceClass())
                 .isEqualTo(Assistant.class);
     }
 

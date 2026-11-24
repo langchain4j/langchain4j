@@ -3,7 +3,6 @@ package dev.langchain4j.service.guardrail;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.guardrail.ToolGuardrailStage;
 import dev.langchain4j.service.tool.ToolExecutionResult;
 import java.util.Optional;
 

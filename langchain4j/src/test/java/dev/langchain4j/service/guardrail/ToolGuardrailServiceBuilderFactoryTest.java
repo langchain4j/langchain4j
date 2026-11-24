@@ -67,7 +67,7 @@ class ToolGuardrailServiceBuilderFactoryTest {
     @Test
     void the_factory_receives_the_ai_service_class() {
         assertThat(ToolGuardrailService.builder(SpiAssistant.class)).isInstanceOf(RecordingBuilder.class);
-        assertThat(ToolGuardrailService.builder(OtherAssistant.class).build().targetClass())
+        assertThat(ToolGuardrailService.builder(OtherAssistant.class).build().aiServiceClass())
                 .isEqualTo(OtherAssistant.class);
     }
 }

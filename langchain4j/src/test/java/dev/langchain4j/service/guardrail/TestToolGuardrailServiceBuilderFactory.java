@@ -142,8 +142,8 @@ public class TestToolGuardrailServiceBuilderFactory implements ToolGuardrailServ
         }
 
         @Override
-        public Class<?> targetClass() {
-            return this.delegate.targetClass();
+        public Class<?> aiServiceClass() {
+            return this.delegate.aiServiceClass();
         }
 
         @Override

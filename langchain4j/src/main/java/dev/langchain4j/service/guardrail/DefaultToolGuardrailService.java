@@ -50,7 +50,7 @@ final class DefaultToolGuardrailService implements ToolGuardrailService {
     }
 
     @Override
-    public Class<?> targetClass() {
+    public Class<?> aiServiceClass() {
         return this.aiServiceClass;
     }
 

@@ -10,7 +10,6 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
-import dev.langchain4j.guardrail.ToolGuardrailStage;
 import dev.langchain4j.guardrail.ToolInputGuardrail;
 import dev.langchain4j.guardrail.ToolInputGuardrailException;
 import dev.langchain4j.guardrail.ToolInputGuardrailRequest;
@@ -28,12 +27,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
-import java.util.concurrent.CancellationException;
 
 /**
  * The public contract of {@link ToolGuardrailService#executeGuardrails}: what a framework gets when it runs a tool call
@@ -298,13 +295,15 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
     }
 
     @Test
-    void the_execution_builder_round_trips_and_requires_the_request_and_the_result() {
+    void the_execution_builder_requires_the_request_and_the_result() {
         var execution = GuardedToolExecution.builder()
                 .request(CALL)
                 .result(toolResult(false))
                 .build();
 
-        assertThat(execution.toBuilder().build()).isEqualTo(execution);
+        assertThat(execution)
+                .returns(CALL, GuardedToolExecution::request)
+                .returns(Optional.empty(), GuardedToolExecution::failedStage);
         assertThatThrownBy(() ->
                         GuardedToolExecution.builder().result(toolResult(false)).build())
                 .isInstanceOf(IllegalArgumentException.class);
@@ -760,8 +759,8 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
         }
 
         @Override
-        public Class<?> targetClass() {
-            return delegate.targetClass();
+        public Class<?> aiServiceClass() {
+            return delegate.aiServiceClass();
         }
 
         @Override
@@ -842,40 +841,22 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
         assertThat(toolFuture).isCancelled();
     }
 
-    // ---------- rejectedRequest ----------
+    // ---------- fatal failures ----------
 
     @Test
-    void the_rejected_request_of_a_fatal_input_failure_carries_the_arguments_the_failing_guardrail_validated() {
+    void a_fatal_input_failure_carries_the_arguments_the_failing_guardrail_validated() {
         ToolInputGuardrail rewrite = request -> ToolInputGuardrailResult.successWith(REWRITTEN);
         ToolInputGuardrail fatal = request -> INPUT.fatal("stop");
-        var service = ToolGuardrailService.builder(Assistant.class).build();
+
         var failure = catchThrowable(() -> execute(List.of(rewrite, fatal), List.of(), new Tool(toolResult(false))));
 
-        assertThat(service.rejectedRequest(CALL, failure))
-                .hasValueSatisfying(request -> assertThat(request)
-                        .returns(REWRITTEN, ToolExecutionRequest::arguments)
-                        .returns(CALL.id(), ToolExecutionRequest::id)
-                        .returns(CALL.name(), ToolExecutionRequest::name));
-        assertThat(service.rejectedRequest(CALL, new CompletionException(failure)))
-                .map(ToolExecutionRequest::arguments)
-                .hasValue(REWRITTEN);
+        assertThat(failure)
+                .asInstanceOf(InstanceOfAssertFactories.type(ToolInputGuardrailException.class))
+                .extracting(ToolInputGuardrailException::arguments)
+                .isEqualTo(Optional.of(REWRITTEN));
     }
 
-    @Test
-    void no_rejected_request_is_told_for_any_other_failure() {
-        ToolOutputGuardrail fatal = request -> OUTPUT.fatal("stop");
-        var service = ToolGuardrailService.builder(Assistant.class).build();
-        var outputFailure = catchThrowable(() -> execute(List.of(), List.of(fatal), new Tool(toolResult(false))));
-
-        assertThat(service.rejectedRequest(CALL, outputFailure)).isEmpty();
-        assertThat(service.rejectedRequest(CALL, new IllegalStateException("boom")))
-                .isEmpty();
-        assertThat(service.rejectedRequest(CALL, null)).isEmpty();
-        assertThatThrownBy(() -> service.rejectedRequest(null, outputFailure))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
-
-    // ---------- failedStage and rejectedStage ----------
+    // ---------- failedStage ----------
 
     @Test
     void a_call_without_a_guardrail_failure_tells_no_stage() {
@@ -952,35 +933,6 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
         assertThat(executeAsync(List.of(), List.of(), async(new Tool(toolResult(false)))))
                 .succeedsWithin(Duration.ofSeconds(5))
                 .returns(Optional.empty(), GuardedToolExecution::failedStage);
-    }
-
-    @Test
-    void a_fatal_failure_tells_its_stage_also_when_wrapped() {
-        ToolInputGuardrail fatalInput = request -> INPUT.fatal("stop");
-        ToolOutputGuardrail fatalOutput = request -> OUTPUT.fatal("stop");
-        var service = ToolGuardrailService.builder(Assistant.class).build();
-        var inputFailure = catchThrowable(() -> execute(List.of(fatalInput), List.of(), new Tool(toolResult(false))));
-        var outputFailure = catchThrowable(() -> execute(List.of(), List.of(fatalOutput), new Tool(toolResult(false))));
-
-        assertThat(service.rejectedStage(CALL, inputFailure)).hasValue(ToolGuardrailStage.INPUT);
-        assertThat(service.rejectedStage(CALL, new CompletionException(inputFailure)))
-                .hasValue(ToolGuardrailStage.INPUT);
-        assertThat(service.rejectedStage(CALL, outputFailure)).hasValue(ToolGuardrailStage.OUTPUT);
-        assertThat(service.rejectedStage(CALL, new CompletionException(outputFailure)))
-                .hasValue(ToolGuardrailStage.OUTPUT);
-    }
-
-    @Test
-    void no_rejected_stage_is_told_for_any_other_failure() {
-        var service = ToolGuardrailService.builder(Assistant.class).build();
-
-        assertThat(service.rejectedStage(CALL, new IllegalStateException("boom")))
-                .isEmpty();
-        assertThat(service.rejectedStage(CALL, new CancellationException()))
-                .isEmpty();
-        assertThat(service.rejectedStage(CALL, null)).isEmpty();
-        assertThatThrownBy(() -> service.rejectedStage(null, new IllegalStateException("boom")))
-                .isInstanceOf(IllegalArgumentException.class);
     }
 
     private static void assertFailsWithIllegalArgument(CompletableFuture<?> future, String parameter) {

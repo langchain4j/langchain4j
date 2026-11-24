@@ -12,12 +12,14 @@ import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
-import dev.langchain4j.guardrail.ToolGuardrailStage;
+import dev.langchain4j.guardrail.ToolInputGuardrailException;
+import dev.langchain4j.guardrail.ToolOutputGuardrailException;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.event.CompensationReason;
 import dev.langchain4j.service.guardrail.GuardedToolExecution;
+import dev.langchain4j.service.guardrail.ToolGuardrailStage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +35,6 @@ import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
-import dev.langchain4j.service.guardrail.ToolGuardrailService;
 
 /**
  * One round of tool execution: the tool calls of one {@link AiMessage}, in every AI service mode (blocking,
@@ -597,19 +598,30 @@ public final class ToolRound {
     }
 
     /**
-     * Why a call ended as an error result, if a tool guardrail made it one. The guardrail service tells the stage: on
-     * the execution of a call that returned ({@link GuardedToolExecution#failedStage()}), or for a fatal failure
-     * ({@code ToolGuardrailService#rejectedStage}). The round does not infer it from what it saw of the call, so a
-     * call that failed for another reason (a callback that threw before the guardrails ran, a tool that errored, a
-     * cancellation) is not a guardrail failure.
+     * Why a call ended as an error result, if a tool guardrail made it one: the stage the guardrail service tells on
+     * the execution of a call that returned ({@link GuardedToolExecution#failedStage()}), or the stage of a fatal
+     * failure of a guarded call (a {@link ToolInputGuardrailException} or a {@link ToolOutputGuardrailException}). The
+     * round does not infer it from what it saw of the call, so a call that failed for another reason (a callback that
+     * threw before the guardrails ran, a tool that errored, a cancellation) is not a guardrail failure.
      */
     private Optional<CompensationReason> guardrailFailure(ToolExecutionRequest call) {
         return Optional.ofNullable(executions.get(call))
                 .flatMap(GuardedToolExecution::failedStage)
                 .or(() -> Optional.ofNullable(errors.get(call))
-                        .flatMap(error -> binding(call.name())
-                                .flatMap(binding -> binding.service().rejectedStage(call, error))))
+                        .filter(error -> binding(call.name()).isPresent())
+                        .flatMap(ToolRound::fatalStage))
                 .map(ToolRound::compensationReason);
+    }
+
+    private static Optional<ToolGuardrailStage> fatalStage(Throwable error) {
+        Throwable cause = unwrapCompletionException(error);
+        if (cause instanceof ToolInputGuardrailException) {
+            return Optional.of(ToolGuardrailStage.INPUT);
+        }
+        if (cause instanceof ToolOutputGuardrailException) {
+            return Optional.of(ToolGuardrailStage.OUTPUT);
+        }
+        return Optional.empty();
     }
 
     private static CompensationReason compensationReason(ToolGuardrailStage stage) {
@@ -622,9 +634,8 @@ public final class ToolRound {
     /**
      * The request to report for a call, also when it failed: the request the call was executed with, as far as it is
      * known. That is the one of its execution if it returned, the one its tool was started with if it failed after
-     * that, the one the guardrail service tells for a failure that ended the call before (see
-     * {@link ToolGuardrailService#rejectedRequest(ToolExecutionRequest,
-     * Throwable)}), otherwise the call of the LLM.
+     * that, the one a fatal input failure of a guarded call carries (see {@link ToolInputGuardrailException#arguments()}),
+     * otherwise the call of the LLM.
      */
     ToolExecutionRequest reportedRequest(ToolExecutionRequest call) {
         return reportedRequest(call, null);
@@ -639,9 +650,15 @@ public final class ToolRound {
                 .map(GuardedToolExecution::request)
                 .or(() -> Optional.ofNullable(startedRequests.get(call)))
                 .or(() -> Optional.ofNullable(failure != null ? failure : errors.get(call))
-                        .flatMap(error -> binding(call.name())
-                                .flatMap(binding -> binding.service().rejectedRequest(call, error))))
+                        .filter(error -> binding(call.name()).isPresent())
+                        .flatMap(error -> rejectedRequest(call, error)))
                 .orElse(call);
+    }
+
+    private static Optional<ToolExecutionRequest> rejectedRequest(ToolExecutionRequest call, Throwable error) {
+        return (unwrapCompletionException(error) instanceof ToolInputGuardrailException inputFailure)
+                ? inputFailure.arguments().map(arguments -> call.toBuilder().arguments(arguments).build())
+                : Optional.empty();
     }
 
     /**

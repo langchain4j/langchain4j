@@ -555,8 +555,8 @@ class ToolGuardrailExecutorTest {
         var result = output(rewrite, ok).execute(request);
 
         assertThat(result.hasRewrittenResult()).isTrue();
-        assertThat(result.resultContents(request)).containsExactly(new TextContent("clean"));
-        assertThat(result.isError(request)).isFalse();
+        assertThat(result.rewrittenContents(request)).containsExactly(new TextContent("clean"));
+        assertThat(result.rewrittenIsError(request)).isFalse();
     }
 
     @Test
@@ -569,8 +569,8 @@ class ToolGuardrailExecutorTest {
         var result = output(rewrite, ok).execute(request);
 
         assertThat(result.hasRewrittenContents()).isTrue();
-        assertThat(result.resultContents(request)).containsExactly(new TextContent("blocked"));
-        assertThat(result.isError(request)).isTrue();
+        assertThat(result.rewrittenContents(request)).containsExactly(new TextContent("blocked"));
+        assertThat(result.rewrittenIsError(request)).isTrue();
     }
 
     @Test
@@ -600,8 +600,8 @@ class ToolGuardrailExecutorTest {
 
         var result = output(contents, text).execute(request);
 
-        assertThat(result.resultContents(request)).containsExactly(new TextContent("b"), IMAGE);
-        assertThat(result.isError(request)).isTrue();
+        assertThat(result.rewrittenContents(request)).containsExactly(new TextContent("b"), IMAGE);
+        assertThat(result.rewrittenIsError(request)).isTrue();
         assertThat(result.successfulText()).isEqualTo("b");
     }
 
@@ -613,8 +613,8 @@ class ToolGuardrailExecutorTest {
 
         var result = output(text, contents).execute(request);
 
-        assertThat(result.resultContents(request)).containsExactly(new TextContent("b"));
-        assertThat(result.isError(request)).isTrue();
+        assertThat(result.rewrittenContents(request)).containsExactly(new TextContent("b"));
+        assertThat(result.rewrittenIsError(request)).isTrue();
     }
 
     @Test
@@ -624,7 +624,7 @@ class ToolGuardrailExecutorTest {
 
         var result = output(flip).execute(request);
 
-        assertThat(result.isError(request)).isFalse();
+        assertThat(result.rewrittenIsError(request)).isFalse();
     }
 
     @Test
@@ -713,8 +713,8 @@ class ToolGuardrailExecutorTest {
                 .get();
         var failed = output(async(f1), async(f2)).executeAsync(request).get();
 
-        assertThat(rewritten.resultContents(request)).containsExactly(new TextContent("b"), IMAGE);
-        assertThat(rewritten.isError(request)).isTrue();
+        assertThat(rewritten.rewrittenContents(request)).containsExactly(new TextContent("b"), IMAGE);
+        assertThat(rewritten.rewrittenIsError(request)).isTrue();
         assertThat(failed.failureMessage()).isEqualTo("one\ntwo");
     }
 

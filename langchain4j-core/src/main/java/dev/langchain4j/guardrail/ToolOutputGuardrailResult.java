@@ -144,7 +144,7 @@ public final class ToolOutputGuardrailResult implements GuardrailResult<ToolOutp
      *            the request this result was produced for
      * @return the rewritten contents, or the contents of the request if this result carries no rewrite
      */
-    public List<Content> resultContents(ToolOutputGuardrailRequest request) {
+    public List<Content> rewrittenContents(ToolOutputGuardrailRequest request) {
         ensureNotNull(request, "request");
         List<Content> contents;
 
@@ -166,7 +166,7 @@ public final class ToolOutputGuardrailResult implements GuardrailResult<ToolOutp
      *            the request this result was produced for
      * @return the rewritten error flag for a contents rewrite, otherwise the error flag of the request
      */
-    public boolean isError(ToolOutputGuardrailRequest request) {
+    public boolean rewrittenIsError(ToolOutputGuardrailRequest request) {
         ensureNotNull(request, "request");
         return (successfulContents != null) ? successfulIsError : request.isError();
     }
@@ -180,7 +180,7 @@ public final class ToolOutputGuardrailResult implements GuardrailResult<ToolOutp
      *         carries no rewrite
      */
     ToolOutputGuardrailRequest apply(ToolOutputGuardrailRequest request) {
-        return hasRewrittenResult() ? request.withContents(resultContents(request), isError(request)) : request;
+        return hasRewrittenResult() ? request.withContents(rewrittenContents(request), rewrittenIsError(request)) : request;
     }
 
     /**
