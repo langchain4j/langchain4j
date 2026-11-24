@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Base64;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,7 +61,13 @@ class PartsMapperTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"https://example.com/photos/cat.png", "http://example.com/photos/cat.png", "gs://bucket/cat.png"})
+    @ValueSource(
+            strings = {
+                "https://example.com/photos/cat.png",
+                "http://example.com/photos/cat.png",
+                "gs://bucket/cat.png",
+                "HTTPS://example.com/photos/cat.png"
+            })
     void should_pass_image_urls_on_to_vertex_ai(String url) {
 
         // when
@@ -103,6 +110,25 @@ class PartsMapperTest {
         assertThatThrownBy(() -> PartsMapper.map(PdfFileContent.from(url)))
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessage(PartsMapper.URL_NOT_SUPPORTED);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"file:///tmp/imagen-image-1.png", "https://example.com/photos/cat.png"})
+    void should_send_the_content_of_media_that_has_both_content_and_a_url(String url) {
+
+        // given
+        Image image = Image.builder()
+                .url(url)
+                .base64Data(Base64.getEncoder().encodeToString(new byte[] {1, 2, 3}))
+                .build();
+
+        // when
+        Part part = PartsMapper.map(ImageContent.from(image));
+
+        // then
+        assertThat(part.hasFileData()).isFalse();
+        assertThat(part.getInlineData().getMimeType()).isEqualTo("image/png");
+        assertThat(part.getInlineData().getData().toByteArray()).containsExactly(1, 2, 3);
     }
 
     @Test

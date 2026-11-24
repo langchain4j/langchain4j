@@ -156,7 +156,8 @@ class GoogleGenAiContentMapperTest {
                 Arguments.of(AudioContent.from("https://example.com/audio/speech.mp3"), "audio/mp3"),
                 Arguments.of(VideoContent.from("https://example.com/video/clip.mp4"), "video/mp4"),
                 Arguments.of(PdfFileContent.from("https://example.com/docs/report.pdf"), "application/pdf"),
-                Arguments.of(ImageContent.from("gs://bucket/image.png"), "image/png"));
+                Arguments.of(ImageContent.from("gs://bucket/image.png"), "image/png"),
+                Arguments.of(ImageContent.from("HTTPS://example.com/photos/cat.png"), "image/png"));
     }
 
     @ParameterizedTest
@@ -183,6 +184,22 @@ class GoogleGenAiContentMapperTest {
                     .isExactlyInstanceOf(UnsupportedFeatureException.class)
                     .hasMessage(GoogleGenAiContentMapper.URL_NOT_SUPPORTED);
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"file:///tmp/imagen-image-1.png", "https://example.com/photos/cat.png"})
+    void should_send_the_content_of_media_that_has_both_content_and_a_url(String url) {
+        Image image = Image.builder()
+                .url(url)
+                .base64Data(Base64.getEncoder().encodeToString(new byte[] {1, 2, 3}))
+                .build();
+
+        Content result = GoogleGenAiContentMapper.toContent(UserMessage.from(ImageContent.from(image)));
+
+        Part part = result.parts().get().get(0);
+        assertThat(part.fileData()).isEmpty();
+        assertThat(part.inlineData().get().data()).hasValue(new byte[] {1, 2, 3});
+        assertThat(part.inlineData().get().mimeType()).hasValue("image/png");
     }
 
     @Test

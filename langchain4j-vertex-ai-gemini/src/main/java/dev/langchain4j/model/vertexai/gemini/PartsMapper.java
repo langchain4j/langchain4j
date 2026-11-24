@@ -176,14 +176,14 @@ class PartsMapper {
     }
 
     private static Part getPart(URI url, String mimeType, String base64data) {
-        if (url != null) {
+        if (base64data == null && url != null) {
             if (url.getScheme() == null || !URL_SCHEMES_PASSED_ON.contains(url.getScheme().toLowerCase(Locale.ROOT))) {
                 throw new UnsupportedFeatureException(URL_NOT_SUPPORTED);
             }
-            String effectiveMimeType = getOrDefault(mimeType, () -> detectMimeType(url));
-            return fromMimeTypeAndData(effectiveMimeType, url);
+            return fromMimeTypeAndData(getOrDefault(mimeType, () -> detectMimeType(url)), url);
         }
-        return fromMimeTypeAndData(mimeType, Base64.getDecoder().decode(base64data));
+        String effectiveMimeType = url == null ? mimeType : getOrDefault(mimeType, () -> detectMimeType(url));
+        return fromMimeTypeAndData(effectiveMimeType, Base64.getDecoder().decode(base64data));
     }
 
     static String detectMimeType(URI url) {
