@@ -4,12 +4,12 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashSet;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
+import java.util.ListIterator;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 /**
  * Composes several {@link AgentListener}s into one, notifying them in a defined order: the callbacks that open a scope
@@ -24,10 +24,10 @@ import java.util.function.Predicate;
 @Internal
 public class ComposedAgentListener implements AgentListener {
 
-    private final Set<AgentListener> listeners;
+    private final List<AgentListener> listeners;
 
     private ComposedAgentListener(List<AgentListener> listeners) {
-        this.listeners = new LinkedHashSet<>(listeners);
+        this.listeners = listeners.stream().distinct().collect(Collectors.toCollection(ArrayList::new));
     }
 
     public ComposedAgentListener(AgentListener... listeners) {
@@ -51,9 +51,17 @@ public class ComposedAgentListener implements AgentListener {
 
     public void addListener(AgentListener listener) {
         if (listener instanceof ComposedAgentListener composed) {
-            this.listeners.addAll(composed.listeners);
+            for (AgentListener composedListener : composed.listeners) {
+                addIfAbsent(composedListener);
+            }
         } else {
-            this.listeners.add(listener);
+            addIfAbsent(listener);
+        }
+    }
+
+    private void addIfAbsent(AgentListener listener) {
+        if (!listeners.contains(listener)) {
+            listeners.add(listener);
         }
     }
 
@@ -117,13 +125,26 @@ public class ComposedAgentListener implements AgentListener {
     }
 
     private void notifyEach(Consumer<AgentListener> notification) {
-        notifyEach(listeners, notification);
+        notifyEach(listeners.iterator(), notification);
     }
 
     private void notifyEachInReverse(Consumer<AgentListener> notification) {
-        List<AgentListener> reversed = new ArrayList<>(listeners);
-        Collections.reverse(reversed);
-        notifyEach(reversed, notification);
+        notifyEach(reverseIterator(), notification);
+    }
+
+    private Iterator<AgentListener> reverseIterator() {
+        ListIterator<AgentListener> iterator = listeners.listIterator(listeners.size());
+        return new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return iterator.hasPrevious();
+            }
+
+            @Override
+            public AgentListener next() {
+                return iterator.previous();
+            }
+        };
     }
 
     /**
@@ -132,9 +153,10 @@ public class ComposedAgentListener implements AgentListener {
      * failure is rethrown once all the listeners have been notified, with any further ones added to it as suppressed
      * exceptions.
      */
-    private static void notifyEach(Iterable<AgentListener> listeners, Consumer<AgentListener> notification) {
+    private static void notifyEach(Iterator<AgentListener> listeners, Consumer<AgentListener> notification) {
         RuntimeException failure = null;
-        for (AgentListener listener : listeners) {
+        while (listeners.hasNext()) {
+            AgentListener listener = listeners.next();
             try {
                 notification.accept(listener);
             } catch (RuntimeException e) {

@@ -286,6 +286,20 @@ class ComposedAgentListenerTest {
         assertThat(composed.listeners()).containsExactly(first, second, third);
     }
 
+    @Test
+    void a_listener_registered_twice_is_notified_once_and_keeps_its_first_position() {
+        List<String> calls = new ArrayList<>();
+        AgentListener first = callRecorder("first", calls, LOWER_HASH);
+        AgentListener second = callRecorder("second", calls, HIGHER_HASH);
+
+        AgentListener composed = ComposedAgentListener.compose(new ComposedAgentListener(first, second, first), first);
+        composed = ComposedAgentListener.compose(composed, new ComposedAgentListener(second, first));
+        composed.beforeAgentInvocation(new AgentRequest(null, null, Map.of()));
+        composed.afterAgentInvocation(new AgentResponse(null, null, Map.of()));
+
+        assertThat(calls).containsExactly("first before", "second before", "second after", "first after");
+    }
+
     private static AgentListener inheritedCallRecorder(String name, List<String> calls, int hashCode) {
         return callRecorder(name, calls, hashCode, true);
     }
