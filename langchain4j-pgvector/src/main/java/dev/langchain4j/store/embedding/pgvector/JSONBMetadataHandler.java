@@ -27,10 +27,14 @@ class JSONBMetadataHandler extends JSONMetadataHandler {
         String indexTypeSql = indexType == null ? "" : "USING " + indexType;
         for (String str : this.indexes) {
             String index = str.trim();
-            String indexName = formatIndex(index);
+            String indexName = table + "_" + formatIndex(index);
+            if (index.contains("->>")) {
+                // Keep the operator marker to distinguish text and JSON indexes on the same key.
+                indexName = "\"" + indexName.replace("\"", "\"\"") + "\"";
+            }
             try {
-                String indexSql = String.format("create index if not exists %s_%s on %s %s (%s)",
-                        table, indexName, table, indexTypeSql, index);
+                String indexSql = String.format(
+                        "create index if not exists %s on %s %s (%s)", indexName, table, indexTypeSql, index);
                 statement.executeUpdate(indexSql);
             } catch (SQLException e) {
                 throw new RuntimeException(String.format("Cannot create index %s: %s", index, e));
@@ -42,8 +46,10 @@ class JSONBMetadataHandler extends JSONMetadataHandler {
         // (metadata_b->'name')
         String indexName;
         if (index.contains("->")) {
-            indexName = columnName + "_" + index.substring(index.indexOf("->") + 2, index.length() - 1)
-                    .trim().replaceAll("'", "");
+            indexName = columnName + "_"
+                    + index.substring(index.indexOf("->") + 2, index.length() - 1)
+                            .trim()
+                            .replaceAll("'", "");
         } else {
             indexName = index.replaceAll(" ", "_");
         }
