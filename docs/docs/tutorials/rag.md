@@ -682,9 +682,9 @@ Filter filter = new SqlFilterParser().parse("category = 'docs' AND year >= 2024"
 By default, it throws an `IllegalArgumentException` when a filter has more than 100 conditions
 (each comparison, `IN` and `BETWEEN` counts as one),
 has parentheses nested more than 50 levels deep (parentheses of function calls and `IN` lists count too),
-or takes longer than 1 second to parse.
+or takes longer than 5 seconds to parse.
 Very large filters, for example with thousands of conditions or `IN` values,
-can take longer than a second to parse on a slow or busy machine,
+can take several seconds to parse on a slow or busy machine,
 so increase the parse timeout too if you use such filters.
 You can change these limits:
 
@@ -692,7 +692,7 @@ You can change these limits:
 SqlFilterParser sqlFilterParser = SqlFilterParser.builder()
         .maxConditions(5000)
         .maxNestingDepth(100)
-        .parseTimeout(Duration.ofSeconds(2))
+        .parseTimeout(Duration.ofSeconds(10))
         .build();
 ```
 

@@ -95,7 +95,7 @@ import org.jspecify.annotations.Nullable;
  * {@code SqlFilterParser} has limits for very large or deeply nested filters:
  * by default, a filter with more than {@value #DEFAULT_MAX_CONDITIONS} conditions,
  * with parentheses nested more than {@value #DEFAULT_MAX_NESTING_DEPTH} levels deep,
- * or that takes longer than 1 second to parse, is rejected with an {@link IllegalArgumentException}.
+ * or that takes longer than 5 seconds to parse, is rejected with an {@link IllegalArgumentException}.
  * Use {@link #builder()} to change these limits.
  * <br>
  * A filter that contains a {@code CASE} or {@code CAST} expression, a nested {@code SELECT} or an array
@@ -107,7 +107,7 @@ public class SqlFilterParser implements FilterParser {
 
     private static final int DEFAULT_MAX_CONDITIONS = 100;
     private static final int DEFAULT_MAX_NESTING_DEPTH = 50;
-    private static final Duration DEFAULT_PARSE_TIMEOUT = Duration.ofSeconds(1);
+    private static final Duration DEFAULT_PARSE_TIMEOUT = Duration.ofSeconds(5);
 
     private final LocalDateTime localDateTime;
     private final int maxConditions;
@@ -865,10 +865,10 @@ public class SqlFilterParser implements FilterParser {
          * The timeout bounds the time spent on any other SQL that is slow to parse.
          * <p>
          * Very large filters, for example with thousands of conditions or {@code IN} values,
-         * can take longer than a second to parse on a slow or busy machine.
+         * can take several seconds to parse on a slow or busy machine.
          * If you use such filters, increase the timeout as well.
          * <p>
-         * Must be greater than zero. Default value is 1 second.
+         * Must be greater than zero. Default value is 5 seconds.
          *
          * @param parseTimeout the maximum time to parse a filter; {@code null} means the default
          * @return this builder

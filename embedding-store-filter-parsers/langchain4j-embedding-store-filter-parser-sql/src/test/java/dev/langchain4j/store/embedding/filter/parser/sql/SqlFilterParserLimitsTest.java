@@ -420,11 +420,12 @@ class SqlFilterParserLimitsTest {
     @Test
     void should_stop_parsing_slow_filter_after_default_parse_timeout() {
 
-        String sql = "id IN (" + values(1_000_000) + ")";
+        // takes about 30 seconds to parse without a timeout
+        String sql = "id IN (" + values(2_000_000) + ")";
 
-        assertTimeout(Duration.ofSeconds(5), () -> assertThatThrownBy(() -> parser.parse(sql))
+        assertTimeout(Duration.ofSeconds(20), () -> assertThatThrownBy(() -> parser.parse(sql))
                 .isExactlyInstanceOf(IllegalArgumentException.class)
-                .hasMessage(PARSE_TIMEOUT_MESSAGE, 1000));
+                .hasMessage(PARSE_TIMEOUT_MESSAGE, 5000));
     }
 
     @ParameterizedTest
