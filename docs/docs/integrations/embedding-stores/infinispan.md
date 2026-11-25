@@ -66,8 +66,8 @@ InfinispanChatMemoryStore store = InfinispanChatMemoryStore.builder()
 ### InfinispanContentRetriever
 
 A `ContentRetriever` that uses Infinispan's full-text search (Ickle queries powered by Hibernate Search / Lucene)
-to retrieve relevant content without requiring embeddings. This is useful for RAG pipelines where you want
-keyword-based retrieval instead of (or in addition to) vector similarity search.
+to retrieve relevant content. The query does not need an embedding model. This is useful for RAG pipelines where you
+want keyword-based retrieval instead of (or in addition to) vector similarity search.
 
 The retriever is built from an existing `InfinispanEmbeddingStore`, reusing its remote cache and configuration.
 The store must have full-text indexing enabled on the text field.
@@ -93,7 +93,19 @@ InfinispanContentRetriever retriever = InfinispanContentRetriever.builder()
 List<Content> results = retriever.retrieve(new Query("search terms"));
 ```
 
-The retriever also supports non-blocking retrieval via `retrieveAsync`.
+Each returned `Content` has the full-text score (`ContentMetadata.SCORE`) and the id of the stored entry
+(`ContentMetadata.EMBEDDING_ID`) in its metadata. The retriever also supports non-blocking retrieval via
+`retrieveAsync`.
+
+If the cache already holds data that was stored with the default text field annotation, switching the store to
+full-text is not enough: the existing index does not change by itself, and the retriever fails with
+`ISPN028521: Full-text queries cannot be applied to property 'text'`. Update the index schema and reindex the
+cache once:
+
+```java
+store.remoteCache().getRemoteCacheManager().administration().updateIndexSchema("my-cache");
+store.remoteCache().getRemoteCacheManager().administration().reindexCache("my-cache");
+```
 
 #### Custom text field annotation
 
@@ -102,14 +114,14 @@ analysis needed for vector search). To enable full-text search, set
 `textFieldAnnotation(InfinispanStoreConfiguration.TEXT_FIELD_ANNOTATION_FULLTEXT)` which uses the
 `standard` analyzer (tokenizes text and applies lowercase normalization).
 
-For a different analyzer (e.g., for a specific language or custom tokenization), pass a custom annotation
-to the store builder:
+For a different analyzer, pass a custom annotation to the store builder. For example, the `stemmer` analyzer also
+matches other forms of a word ("run" finds "running") and ignores common English words such as "what" and "is":
 
 ```java
 InfinispanEmbeddingStore store = InfinispanEmbeddingStore.builder()
     .cacheName("my-cache")
     .dimension(384)
-    .textFieldAnnotation("@Text(projectable=true, analyzer=\"keyword\")")
+    .textFieldAnnotation("@Text(projectable=true, analyzer=\"stemmer\")")
     .infinispanConfigBuilder(builder)
     .build();
 ```

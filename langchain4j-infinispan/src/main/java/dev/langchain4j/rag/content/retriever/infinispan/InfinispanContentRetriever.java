@@ -10,6 +10,7 @@ import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.infinispan.InfinispanEmbeddingStore;
+import dev.langchain4j.store.embedding.infinispan.InfinispanStoreConfiguration;
 import dev.langchain4j.store.embedding.infinispan.LangChainInfinispanItem;
 import dev.langchain4j.store.embedding.infinispan.LangChainMetadata;
 import java.util.ArrayList;
@@ -21,11 +22,11 @@ import org.infinispan.client.hotrod.RemoteCache;
 
 /**
  * An Infinispan-backed {@link ContentRetriever} that uses full-text search (Ickle queries)
- * to retrieve relevant content without requiring embeddings.
+ * to retrieve relevant content. The query does not need an embedding model.
  * <p>
  * Built from an existing {@link InfinispanEmbeddingStore}, reusing its remote cache and
  * configuration. The store's schema must have full-text indexing enabled on the text field
- * (use {@link dev.langchain4j.store.embedding.infinispan.InfinispanStoreConfiguration#TEXT_FIELD_ANNOTATION_FULLTEXT}
+ * (use {@link InfinispanStoreConfiguration#TEXT_FIELD_ANNOTATION_FULLTEXT}
  * when building the store).
  */
 public class InfinispanContentRetriever implements ContentRetriever {
