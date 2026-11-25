@@ -6,6 +6,8 @@ import static java.util.Collections.singletonList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.document.Metadata;
+import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.PromptTemplate;
@@ -267,5 +269,52 @@ class DefaultContentInjectorTest {
                                 .promptTemplate(promptTemplate)
                                 .build()))
                 .build();
+    }
+
+    @Test
+    void should_inject_into_multimodal_user_message_and_keep_non_text_parts() {
+
+        // given
+        ImageContent image = ImageContent.from("https://example.com/banana.png");
+        UserMessage userMessage = UserMessage.from(TextContent.from("Tell me about bananas."), image);
+
+        List<Content> contents = singletonList(Content.from("Bananas are awesome!"));
+
+        ContentInjector injector = new DefaultContentInjector();
+
+        // when
+        UserMessage injected = (UserMessage) injector.inject(contents, userMessage);
+
+        // then
+        assertThat(injected.contents()).hasSize(2);
+        assertThat(injected.contents().get(0)).isInstanceOf(TextContent.class);
+        assertThat(((TextContent) injected.contents().get(0)).text()).isEqualTo("""
+                        Tell me about bananas.
+
+                        Answer using the following information:
+                        Bananas are awesome!""");
+        assertThat(injected.contents().get(1)).isEqualTo(image);
+    }
+
+    @Test
+    void should_inject_into_user_message_that_has_no_text_part() {
+
+        // given
+        ImageContent image = ImageContent.from("https://example.com/banana.png");
+        UserMessage userMessage = UserMessage.from(image);
+
+        List<Content> contents = singletonList(Content.from("Bananas are awesome!"));
+
+        ContentInjector injector = new DefaultContentInjector();
+
+        // when
+        UserMessage injected = (UserMessage) injector.inject(contents, userMessage);
+
+        // then
+        assertThat(injected.contents()).hasSize(2);
+        assertThat(injected.contents().get(0)).isInstanceOf(TextContent.class);
+        assertThat(((TextContent) injected.contents().get(0)).text())
+                .isEqualTo("\n\nAnswer using the following information:\nBananas are awesome!");
+        assertThat(injected.contents().get(1)).isEqualTo(image);
     }
 }
