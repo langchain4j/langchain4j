@@ -3,6 +3,7 @@ package dev.langchain4j.model.google.genai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.google.genai.types.Blob;
 import com.google.genai.types.Candidate;
 import com.google.genai.types.Content;
 import com.google.genai.types.FunctionCall;
@@ -12,12 +13,16 @@ import com.google.genai.types.Part;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.VideoContent;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
 import java.net.URI;
@@ -28,8 +33,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class GoogleGenAiContentMapperTest {
 
@@ -111,17 +121,71 @@ class GoogleGenAiContentMapperTest {
     }
 
     @Test
-    void should_convert_user_message_with_image_file_url(@TempDir Path tempDir) throws Exception {
+    void should_convert_user_message_with_image_read_from_a_local_file(@TempDir Path tempDir) throws Exception {
         Path imgFile = tempDir.resolve("test.png");
         Files.write(imgFile, "fake-image-data".getBytes());
 
-        Image image = Image.builder().url(imgFile.toUri()).build();
-        UserMessage message = UserMessage.from(new ImageContent(image));
+        UserMessage message = UserMessage.from(ImageContent.from(imgFile, "image/png"));
 
         Content result = GoogleGenAiContentMapper.toContent(message);
 
         assertThat(result.role().get()).isEqualTo("user");
-        assertThat(result.parts().get()).hasSize(1);
+        Blob blob = result.parts().get().get(0).inlineData().get();
+        assertThat(blob.data()).hasValue("fake-image-data".getBytes());
+        assertThat(blob.mimeType()).hasValue("image/png");
+    }
+
+    static Stream<Arguments> mediaGivenByUrl() {
+        return Stream.of(
+                Arguments.of(ImageContent.from("https://example.com/photos/cat.png"), "image/png"),
+                Arguments.of(ImageContent.from("http://example.com/photos/cat.png"), "image/png"),
+                Arguments.of(AudioContent.from("https://example.com/audio/speech.mp3"), "audio/mp3"),
+                Arguments.of(VideoContent.from("https://example.com/video/clip.mp4"), "video/mp4"),
+                Arguments.of(PdfFileContent.from("https://example.com/docs/report.pdf"), "application/pdf"),
+                Arguments.of(ImageContent.from("gs://bucket/image.png"), "image/png"),
+                Arguments.of(ImageContent.from("HTTPS://example.com/photos/cat.png"), "image/png"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("mediaGivenByUrl")
+    void should_pass_media_urls_on_to_gemini(dev.langchain4j.data.message.Content content, String mimeType) {
+        Content result = GoogleGenAiContentMapper.toContent(UserMessage.from(content));
+
+        Part part = result.parts().get().get(0);
+        assertThat(part.inlineData()).isEmpty();
+        assertThat(part.fileData().get().fileUri()).hasValue(urlOf(content));
+        assertThat(part.fileData().get().mimeType()).hasValue(mimeType);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"file:///etc/hosts.png", "/home/me/cat.png", "cat.png", "ftp://example.com/cat.png"})
+    void should_reject_media_given_by_other_urls(String url) {
+        for (dev.langchain4j.data.message.Content content : List.of(
+                ImageContent.from(url),
+                AudioContent.from(url),
+                VideoContent.from(url),
+                PdfFileContent.from(url))) {
+
+            assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(UserMessage.from(content)))
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessage(GoogleGenAiContentMapper.URL_NOT_SUPPORTED);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"file:///tmp/imagen-image-1.png", "https://example.com/photos/cat.png"})
+    void should_send_the_content_of_media_that_has_both_content_and_a_url(String url) {
+        Image image = Image.builder()
+                .url(url)
+                .base64Data(Base64.getEncoder().encodeToString(new byte[] {1, 2, 3}))
+                .build();
+
+        Content result = GoogleGenAiContentMapper.toContent(UserMessage.from(ImageContent.from(image)));
+
+        Part part = result.parts().get().get(0);
+        assertThat(part.fileData()).isEmpty();
+        assertThat(part.inlineData().get().data()).hasValue(new byte[] {1, 2, 3});
+        assertThat(part.inlineData().get().mimeType()).hasValue("image/png");
     }
 
     @Test
@@ -527,28 +591,29 @@ class GoogleGenAiContentMapperTest {
     }
 
     @Test
-    void should_throw_when_reading_nonexistent_file() {
-        Image image =
-                Image.builder().url(URI.create("file:///nonexistent/file.png")).build();
-        UserMessage message = UserMessage.from(new ImageContent(image));
-
-        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("nonexistent")
-                .hasMessageContaining("file.png");
-    }
-
-    @Test
-    void should_convert_user_message_with_image_url_and_explicit_mime_type(@TempDir Path tempDir) throws Exception {
-        Path imgFile = tempDir.resolve("test.dat");
-        Files.write(imgFile, "fake-image-data".getBytes());
-
-        Image image = Image.builder().url(imgFile.toUri()).mimeType("image/png").build();
+    void should_convert_user_message_with_image_url_and_explicit_mime_type() {
+        Image image = Image.builder()
+                .url("https://example.com/photos?id=42")
+                .mimeType("image/png")
+                .build();
         UserMessage message = UserMessage.from(new ImageContent(image));
 
         Content result = GoogleGenAiContentMapper.toContent(message);
 
         assertThat(result.parts().get()).hasSize(1);
+        assertThat(result.parts().get().get(0).fileData().get().fileUri()).hasValue("https://example.com/photos?id=42");
+        assertThat(result.parts().get().get(0).fileData().get().mimeType()).hasValue("image/png");
+    }
+
+    private static String urlOf(dev.langchain4j.data.message.Content content) {
+        if (content instanceof ImageContent image) {
+            return image.image().url().toString();
+        } else if (content instanceof AudioContent audio) {
+            return audio.audio().url().toString();
+        } else if (content instanceof VideoContent video) {
+            return video.video().url().toString();
+        }
+        return ((PdfFileContent) content).pdfFile().url().toString();
     }
 
     @Test

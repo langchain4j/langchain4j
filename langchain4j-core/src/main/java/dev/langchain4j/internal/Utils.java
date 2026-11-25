@@ -54,6 +54,9 @@ import org.slf4j.LoggerFactory;
 public class Utils {
     private static final Logger log = LoggerFactory.getLogger(Utils.class);
 
+    private static final int READ_BYTES_CONNECT_TIMEOUT_MILLIS = 10_000;
+    private static final int READ_BYTES_READ_TIMEOUT_MILLIS = 60_000;
+
     private Utils() {}
 
     /**
@@ -327,6 +330,13 @@ public class Utils {
     /**
      * Reads the content as bytes from the given URL as a GET request for HTTP/HTTPS resources,
      * and from files stored on the local filesystem.
+     * <p>
+     * An HTTP/HTTPS request fails if connecting takes longer than 10 seconds, or if the server sends no data for
+     * 60 seconds.
+     * <p>
+     * This method trusts its input: it reads any local file that the application can read, and downloads from any
+     * host, including internal ones. Use it only with URLs and paths that you control, never with URLs that come from
+     * end users or models.
      *
      * @param url The URL to read from.
      * @return The content as bytes.
@@ -337,6 +347,8 @@ public class Utils {
             if (url.startsWith("http://") || url.startsWith("https://")) {
                 // Handle URLs
                 HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+                connection.setConnectTimeout(READ_BYTES_CONNECT_TIMEOUT_MILLIS);
+                connection.setReadTimeout(READ_BYTES_READ_TIMEOUT_MILLIS);
                 connection.setRequestMethod("GET");
                 // Add headers to appear as a legitimate browser request
                 connection.setRequestProperty(

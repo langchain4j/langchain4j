@@ -11,6 +11,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.OLLAMA_IMAGE;
 import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import static dev.langchain4j.model.ollama.OllamaImage.resolve;
 import static java.time.Duration.ofSeconds;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.common.AbstractChatModelIT;
@@ -28,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.condition.DisabledIf;
-import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -157,12 +157,16 @@ class OllamaChatModelIT extends AbstractChatModelIT {
     @Override
     @ParameterizedTest
     @MethodSource("modelsSupportingImageInputs")
-    @EnabledIf("supportsSingleImageInputAsPublicURL")
-    protected void should_accept_single_image_as_public_URL(ChatModel model) {
-        if (model instanceof OpenAiChatModel) {
-            return; // OpenAI does not implement automatic image download
-        }
-        super.should_accept_single_image_as_public_URL(model);
+    @DisabledIf("supportsSingleImageInputAsPublicURL")
+    protected void should_fail_if_images_as_public_URLs_are_not_supported(ChatModel model) {
+        assumeFalse(
+                model instanceof OpenAiChatModel, "not checked here: the OpenAI integration passes the URL on to Ollama");
+        super.should_fail_if_images_as_public_URLs_are_not_supported(model);
+    }
+
+    @Override
+    protected boolean supportsSingleImageInputAsPublicURL() {
+        return false; // Ollama needs the image content
     }
 
     @Override

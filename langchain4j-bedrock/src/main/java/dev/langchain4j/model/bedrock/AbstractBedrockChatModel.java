@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertAdditionalModelRequestFields;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.convertJsonObjectSchemaToDocument;
 import static dev.langchain4j.model.bedrock.AwsDocumentConverter.documentFromJson;
@@ -25,6 +24,7 @@ import static software.amazon.awssdk.services.bedrockruntime.model.OutputFormatT
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.Content;
@@ -34,6 +34,7 @@ import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.Json;
 import dev.langchain4j.model.chat.Capability;
@@ -63,6 +64,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
@@ -111,6 +113,14 @@ abstract class AbstractBedrockChatModel {
 
     private static final String THINKING_SIGNATURE_KEY =
             "thinking_signature"; // do not change, will break backward compatibility!
+
+    static final String IMAGE_URL_NOT_SUPPORTED = "The Amazon Bedrock integration does not support images given by"
+            + " URL; it needs the image content. Create the content from a file or from its bytes, for example"
+            + " ImageContent.from(Path, String) or ImageContent.from(String base64Data, String mimeType)";
+
+    static final String PDF_URL_NOT_SUPPORTED = "The Amazon Bedrock integration does not support PDF files given by"
+            + " URL; it needs the file content. Create the content from a file or from its bytes, for example"
+            + " PdfFileContent.from(Path) or PdfFileContent.from(String base64Data, String mimeType)";
 
     /**
      * Maximum cache points allowed by AWS Bedrock per request.
@@ -329,7 +339,36 @@ abstract class AbstractBedrockChatModel {
             }
         }
 
-        return bedrockMessages;
+        return withDistinctDocumentNames(bedrockMessages);
+    }
+
+    private static List<Message> withDistinctDocumentNames(List<Message> messages) {
+        DocumentNames documentNames = new DocumentNames();
+        for (int i = 0; i < messages.size(); i++) {
+            List<ContentBlock> blocks = messages.get(i).content();
+            List<ContentBlock> renamedBlocks = null;
+            for (int j = 0; j < blocks.size(); j++) {
+                DocumentBlock document = blocks.get(j).document();
+                if (document == null || document.name() == null) {
+                    continue;
+                }
+                String name = documentNames.distinct(document.name());
+                if (!name.equals(document.name())) {
+                    if (renamedBlocks == null) {
+                        renamedBlocks = new ArrayList<>(blocks);
+                    }
+                    renamedBlocks.set(
+                            j,
+                            blocks.get(j).toBuilder()
+                                    .document(document.toBuilder().name(name).build())
+                                    .build());
+                }
+            }
+            if (renamedBlocks != null) {
+                messages.set(i, messages.get(i).toBuilder().content(renamedBlocks).build());
+            }
+        }
+        return messages;
     }
 
     protected void handleToolResult(
@@ -371,11 +410,7 @@ abstract class AbstractBedrockChatModel {
                         .text(textContent.text())
                         .build());
             } else if (content instanceof ImageContent imageContent) {
-                SdkBytes bytes = fromByteArray(
-                        nonNull(imageContent.image().base64Data())
-                                ? Base64.getDecoder()
-                                        .decode(imageContent.image().base64Data())
-                                : readBytes(String.valueOf(imageContent.image().url())));
+                SdkBytes bytes = imageBytes(imageContent);
                 String imgFormat = extractAndValidateFormat(imageContent.image());
                 contentBlocks.add(ToolResultContentBlock.builder()
                         .image(ImageBlock.builder()
@@ -465,17 +500,15 @@ abstract class AbstractBedrockChatModel {
         if (content instanceof TextContent text) {
             return ContentBlock.builder().text(text.text()).build();
         } else if (content instanceof PdfFileContent pdfFileContent) {
-            final SdkBytes bytes = fromByteArray(
-                    nonNull(pdfFileContent.pdfFile().base64Data())
-                            ? Base64.getDecoder()
-                                    .decode(pdfFileContent.pdfFile().base64Data())
-                            : readBytes(String.valueOf(pdfFileContent.pdfFile().url())));
+            PdfFile pdfFile = pdfFileContent.pdfFile();
+            byte[] bytes = Base64.getDecoder().decode(base64Data(pdfFile));
             return ContentBlock.builder()
                     .document(DocumentBlock.builder()
                             .format(DocumentFormat.PDF)
-                            .source(DocumentSource.builder().bytes(bytes).build())
-                            .name(extractFilenameWithoutExtensionFromUri(
-                                    pdfFileContent.pdfFile().url()))
+                            .source(DocumentSource.builder()
+                                    .bytes(fromByteArray(bytes))
+                                    .build())
+                            .name(DocumentNames.nameOf(pdfFile, () -> bytes))
                             .build())
                     .build();
         } else if (content instanceof ImageContent image) {
@@ -485,10 +518,7 @@ abstract class AbstractBedrockChatModel {
     }
 
     protected ContentBlock createImageBlock(ImageContent imageContent) {
-        final SdkBytes bytes = fromByteArray(
-                nonNull(imageContent.image().base64Data())
-                        ? Base64.getDecoder().decode(imageContent.image().base64Data())
-                        : readBytes(String.valueOf(imageContent.image().url())));
+        final SdkBytes bytes = imageBytes(imageContent);
         final String imgFormat = extractAndValidateFormat(imageContent.image());
         return ContentBlock.builder()
                 .image(ImageBlock.builder()
@@ -496,6 +526,29 @@ abstract class AbstractBedrockChatModel {
                         .source(ImageSource.builder().bytes(bytes).build())
                         .build())
                 .build();
+    }
+
+    private static SdkBytes imageBytes(ImageContent imageContent) {
+        return fromByteArray(Base64.getDecoder().decode(base64Data(imageContent.image())));
+    }
+
+    static String base64Data(Image image) {
+        return base64Data(image.base64Data(), image.url(), "image", IMAGE_URL_NOT_SUPPORTED);
+    }
+
+    static String base64Data(PdfFile pdfFile) {
+        return base64Data(pdfFile.base64Data(), pdfFile.url(), "PDF file", PDF_URL_NOT_SUPPORTED);
+    }
+
+    private static String base64Data(
+            @Nullable String base64Data, @Nullable URI url, String mediaType, String urlNotSupportedMessage) {
+        if (base64Data != null) {
+            return base64Data;
+        }
+        if (url == null) {
+            throw new IllegalArgumentException("The " + mediaType + " has neither base64 data nor a URL");
+        }
+        throw new UnsupportedFeatureException(urlNotSupportedMessage);
     }
 
     protected ToolConfiguration extractToolConfigurationFrom(ChatRequest chatRequest) {
