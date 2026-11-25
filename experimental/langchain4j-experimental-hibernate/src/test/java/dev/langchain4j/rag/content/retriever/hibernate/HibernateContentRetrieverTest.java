@@ -3,8 +3,14 @@ package dev.langchain4j.rag.content.retriever.hibernate;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.test.mock.MockChatModel;
+import java.util.List;
 import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.Test;
 
@@ -54,5 +60,23 @@ class HibernateContentRetrieverTest {
     @Test
     void clean_should_return_plain_text_unchanged() {
         assertThat(retriever.clean("SELECT c FROM Customer c")).isEqualTo("SELECT c FROM Customer c");
+    }
+
+    @Test
+    void should_return_empty_list_when_model_returns_no_text() {
+        SessionFactory sessionFactory = mock(SessionFactory.class);
+        MockChatModel chatModel = MockChatModel.thatResponds(AiMessage.builder().build());
+        HibernateContentRetriever retriever = HibernateContentRetriever.builder()
+                .sessionFactory(sessionFactory)
+                .chatModel(chatModel)
+                .databaseStructure("test")
+                .maxRetries(1)
+                .build();
+
+        List<Content> contents = retriever.retrieve(Query.from("hello"));
+
+        assertThat(contents).isEmpty();
+        assertThat(chatModel.requests()).hasSize(1);
+        verifyNoInteractions(sessionFactory);
     }
 }

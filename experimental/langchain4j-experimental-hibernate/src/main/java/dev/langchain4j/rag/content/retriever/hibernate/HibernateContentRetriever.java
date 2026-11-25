@@ -1,6 +1,7 @@
 package dev.langchain4j.rag.content.retriever.hibernate;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -123,6 +124,11 @@ public class HibernateContentRetriever implements ContentRetriever {
             attemptsLeft--;
 
             hqlQuery = generateHqlQuery(naturalLanguageQuery, hqlQuery, errorMessage);
+
+            if (isNullOrBlank(hqlQuery)) {
+                log.debug("No HQL query was generated for: {}", naturalLanguageQuery.text());
+                return emptyList();
+            }
 
             hqlQuery = clean(hqlQuery);
 

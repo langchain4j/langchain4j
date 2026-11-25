@@ -1,6 +1,7 @@
 package dev.langchain4j.experimental.rag.content.retriever.sql;
 
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
@@ -249,6 +250,10 @@ public class SqlDatabaseContentRetriever implements ContentRetriever {
             attemptsLeft--;
 
             sqlQuery = generateSqlQuery(naturalLanguageQuery, sqlQuery, errorMessage);
+
+            if (isNullOrBlank(sqlQuery)) {
+                return emptyList();
+            }
 
             sqlQuery = clean(sqlQuery);
 
