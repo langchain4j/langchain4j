@@ -9,21 +9,24 @@ import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.HitCountChatMemoryStore.HitCounts;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
-import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import java.time.Duration;
 
 class MessageWindowChatMemoryTest implements WithAssertions {
     @Test
@@ -685,9 +688,15 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         ChatMemoryStore store = mock(ChatMemoryStore.class);
         when(store.getMessagesAsync(any())).thenThrow(failure);
         when(store.updateMessagesAsync(any(), any())).thenThrow(failure);
-        ChatMemory chatMemory = MessageWindowChatMemory.builder().maxMessages(10).chatMemoryStore(store).build();
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .build();
 
-        assertThat(chatMemory.messagesAsync()).failsWithin(Duration.ofSeconds(5)).withThrowableThat().withCause(failure);
+        assertThat(chatMemory.messagesAsync())
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .withCause(failure);
         assertThat(chatMemory.addAsync(List.of(userMessage("hi"))))
                 .failsWithin(Duration.ofSeconds(5))
                 .withThrowableThat()
@@ -704,7 +713,10 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         ChatMemoryStore store = mock(ChatMemoryStore.class);
         when(store.getMessagesAsync(any())).thenReturn(null);
         when(store.updateMessagesAsync(any(), any())).thenReturn(null);
-        ChatMemory chatMemory = MessageWindowChatMemory.builder().maxMessages(10).chatMemoryStore(store).build();
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .build();
 
         assertThat(chatMemory.messagesAsync())
                 .failsWithin(Duration.ofSeconds(5))
@@ -734,7 +746,115 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         boolean interruptFlagRestored = Thread.interrupted(); // also clears the flag for the next tests
 
         assertThat(interruptFlagRestored).isTrue();
-        assertThat(future).failsWithin(Duration.ofSeconds(5)).withThrowableThat().withCause(interrupted);
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .withCause(interrupted);
+    }
+
+    @Test
+    void should_not_leave_tool_results_without_their_ai_message_when_a_batch_is_evicted() {
+
+        ChatMemoryStore store = new InMemoryChatMemoryStore();
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(2)
+                .chatMemoryStore(store)
+                .build();
+
+        ToolExecutionRequest first = toolExecutionRequest("1", "alpha");
+        ToolExecutionRequest second = toolExecutionRequest("2", "beta");
+        ToolExecutionRequest third = toolExecutionRequest("3", "gamma");
+
+        chatMemory.add(userMessage("run three commands"));
+        chatMemory.add(AiMessage.from(first, second, third));
+
+        // the results of a round are added in one call, as ToolService does
+        chatMemory.addAll(Arrays.asList(
+                ToolExecutionResultMessage.from(first, "out-1"),
+                ToolExecutionResultMessage.from(second, "out-2"),
+                ToolExecutionResultMessage.from(third, "out-3")));
+
+        assertThatNoToolResultIsLeftWithoutItsAiMessage(chatMemory.messages());
+        // an orphan result must never reach the store, not even for a moment
+        assertThatNoToolResultIsLeftWithoutItsAiMessage(store.getMessages("default"));
+    }
+
+    @Test
+    void should_add_a_batch_without_evicting_between_its_messages() {
+
+        ChatMemory chatMemory =
+                MessageWindowChatMemory.builder().maxMessages(10).build();
+
+        ToolExecutionRequest first = toolExecutionRequest("1", "alpha");
+        ToolExecutionRequest second = toolExecutionRequest("2", "beta");
+
+        AiMessage aiMessage = AiMessage.from(first, second);
+        ToolExecutionResultMessage firstResult = ToolExecutionResultMessage.from(first, "out-1");
+        ToolExecutionResultMessage secondResult = ToolExecutionResultMessage.from(second, "out-2");
+
+        chatMemory.add(userMessage("run two commands"));
+        chatMemory.addAll(Arrays.asList(aiMessage, firstResult, secondResult));
+
+        assertThat(chatMemory.messages())
+                .containsExactly(userMessage("run two commands"), aiMessage, firstResult, secondResult);
+    }
+
+    @Test
+    void should_not_leave_orphan_tool_results_when_they_are_added_one_by_one() {
+
+        ChatMemory chatMemory = MessageWindowChatMemory.builder().maxMessages(2).build();
+
+        ToolExecutionRequest first = toolExecutionRequest("1", "alpha");
+        ToolExecutionRequest second = toolExecutionRequest("2", "beta");
+        ToolExecutionRequest third = toolExecutionRequest("3", "gamma");
+
+        chatMemory.add(userMessage("run three commands"));
+        chatMemory.add(AiMessage.from(first, second, third));
+
+        // a caller that still adds them one by one: eviction happens inside add(), after the result was accepted
+        chatMemory.add(ToolExecutionResultMessage.from(first, "out-1"));
+        chatMemory.add(ToolExecutionResultMessage.from(second, "out-2"));
+        chatMemory.add(ToolExecutionResultMessage.from(third, "out-3"));
+
+        assertThatNoToolResultIsLeftWithoutItsAiMessage(chatMemory.messages());
+    }
+
+    @Test
+    void should_ignore_a_tool_result_whose_tool_call_is_not_in_the_window() {
+
+        ChatMemory chatMemory = MessageWindowChatMemory.builder().maxMessages(2).build();
+
+        ToolExecutionRequest request = toolExecutionRequest("1", "alpha");
+
+        chatMemory.add(userMessage("hello"));
+        chatMemory.add(AiMessage.from(request));
+
+        // the window evicts the AiMessage that declares the tool call
+        chatMemory.add(userMessage("next"));
+        chatMemory.add(userMessage("again"));
+
+        chatMemory.add(ToolExecutionResultMessage.from(request, "out-1"));
+
+        assertThat(chatMemory.messages()).noneMatch(ToolExecutionResultMessage.class::isInstance);
+    }
+
+    private static ToolExecutionRequest toolExecutionRequest(String id, String name) {
+        return ToolExecutionRequest.builder().id(id).name(name).arguments("{}").build();
+    }
+
+    private void assertThatNoToolResultIsLeftWithoutItsAiMessage(List<ChatMessage> messages) {
+        for (int i = 0; i < messages.size(); i++) {
+            if (messages.get(i) instanceof ToolExecutionResultMessage result) {
+                String toolCallId = result.id();
+                boolean declaredBefore = messages.subList(0, i).stream()
+                        .anyMatch(message -> message instanceof AiMessage aiMessage
+                                && aiMessage.toolExecutionRequests().stream()
+                                        .anyMatch(request -> Objects.equals(request.id(), toolCallId)));
+                assertThat(declaredBefore)
+                        .as("the tool result '%s' must come after the AiMessage that declared it", toolCallId)
+                        .isTrue();
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")
