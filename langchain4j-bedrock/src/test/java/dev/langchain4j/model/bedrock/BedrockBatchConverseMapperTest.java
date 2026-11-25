@@ -18,11 +18,15 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
+import java.security.MessageDigest;
+import java.util.Base64;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class BedrockBatchConverseMapperTest {
 
@@ -151,6 +155,54 @@ class BedrockBatchConverseMapperTest {
         Map<String, Object> block = (Map<String, Object>) ((List<?>) message.get("content")).get(0);
         assertThat(block.get("document"))
                 .isEqualTo(Map.of("format", "pdf", "name", "quarterly-report", "source", Map.of("bytes", "JVBERi0=")));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void should_name_a_pdf_document_without_a_url_after_its_content_with_distinct_names_in_one_request()
+            throws Exception {
+        String name = "document-"
+                + HexFormat.of()
+                        .formatHex(MessageDigest.getInstance("SHA-256").digest(Base64.getDecoder().decode("JVBERi0=")))
+                        .substring(0, 12);
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from(
+                        PdfFileContent.from("JVBERi0=", "application/pdf"),
+                        PdfFileContent.from("JVBERi0=", "application/pdf")))
+                .build();
+
+        for (int i = 0; i < 2; i++) {
+            Map<String, Object> modelInput = modelInput(request);
+
+            Map<String, Object> message = (Map<String, Object>) ((List<?>) modelInput.get("messages")).get(0);
+            assertThat((List<Map<String, Object>>) message.get("content"))
+                    .extracting(block -> ((Map<String, Object>) block.get("document")).get("name"))
+                    .containsExactly(name, name + "-2");
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"https://example.com/cat.png", "file:///etc/hosts", "cat.png"})
+    void should_reject_images_given_by_url(String url) {
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from(TextContent.from("describe"), ImageContent.from(url)))
+                .build();
+
+        assertThatExceptionOfType(UnsupportedFeatureException.class)
+                .isThrownBy(() -> modelInput(request))
+                .withMessage(AbstractBedrockChatModel.IMAGE_URL_NOT_SUPPORTED);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"https://example.com/report.pdf", "file:///home/me/report.pdf", "report.pdf"})
+    void should_reject_pdf_files_given_by_url(String url) {
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from(PdfFileContent.from(url)))
+                .build();
+
+        assertThatExceptionOfType(UnsupportedFeatureException.class)
+                .isThrownBy(() -> modelInput(request))
+                .withMessage(AbstractBedrockChatModel.PDF_URL_NOT_SUPPORTED);
     }
 
     @Test

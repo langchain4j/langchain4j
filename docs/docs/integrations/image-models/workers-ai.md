@@ -19,6 +19,18 @@ https://developers.cloudflare.com/workers-ai/
 
 - `WorkersAiImageModel`
 
+`WorkersAiImageModel` edits images given as base64 data. Images given by URL are not supported. To edit a local
+image, create it from the content of the file:
+
+```java
+Image image = Image.builder()
+        .base64Data(Base64.getEncoder().encodeToString(Files.readAllBytes(Path.of("/home/me/cat.png"))))
+        .mimeType("image/png")
+        .build();
+```
+
+The image and the mask are sent to Workers AI as the bytes of their files, so Workers AI checks their format and size.
+
 
 ## Examples
 
