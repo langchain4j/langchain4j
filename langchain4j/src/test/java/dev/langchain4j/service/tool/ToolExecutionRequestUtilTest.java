@@ -41,6 +41,30 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
     }
 
     @Test
+    void argument_trailing_comma_should_not_corrupt_string_literals() {
+        String arguments = "{\"cmd\":\"echo a,}\",\"x\":1,}";
+
+        assertThat(ToolExecutionRequestUtil.argumentsAsMap(arguments))
+                .containsEntry("cmd", "echo a,}")
+                .containsEntry("x", 1);
+    }
+
+    @Test
+    void argument_trailing_comma_with_escaped_quotes_and_backslashes_in_string_literals() {
+        assertThat(ToolExecutionRequestUtil.argumentsAsMap("{\"cmd\":\"echo \\\"a,}\\\"\",\"x\":1,}"))
+                .containsEntry("cmd", "echo \"a,}\"")
+                .containsEntry("x", 1);
+
+        assertThat(ToolExecutionRequestUtil.argumentsAsMap("{\"cmd\":\"echo \\\\\",\"x\":1,}"))
+                .containsEntry("cmd", "echo \\")
+                .containsEntry("x", 1);
+
+        assertThat(ToolExecutionRequestUtil.argumentsAsMap("{\"arr\":\"[1, 2,]\",\"items\":[1,2,]}"))
+                .containsEntry("arr", "[1, 2,]")
+                .containsEntry("items", List.of(1, 2));
+    }
+
+    @Test
     void argument_leading_trailing_quotes() {
         ToolExecutionRequest request = ToolExecutionRequest.builder()
                 .id("id")
@@ -98,13 +122,15 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
         Map<String, Object> argumentsMap = ToolExecutionRequestUtil.argumentsAsMap(request.arguments());
 
         // then result does not contain escaping
-        assertThat(argumentsMap).containsEntry("conditionalTaskCreation", Map.of(
-                "firstNameInput", "${$context.personal_info.first_name}",
-                "lastNameInput", "${$context.personal_info.last_name}",
-                "conditionInput", """
+        assertThat(argumentsMap)
+                .containsEntry(
+                        "conditionalTaskCreation",
+                        Map.of(
+                                "firstNameInput", "${$context.personal_info.first_name}",
+                                "lastNameInput", "${$context.personal_info.last_name}",
+                                "conditionInput", """
                         ${($context.personal_info.first_name | startswith("d"))}
-                        """.trim()
-        ));
+                        """.trim()));
     }
 
     @Test
@@ -176,6 +202,11 @@ class ToolExecutionRequestUtilTest implements WithAssertions {
                         "{\"a\":\"value1\", /*comment*/ \"b\":\"value2\"}"),
                 Arguments.of("{ \"name\" : \"John\" , \"age\" : 30 , }", "{ \"name\" : \"John\" , \"age\" : 30  }"),
                 Arguments.of(
-                        "{\n  \"name\": \"John\",\n  \"age\": 30,\n}", "{\n  \"name\": \"John\",\n  \"age\": 30\n}"));
+                        "{\n  \"name\": \"John\",\n  \"age\": 30,\n}", "{\n  \"name\": \"John\",\n  \"age\": 30\n}"),
+                Arguments.of("{\"cmd\":\"echo a,}\",\"x\":1,}", "{\"cmd\":\"echo a,}\",\"x\":1}"),
+                Arguments.of("{\"cmd\":\"echo a, }\",\"x\":1}", "{\"cmd\":\"echo a, }\",\"x\":1}"),
+                Arguments.of("{\"arr\":\"[1, 2,]\",\"items\":[1,2,]}", "{\"arr\":\"[1, 2,]\",\"items\":[1,2]}"),
+                Arguments.of("{\"cmd\":\"echo \\\"a,}\\\"\",\"x\":1,}", "{\"cmd\":\"echo \\\"a,}\\\"\",\"x\":1}"),
+                Arguments.of("{\"cmd\":\"echo \\\\\",\"x\":1,}", "{\"cmd\":\"echo \\\\\",\"x\":1}"));
     }
 }
