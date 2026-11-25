@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.langchain4j.data.message.CustomMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.InternalServerException;
@@ -47,6 +48,7 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -54,6 +56,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class OllamaDecisionModelTest {
 
@@ -602,7 +605,7 @@ class OllamaDecisionModelTest {
     }
 
     @Test
-    void should_read_images_from_file_urls(@TempDir Path tempDir) throws Exception {
+    void should_send_images_read_from_local_files(@TempDir Path tempDir) throws Exception {
 
         // given
         Path image = tempDir.resolve("photo.png");
@@ -615,7 +618,7 @@ class OllamaDecisionModelTest {
         // when
         model(httpClient)
                 .decide(DecisionRequest.builder()
-                        .inputContents(List.of(ImageContent.from(image.toUri())))
+                        .inputContents(List.of(ImageContent.from(image, "image/png")))
                         .question("damaged", YesNoQuestion.from("Is the phone damaged?"))
                         .build());
 
@@ -624,6 +627,29 @@ class OllamaDecisionModelTest {
         assertThat(body.get("state")).isEqualTo("[image 1]");
         assertThat(body.get("images"))
                 .isEqualTo(List.of(Base64.getEncoder().encodeToString(new byte[] {1, 2, 3})));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"https://example.com/photo.png", "http://localhost/photo.png", "file:///etc/hosts"})
+    void should_reject_images_given_by_url_without_calling_ollama(String url) {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        DecisionRequest request = DecisionRequest.builder()
+                .inputContents(List.of(TextContent.from("A photo."), ImageContent.from(url)))
+                .question("damaged", YesNoQuestion.from("Is the phone damaged?"))
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> model(httpClient).decide(request))
+                .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                .hasMessage(ImageUtils.IMAGE_URL_NOT_SUPPORTED)
+                .hasMessageNotContaining(url);
+        assertThat(model(httpClient).decideAsync(request))
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseExactlyInstanceOf(UnsupportedFeatureException.class);
+        assertThat(httpClient.requests()).isEmpty();
     }
 
     @Test
@@ -950,6 +976,66 @@ class OllamaDecisionModelTest {
 
     private static String answers(String... answers) {
         return "{\"model\": \"nimble\", \"answers\": {" + String.join(", ", answers) + "}}";
+    }
+
+    @Test
+    void should_reject_audio_and_pdf_in_conversation_without_calling_the_api() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        OllamaDecisionModel model = model(httpClient);
+
+        List.of(AudioContent.from("YXVkaW8=", "audio/wav"), PdfFileContent.from("JVBERi0=", "application/pdf"))
+                .forEach(content -> {
+                    DecisionRequest request = DecisionRequest.builder()
+                            .inputMessages(UserMessage.from(TextContent.from("See attached."), content))
+                            .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                            .build();
+
+                    // when-then
+                    assertThatThrownBy(() -> model.decide(request))
+                            .isInstanceOf(UnsupportedFeatureException.class)
+                            .hasMessage("The Ollama decision model supports only text and images in a conversation, but it "
+                                    + "contains " + content.type());
+                    assertThat(model.decideAsync(request))
+                            .failsWithin(Duration.ZERO)
+                            .withThrowableOfType(ExecutionException.class)
+                            .withCauseInstanceOf(UnsupportedFeatureException.class);
+                });
+        assertThat(httpClient.requests()).isEmpty();
+    }
+
+    @Test
+    void do_decide_async_should_return_failed_future_instead_of_throwing() {
+
+        // given
+        MockHttpClient httpClient = MockHttpClient.thatAlwaysResponds(ok(RESPONSE));
+        OllamaDecisionModel model = model(httpClient);
+        // doDecideAsync is called directly, so the model name of the builder is not applied
+        DecisionRequest withoutModelName = DecisionRequest.builder()
+                .input("Hi")
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                .build();
+        DecisionRequest withCustomInput = DecisionRequest.builder()
+                .input(() -> DecisionInputType.TEXT)
+                .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+                .parameters(DecisionRequestParameters.builder().modelName("nimble").build())
+                .build();
+
+        // when
+        CompletableFuture<DecisionResponse> missingModelName = model.doDecideAsync(withoutModelName);
+        CompletableFuture<DecisionResponse> customInput = model.doDecideAsync(withCustomInput);
+
+        // then
+        assertThat(missingModelName)
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseExactlyInstanceOf(IllegalArgumentException.class);
+        assertThat(customInput)
+                .failsWithin(Duration.ZERO)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(UnsupportedFeatureException.class);
+        assertThat(httpClient.requests()).isEmpty();
     }
 
     private static OllamaDecisionModel model(MockHttpClient httpClient) {

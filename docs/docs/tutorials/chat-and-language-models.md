@@ -203,13 +203,24 @@ UserMessage userMessage = UserMessage.from(
 
 #### Image Content
 Depending on the LLM provider, `ImageContent` can be created either from the URL of the **remote** image (see an example above),
-or from the Base64-encoded binary data:
+or from the Base64-encoded binary data, for example of an image packaged with your application:
 ```java
-byte[] imageBytes = readBytes("/home/me/cat.jpg");
+byte[] imageBytes;
+try (InputStream inputStream = MyApp.class.getResourceAsStream("/images/cat.jpg")) {
+    imageBytes = inputStream.readAllBytes();
+}
 String base64Data = Base64.getEncoder().encodeToString(imageBytes);
-ImageContent imageContent = ImageContent.from(base64Data, "image/jpg");
+ImageContent imageContent = ImageContent.from(base64Data, "image/jpeg");
+```
+
+To send an image stored in a local file, create the `ImageContent` from the file's path: the file is read
+when the content is created, and its Base64-encoded data is sent.
+```java
+ImageContent imageContent = ImageContent.from(Path.of("/home/me/cat.jpg"), "image/jpeg");
 UserMessage userMessage = UserMessage.from(imageContent);
 ```
+
+Some integrations cannot use an image given by URL, see [Media given by URL](#media-given-by-url).
 
 One can also specify `DetailLevel` enum (with `LOW`/`HIGH`/`AUTO` options) to control how the model processes the image.
 See more details [here](https://platform.openai.com/docs/guides/vision#low-or-high-fidelity-image-understanding).
@@ -222,6 +233,51 @@ See more details [here](https://platform.openai.com/docs/guides/vision#low-or-hi
 
 #### PDF File Content
 `PdfFileContent` is similar to the `ImageContent`, but represents binary contents of a PDF file.
+
+#### Media given by URL
+Most integrations send an image, audio, video or PDF file given by URL to the LLM provider as the URL itself, and the
+provider downloads it. LangChain4j never downloads media given by URL, and never reads a local file given by URL
+(a `file:` URL or a file path). When a provider cannot use a URL, the integration needs the content of the media
+instead. For example, these integrations pass on only the kinds of URL in the table, and fail with an
+`UnsupportedFeatureException` for any other URL:
+
+| Integration | URLs passed on to the provider | Needs the content of |
+|---|---|---|
+| [Amazon Bedrock](/integrations/language-models/amazon-bedrock) | none | images and PDF files |
+| [Ollama](/integrations/language-models/ollama) chat models and the [Ollama decision model](/integrations/decision-models/ollama) | none | images |
+| [Cloudflare Workers AI](/integrations/image-models/workers-ai) image editing | none | images |
+| [Google GenAI](/integrations/language-models/google-genai) chat models | `gs://`, `http://` and `https://` | media given by other URLs, such as `file:` URLs |
+| [Google Vertex AI Gemini](/integrations/language-models/google-vertex-ai-gemini) | `gs://`, `http://` and `https://` | media given by other URLs, such as `file:` URLs |
+
+Other integrations can also need the content of some kinds of media: see the page of each integration.
+
+To send such media, create the content from a file or from its bytes (`imageBytes` as in the
+[Image Content](#image-content) example):
+```java
+ImageContent image = ImageContent.from(Path.of("/home/me/cat.jpg"), "image/jpeg");
+PdfFileContent pdf = PdfFileContent.from(Path.of("/home/me/report.pdf"));
+AudioContent audio = AudioContent.from(Path.of("/home/me/speech.mp3"), "audio/mpeg");
+VideoContent video = VideoContent.from(Path.of("/home/me/clip.mp4"), "video/mp4");
+ImageContent imageFromBytes = ImageContent.from(Base64.getEncoder().encodeToString(imageBytes), "image/png");
+```
+
+A [persistent chat memory](/tutorials/chat-memory#persistence) sends the stored messages again with every request. Store media
+that such an integration needs as content, not as a URL.
+
+If the media is on a server that you trust, download it in your own code, for example with the JDK `HttpClient`, and
+create the content from its bytes. Download only URLs that you trust: a URL that comes from an end user, a model or
+retrieved content can point to any server that your application can reach, including internal ones.
+```java
+HttpClient httpClient = HttpClient.newHttpClient();
+HttpRequest request = HttpRequest.newBuilder(URI.create("https://images.example.com/cat.jpg"))
+        .timeout(Duration.ofSeconds(30))
+        .build();
+HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+if (response.statusCode() != 200) {
+    throw new IOException("Cannot download the image: HTTP " + response.statusCode());
+}
+ImageContent image = ImageContent.from(Base64.getEncoder().encodeToString(response.body()), "image/jpeg");
+```
 
 ### Non-blocking calls
 
@@ -244,6 +300,9 @@ runs there - keep it non-blocking, or use `thenApplyAsync(fn, executor)`.
 
 A provider that has not implemented the non-blocking path fails loudly with an `AsyncNotSupportedException`
 carried by the returned future, rather than silently blocking a thread.
+
+`chatAsync(...)` never throws: every failure, including an invalid request (for example no messages), completes
+the returned future exceptionally.
 
 See [Non-blocking and Reactive](/tutorials/non-blocking) for the full picture, including streaming and AI Services.
 

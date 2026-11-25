@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-integration-tests-parent</artifactId>
-        <version>1.24.0-beta34-SNAPSHOT</version>
+        <version>1.25.0-beta35-SNAPSHOT</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -24,7 +24,7 @@
 
     <properties>
         <!-- the nightly build overrides these with the latest releases, see ../README.md -->
-        <quarkus.version>3.40.1.1</quarkus.version>
+        <quarkus.version>3.40.1.2</quarkus.version>
         <quarkus-langchain4j.version>1.15.1</quarkus-langchain4j.version>
         <maven.compiler.parameters>true</maven.compiler.parameters>
     </properties>
@@ -35,12 +35,12 @@
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j</artifactId>
-                <version>1.24.0-SNAPSHOT</version>
+                <version>1.25.0-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>dev.langchain4j</groupId>
                 <artifactId>langchain4j-core</artifactId>
-                <version>1.24.0-SNAPSHOT</version>
+                <version>1.25.0-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>io.quarkus</groupId>
@@ -68,7 +68,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-test</artifactId>
-            <version>1.24.0-beta34-SNAPSHOT</version>
+            <version>1.25.0-beta35-SNAPSHOT</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

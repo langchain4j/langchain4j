@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -100,6 +101,13 @@ class GoogleGenAiContentMapper {
         EXTENSION_TO_MIME_TYPE.put("xml", "text/plain");
         EXTENSION_TO_MIME_TYPE.put("json", "text/plain");
     }
+
+    private static final Set<String> URL_SCHEMES_PASSED_ON = Set.of("gs", "http", "https");
+
+    static final String URL_NOT_SUPPORTED = "Google GenAI does not support media given by this kind of URL"
+            + " (only gs://, http:// and https:// URLs are passed on to Gemini). Create the content from a file or"
+            + " from its bytes, for example ImageContent.from(Path, String), PdfFileContent.from(Path),"
+            + " AudioContent.from(Path, String) or VideoContent.from(Path, String)";
 
     private static final String SYSTEM_ROLE = "system";
     private static final String USER_ROLE = "user";
@@ -584,18 +592,17 @@ class GoogleGenAiContentMapper {
     }
 
     private static Part getPart(URI url, String mimeType, String base64data, byte[] binaryData) {
-        if (url != null) {
-            String effectiveMimeType = getOrDefault(mimeType, () -> detectMimeType(url));
-            if (url.getScheme().equals("gs")) {
-                return fromMimeTypeAndData(effectiveMimeType, url);
-            } else {
-                return fromMimeTypeAndData(effectiveMimeType, dev.langchain4j.internal.Utils.readBytes(url.toString()));
+        if (binaryData == null && base64data == null && url != null) {
+            if (url.getScheme() == null || !URL_SCHEMES_PASSED_ON.contains(url.getScheme().toLowerCase(Locale.ROOT))) {
+                throw new UnsupportedFeatureException(URL_NOT_SUPPORTED);
             }
-        } else if (binaryData != null) {
-            return fromMimeTypeAndData(mimeType, binaryData);
-        } else {
-            return fromMimeTypeAndData(mimeType, Base64.getDecoder().decode(base64data));
+            return fromMimeTypeAndData(getOrDefault(mimeType, () -> detectMimeType(url)), url);
         }
+        String effectiveMimeType = url == null ? mimeType : getOrDefault(mimeType, () -> detectMimeType(url));
+        if (binaryData != null) {
+            return fromMimeTypeAndData(effectiveMimeType, binaryData);
+        }
+        return fromMimeTypeAndData(effectiveMimeType, Base64.getDecoder().decode(base64data));
     }
 
     static String detectMimeType(URI url) {
@@ -641,6 +648,8 @@ class GoogleGenAiContentMapper {
             case IMAGE_SAFETY:
             case IMAGE_PROHIBITED_CONTENT:
             case IMAGE_RECITATION:
+            case ESCALATION:
+            case MODEL_ARMOR:
                 return FinishReason.CONTENT_FILTER;
             case TOO_MANY_TOOL_CALLS:
             default:

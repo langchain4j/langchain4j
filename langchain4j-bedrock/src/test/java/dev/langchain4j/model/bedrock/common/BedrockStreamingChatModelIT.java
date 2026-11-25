@@ -106,6 +106,11 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected boolean supportsSingleImageInputAsPublicURL() {
+        return false; // Bedrock needs the image content
+    }
+
+    @Override
     protected Class<? extends ChatResponseMetadata> chatResponseMetadataType(StreamingChatModel model) {
         return BedrockChatResponseMetadata.class;
     }

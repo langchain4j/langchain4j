@@ -3,8 +3,10 @@ package dev.langchain4j.mcp.client.transport.http;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZero;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 import dev.langchain4j.Experimental;
+import dev.langchain4j.Internal;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
@@ -25,6 +27,7 @@ import dev.langchain4j.mcp.client.transport.McpHeaderEncoding;
 import dev.langchain4j.mcp.client.transport.McpJson;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
+import dev.langchain4j.mcp.client.transport.McpTransportCustomizer;
 import dev.langchain4j.mcp.protocol.McpInitializationNotification;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.protocol.McpJsonRpcMessage;
@@ -32,6 +35,7 @@ import dev.langchain4j.spi.CapturedContext;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,6 +50,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import javax.net.ssl.SSLContext;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +91,12 @@ public class StreamableHttpMcpTransport implements McpTransport {
     private final AtomicInteger stopCount = new AtomicInteger();
     private final Set<HttpExchange> activeExchanges = ConcurrentHashMap.newKeySet();
 
-    public StreamableHttpMcpTransport(StreamableHttpMcpTransport.Builder builder) {
+    /**
+     * Creates the transport, after every {@link McpTransportCustomizer} had the chance to adjust a copy of the
+     * builder. {@link Builder#build()} calls this constructor.
+     */
+    public StreamableHttpMcpTransport(StreamableHttpMcpTransport.Builder configured) {
+        Builder builder = customized(configured);
         url = ensureNotNull(builder.url, "Missing server endpoint URL");
         logRequests = builder.logRequests;
         logResponses = builder.logResponses;
@@ -127,6 +137,19 @@ public class StreamableHttpMcpTransport implements McpTransport {
             httpClient = createDefaultHttpClient(builder, timeout);
             ownedHttpClient = httpClient instanceof AutoCloseable closeable ? closeable : null;
         }
+    }
+
+    private static Builder customized(Builder configured) {
+        Collection<McpTransportCustomizer> customizers = loadFactories(McpTransportCustomizer.class);
+        if (customizers.isEmpty()) {
+            return configured;
+        }
+        Builder builder = configured.copy();
+        for (McpTransportCustomizer customizer : customizers) {
+            LOG.debug("Calling {} for a new Streamable HTTP MCP transport", customizer.getClass().getName());
+            customizer.customize(builder);
+        }
+        return builder;
     }
 
     private static HttpClient createDefaultHttpClient(Builder builder, Duration timeout) {
@@ -477,9 +500,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
             return;
         }
         try {
-            Flow.Subscriber<HttpStreamingEvent> subscriber = responseExecutor == null
-                    ? exchange
-                    : new McpResponseSubscriber(exchange, responseExecutor, exchange::readsErrorBody);
+            Flow.Subscriber<HttpStreamingEvent> subscriber =
+                    responseExecutor == null ? exchange : new McpResponseSubscriber(exchange, responseExecutor);
             httpClient.stream(request, new McpResponseParser()).subscribe(subscriber);
         } catch (RuntimeException e) {
             exchange.onError(e);
@@ -675,11 +697,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
                     responseReceived = true;
                     onResponse(received.response());
                 } else if (event instanceof HttpErrorResponseReceived errorResponse) {
-                    if (!readsErrorBody(errorResponse)) {
-                        handleError(new HttpException(
-                                errorResponse.statusCode(), "Unexpected status code: " + errorResponse.statusCode()));
-                    }
-                    // otherwise the stream fails with an HttpException carrying the body, see handleError
+                    handleError(new HttpException(
+                            errorResponse.statusCode(), "Unexpected status code: " + errorResponse.statusCode()));
                 } else if (event instanceof McpResponseParser.Line line) {
                     if (sseResponse) {
                         handleSseFragment(line);
@@ -692,69 +711,8 @@ public class StreamableHttpMcpTransport implements McpTransport {
             }
         }
 
-        /**
-         * Whether the body of this error response is read, because it may carry a JSON-RPC error that tells the
-         * caller more than the status code, such as the rejection of a request whose headers do not match its
-         * body. Other error responses fail the request as soon as their status arrives.
-         */
-        private boolean readsErrorBody(HttpErrorResponseReceived errorResponse) {
-            return readsErrorBody(errorResponse.statusCode())
-                    && errorResponse.headers().getOrDefault("Content-Type", List.of()).stream()
-                            .anyMatch(contentType -> contentType.contains("json"));
-        }
-
-        /**
-         * In the 2026-07-28 protocol, a server rejects a request with a client error status and a JSON-RPC error,
-         * for example 404 with -32601 for a method it does not know, and that error is the answer to the request.
-         * A rejected credential (401), a refused request (403) and a rate limit (429) still fail the request with
-         * their status code, which callers act on. So does every error status of a legacy server: its health
-         * check and initialization rely on that failure.
-         */
-        private boolean readsErrorBody(int statusCode) {
-            return modern
-                    && expectResponse
-                    && context.message().getId() != null
-                    && statusCode >= 400
-                    && statusCode < 500
-                    && statusCode != 401
-                    && statusCode != 403
-                    && statusCode != 429;
-        }
-
         private boolean expiresSession(int statusCode) {
             return statusCode == 404 && !modern && !(context.message() instanceof McpInitializeRequest);
-        }
-
-        /**
-         * Completes the request with a JSON-RPC error carried by an error response, as if it had arrived with a
-         * successful status.
-         *
-         * @return whether the response carried a JSON-RPC error for this request
-         */
-        private boolean completeWithJsonRpcError(HttpException error) {
-            if (!readsErrorBody(error.statusCode()) || error.getMessage() == null) {
-                return false;
-            }
-            Map<String, Object> message;
-            try {
-                message = McpJson.toMap(error.getMessage());
-            } catch (RuntimeException e) {
-                // the body is not JSON-RPC (e.g. a proxy's error page), so the status code is the failure
-                return false;
-            }
-            if (message == null || !message.containsKey("jsonrpc") || !(message.get("error") instanceof Map)) {
-                return false;
-            }
-            // a server that could not read the request answers without an id, but the error is still its answer
-            Object id = message.get("id");
-            if (id != null && !(id instanceof Number number && number.longValue() == context.message().getId())) {
-                return false;
-            }
-            if (logResponses) {
-                trafficLog.info("Response: {}", error.getMessage());
-            }
-            future.complete(error.getMessage());
-            return true;
         }
 
         private void onResponse(SuccessfulHttpResponse response) {
@@ -877,9 +835,6 @@ public class StreamableHttpMcpTransport implements McpTransport {
 
         private void handleError(Throwable error) {
             if (!finish()) {
-                return;
-            }
-            if (!closed.get() && error instanceof HttpException httpError && completeWithJsonRpcError(httpError)) {
                 return;
             }
             if (error instanceof HttpException httpError) {
@@ -1037,6 +992,7 @@ public class StreamableHttpMcpTransport implements McpTransport {
         private HttpClient httpClient;
         private Executor executor;
         private String url;
+        private @Nullable String name;
         private McpHeadersSupplier customHeadersSupplier;
         private Duration timeout;
         private boolean logRequests = false;
@@ -1106,6 +1062,42 @@ public class StreamableHttpMcpTransport implements McpTransport {
         public StreamableHttpMcpTransport.Builder url(String url) {
             this.url = url;
             return this;
+        }
+
+        /**
+         * The URL of the MCP server that was set with {@link #url(String)}, or {@code null} if none was set yet.
+         * A {@link McpTransportCustomizer} uses this to find out where the transport is going to connect.
+         *
+         * @since 1.25.0
+         */
+        @Internal
+        public @Nullable String getUrl() {
+            return url;
+        }
+
+        /**
+         * An optional name that tells this transport apart from the others of the application, for example
+         * the {@code key} of the MCP client that uses it. The transport itself does not use the name and never
+         * sends it to the server: it is there for a {@link McpTransportCustomizer}, which reads it
+         * with {@link #getName()} to know which transport is being built.
+         *
+         * @param name the name of the transport, may be {@code null}
+         * @return this builder
+         * @since 1.25.0
+         */
+        public StreamableHttpMcpTransport.Builder name(@Nullable String name) {
+            this.name = name;
+            return this;
+        }
+
+        /**
+         * The name that was set with {@link #name(String)}, or {@code null} if none was set.
+         *
+         * @since 1.25.0
+         */
+        @Internal
+        public @Nullable String getName() {
+            return name;
         }
 
         /**
@@ -1260,8 +1252,32 @@ public class StreamableHttpMcpTransport implements McpTransport {
             return this;
         }
 
+        /**
+         * Creates the transport, after every {@link McpTransportCustomizer} had the chance to adjust a copy
+         * of this builder. This builder itself is never changed by a customizer.
+         */
         public StreamableHttpMcpTransport build() {
             return new StreamableHttpMcpTransport(this);
+        }
+
+        private Builder copy() {
+            Builder copy = new Builder();
+            copy.httpClientBuilder = httpClientBuilder;
+            copy.httpClient = httpClient;
+            copy.executor = executor;
+            copy.url = url;
+            copy.name = name;
+            copy.customHeadersSupplier = customHeadersSupplier;
+            copy.timeout = timeout;
+            copy.logRequests = logRequests;
+            copy.logResponses = logResponses;
+            copy.logger = logger;
+            copy.sslContext = sslContext;
+            copy.forceHttpVersion1_1 = forceHttpVersion1_1;
+            copy.subsidiaryChannelEnabled = subsidiaryChannelEnabled;
+            copy.followRedirects = followRedirects;
+            copy.maxMessageSize = maxMessageSize;
+            return copy;
         }
     }
 }

@@ -13,9 +13,14 @@ import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfEnvironmentVariable;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 @EnabledIfEnvironmentVariable(named = "GOOGLE_AI_GEMINI_API_KEY", matches = ".+")
+@DisabledIfEnvironmentVariable(
+        named = "LC4J_SKIP_IMAGE_GENERATION_ITS",
+        matches = "true",
+        disabledReason = "Image generation is expensive: CI runs it only in one nightly and when a Google module changes")
 class GoogleGenAiImageModelIT {
 
     private static final String GOOGLE_AI_GEMINI_API_KEY = System.getenv("GOOGLE_AI_GEMINI_API_KEY");

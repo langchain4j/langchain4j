@@ -1,5 +1,6 @@
 package dev.langchain4j.model.ollama;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptionsAsync;
@@ -42,10 +43,9 @@ import org.slf4j.Logger;
  * each of them by its position, for example {@code [image 1]}. Images are numbered from 1 in the order they appear
  * in the input, across all fields.
  * <p>
- * Images given by an {@code http}, {@code https} or {@code file} URL are downloaded or read by this class, on the
- * calling thread (also for {@link #decideAsync(DecisionRequest)}), before the request is sent. Do not pass URLs that
- * come from untrusted sources, such as users or retrieved content: download and check them yourself, and pass the
- * image as base64 data.
+ * Ollama needs the content of each image: create it from a file or from its bytes, for example with
+ * {@code ImageContent.from(Path, String)} or {@code ImageContent.from(String base64Data, String mimeType)}.
+ * An image given by URL is rejected with an {@code UnsupportedFeatureException}.
  *
  * @since 1.23.0
  */
@@ -93,13 +93,15 @@ public class OllamaDecisionModel implements DecisionModel {
 
     @Override
     public CompletableFuture<DecisionResponse> doDecideAsync(DecisionRequest request) {
-        OllamaDecisionRequest ollamaRequest = OllamaDecisionMapper.toOllamaRequest(request, keepAlive);
-        CompletableFuture<OllamaDecisionResponse> responseFuture =
-                withRetryMappingExceptionsAsync(() -> client.decideAsync(ollamaRequest), maxRetries);
-        CompletableFuture<DecisionResponse> result =
-                responseFuture.thenApply(response -> OllamaDecisionMapper.toDecisionResponse(response, request));
-        propagateCancellation(result, responseFuture);
-        return result;
+        return failOnThrow(() -> {
+            OllamaDecisionRequest ollamaRequest = OllamaDecisionMapper.toOllamaRequest(request, keepAlive);
+            CompletableFuture<OllamaDecisionResponse> responseFuture =
+                    withRetryMappingExceptionsAsync(() -> client.decideAsync(ollamaRequest), maxRetries);
+            CompletableFuture<DecisionResponse> result =
+                    responseFuture.thenApply(response -> OllamaDecisionMapper.toDecisionResponse(response, request));
+            propagateCancellation(result, responseFuture);
+            return result;
+        });
     }
 
     @Override

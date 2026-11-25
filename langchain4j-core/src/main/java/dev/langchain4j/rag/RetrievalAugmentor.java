@@ -40,6 +40,9 @@ public interface RetrievalAugmentor {
      * <p>
      * An implementation that honors cancellation should abort in-flight work when the returned future is cancelled
      * (best-effort).
+     * <p>
+     * An implementation must not throw and must not return {@code null}: every failure, including an invalid argument,
+     * completes the returned future exceptionally.
      *
      * @param augmentationRequest The {@code AugmentationRequest} containing the {@code ChatMessage} to augment.
      * @return A {@link CompletableFuture} of the {@link AugmentationResult} containing the augmented {@code ChatMessage}.

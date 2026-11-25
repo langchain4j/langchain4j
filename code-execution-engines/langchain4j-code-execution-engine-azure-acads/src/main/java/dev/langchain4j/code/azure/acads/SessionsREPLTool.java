@@ -85,8 +85,10 @@ public class SessionsREPLTool implements CodeExecutionEngine {
             ProviderJson.codec(ProviderJsonSpec.builder().prettyPrint(true).build());
 
 
-    private static final Pattern SANITIZE_PATTERN_START = Pattern.compile("^(\\s|`)*(?i:python)?\\s*");
-    private static final Pattern SANITIZE_PATTERN_END = Pattern.compile("(\\s|`)*$");
+    private static final Pattern SANITIZE_PATTERN_START = Pattern.compile("^[\\s`]*(?i:python)?\\s*");
+    // the look-behind makes the match start only where a run of whitespace and backticks begins, so a long run
+    // in the middle of the code is scanned once instead of once per character
+    private static final Pattern SANITIZE_PATTERN_END = Pattern.compile("(?<![\\s`])[\\s`]*$");
 
     private final boolean sanitizeInput;
     private final String poolManagementEndpoint;

@@ -247,7 +247,6 @@ public class AiServiceTokenStream implements TokenStream {
                         runContext.chatMemoryId()));
 
         ChatExecutor chatExecutor = ChatExecutor.builder(context.streamingChatModel)
-                .errorHandler(errorHandler)
                 .chatRequest(chatRequest)
                 .invocationContext(runContext)
                 .eventListenerRegistrar(context.eventListenerRegistrar)
@@ -279,7 +278,8 @@ public class AiServiceTokenStream implements TokenStream {
                 toolExecutor,
                 completeResponseProcessingExecutor,
                 guardrailParams(runContext),
-                methodKey);
+                methodKey,
+                context.toolService.newCompensableExecutionsAccumulator());
 
         if (contentsHandler != null && retrievedContents != null) {
             contentsHandler.accept(retrievedContents);

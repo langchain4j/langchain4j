@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.InternalFlowUtils.failPublisherOnThrow;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onPartialResponse;
@@ -99,17 +100,19 @@ public class BedrockStreamingChatModel extends AbstractBedrockChatModel implemen
 
     @Override
     public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
-        validate(chatRequest.parameters());
-        ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(chatRequest);
+        return failPublisherOnThrow(() -> {
+            validate(chatRequest.parameters());
+            ConverseStreamRequest converseStreamRequest = buildConverseStreamRequest(chatRequest);
 
-        TubeConfiguration config = new TubeConfiguration()
-                .withBackpressureStrategy(BackpressureStrategy.BUFFER)
-                .withBufferSize(streamingBufferSize);
+            TubeConfiguration config = new TubeConfiguration()
+                    .withBackpressureStrategy(BackpressureStrategy.BUFFER)
+                    .withBufferSize(streamingBufferSize);
 
-        return ZeroPublisher.create(config, tube -> {
-            TubeBackedStreamingChatResponseHandler bridge = new TubeBackedStreamingChatResponseHandler(tube);
-            tube.whenTerminates(bridge::cancelUpstream);
-            streamTo(converseStreamRequest, bridge);
+            return ZeroPublisher.create(config, tube -> {
+                TubeBackedStreamingChatResponseHandler bridge = new TubeBackedStreamingChatResponseHandler(tube);
+                tube.whenTerminates(bridge::cancelUpstream);
+                streamTo(converseStreamRequest, bridge);
+            });
         });
     }
 

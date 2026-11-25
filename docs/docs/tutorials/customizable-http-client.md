@@ -75,7 +75,7 @@ Typical symptoms are a server error saying the request body is missing (e.g., `F
 `Unsupported upgrade request`, `413 Request Entity Too Large`, or a request that hangs until it times out.
 
 :::note
-Before version 1.23.0, `JdkHttpClient` used HTTP/2 for plain `http://` URLs as well.
+Before version 1.24.0, `JdkHttpClient` used HTTP/2 for plain `http://` URLs as well.
 If you use an older version and see the symptoms above, provide an `HttpClient.Builder`
 with `.version(HttpClient.Version.HTTP_1_1)` as shown below.
 :::
@@ -149,7 +149,7 @@ requests use HTTP/2 when the server supports it. This applies to both blocking a
 See [HTTP version](#http-version) for why plain HTTP does not use HTTP/2.
 
 :::note
-Before version 1.23.0-beta33, `SpringRestClient` used HTTP/2 for plain `http://` URLs as well.
+Before version 1.24.0-beta34, `SpringRestClient` used HTTP/2 for plain `http://` URLs as well.
 If you use an older version and see the symptoms described in [HTTP version](#http-version),
 set the version explicitly:
 

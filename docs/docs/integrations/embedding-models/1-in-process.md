@@ -15,7 +15,7 @@ For example:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings-all-minilm-l6-v2</artifactId>
-    <version>1.23.0-beta33</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 ```java
@@ -29,7 +29,7 @@ Or quantized:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings-all-minilm-l6-v2-q</artifactId>
-    <version>1.23.0-beta33</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 ```java
@@ -75,12 +75,19 @@ Information on how to convert models into ONNX format can be found [here](https:
 
 Many models already converted to ONNX format are available [here](https://huggingface.co/Xenova).
 
+:::warning
+**Load only model files you trust.**
+An ONNX model file is not just data: ONNX runtime parses it with native code,
+and a crafted model file can exploit flaws in the runtime, for example to read other files on your machine or to crash the JVM.
+Use models from sources you trust, or models you converted yourself.
+:::
+
 Example of using custom embedding model:
 ```xml
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-embeddings</artifactId>
-    <version>1.23.0-beta33</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 ```java

@@ -18,8 +18,14 @@ import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiBlob;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class PartsAndContentsMapperTest {
 
@@ -414,6 +420,69 @@ class PartsAndContentsMapperTest {
         assertThat(result).isNotNull();
         List<Image> generatedImages = result.images();
         assertThat(generatedImages).isEmpty(); // Should ignore non-image data
+    }
+
+    @Test
+    void fromContentToGPart_guessesMimeTypeOfFileUriFromItsNameOnly(@TempDir Path tempDir) throws Exception {
+        // Given: a file with PNG bytes but no file extension, and one with a .png name
+        byte[] png = Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJ");
+        Path withoutExtension = Files.write(tempDir.resolve("picture"), png);
+        Path withExtension = Files.write(tempDir.resolve("picture.png"), png);
+
+        // When
+        List<GeminiContent.GeminiPart> parts = List.of(
+                PartsAndContentsMapper.fromContentToGPart(ImageContent.from(withoutExtension.toUri())),
+                PartsAndContentsMapper.fromContentToGPart(
+                        AudioContent.from(Audio.builder().url(withoutExtension.toUri()).build())),
+                PartsAndContentsMapper.fromContentToGPart(
+                        VideoContent.from(Video.builder().url(withoutExtension.toUri()).build())),
+                PartsAndContentsMapper.fromContentToGPart(
+                        PdfFileContent.from(PdfFile.builder().url(withoutExtension.toUri()).build())),
+                PartsAndContentsMapper.fromContentToGPart(ImageContent.from(withExtension.toUri())));
+
+        // Then
+        assertThat(parts)
+                .extracting(part -> part.fileData().fileUri())
+                .containsExactly(
+                        withoutExtension.toUri().toString(),
+                        withoutExtension.toUri().toString(),
+                        withoutExtension.toUri().toString(),
+                        withoutExtension.toUri().toString(),
+                        withExtension.toUri().toString());
+        assertThat(parts)
+                .extracting(part -> part.fileData().mimeType())
+                .containsExactly(null, null, null, null, "image/png");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"https://example.com/photos/cat.png", "http://example.com/photos/cat.png"})
+    void fromContentToGPart_passesImageUrlsOnToGemini(String url) {
+        // When
+        GeminiContent.GeminiPart part = PartsAndContentsMapper.fromContentToGPart(
+                ImageContent.from(url, ImageContent.DetailLevel.HIGH), true);
+
+        // Then
+        assertThat(part.inlineData()).isNull();
+        assertThat(part.fileData().fileUri()).isEqualTo(url);
+        assertThat(part.fileData().mimeType()).isEqualTo("image/png");
+        assertThat(part.mediaResolution().level()).isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH);
+    }
+
+    @Test
+    void fromContentToGPart_passesImageUrlsOnToGeminiWithTheGivenMimeType() {
+        // Given
+        Image image = Image.builder()
+                .url("https://example.com/photos?id=42")
+                .mimeType("image/webp")
+                .build();
+
+        // When
+        GeminiContent.GeminiPart part = PartsAndContentsMapper.fromContentToGPart(ImageContent.from(image));
+
+        // Then
+        assertThat(part.inlineData()).isNull();
+        assertThat(part.fileData().fileUri()).isEqualTo("https://example.com/photos?id=42");
+        assertThat(part.fileData().mimeType()).isEqualTo("image/webp");
     }
 
     @Test

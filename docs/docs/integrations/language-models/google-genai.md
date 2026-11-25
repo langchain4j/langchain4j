@@ -22,6 +22,7 @@ https://github.com/googleapis/java-genai
 - [GoogleGenAiEmbeddingModel](#googlegenaiembeddingmodel)
 - [GoogleGenAiImageModel](#googlegenaiimagemodel)
 - [GoogleGenAiTextToSpeechModel](#googlegenaitexttospeechmodel)
+- [GoogleGenAiDecisionModel](#googlegenaidecisionmodel)
 - [Request & Response Logging](#request--response-logging)
 - [Batch API](#batch-api)
 - [Tools](#tools)
@@ -45,7 +46,7 @@ https://github.com/googleapis/java-genai
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-genai</artifactId>
-    <version>1.23.0-beta33</version>
+    <version>1.24.0-beta34</version>
 </dependency>
 ```
 
@@ -67,6 +68,40 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     // .googleCredentials(...) // Optional: explicitly provide credentials
     .projectId("your-google-cloud-project-id")
     .location("us-central1")
+    .modelName("gemini-2.5-flash")
+    .build();
+```
+
+### API version
+
+The clients that LangChain4j builds call version `v1beta` of the Gemini Developer API. To call another version, set
+`apiVersion(...)` on the builder, or the `GOOGLE_GENAI_API_VERSION` environment variable:
+
+```java
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-2.5-flash")
+    .apiVersion("v1")
+    .build();
+```
+
+Some features, such as speech generation and explicit context caching, and model aliases such as `gemini-flash-latest`,
+are available on `v1beta` only.
+
+### Using your own `Client`
+
+Every builder of this module also takes a preconfigured `com.google.genai.Client` with `.client(...)`. The API version
+is then the one of your client, and the Google GenAI SDK uses `v1` by default on the Gemini Developer API. To use the
+features that are available on `v1beta` only, set the API version on your client:
+
+```java
+Client client = Client.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .httpOptions(HttpOptions.builder().apiVersion("v1beta").build())
+    .build();
+
+ChatModel gemini = GoogleGenAiChatModel.builder()
+    .client(client)
     .modelName("gemini-2.5-flash")
     .build();
 ```
@@ -128,7 +163,7 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
     .topK(64)
     .seed(42)
     .maxOutputTokens(8192)
-    .timeout(Duration.ofSeconds(60))
+    .timeout(Duration.ofSeconds(60)) // limits each HTTP request as a whole (when streaming: the complete stream); default: 20 minutes
     .maxRetries(2)
     .stopSequences(List.of(...))
     .safetySettings(List.of(...))
@@ -491,7 +526,7 @@ caches.deleteCache(cache.name().orElseThrow());
 ## Thinking Models (Gemini 3.0+)
 
 Gemini 3.0 models (like `gemini-3.0-pro` and `gemini-3.0-flash`) support advanced reasoning (thinking) capabilities. 
-You can enable this by specifying a `thinkingLevel` during model configuration. The supported values are `"MINIMAL"`, `"LOW"`, `"MEDIUM"`, and `"HIGH"`:
+You can enable this by specifying a `thinkingLevel` during model configuration. The supported values are `"MINIMAL"`, `"LOW"`, `"MEDIUM"`, `"HIGH"`, and `"XHIGH"`:
 
 ```java
 ChatModel gemini = GoogleGenAiChatModel.builder()
@@ -672,6 +707,26 @@ A line that does not start with a speaker name belongs to the turn above it, so 
 
 To get the audio from a `ChatModel` instead, see [Speech / Audio Generation Output](#speech--audio-generation-output).
 
+## GoogleGenAiDecisionModel
+
+The `GoogleGenAiDecisionModel` evaluates yes/no, choice and scale questions against a shared multimodal or conversation input using Gemini decision models such as `gemini-decision-1`, returning calibrated probabilities.
+
+```java
+DecisionModel decisionModel = GoogleGenAiDecisionModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-decision-1")
+    .build();
+
+DecisionResponse response = decisionModel.decide(DecisionRequest.builder()
+    .input("Help! My payouts have been failing for 3 days.")
+    .question("urgent", YesNoQuestion.from("Does this need attention today?"))
+    .build());
+
+double probability = response.yesNo("urgent").probability();
+```
+
+See [Google Gen AI Decision Models](/integrations/decision-models/google-genai) for full details.
+
 ## Batch API
 
 The Google Gen AI integration provides support for the Batch API, allowing you to run operations asynchronously in the background. The following batch models are supported:
@@ -803,6 +858,22 @@ ChatResponse response = gemini.chat(ChatRequest.builder()
     ))
     .build());
 ```
+
+This integration passes media given by a `gs://`, `http://` or `https://` URL on to Gemini as it is, and Gemini
+downloads the media itself. Any other URL, such as a `file:` URL, is rejected with an `UnsupportedFeatureException`.
+To send a local file, create the content from its path, with `ImageContent.from(Path, String)`,
+`PdfFileContent.from(Path)`, `AudioContent.from(Path, String)` or `VideoContent.from(Path, String)`.
+Media that has both content and a URL is sent as content.
+
+Gemini must be able to read the URL, for example a public `https` URL, and Gemini's rules for media given by URL
+apply, such as the size of each file, the media types and the number of files per request: see the
+[Gemini API documentation](https://ai.google.dev/gemini-api/docs/file-input-methods) and the
+[Vertex AI documentation](https://cloud.google.com/vertex-ai/generative-ai/docs/model-reference/inference).
+A chat memory sends the media URLs of earlier messages again with every request.
+Google reads a `gs://` URL with the permissions of your Google Cloud project, so pass on only `gs://` URLs that your
+application chose.
+The MIME type is taken from the file extension of the URL. When the URL has no known file extension, give the MIME
+type explicitly, for example `ImageContent.from(Image.builder().url(url).mimeType("image/jpeg").build())`.
 
 ## Audio Transcription
 

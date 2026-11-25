@@ -3,6 +3,7 @@ package dev.langchain4j.model.google.genai;
 import static dev.langchain4j.internal.RetryUtils.withRetryMappingExceptions;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
+import static dev.langchain4j.model.google.genai.GoogleGenAiClientFactory.DEFAULT_TIMEOUT;
 import static java.util.Collections.singletonList;
 
 import com.google.auth.oauth2.GoogleCredentials;
@@ -23,6 +24,7 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
 
@@ -38,9 +40,10 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
                         builder.googleCredentials,
                         builder.projectId,
                         builder.location,
-                        builder.timeout,
+                        getOrDefault(builder.timeout, DEFAULT_TIMEOUT),
                         builder.customHeaders,
-                        builder.apiEndpoint);
+                        builder.apiEndpoint,
+                        builder.apiVersion);
         this.modelName = ensureNotBlank(builder.modelName, "modelName");
         this.maxRetries = getOrDefault(builder.maxRetries, 3);
     }
@@ -106,11 +109,10 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
     }
 
     private int estimateTokenCount(List<Content> contents, CountTokensConfig config) {
-        CountTokensResponse response =
-                withRetryMappingExceptions(
-                        () -> client.models.countTokens(modelName, contents, config),
-                        maxRetries,
-                        GoogleGenAiExceptionMapper.INSTANCE);
+        CountTokensResponse response = withRetryMappingExceptions(
+                () -> client.models.countTokens(modelName, contents, config),
+                maxRetries,
+                GoogleGenAiExceptionMapper.INSTANCE);
         return response.totalTokens().orElse(0);
     }
 
@@ -126,6 +128,7 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
         private Boolean logRequests;
         private Boolean logResponses;
         private String apiEndpoint;
+        private @Nullable String apiVersion;
         private Map<String, String> customHeaders;
 
         public Builder client(Client client) {
@@ -153,6 +156,16 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
             return this;
         }
 
+        /**
+         * Sets the timeout of each HTTP request to the Google GenAI API.
+         * It limits the whole request: connecting, waiting for the server and receiving the response.
+         * A request that times out is retried (see {@link #maxRetries(Integer)}), and each retry gets the full timeout.
+         * Defaults to 20 minutes.
+         * Ignored when {@link #client(Client)} is set.
+         *
+         * @param timeout the timeout
+         * @return {@code this}
+         */
         public Builder timeout(Duration timeout) {
             this.timeout = timeout;
             return this;
@@ -180,6 +193,17 @@ public class GoogleGenAiTokenCountEstimator implements TokenCountEstimator {
 
         public Builder apiEndpoint(String apiEndpoint) {
             this.apiEndpoint = apiEndpoint;
+            return this;
+        }
+
+        /**
+         * The version of the API to call, for example {@code v1beta} or {@code v1}. When not set ({@code null}), the
+         * version set in the {@code GOOGLE_GENAI_API_VERSION} environment variable is used, otherwise {@code v1beta}
+         * on the Gemini Developer API and the default of the Google GenAI SDK on Vertex AI. Ignored when a client is
+         * set with {@code client(...)}.
+         */
+        public Builder apiVersion(@Nullable String apiVersion) {
+            this.apiVersion = apiVersion;
             return this;
         }
 

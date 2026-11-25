@@ -1,5 +1,6 @@
 package dev.langchain4j.model.openai;
 
+import static dev.langchain4j.internal.InternalFlowUtils.failPublisherOnThrow;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteResponse;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onCompleteToolCall;
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.onUnmappedRawEvent;
@@ -186,13 +187,13 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
     @Override
     public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
-
-        OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
-        validate(parameters);
-
-        ChatCompletionRequest openAiRequest = createOpenAiRequest(chatRequest, parameters);
-        ChatCompletionOptions options = new ChatCompletionOptions(returnThinking, accumulateToolCallId);
-        return client.chatCompletionPublisher(openAiRequest, options);
+        return failPublisherOnThrow(client, "chatCompletionPublisher(ChatCompletionRequest, ChatCompletionOptions)", () -> {
+            OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
+            validate(parameters);
+            ChatCompletionRequest openAiRequest = createOpenAiRequest(chatRequest, parameters);
+            ChatCompletionOptions options = new ChatCompletionOptions(returnThinking, accumulateToolCallId);
+            return client.chatCompletionPublisher(openAiRequest, options);
+        });
     }
 
     private ChatCompletionRequest createOpenAiRequest(ChatRequest request, OpenAiChatRequestParameters parameters) {

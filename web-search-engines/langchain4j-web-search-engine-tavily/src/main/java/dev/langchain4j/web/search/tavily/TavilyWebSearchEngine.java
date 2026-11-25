@@ -1,5 +1,6 @@
 package dev.langchain4j.web.search.tavily;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Utils.copyIfNotNull;
 import static dev.langchain4j.internal.Utils.getOrDefault;
@@ -97,6 +98,10 @@ public class TavilyWebSearchEngine implements WebSearchEngine {
      */
     @Override
     public CompletableFuture<WebSearchResults> searchAsync(WebSearchRequest webSearchRequest) {
+        return failOnThrow(() -> doSearchAsync(webSearchRequest));
+    }
+
+    private CompletableFuture<WebSearchResults> doSearchAsync(WebSearchRequest webSearchRequest) {
         CompletableFuture<TavilyResponse> searchFuture = tavilyClient.searchAsync(toTavilyRequest(webSearchRequest));
         CompletableFuture<WebSearchResults> result = searchFuture.thenApply(TavilyWebSearchEngine::toWebSearchResults);
         // Link the caller-facing derived stage back to the raw HTTP call so cancelling the returned future aborts it
