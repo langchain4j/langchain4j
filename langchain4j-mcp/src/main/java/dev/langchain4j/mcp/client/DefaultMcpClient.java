@@ -62,9 +62,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -146,6 +148,8 @@ public class DefaultMcpClient implements McpClient {
     private final Map<Long, CompletableFuture<String>> activeSubscriptions = new ConcurrentHashMap<>();
     private final Map<Long, CompletableFuture<Map<String, Object>>> pendingSubscriptionAcks = new ConcurrentHashMap<>();
     private volatile CompletableFuture<String> listChangeSubscriptionFuture;
+    private final AtomicLong listChangeSubscribeGeneration = new AtomicLong();
+    private final AtomicInteger listChangeRetryAttempt = new AtomicInteger();
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
@@ -539,6 +543,21 @@ public class DefaultMcpClient implements McpClient {
     }
 
     private void startListChangeSubscriptions() {
+        startListChangeSubscriptions(false);
+    }
+
+    private void startListChangeSubscriptions(boolean retry) {
+        if (closed) {
+            return;
+        }
+        if (!retry) {
+            listChangeRetryAttempt.set(0);
+        }
+        listChangeSubscribeGeneration.incrementAndGet();
+        CompletableFuture<String> previous = listChangeSubscriptionFuture;
+        if (previous != null) {
+            previous.cancel(true);
+        }
         McpSubscriptionsListenParams.Notifications notifications = new McpSubscriptionsListenParams.Notifications();
         if (subscribeToToolListChanges) {
             notifications.setToolsListChanged(true);
@@ -558,15 +577,53 @@ public class DefaultMcpClient implements McpClient {
         applyMeta(request, context);
         CompletableFuture<String> future = executeViaTransport(context);
         listChangeSubscriptionFuture = future;
+        long generation = listChangeSubscribeGeneration.get();
         future.whenComplete((result, error) -> {
             pendingOperations.remove(operationId);
-            if (closed) {
+            if (closed || generation != listChangeSubscribeGeneration.get()) {
+                return;
+            }
+            Throwable unwrapped = error == null ? null : unwrapCompletionException(error);
+            if (unwrapped instanceof CancellationException) {
+                return;
+            }
+            boolean rejected = result != null && result.contains("\"error\"");
+            boolean streamEnded = error == null && (result == null || result.isBlank());
+            if (error == null && !rejected && !streamEnded) {
                 return;
             }
             if (error != null) {
                 log.warn("List-change subscription failed", error);
-            } else if (result != null && result.contains("\"error\"")) {
+            } else if (rejected) {
                 log.warn("List-change subscription rejected by server: {}", errorMessageOf(result));
+            } else {
+                log.warn("List-change subscription ended; will re-subscribe");
+            }
+            scheduleListChangeResubscribe(generation);
+        });
+    }
+
+    private void scheduleListChangeResubscribe(long generation) {
+        if (closed || generation != listChangeSubscribeGeneration.get()) {
+            return;
+        }
+        int attempt = listChangeRetryAttempt.incrementAndGet();
+        long baseMs = Math.max(reconnectInterval.toMillis(), 1L);
+        long capped = Math.min(
+                baseMs * (1L << Math.min(attempt - 1, 6)),
+                Duration.ofSeconds(30).toMillis());
+        long jitter = ThreadLocalRandom.current().nextLong(capped + 1);
+        long delay = capped / 2 + jitter / 2;
+        log.info("Re-subscribing to list-change notifications in {} ms (attempt {})", delay, attempt);
+        CompletableFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS).execute(() -> {
+            if (closed || generation != listChangeSubscribeGeneration.get()) {
+                return;
+            }
+            try {
+                startListChangeSubscriptions(true);
+            } catch (RuntimeException e) {
+                log.warn("Failed to re-subscribe to list-change notifications", e);
+                scheduleListChangeResubscribe(generation);
             }
         });
     }
@@ -1654,6 +1711,7 @@ public class DefaultMcpClient implements McpClient {
     /** Releases what the client holds besides the transport, and marks it closed. */
     private void releaseResources() {
         closed = true;
+        listChangeSubscribeGeneration.incrementAndGet();
         // Cancel list-change subscription
         CompletableFuture<String> listChangeFuture = listChangeSubscriptionFuture;
         if (listChangeFuture != null) {
