@@ -442,6 +442,9 @@ When the code fails or runs too long, the outcome (`OUTCOME_FAILED` or `OUTCOME_
 
 - Charts the code draws, for example with matplotlib, are returned as images: see `response.aiMessage().images()`.
 - The code is Python, runs for at most 30 seconds, and can only use the libraries of the sandbox, such as numpy, pandas and matplotlib.
+- The executed code and its output stay in the `AiMessage` (in its text with `includeCodeExecutionOutput(true)`, otherwise in its attributes)
+  and are sent back to the model in the next requests of the conversation, so the model knows what it already ran.
+  They count as input tokens in each of those requests.
 - Code execution can be used together with your own tools, see [Combining your tools with built-in tools](#combining-your-tools-with-built-in-tools).
 
 To read the code and its result as SDK objects, use the raw response:

@@ -651,7 +651,8 @@ public class GoogleGenAiChatModel implements ChatModel {
          * Adds the code the model executed, and the output of that code, to the {@link AiMessage} text as Markdown code
          * blocks. When the code fails, the outcome and the error output are added instead. Defaults to {@code false}:
          * only the answer of the model is returned, and the code and its output can be read from
-         * {@link GoogleGenAiChatResponseMetadata#rawResponse()}.
+         * {@link GoogleGenAiChatResponseMetadata#rawResponse()}. Either way, the code and its output are sent back to
+         * the model with the {@link AiMessage} in the next requests of the conversation.
          *
          * @param includeCodeExecutionOutput whether to add the executed code and its output to the text
          * @return {@code this}
