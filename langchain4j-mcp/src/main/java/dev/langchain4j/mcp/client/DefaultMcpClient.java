@@ -204,15 +204,18 @@ public class DefaultMcpClient implements McpClient {
                     },
                     () -> {
                         toolListRefs.set(null);
+                        onListChangeSubscriptionLive();
                         notifyListeners(l -> l.onNotificationToolsListChanged());
                     },
                     () -> {
                         resourceRefs.set(null);
                         resourceTemplateRefs.set(null);
+                        onListChangeSubscriptionLive();
                         notifyListeners(l -> l.onNotificationResourcesListChanged());
                     },
                     () -> {
                         promptRefs.set(null);
+                        onListChangeSubscriptionLive();
                         notifyListeners(l -> l.onNotificationPromptsListChanged());
                     },
                     uri -> {
@@ -542,6 +545,16 @@ public class DefaultMcpClient implements McpClient {
         return modernProtocol;
     }
 
+    /**
+     * Starts {@code subscriptions/listen} for tool, prompt and resource list changes.
+     *
+     * <p>Called from {@link #initialize()} with {@code retry == false}, including after a
+     * transport failure or session restart: any previous listen is cancelled with
+     * {@code cancel(true)} and a new one is started. A retry ({@code retry == true}) of an
+     * already-open listen on this same transport and notification set is dropped as a
+     * duplicate. That early return is not a general-purpose guard: it must not swallow
+     * {@code initialize()} or a later transport restart.
+     */
     private void startListChangeSubscriptions() {
         startListChangeSubscriptions(false);
     }
@@ -551,15 +564,15 @@ public class DefaultMcpClient implements McpClient {
             return;
         }
         CompletableFuture<String> existing = listChangeSubscriptionFuture;
-        // The notification set is fixed for the life of the client, so a second listen
-        // while one is still open is always a duplicate and must be dropped.
-        if (existing != null && !existing.isDone()) {
+        // Same transport, same notification set, listen still open: drop a duplicate retry.
+        // initialize() passes retry == false and supersedes with cancel(true) instead.
+        if (retry && existing != null && !existing.isDone()) {
             return;
         }
-        if (!retry) {
-            listChangeRetryAttempt.set(0);
-        }
         listChangeSubscribeGeneration.incrementAndGet();
+        if (existing != null) {
+            existing.cancel(true);
+        }
         McpSubscriptionsListenParams.Notifications notifications = new McpSubscriptionsListenParams.Notifications();
         if (subscribeToToolListChanges) {
             notifications.setToolsListChanged(true);
@@ -580,14 +593,6 @@ public class DefaultMcpClient implements McpClient {
         CompletableFuture<String> future = executeViaTransport(context);
         listChangeSubscriptionFuture = future;
         long generation = listChangeSubscribeGeneration.get();
-        // A still-open listen future means the handshake succeeded. Reset here so the
-        // next, unrelated failure starts again at the base reconnectInterval.
-        if (!future.isDone()) {
-            if (listChangeRetryAttempt.get() > 0) {
-                log.info("Re-subscribed to list-change notifications");
-            }
-            listChangeRetryAttempt.set(0);
-        }
         future.whenComplete((result, error) -> {
             pendingOperations.remove(operationId);
             if (closed || generation != listChangeSubscribeGeneration.get()) {
@@ -605,6 +610,17 @@ public class DefaultMcpClient implements McpClient {
             logListChangeSubscriptionFailure(error, rejected ? errorMessageOf(result) : null, streamEnded);
             scheduleListChangeResubscribe(generation);
         });
+    }
+
+    /**
+     * A live list-change notification is the success signal for {@code subscriptions/listen}:
+     * the listen future stays pending for the life of the stream, so a pending future after
+     * {@code sendRequest} is not a successful handshake. Reset backoff only here.
+     */
+    private void onListChangeSubscriptionLive() {
+        if (listChangeRetryAttempt.getAndSet(0) > 0) {
+            log.info("Re-subscribed to list-change notifications");
+        }
     }
 
     private void logListChangeSubscriptionFailure(Throwable error, String rejectedMessage, boolean streamEnded) {

@@ -12,8 +12,11 @@ import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpServerDiscoverRequest;
 import dev.langchain4j.mcp.protocol.McpSubscriptionsListenRequest;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.time.Duration;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -141,14 +144,15 @@ public class DefaultMcpClientListenResubscribeTest {
     }
 
     @Test
-    public void should_use_base_delay_for_a_blip_after_a_successful_reconnect() throws Exception {
+    public void should_escalate_delay_across_consecutive_failures_and_reset_after_success() throws Exception {
         McpTransport transport = mock(McpTransport.class);
         when(transport.requiresCancellationNotification()).thenReturn(false);
+        AtomicReference<McpOperationHandler> handlerRef = captureMessageHandler(transport);
 
-        CompletableFuture<String> firstListen = new CompletableFuture<>();
-        CompletableFuture<String> secondListen = new CompletableFuture<>();
-        CountDownLatch listenStartedAgain = new CountDownLatch(1);
         AtomicInteger listenCalls = new AtomicInteger();
+        List<CompletableFuture<String>> listens = new CopyOnWriteArrayList<>();
+        List<Long> listenAt = new CopyOnWriteArrayList<>();
+        List<Long> failedAt = new CopyOnWriteArrayList<>();
         when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
             McpClientMessage message =
                     invocation.getArgument(0, McpCallContext.class).message();
@@ -157,34 +161,45 @@ public class DefaultMcpClientListenResubscribeTest {
             }
             if (message instanceof McpSubscriptionsListenRequest) {
                 int n = listenCalls.incrementAndGet();
-                if (n == 1) {
-                    return firstListen;
+                CompletableFuture<String> future = new CompletableFuture<>();
+                listens.add(future);
+                listenAt.add(System.nanoTime());
+                // Complete asynchronously so the future is still pending when
+                // sendRequest returns — the previous reset-on-!isDone() bug would
+                // zero the attempt counter here and never escalate.
+                if (n <= 3) {
+                    CompletableFuture.delayedExecutor(25, TimeUnit.MILLISECONDS).execute(() -> {
+                        failedAt.add(System.nanoTime());
+                        future.completeExceptionally(new RuntimeException("async listen failure " + n));
+                    });
                 }
-                if (n == 2) {
-                    listenStartedAgain.countDown();
-                    return secondListen;
-                }
-                return new CompletableFuture<>();
+                return future;
             }
             return CompletableFuture.completedFuture("{}");
         });
 
-        Duration reconnectInterval = Duration.ofMillis(400);
+        Duration reconnectInterval = Duration.ofMillis(200);
         try (DefaultMcpClient client =
                 client(transport).reconnectInterval(reconnectInterval).build()) {
-            assertThat(listenCalls.get()).isEqualTo(1);
+            assertThat(awaitListenCalls(listenCalls, 4, 5_000)).isEqualTo(4);
+            // Listen 4 is still pending and no list_changed has arrived, so backoff
+            // must still be at attempt 3. Resetting on a pending future would be 0.
+            assertThat(retryAttempt(client).get()).isEqualTo(3);
+            assertThat(failedAt).hasSize(3);
 
-            firstListen.completeExceptionally(new RuntimeException("Connection prematurely closed"));
-            assertThat(listenStartedAgain.await(5, TimeUnit.SECONDS)).isTrue();
-            assertThat(listenCalls.get()).isEqualTo(2);
-            // Handshake of the reconnect succeeded; the counter must be back at zero.
+            long delay1 = listenAt.get(1) - failedAt.get(0);
+            long delay3 = listenAt.get(3) - failedAt.get(2);
+            assertThat(delay3).isGreaterThan(delay1);
+
+            handlerRef.get().onMessage("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/tools/list_changed\"}");
             assertThat(retryAttempt(client).get()).isEqualTo(0);
 
-            secondListen.completeExceptionally(new RuntimeException("Unrelated later blip"));
-            // Attempt is incremented when the next retry is scheduled, and stays at 1 until
-            // that listen handshake succeeds (delay is [200, 400] ms with this interval).
-            assertThat(awaitRetryAttempt(client, 1, 200)).isEqualTo(1);
-            assertThat(listenCalls.get()).isEqualTo(2);
+            long failed4 = System.nanoTime();
+            listens.get(3).completeExceptionally(new RuntimeException("blip after recovery"));
+            assertThat(awaitRetryAttempt(client, 1, 500)).isEqualTo(1);
+            assertThat(awaitListenCalls(listenCalls, 5, 5_000)).isEqualTo(5);
+            long delayAfterSuccess = listenAt.get(4) - failed4;
+            assertThat(delayAfterSuccess).isLessThan(delay3);
         }
     }
 
@@ -226,10 +241,45 @@ public class DefaultMcpClientListenResubscribeTest {
     }
 
     @Test
-    public void should_drop_a_duplicate_listen_with_the_same_notification_set() throws Exception {
+    public void should_cancel_and_restart_listen_when_initialize_is_rerun() throws Exception {
         McpTransport transport = mock(McpTransport.class);
         when(transport.requiresCancellationNotification()).thenReturn(false);
         AtomicReference<Runnable> onFailure = captureOnFailure(transport);
+
+        List<CompletableFuture<String>> listens = new CopyOnWriteArrayList<>();
+        AtomicInteger listenCalls = new AtomicInteger();
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            McpClientMessage message =
+                    invocation.getArgument(0, McpCallContext.class).message();
+            if (message instanceof McpServerDiscoverRequest) {
+                return CompletableFuture.completedFuture(discoverResult());
+            }
+            if (message instanceof McpSubscriptionsListenRequest) {
+                listenCalls.incrementAndGet();
+                CompletableFuture<String> future = new CompletableFuture<>();
+                listens.add(future);
+                return future;
+            }
+            return CompletableFuture.completedFuture("{}");
+        });
+
+        try (DefaultMcpClient client = client(transport).build()) {
+            assertThat(listenCalls.get()).isEqualTo(1);
+            assertThat(onFailure.get()).isNotNull();
+
+            // initialize() after a transport failure must cancel the previous listen
+            // and start a new one, not drop the start as a duplicate.
+            onFailure.get().run();
+            assertThat(awaitListenCalls(listenCalls, 2, 2_000)).isEqualTo(2);
+            assertThat(listens.get(0).isCancelled()).isTrue();
+            assertThat(listens.get(1).isDone()).isFalse();
+        }
+    }
+
+    @Test
+    public void should_drop_a_duplicate_retry_while_the_same_listen_is_open() throws Exception {
+        McpTransport transport = mock(McpTransport.class);
+        when(transport.requiresCancellationNotification()).thenReturn(false);
 
         CompletableFuture<String> firstListen = new CompletableFuture<>();
         AtomicInteger listenCalls = new AtomicInteger();
@@ -248,13 +298,11 @@ public class DefaultMcpClientListenResubscribeTest {
 
         try (DefaultMcpClient client = client(transport).build()) {
             assertThat(listenCalls.get()).isEqualTo(1);
-            assertThat(onFailure.get()).isNotNull();
 
-            // Reconnection runs initialize() and would otherwise issue a second listen
-            // with the same notification set while the first is still open.
-            onFailure.get().run();
-            Thread.sleep(200);
+            startListChangeSubscriptions(client, true);
+
             assertThat(listenCalls.get()).isEqualTo(1);
+            assertThat(firstListen.isDone()).isFalse();
         }
     }
 
@@ -318,6 +366,25 @@ public class DefaultMcpClientListenResubscribeTest {
                 .when(transport)
                 .onFailure(any());
         return onFailure;
+    }
+
+    private static void startListChangeSubscriptions(DefaultMcpClient client, boolean retry) throws Exception {
+        Method method = DefaultMcpClient.class.getDeclaredMethod("startListChangeSubscriptions", boolean.class);
+        method.setAccessible(true);
+        method.invoke(client, retry);
+    }
+
+    private static int awaitListenCalls(AtomicInteger listenCalls, int expected, long timeoutMs) throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+        int current;
+        do {
+            current = listenCalls.get();
+            if (current == expected) {
+                return current;
+            }
+            Thread.sleep(10);
+        } while (System.nanoTime() < deadline);
+        return current;
     }
 
     private static int awaitRetryAttempt(DefaultMcpClient client, int expected, long timeoutMs) throws Exception {
