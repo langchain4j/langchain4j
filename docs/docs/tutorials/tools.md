@@ -1623,6 +1623,16 @@ Assistant assistant = AiServices.builder(Assistant.class)
 For anything else - sanitizing the error before the LLM sees it, or deciding based on the type of the error -
 write the handler yourself, as described in the sections below.
 
+#### What a failed round leaves in the chat memory
+
+The `AiMessage` carrying the tool calls of a round is stored in the [`ChatMemory`](/tutorials/chat-memory) before
+the tools run. So, when a tool error fails the invocation, the results of that round are still stored before the
+invocation fails, and every tool call of the round gets a `ToolExecutionResultMessage`: the failed call carries its
+error, and a call that was skipped because an earlier call of the same response failed says so. Otherwise the
+history would keep a tool call with no result, which most providers reject on the next request of that conversation.
+
+This does not apply when `compensateOnToolErrors(true)` is enabled: a round that is rolled back is not stored.
+
 :::warning Sending exception messages to the LLM can expose sensitive data
 The message of an exception is usually written for developers, not for the LLM: it can contain internal
 application details such as file paths, SQL, credentials embedded in error strings, responses of downstream
