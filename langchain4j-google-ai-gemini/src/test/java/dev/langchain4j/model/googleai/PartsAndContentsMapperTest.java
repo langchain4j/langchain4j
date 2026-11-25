@@ -17,6 +17,8 @@ import dev.langchain4j.data.video.Video;
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiBlob;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class PartsAndContentsMapperTest {
 
@@ -564,5 +566,36 @@ class PartsAndContentsMapperTest {
         assertThat(result.get(0).parts().get(0).mediaResolution()).isNotNull();
         assertThat(result.get(0).parts().get(0).mediaResolution().level())
                 .isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"https://example.com/photos/cat.png", "http://example.com/photos/cat.png"})
+    void fromContentToGPart_passesImageUrlsOnToGemini(String url) {
+        // When
+        GeminiContent.GeminiPart part = PartsAndContentsMapper.fromContentToGPart(
+                ImageContent.from(url, ImageContent.DetailLevel.HIGH), true);
+
+        // Then
+        assertThat(part.inlineData()).isNull();
+        assertThat(part.fileData().fileUri()).isEqualTo(url);
+        assertThat(part.fileData().mimeType()).isEqualTo("image/png");
+        assertThat(part.mediaResolution().level()).isEqualTo(GeminiMediaResolutionLevel.MEDIA_RESOLUTION_HIGH);
+    }
+
+    @Test
+    void fromContentToGPart_passesImageUrlsOnToGeminiWithTheGivenMimeType() {
+        // Given
+        Image image = Image.builder()
+                .url("https://example.com/photos?id=42")
+                .mimeType("image/webp")
+                .build();
+
+        // When
+        GeminiContent.GeminiPart part = PartsAndContentsMapper.fromContentToGPart(ImageContent.from(image));
+
+        // Then
+        assertThat(part.inlineData()).isNull();
+        assertThat(part.fileData().fileUri()).isEqualTo("https://example.com/photos?id=42");
+        assertThat(part.fileData().mimeType()).isEqualTo("image/webp");
     }
 }

@@ -461,3 +461,10 @@ ChatResponse chatResponse = ollamaChatModel.chat(ChatRequest.builder().messages(
 
 System.out.println(chatResponse.aiMessage().text()); // "Yes" (meaning risk detected by Granite Guardian)
 ```
+
+### Images
+
+Ollama needs the content of each image: create it from a local file, for example with
+`ImageContent.from(Path.of("cat.png"), "image/png")`, or from base64 data. An image given by URL is rejected with an
+`UnsupportedFeatureException`, see [Media given by URL](/tutorials/chat-and-language-models#media-given-by-url).
+

@@ -76,6 +76,11 @@ class BedrockChatModelNovaWithVisionIT extends AbstractChatModelIT {
         return BedrockChatResponseMetadata.class;
     }
 
+    @Override
+    protected boolean supportsSingleImageInputAsPublicURL() {
+        return false; // Bedrock needs the image content
+    }
+
     // OVERRIDE BECAUSE OF INCOHERENCY IN STOPSEQUENCE MANAGEMENT (Nova models include stopSequence)
     @Override
     @ParameterizedTest

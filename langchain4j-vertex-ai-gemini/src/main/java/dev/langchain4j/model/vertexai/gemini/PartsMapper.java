@@ -3,7 +3,6 @@ package dev.langchain4j.model.vertexai.gemini;
 import static com.google.cloud.vertexai.generativeai.PartMaker.fromMimeTypeAndData;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.readBytes;
 import static java.util.Collections.singletonList;
 
 import com.google.cloud.vertexai.api.FunctionResponse;
@@ -27,16 +26,26 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.data.pdf.PdfFile;
 import dev.langchain4j.data.video.Video;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 class PartsMapper {
 
     private static final Map<String, String> EXTENSION_TO_MIME_TYPE = new HashMap<>();
+
+    private static final Set<String> URL_SCHEMES_PASSED_ON = Set.of("gs", "http", "https");
+
+    static final String URL_NOT_SUPPORTED = "Vertex AI Gemini does not support media given by this kind of URL"
+            + " (only gs://, http:// and https:// URLs are passed on to Vertex AI). Create the content from a file or"
+            + " from its bytes, for example ImageContent.from(Path, String), PdfFileContent.from(Path),"
+            + " AudioContent.from(Path, String) or VideoContent.from(Path, String)";
 
     static {
         // see image requirements
@@ -162,15 +171,14 @@ class PartsMapper {
     }
 
     private static Part getPart(URI url, String mimeType, String base64data) {
-        if (url != null) {
-            String effectiveMimeType = getOrDefault(mimeType, () -> detectMimeType(url));
-            if (url.getScheme().equals("gs")) {
-                return fromMimeTypeAndData(effectiveMimeType, url);
-            } else {
-                return fromMimeTypeAndData(effectiveMimeType, readBytes(url.toString()));
+        if (base64data == null && url != null) {
+            if (url.getScheme() == null || !URL_SCHEMES_PASSED_ON.contains(url.getScheme().toLowerCase(Locale.ROOT))) {
+                throw new UnsupportedFeatureException(URL_NOT_SUPPORTED);
             }
+            return fromMimeTypeAndData(getOrDefault(mimeType, () -> detectMimeType(url)), url);
         }
-        return fromMimeTypeAndData(mimeType, Base64.getDecoder().decode(base64data));
+        String effectiveMimeType = url == null ? mimeType : getOrDefault(mimeType, () -> detectMimeType(url));
+        return fromMimeTypeAndData(effectiveMimeType, Base64.getDecoder().decode(base64data));
     }
 
     static String detectMimeType(URI url) {

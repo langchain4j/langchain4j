@@ -99,6 +99,11 @@ class BedrockStreamingChatModelIT extends AbstractStreamingChatModelIT {
     }
 
     @Override
+    protected boolean supportsSingleImageInputAsPublicURL() {
+        return false; // Bedrock needs the image content
+    }
+
+    @Override
     protected ChatRequestParameters createIntegrationSpecificParameters(int maxOutputTokens) {
         return BedrockChatRequestParameters.builder()
                 .maxOutputTokens(maxOutputTokens)
