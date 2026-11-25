@@ -695,7 +695,8 @@ class UtilsTest {
         Method interfaceMethod = MyInterface.class.getDeclaredMethod("myMethod");
 
         assertThat(getAnnotatedMethod(implementationMethod, MyAnnotation.class)).contains(interfaceMethod);
-        assertThat(getAnnotatedMethod(implementationMethod, AnotherAnnotation.class)).isEmpty();
+        assertThat(getAnnotatedMethod(implementationMethod, AnotherAnnotation.class))
+                .isEmpty();
     }
 
     @Test
@@ -766,5 +767,36 @@ class UtilsTest {
         // never returns null, even when every map is null or empty
         assertThat(merge((Map<String, Integer>) null, null)).isNotNull().isEmpty();
         assertThat(merge(Map.of(), (Map<String, Integer>) null)).isNotNull().isEmpty();
+    }
+
+    interface InterfaceWithMethodsOutOfOrder {
+
+        default void yak() {}
+
+        default void elk() {}
+    }
+
+    static class SuperclassWithMethodsOutOfOrder {
+
+        void mango() {}
+
+        void banana() {}
+    }
+
+    static class ClassWithMethodsOutOfOrder extends SuperclassWithMethodsOutOfOrder
+            implements InterfaceWithMethodsOutOfOrder {
+
+        void zebra() {}
+
+        void apple(String value) {}
+
+        void apple() {}
+    }
+
+    @Test
+    void all_concrete_methods_should_be_sorted_by_name_and_signature_within_each_declaring_type() {
+        assertThat(Utils.allConcreteMethods(ClassWithMethodsOutOfOrder.class))
+                .extracting(method -> method.getName() + method.getParameterCount())
+                .containsExactly("apple0", "apple1", "zebra0", "banana0", "mango0", "elk0", "yak0");
     }
 }
