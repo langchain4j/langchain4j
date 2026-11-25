@@ -9,6 +9,7 @@ import dev.langchain4j.data.document.DocumentSource;
 import dev.langchain4j.data.document.Metadata;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.net.URL;
 
 /**
@@ -29,7 +30,18 @@ public class ClassPathSource implements DocumentSource {
 
         var file = this.url.getFile();
         this.metadata.put(URL, file);
-        this.metadata.put(FILE_NAME, file.substring(file.lastIndexOf('/') + 1));
+        this.metadata.put(FILE_NAME, fileName(this.url));
+    }
+
+    private static String fileName(URL url) {
+        String path;
+        try {
+            // class loaders return percent-encoded URLs (e.g. "my%20notes.txt"), decode them
+            path = url.toURI().getSchemeSpecificPart();
+        } catch (URISyntaxException e) {
+            path = url.getFile();
+        }
+        return path.substring(path.lastIndexOf('/') + 1);
     }
 
     /**
