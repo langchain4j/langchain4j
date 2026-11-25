@@ -366,7 +366,7 @@ class VertexAiGeminiStreamingChatModelIT {
         assertThat(file).exists();
 
         UserMessage msg = UserMessage.from(
-                VideoContent.from(Paths.get("src/test/resources/fingers.mp4").toUri()),
+                VideoContent.from(Paths.get("src/test/resources/fingers.mp4"), "video/mp4"),
                 TextContent.from("What's in this video?"));
 
         // when
@@ -390,8 +390,7 @@ class VertexAiGeminiStreamingChatModelIT {
 
         // when
         UserMessage msg = UserMessage.from(
-                PdfFileContent.from(
-                        Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
+                PdfFileContent.from(Paths.get("src/test/resources/gemini-doc-snapshot.pdf")),
                 TextContent.from("Provide a summary of the document"));
 
         // when

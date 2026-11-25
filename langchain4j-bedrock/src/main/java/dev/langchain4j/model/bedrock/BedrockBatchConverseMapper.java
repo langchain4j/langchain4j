@@ -2,9 +2,8 @@ package dev.langchain4j.model.bedrock;
 
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.bedrock.AbstractBedrockChatModel.THINKING_SIGNATURE_KEY;
-import static dev.langchain4j.model.bedrock.AbstractBedrockChatModel.extractFilenameWithoutExtensionFromUri;
+import static dev.langchain4j.model.bedrock.AbstractBedrockChatModel.base64Data;
 import static dev.langchain4j.model.bedrock.Utils.extractAndValidateFormat;
 
 import dev.langchain4j.Internal;
@@ -24,7 +23,6 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.FinishReason;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -54,6 +52,7 @@ final class BedrockBatchConverseMapper {
             ChatRequest chatRequest, Map<String, Object> additionalModelRequestFields, boolean sendThinking) {
 
         Map<String, Object> modelInput = new LinkedHashMap<>();
+        DocumentNames documentNames = new DocumentNames();
 
         List<Map<String, Object>> messages = new ArrayList<>();
         List<Map<String, Object>> system = new ArrayList<>();
@@ -70,7 +69,7 @@ final class BedrockBatchConverseMapper {
                     }
                 }
             } else if (message instanceof UserMessage userMessage) {
-                messages.add(message("user", contentBlocks(userMessage.contents())));
+                messages.add(message("user", contentBlocks(userMessage.contents(), documentNames)));
             } else if (message instanceof AiMessage aiMessage) {
                 messages.add(message("assistant", aiMessageBlocks(aiMessage, sendThinking)));
             } else if (message instanceof ToolExecutionResultMessage) {
@@ -136,19 +135,19 @@ final class BedrockBatchConverseMapper {
         return blocks;
     }
 
-    private static List<Map<String, Object>> contentBlocks(List<Content> contents) {
+    private static List<Map<String, Object>> contentBlocks(List<Content> contents, DocumentNames documentNames) {
         List<Map<String, Object>> blocks = new ArrayList<>();
         for (Content content : contents) {
             if (content instanceof TextContent text) {
                 blocks.add(Map.of("text", text.text()));
             } else if (content instanceof ImageContent image) {
+                String bytes = base64Data(image.image());
                 String format = extractAndValidateFormat(image.image());
-                String bytes = base64(image.image().base64Data(), image.image().url());
                 blocks.add(Map.of("image", Map.of("format", format, "source", Map.of("bytes", bytes))));
             } else if (content instanceof PdfFileContent pdf) {
-                String bytes = base64(pdf.pdfFile().base64Data(), pdf.pdfFile().url());
-                String name =
-                        extractFilenameWithoutExtensionFromUri(pdf.pdfFile().url());
+                String bytes = base64Data(pdf.pdfFile());
+                String name = documentNames.distinct(
+                        DocumentNames.nameOf(pdf.pdfFile(), () -> Base64.getDecoder().decode(bytes)));
                 blocks.add(Map.of("document", Map.of("format", "pdf", "name", name, "source", Map.of("bytes", bytes))));
             } else {
                 throw new UnsupportedFeatureException(
@@ -259,13 +258,6 @@ final class BedrockBatchConverseMapper {
     @SuppressWarnings("unchecked")
     private static Map<String, Object> cast(Map<?, ?> map) {
         return (Map<String, Object>) map;
-    }
-
-    private static String base64(@Nullable String base64Data, @Nullable URI url) {
-        if (base64Data != null) {
-            return base64Data;
-        }
-        return Base64.getEncoder().encodeToString(readBytes(String.valueOf(url)));
     }
 
     private static void putIfNotNull(Map<String, Object> map, String key, @Nullable Object value) {

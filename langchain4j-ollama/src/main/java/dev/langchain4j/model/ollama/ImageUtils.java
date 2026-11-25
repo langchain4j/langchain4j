@@ -4,21 +4,16 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.exception.UnsupportedFeatureException;
-import dev.langchain4j.internal.Utils;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Internal
 class ImageUtils {
 
-    private static final List<String> SUPPORTED_URL_SCHEMES = Arrays.asList("http", "https", "file");
+    static final String IMAGE_URL_NOT_SUPPORTED = "Ollama does not support images given by URL; it needs the image content."
+            + " Create the content from a file or from its bytes, for example ImageContent.from(Path, String)"
+            + " or ImageContent.from(String base64Data, String mimeType)";
 
     static List<String> base64EncodeImageList(List<ImageContent> contentList) {
         return contentList.stream()
@@ -28,35 +23,12 @@ class ImageUtils {
     }
 
     static String base64Image(Image image) {
-
         if (image.base64Data() != null && !image.base64Data().isEmpty()) {
             return image.base64Data();
-        } else {
-            if (SUPPORTED_URL_SCHEMES.contains(image.url().getScheme())) {
-                return image.url().getScheme().startsWith("http") ? httpScheme(image) : fileScheme(image);
-            } else {
-                throw new UnsupportedFeatureException("Ollama integration only supports http/https and file urls. " +
-                        "Unsupported url scheme: " + image.url().getScheme());
-            }
         }
-    }
-
-    private static String httpScheme(Image image) {
-        byte[] imageBytes = Utils.readBytes(image.url().toString());
-        return Base64.getEncoder().encodeToString(imageBytes);
-    }
-
-    private static String fileScheme(Image image) {
-        byte[] fileBytes = readAllBytes(Paths.get(image.url()));
-        return Base64.getEncoder().encodeToString(fileBytes);
-
-    }
-
-    private static byte[] readAllBytes(Path path) {
-        try {
-            return Files.readAllBytes(path);
-        } catch (IOException e) {
-            throw new RuntimeException("Can't read file with path '%s'".formatted(path), e);
+        if (image.url() == null) {
+            throw new IllegalArgumentException("The image has neither base64 data nor a URL");
         }
+        throw new UnsupportedFeatureException(IMAGE_URL_NOT_SUPPORTED);
     }
 }

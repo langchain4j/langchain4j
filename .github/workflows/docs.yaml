@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'docs/**'
+      - '.github/workflows/docs.yaml'
   repository_dispatch:
     types: [ trigger-docs-build-and-deploy ]
   workflow_dispatch:
@@ -17,12 +18,8 @@ permissions:
   id-token: write
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -52,6 +49,16 @@ jobs:
         with:
           # Upload entire repository
           path: './docs/build/.'
+
+  # A separate job, so the artifact is visible to deploy-pages by the time it looks it up,
+  # and a failed deployment can be re-run without rebuilding or uploading a second artifact
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
