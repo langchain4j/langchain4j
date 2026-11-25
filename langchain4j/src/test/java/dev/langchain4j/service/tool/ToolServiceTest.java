@@ -15,12 +15,15 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.listener.ToolExecutedEventListener;
 import dev.langchain4j.service.tool.ToolService.CompensableToolExecution;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -369,5 +372,117 @@ class ToolServiceTest {
                 registrar);
 
         assertThat(toolError.getSuppressed()).containsExactly(listenerError);
+    }
+
+    // separate but equal tool calls, as from a provider that sends no tool call ids (for example Gemini)
+    private static ToolExecutionRequest bookRoomWithoutId() {
+        return ToolExecutionRequest.builder().name("bookRoom").arguments("{}").build();
+    }
+
+    private static List<String> toolResultTexts(ChatMemory memory) {
+        return memory.messages().stream()
+                .map(message -> ((ToolExecutionResultMessage) message).text())
+                .toList();
+    }
+
+    @Test
+    void failRoundBeforeRethrow_should_not_store_a_successful_result_for_an_equal_tool_call_that_failed() {
+        ToolExecutionRequest first = bookRoomWithoutId();
+        ToolExecutionRequest second = bookRoomWithoutId();
+        RuntimeException toolError = new RuntimeException("No room left in hotel 42");
+        Map<ToolExecutionRequest, ToolExecutionResult> results = new LinkedHashMap<>();
+        results.put(first, ToolExecutionResult.builder().resultText("booked").build());
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        new ToolService()
+                .failRoundBeforeRethrow(
+                        List.of(first, second),
+                        results,
+                        Map.of(second, toolError),
+                        toolError,
+                        null,
+                        memory,
+                        null,
+                        DUMMY_CONTEXT,
+                        AiServiceListenerRegistrar.newInstance(false));
+
+        assertThat(toolResultTexts(memory))
+                .containsExactly("booked", "Tool 'bookRoom' failed, so the request was stopped");
+    }
+
+    @Test
+    void saveResultsOfFailedRoundAsync_should_not_store_the_tool_error_of_equal_tool_calls() {
+        ToolExecutionRequest first = bookRoomWithoutId();
+        ToolExecutionRequest second = bookRoomWithoutId();
+        RuntimeException toolError = new RuntimeException("No room left in hotel 42");
+        // like the started tools of a round: equal calls share one entry, with the future of the last one
+        Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> toolFutures = new LinkedHashMap<>();
+        toolFutures.put(first, CompletableFuture.completedFuture(ToolExecutionResult.builder().resultText("booked").build()));
+        toolFutures.put(second, CompletableFuture.failedFuture(toolError));
+        ToolExecutionResultMessage withToolError = ToolExecutionResultMessage.builder()
+                .toolName("bookRoom")
+                .text(toolError.getMessage())
+                .isError(true)
+                .build();
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        assertThat(new ToolService()
+                        .saveResultsOfFailedRoundAsync(
+                                memory, List.of(first, second), List.of(withToolError, withToolError), toolFutures, toolError))
+                .succeedsWithin(Duration.ofSeconds(1));
+
+        assertThat(toolResultTexts(memory))
+                .containsExactly(
+                        "Tool 'bookRoom' failed, so the request was stopped",
+                        "Tool 'bookRoom' failed, so the request was stopped");
+    }
+
+    // a memory whose asynchronous add fails with the given error
+    private static class FailingChatMemory implements ChatMemory {
+
+        private final RuntimeException error;
+
+        FailingChatMemory(RuntimeException error) {
+            this.error = error;
+        }
+
+        @Override
+        public Object id() {
+            return "default";
+        }
+
+        @Override
+        public void add(ChatMessage message) {
+            throw error;
+        }
+
+        @Override
+        public List<ChatMessage> messages() {
+            return List.of();
+        }
+
+        @Override
+        public void clear() {}
+
+        @Override
+        public CompletableFuture<Void> addAsync(List<ChatMessage> messages) {
+            return CompletableFuture.failedFuture(error);
+        }
+    }
+
+    @Test
+    void saveResultsOfFailedRoundAsync_should_not_suppress_the_tool_error_in_itself() {
+        ToolExecutionRequest request = bookRoomWithoutId();
+        RuntimeException error = new RuntimeException("the store and the tool share this error");
+        CompletableFuture<Void> saved = new ToolService()
+                .saveResultsOfFailedRoundAsync(
+                        new FailingChatMemory(error),
+                        List.of(request),
+                        List.of(ToolExecutionResultMessage.from(request, "booked")),
+                        Map.of(request, CompletableFuture.failedFuture(error)),
+                        error);
+
+        assertThat(saved).succeedsWithin(Duration.ofSeconds(1));
+        assertThat(error.getSuppressed()).isEmpty();
     }
 }

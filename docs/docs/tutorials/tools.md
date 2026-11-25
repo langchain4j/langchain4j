@@ -1634,6 +1634,25 @@ written with that in mind. Otherwise send a generic or sanitized description of 
 and keep the details in your logs.
 :::
 
+#### When a Tool Error Ends the Call
+
+When a handler ends the AI Service call with an error (for example `failInvocation()`), or when the LLM calls
+a tool that does not exist and the hallucinated tool name strategy throws, which it does by default
+(see [Handling Tool Name Errors](#handling-tool-name-errors)), the tool calls the LLM asked for do not get
+their usual results. Most LLM providers reject a conversation in which a tool call
+has no result, so before the error reaches your code, LangChain4j saves a result for every tool call of that
+LLM response in the `ChatMemory`:
+- a tool that ran keeps its result, also an error message that its error handler chose to send to the LLM
+  (or a message saying that it was rolled back, when [compensation](#compensating-tool-actions) is enabled);
+- the tool that failed gets a message like _"Tool 'withdraw' failed, so the request was stopped"_.
+  The error itself is not included, so nothing from the exception reaches the LLM;
+- a tool that did not run because another tool failed first gets a message like
+  _"Tool 'credit' was not executed because tool 'withdraw' failed"_.
+
+This way, the next call in the same conversation works, and the LLM knows which tools ran.
+If saving these results fails, the error from the store is added as a suppressed exception to the tool error,
+and the tool calls stay without results in the `ChatMemory`.
+
 :::note
 When an AI Service is configured with tools, but the error handlers are not configured explicitly,
 LangChain4j logs a warning once per JVM. Configuring the handlers explicitly (with any of the options
@@ -2099,7 +2118,8 @@ Whether a tool error is sent to the LLM or ends the call is decided by the error
 So in the example above, the error of `withdraw` is sent to the LLM when the method returns a plain value
 or a `TokenStream`, and it ends the call when the method returns a `CompletableFuture` or a `Flow.Publisher`.
 When a tool error ends the call, every successful tool call that has a compensating action is undone first,
-and then the AI Service fails with the tool error.
+and then the AI Service fails with the tool error. Before it fails, a result for every tool call of that LLM
+response is saved in the `ChatMemory` (see [When a Tool Error Ends the Call](#when-a-tool-error-ends-the-call)).
 The same happens when the LLM calls a tool that does not exist, which ends the call by default
 (see [Handling Tool Name Errors](#handling-tool-name-errors)), and when the executor set with
 `.executeToolsConcurrently(executor)` rejects a tool call.
