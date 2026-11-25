@@ -550,14 +550,16 @@ public class DefaultMcpClient implements McpClient {
         if (closed) {
             return;
         }
+        CompletableFuture<String> existing = listChangeSubscriptionFuture;
+        // The notification set is fixed for the life of the client, so a second listen
+        // while one is still open is always a duplicate and must be dropped.
+        if (existing != null && !existing.isDone()) {
+            return;
+        }
         if (!retry) {
             listChangeRetryAttempt.set(0);
         }
         listChangeSubscribeGeneration.incrementAndGet();
-        CompletableFuture<String> previous = listChangeSubscriptionFuture;
-        if (previous != null) {
-            previous.cancel(true);
-        }
         McpSubscriptionsListenParams.Notifications notifications = new McpSubscriptionsListenParams.Notifications();
         if (subscribeToToolListChanges) {
             notifications.setToolsListChanged(true);
@@ -578,6 +580,14 @@ public class DefaultMcpClient implements McpClient {
         CompletableFuture<String> future = executeViaTransport(context);
         listChangeSubscriptionFuture = future;
         long generation = listChangeSubscribeGeneration.get();
+        // A still-open listen future means the handshake succeeded. Reset here so the
+        // next, unrelated failure starts again at the base reconnectInterval.
+        if (!future.isDone()) {
+            if (listChangeRetryAttempt.get() > 0) {
+                log.info("Re-subscribed to list-change notifications");
+            }
+            listChangeRetryAttempt.set(0);
+        }
         future.whenComplete((result, error) -> {
             pendingOperations.remove(operationId);
             if (closed || generation != listChangeSubscribeGeneration.get()) {
@@ -592,15 +602,32 @@ public class DefaultMcpClient implements McpClient {
             if (error == null && !rejected && !streamEnded) {
                 return;
             }
-            if (error != null) {
-                log.warn("List-change subscription failed", error);
-            } else if (rejected) {
-                log.warn("List-change subscription rejected by server: {}", errorMessageOf(result));
-            } else {
-                log.warn("List-change subscription ended; will re-subscribe");
-            }
+            logListChangeSubscriptionFailure(error, rejected ? errorMessageOf(result) : null, streamEnded);
             scheduleListChangeResubscribe(generation);
         });
+    }
+
+    private void logListChangeSubscriptionFailure(Throwable error, String rejectedMessage, boolean streamEnded) {
+        boolean firstFailure = listChangeRetryAttempt.get() == 0;
+        if (error != null) {
+            if (firstFailure) {
+                log.warn("List-change subscription failed", error);
+            } else {
+                log.debug("List-change subscription failed; will retry", error);
+            }
+        } else if (rejectedMessage != null) {
+            if (firstFailure) {
+                log.warn("List-change subscription rejected by server: {}", rejectedMessage);
+            } else {
+                log.debug("List-change subscription rejected by server: {}; will retry", rejectedMessage);
+            }
+        } else if (streamEnded) {
+            if (firstFailure) {
+                log.warn("List-change subscription ended; will re-subscribe");
+            } else {
+                log.debug("List-change subscription ended; will retry");
+            }
+        }
     }
 
     private void scheduleListChangeResubscribe(long generation) {
@@ -614,7 +641,7 @@ public class DefaultMcpClient implements McpClient {
                 Duration.ofSeconds(30).toMillis());
         long jitter = ThreadLocalRandom.current().nextLong(capped + 1);
         long delay = capped / 2 + jitter / 2;
-        log.info("Re-subscribing to list-change notifications in {} ms (attempt {})", delay, attempt);
+        log.debug("Re-subscribing to list-change notifications in {} ms (attempt {})", delay, attempt);
         CompletableFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS).execute(() -> {
             if (closed || generation != listChangeSubscribeGeneration.get()) {
                 return;
