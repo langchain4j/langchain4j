@@ -19,8 +19,7 @@ class JsonCodecTest {
 
     record Person(String name, int age) {}
 
-    private static final String PERSON_JSON =
-            """
+    private static final String PERSON_JSON = """
             {
                 "name": "Klaus",
                 "age": 42
@@ -63,8 +62,7 @@ class JsonCodecTest {
     void record_different_field_order(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "age": 42,
                     "name": "Klaus"
@@ -90,8 +88,7 @@ class JsonCodecTest {
     void should_fail_on_unknown_fields_by_default(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "name": "Klaus",
                     "age": 42,
@@ -118,8 +115,7 @@ class JsonCodecTest {
     void record_null_value(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "name": "Klaus",
                     "age": null
@@ -134,13 +130,53 @@ class JsonCodecTest {
         assertThat(pojo.age()).isEqualTo(0);
     }
 
+    enum Color {
+        RED,
+        GREEN
+    }
+
+    record Paint(Color color, Person owner, List<String> tags, Map<String, String> labels) {}
+
+    @ParameterizedTest
+    @MethodSource("codecs")
+    void empty_string_is_read_as_null_for_an_enum(Json.JsonCodec codec) {
+
+        // when
+        Paint paint = codec.fromJson("{\"color\": \"\"}", Paint.class);
+
+        // then
+        assertThat(paint.color()).isNull();
+    }
+
+    @ParameterizedTest
+    @MethodSource("codecs")
+    void enum_is_still_read_by_name(Json.JsonCodec codec) {
+
+        // when
+        Paint paint = codec.fromJson("{\"color\": \"GREEN\"}", Paint.class);
+
+        // then
+        assertThat(paint.color()).isEqualTo(Color.GREEN);
+    }
+
+    @ParameterizedTest
+    @MethodSource("codecs")
+    void empty_string_still_fails_for_an_object_a_list_and_a_map(Json.JsonCodec codec) {
+
+        assertThatThrownBy(() -> codec.fromJson("{\"owner\": \"\"}", Paint.class))
+                .hasMessageContaining("Cannot coerce empty String");
+        assertThatThrownBy(() -> codec.fromJson("{\"tags\": \"\"}", Paint.class))
+                .hasMessageContaining("Cannot coerce empty String");
+        assertThatThrownBy(() -> codec.fromJson("{\"labels\": \"\"}", Paint.class))
+                .hasMessageContaining("Cannot coerce empty String");
+    }
+
     @ParameterizedTest
     @MethodSource("codecs")
     void record_wrong_type(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "name": "Klaus",
                     "age": "42"
@@ -160,8 +196,7 @@ class JsonCodecTest {
     void record_wrong_type_2(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "name": "Klaus",
                     "age": 42.0
@@ -185,8 +220,7 @@ class JsonCodecTest {
     void record_with_nested_record(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "name": "Klaus",
                     "address": {
@@ -239,8 +273,7 @@ class JsonCodecTest {
     void record_with_empty_collections(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "name": "Klaus",
                     "collection": [],
@@ -304,8 +337,7 @@ class JsonCodecTest {
     void record_with_optional_null(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "name": "Klaus",
                     "age": null
@@ -349,8 +381,7 @@ class JsonCodecTest {
     void record_with_validation(Json.JsonCodec codec) {
 
         // given
-        String json =
-                """
+        String json = """
                 {
                     "name": "Klaus",
                     "age": -1
@@ -377,13 +408,11 @@ class JsonCodecTest {
     void record_with_custom_ctor(Json.JsonCodec codec) {
 
         // when
-        PersonRecordCustomCtor pojo = codec.fromJson(
-                """
+        PersonRecordCustomCtor pojo = codec.fromJson("""
                 {
                     "name": "Klaus"
                 }
-                """,
-                PersonRecordCustomCtor.class);
+                """, PersonRecordCustomCtor.class);
 
         // then
         assertThat(pojo.name()).isEqualTo("Klaus");

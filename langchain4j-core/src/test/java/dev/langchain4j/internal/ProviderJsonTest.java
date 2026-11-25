@@ -1,6 +1,7 @@
 package dev.langchain4j.internal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,40 @@ class ProviderJsonTest {
 
         @JsonProperty
         public Integer maxOutputTokens;
+    }
+
+    enum ToolType {
+        FUNCTION
+    }
+
+    static class ToolCallDto {
+
+        @JsonProperty
+        public ToolType type;
+
+        @JsonProperty
+        public Dto function;
+    }
+
+    @Test
+    void reads_an_empty_string_as_null_for_an_enum() {
+        // An OpenAI-compatible server may send "type": "" for a tool call.
+        Json.JsonCodec codec = ProviderJson.codec(ProviderJsonSpec.builder().build());
+
+        ToolCallDto toolCall = codec.fromJson("{\"type\":\"\",\"function\":{\"name\":\"a\"}}", ToolCallDto.class);
+
+        assertThat(toolCall.type).isNull();
+        assertThat(toolCall.function.name).isEqualTo("a");
+        assertThat(codec.fromJson("{\"type\":\"FUNCTION\"}", ToolCallDto.class).type)
+                .isEqualTo(ToolType.FUNCTION);
+    }
+
+    @Test
+    void still_fails_on_an_empty_string_for_an_object() {
+        Json.JsonCodec codec = ProviderJson.codec(ProviderJsonSpec.builder().build());
+
+        assertThatThrownBy(() -> codec.fromJson("{\"function\":\"\"}", ToolCallDto.class))
+                .hasMessageContaining("Cannot coerce empty String");
     }
 
     @Test
@@ -82,14 +117,15 @@ class ProviderJsonTest {
 
     @Test
     void gives_a_different_codec_to_a_different_spec() {
-        assertThat(ProviderJson.codec(ProviderJsonSpec.builder().prettyPrint(true).build()))
-                .isNotSameAs(ProviderJson.codec(ProviderJsonSpec.builder().prettyPrint(false).build()));
+        assertThat(ProviderJson.codec(
+                        ProviderJsonSpec.builder().prettyPrint(true).build()))
+                .isNotSameAs(ProviderJson.codec(
+                        ProviderJsonSpec.builder().prettyPrint(false).build()));
         assertThat(ProviderJson.codec(ProviderJsonSpec.builder()
                         .propertyNaming(ProviderJsonSpec.PropertyNaming.SNAKE_CASE)
                         .build()))
                 .isNotSameAs(ProviderJson.codec(ProviderJsonSpec.builder().build()));
     }
-
 
     @Test
     void a_codec_is_reused_for_the_same_spec() {
