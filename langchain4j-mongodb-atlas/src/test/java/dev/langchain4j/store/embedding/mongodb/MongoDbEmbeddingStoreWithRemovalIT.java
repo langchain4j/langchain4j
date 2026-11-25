@@ -1,21 +1,26 @@
 package dev.langchain4j.store.embedding.mongodb;
 
+import static dev.langchain4j.data.document.Metadata.metadata;
+import static dev.langchain4j.store.embedding.filter.Filter.not;
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
+import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.*;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.mongodb.client.MongoClient;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreWithRemovalIT;
+import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
+import java.util.List;
 import java.util.Map;
-import org.junit.jupiter.api.AfterAll;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.mongodb.MongoDBAtlasLocalContainer;
-
-import static dev.langchain4j.data.document.Metadata.metadata;
-import static dev.langchain4j.store.embedding.mongodb.MongoDbTestFixture.*;
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class MongoDbEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemovalIT {
     private MongoDbTestFixture helper = new MongoDbTestFixture(createClient()).initialize();
@@ -47,8 +52,48 @@ class MongoDbEmbeddingStoreWithRemovalIT extends EmbeddingStoreWithRemovalIT {
         embeddingStore().removeAll(unvalidatedIsEqualTo("type", Map.of("$ne", "x")));
 
         // then: counted in the collection, not through the eventually consistent search index
-        assertThat(helper.getDatabase().getCollection(helper.getCollectionName()).countDocuments())
+        assertThat(helper.getDatabase()
+                        .getCollection(helper.getCollectionName())
+                        .countDocuments())
                 .isEqualTo(2);
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void should_remove_all_by_negated_filter(Filter filter, List<String> remaining) {
+        // given
+        TextSegment spam = TextSegment.from("spam", metadata("category", "spam").put("status", "active"));
+        TextSegment deletedNews =
+                TextSegment.from("deleted news", metadata("category", "news").put("status", "deleted"));
+        TextSegment activeNews =
+                TextSegment.from("active news", metadata("category", "news").put("status", "active"));
+        for (TextSegment segment : List.of(spam, deletedNews, activeNews)) {
+            embeddingStore().add(embeddingModel().embed(segment).content(), segment);
+        }
+
+        // when
+        embeddingStore().removeAll(filter);
+
+        // then
+        assertThat(helper.getDatabase()
+                        .getCollection(helper.getCollectionName())
+                        .distinct("text", String.class))
+                .containsExactlyInAnyOrderElementsOf(remaining);
+    }
+
+    static Stream<Arguments> should_remove_all_by_negated_filter() {
+        Filter spamOrDeleted = metadataKey("category")
+                .isEqualTo("spam")
+                .or(metadataKey("status").isEqualTo("deleted"));
+        Filter activeNews = metadataKey("category")
+                .isEqualTo("news")
+                .and(metadataKey("status").isEqualTo("active"));
+        return Stream.of(
+                Arguments.of(not(spamOrDeleted), List.of("spam", "deleted news")),
+                Arguments.of(not(activeNews), List.of("active news")),
+                Arguments.of(
+                        not(not(metadataKey("category").isEqualTo("spam"))), List.of("deleted news", "active news")),
+                Arguments.of(not(not(spamOrDeleted)), List.of("active news")));
     }
 
     // The filter classes reject values like these, so they are returned from the overridden accessor
