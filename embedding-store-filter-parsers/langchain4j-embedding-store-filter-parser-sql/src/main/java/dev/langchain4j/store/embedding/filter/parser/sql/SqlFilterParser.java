@@ -279,35 +279,41 @@ public class SqlFilterParser implements FilterParser {
      * ({@code [} that does not follow a column name, for example {@code ARRAY[1, 2]}, or that is nested
      * inside another {@code [}). A single subscript of a column, for example {@code a[1]}, is not rejected.
      * <br>
-     * String literals, quoted identifiers and comments are skipped the same way JSqlParser skips them.
+     * String literals, quoted identifiers and comments are skipped the same way JSqlParser skips them,
+     * and comments count as whitespace around keywords.
      * The end of Oracle {@code q'(...)'} and {@code $$...$$} quoted text cannot be found without parsing,
-     * so from the first {@code q'} or {@code $$} on, every opening parenthesis counts, closing ones are ignored
-     * and constructs are no longer looked for: the depth can then be higher than the real one, but never lower.
+     * so from the first {@code q'} or {@code $$} that starts a token on, nothing is skipped any more:
+     * every opening parenthesis counts, closing ones are ignored, and constructs are looked for everywhere,
+     * also inside string literals and comments. The depth can then be higher than the real one, but never lower,
+     * and a construct is never missed.
      */
     static PreScan preScan(String sql) {
         int lastBlockCommentEnd = sql.lastIndexOf("*/");
         String unsupportedConstruct = null;
+        boolean afterQuotedTextWithUnknownEnd = false;
         int depth = 0;
         int maxDepth = 0;
         int bracketDepth = 0;
+        char previousCharacter = ' ';
         for (int i = 0; i < sql.length(); i++) {
             char c = sql.charAt(i);
+            boolean skipping = !afterQuotedTextWithUnknownEnd;
             if (c == '(') {
                 maxDepth = Math.max(maxDepth, ++depth);
             } else if (c == ')') {
-                depth = Math.max(0, depth - 1);
-            } else if (c == '\'' || c == '"' || c == '`') {
+                if (skipping) {
+                    depth = Math.max(0, depth - 1);
+                }
+            } else if (skipping && (c == '\'' || c == '"' || c == '`')) {
                 i = indexOfClosingQuote(sql, i);
-            } else if (sql.startsWith("\\'", i)) {
+            } else if (skipping && sql.startsWith("\\'", i)) {
                 i++;
-            } else if (sql.startsWith("--", i) || sql.startsWith("//", i)) {
-                i = indexOfLineEnd(sql, i);
-            } else if (sql.startsWith("/*", i) && lastBlockCommentEnd >= i + 2) {
-                i = sql.indexOf("*/", i + 2) + 1;
-            } else if (sql.startsWith("$$", i) || sql.startsWith("q'", i) || sql.startsWith("Q'", i)) {
-                long remainingOpeningParentheses =
-                        sql.chars().skip(i).filter(ch -> ch == '(').count();
-                return new PreScan((int) Math.max(maxDepth, depth + remainingOpeningParentheses), unsupportedConstruct);
+            } else if (skipping && isCommentAt(sql, i, lastBlockCommentEnd)) {
+                i = indexOfCommentEnd(sql, i) - 1;
+                continue;
+            } else if (skipping && isQuotedTextWithUnknownEndAt(sql, i)) {
+                afterQuotedTextWithUnknownEnd = true;
+                i += c == '$' ? 1 : 2; // the rest of $$, or of q' and the delimiter that follows it
             } else if (c == '[') {
                 if (unsupportedConstruct == null && (bracketDepth > 0 || !isColumnSubscript(sql, i))) {
                     unsupportedConstruct = "an array";
@@ -316,21 +322,61 @@ public class SqlFilterParser implements FilterParser {
             } else if (c == ']') {
                 bracketDepth = Math.max(0, bracketDepth - 1);
             } else if (unsupportedConstruct == null) {
-                unsupportedConstruct = unsupportedKeywordAt(sql, i);
+                unsupportedConstruct = unsupportedKeywordAt(sql, i, previousCharacter, lastBlockCommentEnd);
+            }
+            if (!Character.isWhitespace(c)) {
+                previousCharacter = c;
             }
         }
         return new PreScan(maxDepth, unsupportedConstruct);
     }
 
-    private static @Nullable String unsupportedKeywordAt(String sql, int index) {
+    private static boolean isQuotedTextWithUnknownEndAt(String sql, int index) {
+        boolean startsToken = index == 0 || !isIdentifierPart(sql.charAt(index - 1));
+        return startsToken && (sql.startsWith("$$", index) || sql.startsWith("q'", index) || sql.startsWith("Q'", index));
+    }
+
+    private static @Nullable String unsupportedKeywordAt(
+            String sql, int index, char previousCharacter, int lastBlockCommentEnd) {
         if (isKeywordAt(sql, index, "WHEN")) {
             return "a CASE expression";
-        } else if (isKeywordAt(sql, index, "CAST") && nextNonWhitespace(sql, index + "CAST".length()) == '(') {
+        } else if (isKeywordAt(sql, index, "CAST")
+                && nextCharacterOutsideComments(sql, index + "CAST".length(), lastBlockCommentEnd) == '(') {
             return "a CAST expression";
-        } else if (index > 0 && isKeywordAt(sql, index, "SELECT") && previousNonWhitespace(sql, index) != '.') {
+        } else if (index > 0 && isKeywordAt(sql, index, "SELECT") && previousCharacter != '.') {
             return "a nested SELECT";
         }
         return null;
+    }
+
+    private static boolean isCommentAt(String sql, int index, int lastBlockCommentEnd) {
+        return sql.startsWith("--", index)
+                || sql.startsWith("//", index)
+                || (sql.startsWith("/*", index) && lastBlockCommentEnd >= index + 2);
+    }
+
+    /**
+     * Returns the index of the first character after the comment that starts at the given index.
+     */
+    private static int indexOfCommentEnd(String sql, int commentStartIndex) {
+        if (sql.startsWith("/*", commentStartIndex)) {
+            return sql.indexOf("*/", commentStartIndex + 2) + 2;
+        }
+        return indexOfLineEnd(sql, commentStartIndex);
+    }
+
+    private static char nextCharacterOutsideComments(String sql, int index, int lastBlockCommentEnd) {
+        int i = index;
+        while (i < sql.length()) {
+            if (Character.isWhitespace(sql.charAt(i))) {
+                i++;
+            } else if (isCommentAt(sql, i, lastBlockCommentEnd)) {
+                i = indexOfCommentEnd(sql, i);
+            } else {
+                return sql.charAt(i);
+            }
+        }
+        return ' ';
     }
 
     private static boolean isColumnSubscript(String sql, int bracketIndex) {
@@ -361,24 +407,6 @@ public class SqlFilterParser implements FilterParser {
 
     private static boolean isIdentifierPart(char c) {
         return Character.isLetterOrDigit(c) || c == '_' || c == '$' || c == '#' || c == '@';
-    }
-
-    private static char previousNonWhitespace(String sql, int index) {
-        for (int i = index - 1; i >= 0; i--) {
-            if (!Character.isWhitespace(sql.charAt(i))) {
-                return sql.charAt(i);
-            }
-        }
-        return ' ';
-    }
-
-    private static char nextNonWhitespace(String sql, int index) {
-        for (int i = index; i < sql.length(); i++) {
-            if (!Character.isWhitespace(sql.charAt(i))) {
-                return sql.charAt(i);
-            }
-        }
-        return ' ';
     }
 
     private static int indexOfClosingQuote(String sql, int openingQuoteIndex) {

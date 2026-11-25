@@ -279,10 +279,11 @@ class SqlFilterParserLimitsTest {
                 .hasMessage(NESTING_DEPTH_LIMIT_MESSAGE, 3, 2);
     }
 
-    @Test
-    void should_count_parentheses_normally_after_dollar_sign_in_identifier() {
+    @ParameterizedTest
+    @ValueSource(strings = {"price$usd", "price$$usd"})
+    void should_count_parentheses_normally_after_dollar_signs_in_identifier(String column) {
 
-        String sql = "price$usd = 1" + " AND id IN (1, 2)".repeat(51);
+        String sql = column + " = 1" + " AND id IN (1, 2)".repeat(51);
 
         assertThat(parser.parse(sql)).isInstanceOf(And.class);
     }
@@ -348,7 +349,18 @@ class SqlFilterParserLimitsTest {
                 Arguments.of(
                         "a = " + "CASE WHEN (".repeat(7) + "1 = 1" + ") THEN 1 END = 1".repeat(6) + ") THEN 1 END",
                         "a CASE expression"),
-                Arguments.of("a = Case b When 1 Then 2 End", "a CASE expression"));
+                Arguments.of("a = Case b When 1 Then 2 End", "a CASE expression"),
+                // comments count as whitespace
+                Arguments.of("a = " + "CAST/**/(".repeat(22) + "1" + " AS INT)".repeat(22), "a CAST expression"),
+                Arguments.of("a = CAST -- comment\n (1 AS INT)", "a CAST expression"),
+                Arguments.of("a = CAST // comment\n (1 AS INT)", "a CAST expression"),
+                // after quoted text whose end is not looked for, constructs are still found
+                Arguments.of("name = q'[Klaus]' AND a = " + "ARRAY[".repeat(20) + "1" + "]".repeat(20), "an array"),
+                Arguments.of("name = Q'{Klaus}' AND a IN (SELECT b FROM t)", "a nested SELECT"),
+                Arguments.of("name = $$Klaus$$ AND a = CAST(1 AS INT)", "a CAST expression"),
+                Arguments.of("name = $$Klaus$$ AND a = CASE WHEN b = 1 THEN 2 END", "a CASE expression"),
+                // a dollar sign in a column name does not start quoted text
+                Arguments.of("price$$usd = 1 AND a = " + "ARRAY[".repeat(20) + "1" + "]".repeat(20), "an array"));
     }
 
     @ParameterizedTest
@@ -372,6 +384,7 @@ class SqlFilterParserLimitsTest {
                 "case = 1",
                 "cast = 1",
                 "t.select = 1",
+                "t./* comment */select = 1",
                 "t.cast = 1",
                 "array = 1",
                 "\"when\" = 1",
