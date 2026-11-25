@@ -123,6 +123,16 @@ is used to detect document types and parse them.
 Since we did not explicitly specify which `DocumentParser` to use,
 the `FileSystemDocumentLoader` will load an `ApacheTikaDocumentParser`,
 provided by `langchain4j-easy-rag` dependency through SPI.
+
+By default, this parser extracts at most 10,000,000 characters of text from a document.
+When a directory is loaded, documents with more text are skipped, with a warning in the log.
+To change the limit, pass the parser yourself, for example without a limit:
+```java
+List<Document> documents = FileSystemDocumentLoader.loadDocuments(
+        "/home/langchain4j/documentation",
+        ApacheTikaDocumentParser.builder().maxCharacters(-1).build());
+```
+See [Apache Tika](/integrations/document-parsers/apache-tika) for more details.
 </details>
 
 <details>
