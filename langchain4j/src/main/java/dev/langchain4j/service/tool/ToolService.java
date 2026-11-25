@@ -1,19 +1,16 @@
 package dev.langchain4j.service.tool;
 
-import dev.langchain4j.exception.AsyncNotSupportedException;
-import dev.langchain4j.exception.UnsupportedFeatureException;
-import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE_IF_LAST;
 import static dev.langchain4j.agent.tool.ToolSpecifications.toolSpecificationFrom;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.allConcreteMethods;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getAnnotatedMethod;
 import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.service.IllegalConfigurationException.illegalConfiguration;
 
 import dev.langchain4j.Internal;
@@ -29,8 +26,10 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.CapturedContextSupport;
@@ -70,14 +69,14 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.BiFunction;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
@@ -90,11 +89,13 @@ public class ToolService {
     private static final Logger log = LoggerFactory.getLogger(ToolService.class);
 
     private static final ToolArgumentsErrorHandler RETHROW_ARGUMENTS_ERROR = ToolArgumentsErrorHandler.failInvocation();
-    private static final ToolArgumentsErrorHandler ARGUMENTS_ERROR_TO_LLM = ToolArgumentsErrorHandler.sendExceptionMessageToLlm();
+    private static final ToolArgumentsErrorHandler ARGUMENTS_ERROR_TO_LLM =
+            ToolArgumentsErrorHandler.sendExceptionMessageToLlm();
     private static final ToolExecutionErrorHandler EXECUTION_ERROR_TO_LLM = (error, context) -> {
         // the same handler users are told to configure to keep this behavior, so that the two cannot drift,
         // and so that an exception that says what the LLM may be told is honored here too
-        ToolErrorHandlerResult result = ToolExecutionErrorHandler.sendExceptionMessageToLlm().handle(error, context);
+        ToolErrorHandlerResult result =
+                ToolExecutionErrorHandler.sendExceptionMessageToLlm().handle(error, context);
         log.warn(
                 "Tool '{}' execution failed. The error message is being returned to the LLM. "
                         + "To customize this behavior (and silence this log), configure a custom "
@@ -129,6 +130,7 @@ public class ToolService {
     private final Set<ToolProvider> toolProviders = new LinkedHashSet<>();
     private boolean compensateOnToolErrors;
     private Executor executor;
+    private boolean forceSequentialToolExecution;
     private int maxToolCallingRoundTrips = 100;
     private ToolArgumentsErrorHandler argumentsErrorHandler;
     private ToolExecutionErrorHandler executionErrorHandler;
@@ -302,8 +304,8 @@ public class ToolService {
         }
     }
 
-    private Map<String, BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>>>
-            findCompensatingActions(Object objectWithTools) {
+    private Map<String, BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>>> findCompensatingActions(
+            Object objectWithTools) {
         Map<String, BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>>> compensatingActions =
                 new HashMap<>();
         if (compensatingToolMisconfiguration != null) {
@@ -311,7 +313,8 @@ public class ToolService {
         }
 
         for (Method candidateMethod : allConcreteMethods(objectWithTools.getClass())) {
-            Method method = getAnnotatedMethod(candidateMethod, CompensateFor.class).orElse(null);
+            Method method =
+                    getAnnotatedMethod(candidateMethod, CompensateFor.class).orElse(null);
             if (method != null) {
                 CompensateFor compensateFor = method.getAnnotation(CompensateFor.class);
                 String toolName = compensateFor.value();
@@ -356,17 +359,19 @@ public class ToolService {
                 if (acceptsToolExecution) {
                     method.setAccessible(true);
                     Method compensatingMethod = method;
-                    compensatingActions.put(toolName, (toolExecution, ctx) -> CurrentInvocation.callWith(ctx, () -> {
-                        try {
-                            return toVoidFuture(
-                                    compensatingMethod.invoke(objectWithTools, toolExecution),
-                                    compensatingMethod.getGenericReturnType());
-                        } catch (InvocationTargetException e) {
-                            return CompletableFuture.failedFuture(e.getCause());
-                        } catch (Exception e) {
-                            return CompletableFuture.failedFuture(e);
-                        }
-                    }));
+                    compensatingActions.put(
+                            toolName,
+                            (toolExecution, ctx) -> CurrentInvocation.callWith(ctx, () -> {
+                                try {
+                                    return toVoidFuture(
+                                            compensatingMethod.invoke(objectWithTools, toolExecution),
+                                            compensatingMethod.getGenericReturnType());
+                                } catch (InvocationTargetException e) {
+                                    return CompletableFuture.failedFuture(e.getCause());
+                                } catch (Exception e) {
+                                    return CompletableFuture.failedFuture(e);
+                                }
+                            }));
                 } else {
                     DefaultToolExecutor executor = DefaultToolExecutor.builder()
                             .object(objectWithTools)
@@ -392,6 +397,7 @@ public class ToolService {
      * @since 1.4.0
      */
     public void executeToolsConcurrently() {
+        this.forceSequentialToolExecution = false;
         this.executor = defaultExecutor();
     }
 
@@ -399,14 +405,45 @@ public class ToolService {
      * @since 1.4.0
      */
     public void executeToolsConcurrently(Executor executor) {
+        this.forceSequentialToolExecution = false;
         this.executor = getOrDefault(executor, ToolService::defaultExecutor);
+    }
+
+    /**
+     * Enables or disables concurrent tool execution.
+     * When {@code concurrently} is {@code false}, any previously set executor is cleared and the tools of a
+     * round run one after another in every invocation mode, including the asynchronous, reactive and
+     * streaming-publisher modes (which otherwise start tools concurrently by default).
+     * When {@code true}, this is equivalent to {@link #executeToolsConcurrently()}.
+     *
+     * @since 1.25.0
+     */
+    public void executeToolsConcurrently(boolean concurrently) {
+        if (concurrently) {
+            executeToolsConcurrently();
+        } else {
+            this.executor = null;
+            this.forceSequentialToolExecution = true;
+        }
+    }
+
+    /**
+     * Whether {@link #executeToolsConcurrently(boolean) executeToolsConcurrently(false)} was requested, so
+     * asynchronous, reactive and streaming-publisher modes must run the tools of a round one after another
+     * instead of their concurrent default.
+     *
+     * @since 1.25.0
+     */
+    public boolean forceSequentialToolExecution() {
+        return forceSequentialToolExecution;
     }
 
     /**
      * Resolves the {@link Executor} that the asynchronous AI Service modes run tools on: the one set via
      * {@link #executeToolsConcurrently(Executor)} / {@link #executeToolsConcurrently()}, or the default
      * virtual-thread executor when none was set. Never {@code null}, so async tools are always offloaded and
-     * never block the model-response thread. Pass a single-threaded executor to run them serially.
+     * never block the model-response thread. Pass a single-threaded executor, or call
+     * {@link #executeToolsConcurrently(boolean) executeToolsConcurrently(false)}, to run them serially.
      *
      * @since 1.20.0
      */
@@ -466,7 +503,8 @@ public class ToolService {
         return afterToolExecution;
     }
 
-    public void onCompensableToolExecution(BiConsumer<ToolExecution, Consumer<ToolExecution>> onCompensableToolExecution) {
+    public void onCompensableToolExecution(
+            BiConsumer<ToolExecution, Consumer<ToolExecution>> onCompensableToolExecution) {
         if (compensatingToolMisconfiguration != null) {
             throw compensatingToolMisconfiguration;
         }
@@ -713,12 +751,7 @@ public class ToolService {
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults = round.results();
 
             ToolResultsOutcome outcome = processToolResults(
-                    context,
-                    toolExecutionRequests,
-                    toolResults,
-                    toolExecutions,
-                    invocationContext,
-                    toolServiceContext);
+                    context, toolExecutionRequests, toolResults, toolExecutions, invocationContext, toolServiceContext);
 
             List<ToolExecutionResultMessage> resultMessages = outcome.resultMessages();
 
@@ -742,20 +775,14 @@ public class ToolService {
             }
 
             NextChatRequest next = prepareNextChatRequest(
-                    context,
-                    memoryId,
-                    nextMessages,
-                    invocationContext,
-                    toolServiceContext,
-                    toolResults,
-                    parameters);
+                    context, memoryId, nextMessages, invocationContext, toolServiceContext, toolResults, parameters);
             messages = next.messages();
             toolServiceContext = next.toolServiceContext();
             parameters = next.parameters();
 
             lastChatRequest = next.chatRequest();
-            chatResponse = CurrentInvocation.callWith(
-                    invocationContext, () -> chatModelInvoker.apply(next.chatRequest()));
+            chatResponse =
+                    CurrentInvocation.callWith(invocationContext, () -> chatModelInvoker.apply(next.chatRequest()));
             fireResponseReceivedEvent(
                     next.chatRequest(), chatResponse, invocationContext, context.eventListenerRegistrar);
             aggregateTokenUsage =
@@ -980,7 +1007,11 @@ public class ToolService {
                         .toList();
                 synchronized (compensableExecutions) {
                     collectCompensable(
-                            toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
+                            toolExecutionRequests,
+                            toolResults,
+                            resultMessages,
+                            compensableExecutions,
+                            invocationContext);
                 }
                 unsavedRoundRequests = toolExecutionRequests;
                 return CompletableFuture.failedFuture(
@@ -1101,8 +1132,8 @@ public class ToolService {
                     context, memoryId, nextMessages, invocationContext, toolServiceContext, toolResults, parameters);
 
             lastChatRequest = next.chatRequest();
-            CompletableFuture<ChatResponse> nextModelCall = CurrentInvocation.callWith(
-                    invocationContext, () -> chatModelInvoker.apply(next.chatRequest()));
+            CompletableFuture<ChatResponse> nextModelCall =
+                    CurrentInvocation.callWith(invocationContext, () -> chatModelInvoker.apply(next.chatRequest()));
             inFlightModelCall.set(nextModelCall);
             if (isCancelled(cancellation)) {
                 nextModelCall.cancel(true);
@@ -1115,7 +1146,8 @@ public class ToolService {
                         next.parameters(),
                         next.messages(),
                         next.toolServiceContext(),
-                        TokenUsage.sum(aggregateTokenUsage, nextChatResponse.metadata().tokenUsage()),
+                        TokenUsage.sum(
+                                aggregateTokenUsage, nextChatResponse.metadata().tokenUsage()),
                         roundTripsLeft - 1);
             });
         }
@@ -1124,7 +1156,6 @@ public class ToolService {
     private static boolean isCancelled(CompletableFuture<?> cancellation) {
         return cancellation != null && cancellation.isCancelled();
     }
-
 
     /**
      * Per-round bookkeeping shared by every AI Service mode (sync, {@code CompletableFuture}, {@code TokenStream},
@@ -1190,7 +1221,8 @@ public class ToolService {
             BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>> compensatingAction =
                     compensatingExecutors.get(request.name());
             onCompensableToolExecution.accept(
-                    toolExecution, te -> compensatingAction.apply(te, te.invocationContext()).join());
+                    toolExecution,
+                    te -> compensatingAction.apply(te, te.invocationContext()).join());
         }
     }
 
@@ -1451,8 +1483,8 @@ public class ToolService {
         if (!compensateOnToolErrors) {
             return;
         }
-        String failedToolName =
-                collectCompensable(toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
+        String failedToolName = collectCompensable(
+                toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
         if (!anyToolErrored || compensableExecutions.isEmpty()) {
             return;
         }
@@ -1758,7 +1790,11 @@ public class ToolService {
                         .map(request -> toResultMessage(request, currentRoundResults.get(request)))
                         .toList();
                 collectCompensable(
-                        currentRoundRequests, currentRoundResults, resultMessages, compensableExecutions, invocationContext);
+                        currentRoundRequests,
+                        currentRoundResults,
+                        resultMessages,
+                        compensableExecutions,
+                        invocationContext);
             }
             List<CompensableToolExecution> toCompensate = List.copyOf(compensableExecutions);
             compensableExecutions.clear();
@@ -1849,7 +1885,8 @@ public class ToolService {
             @Nullable String failedToolName) {
         List<RolledBackTool> ofEarlierRounds = new ArrayList<>();
         for (RolledBackTool tool : rolledBack) {
-            int index = indexOf(toolExecutionRequests, tool.compensable().toolExecution().request());
+            int index = indexOf(
+                    toolExecutionRequests, tool.compensable().toolExecution().request());
             if (index >= 0) {
                 resultMessages.set(
                         index, rolledBackResultMessage(resultMessages.get(index), tool, reason, failedToolName));
@@ -1877,7 +1914,8 @@ public class ToolService {
         }
         List<ToolExecutionRequest> excluded = List.copyOf(requests);
         return rolledBack.stream()
-                .filter(tool -> indexOf(excluded, tool.compensable().toolExecution().request()) < 0)
+                .filter(tool ->
+                        indexOf(excluded, tool.compensable().toolExecution().request()) < 0)
                 .toList();
     }
 
@@ -2001,7 +2039,8 @@ public class ToolService {
      * A tool that was rolled back, with the error of its compensating action, or {@code null} when the compensating
      * action succeeded.
      */
-    private record RolledBackTool(CompensableToolExecution compensable, @Nullable Throwable compensationError) {}
+    private record RolledBackTool(
+            CompensableToolExecution compensable, @Nullable Throwable compensationError) {}
 
     // Public only so the streaming publisher (a different package) can hold the compensable-execution accumulator
     // and pass it back to compensateOnCancellationAsync(...); not part of the user-facing API.
@@ -2204,22 +2243,63 @@ public class ToolService {
      * tools (including failed ones) instead of short-circuiting on the first failure, so the caller can compensate
      * the successful tools before failing the invocation with the tool error. Every tool is started on the
      * {@linkplain #effectiveToolExecutor() effective executor} so the model-delivery thread is never blocked.
+     * When {@link #forceSequentialToolExecution()} is {@code true}, tools of the round are started one after
+     * another (each after the previous has settled, successfully or not) so they never overlap. Otherwise
+     * (the asynchronous default) every tool is started immediately so they can overlap.
      */
-    private CompletableFuture<CombinedToolResults> executeToolsCollectingErrors(
+    public CompletableFuture<CombinedToolResults> executeToolsCollectingErrors(
             List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
             InvocationContext invocationContext) {
+        return executeToolsCollectingErrors(toolRequests, toolExecutors, invocationContext, null, null);
+    }
+
+    /**
+     * @see #executeToolsCollectingErrors(List, Map, InvocationContext)
+     */
+    public CompletableFuture<CombinedToolResults> executeToolsCollectingErrors(
+            List<ToolExecutionRequest> toolRequests,
+            Map<String, ToolExecutor> toolExecutors,
+            InvocationContext invocationContext,
+            Consumer<BeforeToolExecution> externalBeforeToolExecution,
+            Consumer<ToolExecution> externalAfterToolExecution) {
+        Executor toolExecutor = CapturedContextSupport.restoringIn(effectiveToolExecutor(), invocationContext);
+        if (!forceSequentialToolExecution) {
+            Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures = new LinkedHashMap<>();
+            for (ToolExecutionRequest toolRequest : toolRequests) {
+                futures.put(
+                        toolRequest,
+                        startTool(
+                                toolRequest,
+                                toolExecutors,
+                                invocationContext,
+                                externalBeforeToolExecution,
+                                externalAfterToolExecution,
+                                toolExecutor));
+            }
+            return combineToolResultsCollectingErrors(futures);
+        }
+
         Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> futures = new LinkedHashMap<>();
+        CompletableFuture<Void> previous = CompletableFuture.completedFuture(null);
         for (ToolExecutionRequest toolRequest : toolRequests) {
-            futures.put(
-                    toolRequest,
-                    startTool(
+            CompletableFuture<ToolExecutionResult> toolFuture = new CompletableFuture<>();
+            futures.put(toolRequest, toolFuture);
+            previous = previous.thenCompose(ignored -> startTool(
                             toolRequest,
                             toolExecutors,
                             invocationContext,
-                            null,
-                            null,
-                            CapturedContextSupport.restoringIn(effectiveToolExecutor(), invocationContext)));
+                            externalBeforeToolExecution,
+                            externalAfterToolExecution,
+                            toolExecutor))
+                    .handle((result, error) -> {
+                        if (error != null) {
+                            toolFuture.completeExceptionally(error);
+                        } else {
+                            toolFuture.complete(result);
+                        }
+                        return null;
+                    });
         }
         return combineToolResultsCollectingErrors(futures);
     }
@@ -2261,8 +2341,7 @@ public class ToolService {
      * @param firstError the first tool failure in request order, or {@code null} if every tool succeeded
      * @since 1.20.0
      */
-    public record CombinedToolResults(
-            Map<ToolExecutionRequest, ToolExecutionResult> results, Throwable firstError) {}
+    public record CombinedToolResults(Map<ToolExecutionRequest, ToolExecutionResult> results, Throwable firstError) {}
 
     /**
      * Combines a set of in-flight (possibly already-started) tool executions into a single future of their results,
@@ -2436,8 +2515,8 @@ public class ToolService {
             ToolArgumentsErrorHandler argumentsErrorHandler,
             ToolExecutionErrorHandler executionErrorHandler) {
         try {
-            return CompletableFuture.completedFuture(toolErrorResult(
-                    e, toolRequest, invocationContext, argumentsErrorHandler, executionErrorHandler));
+            return CompletableFuture.completedFuture(
+                    toolErrorResult(e, toolRequest, invocationContext, argumentsErrorHandler, executionErrorHandler));
         } catch (Exception handlerException) {
             return CompletableFuture.failedFuture(handlerException);
         }
