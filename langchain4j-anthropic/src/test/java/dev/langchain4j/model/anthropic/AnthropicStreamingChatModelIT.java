@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.Utils.randomString;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_HAIKU_4_5_20251001;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_5_20250929;
 import static dev.langchain4j.model.anthropic.AnthropicChatModelName.CLAUDE_SONNET_4_6;
-import static java.lang.System.getenv;
 import static java.util.Arrays.asList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,7 +22,10 @@ import dev.langchain4j.http.client.jdk.JdkHttpClient;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.TestStreamingChatResponseHandler;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.model.chat.request.ResponseFormat;
+import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
+import dev.langchain4j.model.chat.request.json.JsonSchema;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import java.time.Duration;
@@ -114,6 +116,43 @@ class AnthropicStreamingChatModelIT {
 
         // then
         assertThat(response.aiMessage().text()).containsIgnoringCase("ok");
+    }
+
+    @Test
+    void should_support_output_config_effort_via_custom_parameters_with_json_schema() {
+
+        // given
+        StreamingChatModel model = AnthropicStreamingChatModel.builder()
+                .baseUrl(System.getenv("ANTHROPIC_CACHING_BASE_URL"))
+                .apiKey(System.getenv("ANTHROPIC_API_KEY"))
+                .modelName(CLAUDE_SONNET_4_6)
+                .maxTokens(32)
+                .customParameters(Map.of("output_config", Map.of("effort", "low")))
+                .logRequests(true)
+                .logResponses(true)
+                .build();
+
+        ChatRequest chatRequest = ChatRequest.builder()
+                .messages(UserMessage.from("1 + 2?"))
+                .responseFormat(ResponseFormat.builder()
+                        .type(ResponseFormatType.JSON)
+                        .jsonSchema(JsonSchema.builder()
+                                .name("sum")
+                                .rootElement(JsonObjectSchema.builder()
+                                        .addIntegerProperty("sum")
+                                        .required("sum")
+                                        .build())
+                                .build())
+                        .build())
+                .build();
+
+        // when
+        TestStreamingChatResponseHandler handler = new TestStreamingChatResponseHandler();
+        model.chat(chatRequest, handler);
+        ChatResponse response = handler.get();
+
+        // then
+        assertThat(response.aiMessage().text()).isEqualToIgnoringWhitespace("{\"sum\":3}");
     }
 
     @Test
@@ -266,8 +305,7 @@ class AnthropicStreamingChatModelIT {
         Map<String, Object> customParameters =
                 Map.of("context_management", Map.of("edits", List.of(Map.of("type", "clear_tool_uses_20250919"))));
 
-        SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(JdkHttpClient.builder());
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder());
 
         StreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))
@@ -302,8 +340,7 @@ class AnthropicStreamingChatModelIT {
 
     @Test
     void should_send_strict_true_in_tools_definition_streaming() {
-        SpyingHttpClient spyingHttpClient =
-                new SpyingHttpClient(JdkHttpClient.builder());
+        SpyingHttpClient spyingHttpClient = new SpyingHttpClient(JdkHttpClient.builder());
 
         AnthropicStreamingChatModel model = AnthropicStreamingChatModel.builder()
                 .httpClientBuilder(new MockHttpClientBuilder(spyingHttpClient))

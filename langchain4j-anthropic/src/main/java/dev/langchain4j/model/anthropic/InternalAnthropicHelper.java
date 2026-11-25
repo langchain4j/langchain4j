@@ -52,6 +52,8 @@ class InternalAnthropicHelper {
 
     private static final String CODE_EXECUTION_TOOL_NAME = "code_execution";
 
+    private static final String OUTPUT_CONFIG = "output_config";
+
     private InternalAnthropicHelper() {}
 
     private static AnthropicContainer toAnthropicContainer(List<AnthropicSkill> skills) {
@@ -129,6 +131,16 @@ class InternalAnthropicHelper {
             boolean returnCacheDiagnostics,
             String previousMessageId) {
 
+        AnthropicOutputConfig outputConfig = toAnthropicOutputConfig(chatRequest.responseFormat());
+        if (outputConfig != null && customParameters.get(OUTPUT_CONFIG) instanceof Map<?, ?> customOutputConfig) {
+            // both must be sent in the same "output_config", otherwise the request would contain it twice
+            Map<Object, Object> mergedOutputConfig = new LinkedHashMap<>(customOutputConfig);
+            mergedOutputConfig.put("format", outputConfig.getFormat());
+            customParameters = new LinkedHashMap<>(customParameters);
+            customParameters.put(OUTPUT_CONFIG, mergedOutputConfig);
+            outputConfig = null;
+        }
+
         AnthropicCreateMessageRequest.Builder requestBuilder = AnthropicCreateMessageRequest.builder().stream(stream)
                 .model(chatRequest.modelName())
                 .messages(toAnthropicMessages(
@@ -141,7 +153,7 @@ class InternalAnthropicHelper {
                 .topP(chatRequest.topP())
                 .topK(chatRequest.topK())
                 .thinking(thinking)
-                .outputConfig(toAnthropicOutputConfig(chatRequest.responseFormat()))
+                .outputConfig(outputConfig)
                 .customParameters(customParameters);
 
         List<AnthropicTool> tools = new ArrayList<>();
