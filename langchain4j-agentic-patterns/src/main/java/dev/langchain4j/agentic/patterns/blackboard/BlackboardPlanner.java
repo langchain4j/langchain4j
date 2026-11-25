@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.patterns.blackboard;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.FRAMEWORK_PROVIDED_ARGUMENTS;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static java.util.stream.Collectors.toMap;
 
@@ -196,8 +197,10 @@ public class BlackboardPlanner implements Planner {
 
         AgentActivator(AgentInstance agent) {
             this.agent = agent;
-            this.argumentNames =
-                    agent.arguments().stream().map(AgentArgument::name).toList();
+            this.argumentNames = agent.arguments().stream()
+                    .map(AgentArgument::name)
+                    .filter(name -> !FRAMEWORK_PROVIDED_ARGUMENTS.contains(name))
+                    .toList();
         }
 
         private boolean canActivate(PlanningContext planningContext) {

@@ -63,6 +63,9 @@ public class AgentUtil {
     public static final String LOOP_COUNTER_ARG_NAME = "@LoopCounter";
     public static final String INVOCATION_PARAMETERS_ARG_NAME = "@InvocationParameters";
 
+    public static final Set<String> FRAMEWORK_PROVIDED_ARGUMENTS =
+            Set.of(MEMORY_ID_ARG_NAME, AGENTIC_SCOPE_ARG_NAME, INVOCATION_PARAMETERS_ARG_NAME);
+
     private static final Map<Class<? extends TypedKey<?>>, TypedKey<?>> STATE_INSTANCES = new ConcurrentHashMap<>();
 
     private AgentUtil() {}

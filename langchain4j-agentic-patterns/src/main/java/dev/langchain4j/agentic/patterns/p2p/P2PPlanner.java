@@ -1,5 +1,6 @@
 package dev.langchain4j.agentic.patterns.p2p;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.FRAMEWORK_PROVIDED_ARGUMENTS;
 import static dev.langchain4j.agentic.patterns.p2p.P2PAgent.P2P_REQUEST_KEY;
 import static java.util.stream.Collectors.toMap;
 
@@ -80,8 +81,8 @@ public class P2PPlanner implements Planner {
                     .distinct()
                     .toList();
 
-            Map<String, String> vars = createVariablesExtractorAgent(chatModel, planningContext)
-                    .extractVariables(request, variableNames);
+            Map<String, String> vars =
+                    createVariablesExtractorAgent(chatModel, planningContext).extractVariables(request, variableNames);
             LOG.info("Variables extracted from user's prompt: {}", vars);
             vars.forEach(planningContext.agenticScope()::writeState);
         }
@@ -139,8 +140,10 @@ public class P2PPlanner implements Planner {
 
         AgentActivator(AgentInstance agent) {
             this.agent = agent;
-            this.argumentNames =
-                    agent.arguments().stream().map(AgentArgument::name).toList();
+            this.argumentNames = agent.arguments().stream()
+                    .map(AgentArgument::name)
+                    .filter(name -> !FRAMEWORK_PROVIDED_ARGUMENTS.contains(name))
+                    .toList();
         }
 
         private AgentInstance agent() {

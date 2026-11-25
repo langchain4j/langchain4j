@@ -26,11 +26,21 @@ public class DependencyGraphSearch {
      */
     public static class Node {
         private final String id;
-        private final Set<Node> inputNodes = new HashSet<>();      // Required input nodes
-        private final List<Node> outputNodes = new ArrayList<>();  // Nodes this feeds into
+        private final Object identity;
+        private final Set<Node> inputNodes = new HashSet<>(); // Required input nodes
+        private final List<Node> outputNodes = new ArrayList<>(); // Nodes this feeds into
 
         public Node(String id) {
+            this(id, id);
+        }
+
+        private Node(String id, Object identity) {
             this.id = id;
+            this.identity = identity;
+        }
+
+        static Node startNode(String label) {
+            return new Node(label, new Object());
         }
 
         private void addInput(Node input) {
@@ -39,7 +49,7 @@ public class DependencyGraphSearch {
 
         public void addOutput(Node output) {
             outputNodes.add(output);
-            output.addInput(this);  // Automatically set up bidirectional relationship
+            output.addInput(this); // Automatically set up bidirectional relationship
         }
 
         public Set<Node> getInputNodes() {
@@ -58,12 +68,12 @@ public class DependencyGraphSearch {
         public boolean equals(Object o) {
             if (this == o) return true;
             if (!(o instanceof final Node node)) return false;
-            return id.equals(node.id);
+            return identity.equals(node.identity);
         }
 
         @Override
         public int hashCode() {
-            return id.hashCode();
+            return identity.hashCode();
         }
 
         @Override
@@ -150,7 +160,8 @@ public class DependencyGraphSearch {
         // Initial state: all start nodes are already activated
         Set<Node> initialActivated = new HashSet<>(startNodes);
         // Use first start node as current (arbitrary choice since all are active)
-        SearchState initialState = new SearchState(initialActivated, startNodes.iterator().next(), 0);
+        SearchState initialState =
+                new SearchState(initialActivated, startNodes.iterator().next(), 0);
 
         PriorityQueue<StateScore> openSet = new PriorityQueue<>();
         Set<SearchState> visited = new HashSet<>();

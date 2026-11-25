@@ -1,14 +1,19 @@
 package dev.langchain4j.agentic.patterns.goap;
 
+import static dev.langchain4j.agentic.internal.AgentUtil.FRAMEWORK_PROVIDED_ARGUMENTS;
+
 import dev.langchain4j.agentic.patterns.goap.DependencyGraphSearch.Node;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,6 +23,7 @@ public class GoalOrientedSearchGraph {
 
     private record NodePair(Node input, Node output) {}
 
+    private final Node frameworkArguments = Node.startNode("framework arguments");
     private final Map<String, Node> nodes = new HashMap<>();
     private final Map<NodePair, AgentInstance> edges = new HashMap<>();
 
@@ -29,7 +35,10 @@ public class GoalOrientedSearchGraph {
         for (AgentInstance agent : agents) {
             List<Node> inputs = agent.arguments().stream()
                     .map(AgentArgument::name)
-                    .map(arg -> nodes.computeIfAbsent(arg, Node::new))
+                    .map(name -> FRAMEWORK_PROVIDED_ARGUMENTS.contains(name)
+                            ? frameworkArguments
+                            : nodes.computeIfAbsent(name, Node::new))
+                    .distinct()
                     .toList();
             Node output = nodes.computeIfAbsent(agent.outputKey(), Node::new);
 
@@ -46,9 +55,14 @@ public class GoalOrientedSearchGraph {
             // no agent produces the goal
             return List.of();
         }
-        List<Node> nodesPath = DependencyGraphSearch.search(
-                goalNode,
-                preconditions.stream().map(nodes::get).filter(Objects::nonNull).toList());
+        Set<Node> startNodes = preconditions.stream()
+                .map(nodes::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (!frameworkArguments.getOutputNodes().isEmpty()) {
+            startNodes.add(frameworkArguments);
+        }
+        List<Node> nodesPath = DependencyGraphSearch.search(goalNode, startNodes);
 
         if (nodesPath == null) {
             return List.of();
@@ -58,7 +72,7 @@ public class GoalOrientedSearchGraph {
         List<AgentInstance> agentsPath = new ArrayList<>();
         for (int i = 1; i < nodesPath.size(); i++) {
             Node output = nodesPath.get(i);
-            if (preconditions.contains(output.getId())) {
+            if (startNodes.contains(output)) {
                 preconditionsCounter++;
                 continue;
             }
