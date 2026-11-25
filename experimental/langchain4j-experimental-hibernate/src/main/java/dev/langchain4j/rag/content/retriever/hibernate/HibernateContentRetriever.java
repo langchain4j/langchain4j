@@ -3,6 +3,8 @@ package dev.langchain4j.rag.content.retriever.hibernate;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 
@@ -10,7 +12,10 @@ import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ContentFilteredException;
+import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.Content;
@@ -45,6 +50,10 @@ import org.slf4j.LoggerFactory;
  * <br>
  * The entity model structure is automatically extracted from Hibernate's metamodel and provided
  * to the LLM to generate valid HQL queries.
+ * <br>
+ * If the LLM answers with no text, for example because the question cannot be answered by querying
+ * the entity model, no content is returned. If the answer is empty because it was cut off by the output
+ * token limit or blocked by a content filter, an exception is thrown.
  * <br>
  * Optionally, {@link #databaseStructure}, {@link #promptTemplate}, and {@link #maxRetries} can be specified
  * to customize the behavior. See the javadoc of the constructor for more details.
@@ -162,7 +171,17 @@ public class HibernateContentRetriever implements ContentRetriever {
             messages.add(UserMessage.from(previousErrorMessage));
         }
 
-        return chatModel.chat(messages).aiMessage().text();
+        ChatResponse response = chatModel.chat(messages);
+        String hqlQuery = response.aiMessage().text();
+        if (isNullOrBlank(hqlQuery) && response.finishReason() == LENGTH) {
+            throw new LangChain4jException("The model returned no HQL query because its answer was cut off by the "
+                    + "output token limit (finish reason: LENGTH). Give the chat model a higher output token limit.");
+        }
+        if (isNullOrBlank(hqlQuery) && response.finishReason() == CONTENT_FILTER) {
+            throw new ContentFilteredException("The model returned no HQL query because its answer was blocked by "
+                    + "a content filter (finish reason: CONTENT_FILTER).");
+        }
+        return hqlQuery;
     }
 
     protected Prompt createSystemPrompt() {
