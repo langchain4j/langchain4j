@@ -6,6 +6,7 @@ import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledIfSystemProperty;
 
 class JitLLMChatModelBuilderTest {
 
@@ -29,6 +30,7 @@ class JitLLMChatModelBuilderTest {
     }
 
     @Test
+    @DisabledIfSystemProperty(named = "use.tornadovm", matches = "true")
     void should_fail_when_on_gpu_is_requested_without_tornadovm() {
         assertThatThrownBy(() -> JitLLMChatModel.builder()
                         .modelPath(MODEL_PATH)
@@ -42,8 +44,9 @@ class JitLLMChatModelBuilderTest {
     void should_fail_when_default_request_parameters_are_not_supported() {
         assertThatThrownBy(() -> JitLLMStreamingChatModel.builder()
                         .modelPath(MODEL_PATH)
-                        .defaultRequestParameters(
-                                ChatRequestParameters.builder().modelName("other").build())
+                        .defaultRequestParameters(ChatRequestParameters.builder()
+                                .modelName("other")
+                                .build())
                         .build())
                 .isExactlyInstanceOf(UnsupportedFeatureException.class)
                 .hasMessageContaining("modelName");

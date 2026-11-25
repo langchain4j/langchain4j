@@ -2,6 +2,11 @@
 # on every supported JDK and is not supplied by the SDK's own flags.
 --add-modules
 jdk.incubator.vector
+# TornadoVM 8.x binds its tornado.unittests module, which brings the SDK's JUnit Platform and Jupiter engine
+# into the boot layer as named modules. Resolve Jupiter's params module from the SDK as well, so that the whole
+# JUnit stack comes from one place instead of a classpath copy that cannot read the SDK modules' internals.
+--add-modules
+org.junit.jupiter.params
 -Xms20g
 -Xmx20g
 -Djdk.module.showModuleResolution=false
