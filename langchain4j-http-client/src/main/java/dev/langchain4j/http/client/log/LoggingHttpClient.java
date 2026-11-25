@@ -1,5 +1,12 @@
 package dev.langchain4j.http.client.log;
 
+import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
+import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
+import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
+import static dev.langchain4j.internal.InternalFlowUtils.failedPublisher;
+import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.http.client.HttpClient;
@@ -11,18 +18,10 @@ import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventContext;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
-
-import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
-import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
-import static dev.langchain4j.internal.Exceptions.restoreInterruptIfInterrupted;
-import static dev.langchain4j.internal.InternalFlowUtils.failedPublisher;
-import static dev.langchain4j.internal.Utils.getOrDefault;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * An {@link HttpClient} decorator that logs requests and responses.
@@ -44,36 +43,57 @@ public class LoggingHttpClient implements HttpClient {
 
     private static final Logger DEFAULT_LOG = LoggerFactory.getLogger(LoggingHttpClient.class);
 
+    /**
+     * When this system property is {@code true}, request and response bodies are logged in full
+     * (secret fields still masked) unless a constructor explicitly sets {@code logPayloads}.
+     */
+    public static final String LOG_PAYLOADS_PROPERTY = "langchain4j.http.logPayloads";
+
     private final HttpClient delegateHttpClient;
     private final boolean logRequests;
     private final boolean logResponses;
+    private final boolean logPayloads;
     private final Logger log;
 
     public LoggingHttpClient(HttpClient delegateHttpClient, Boolean logRequests, Boolean logResponses) {
-        this.delegateHttpClient = ensureNotNull(delegateHttpClient, "delegateHttpClient");
-        this.logRequests = getOrDefault(logRequests, false);
-        this.logResponses = getOrDefault(logResponses, false);
-        this.log = DEFAULT_LOG;
+        this(delegateHttpClient, logRequests, logResponses, null, DEFAULT_LOG);
     }
 
     public LoggingHttpClient(HttpClient delegateHttpClient, Boolean logRequests, Boolean logResponses, Logger logger) {
+        this(delegateHttpClient, logRequests, logResponses, null, logger);
+    }
+
+    public LoggingHttpClient(
+            HttpClient delegateHttpClient,
+            Boolean logRequests,
+            Boolean logResponses,
+            Boolean logPayloads,
+            Logger logger) {
         this.delegateHttpClient = ensureNotNull(delegateHttpClient, "delegateHttpClient");
         this.logRequests = getOrDefault(logRequests, false);
         this.logResponses = getOrDefault(logResponses, false);
+        this.logPayloads = resolveLogPayloads(logPayloads);
         this.log = getOrDefault(logger, DEFAULT_LOG);
+    }
+
+    static boolean resolveLogPayloads(Boolean logPayloads) {
+        if (logPayloads != null) {
+            return logPayloads;
+        }
+        return Boolean.parseBoolean(System.getProperty(LOG_PAYLOADS_PROPERTY, "false"));
     }
 
     @Override
     public SuccessfulHttpResponse execute(HttpRequest request) throws HttpException {
 
         if (logRequests) {
-            HttpRequestLogger.log(log, request);
+            HttpRequestLogger.log(log, request, logPayloads);
         }
 
         SuccessfulHttpResponse response = delegateHttpClient.execute(request);
 
         if (logResponses) {
-            HttpResponseLogger.log(log, response);
+            HttpResponseLogger.log(log, response, logPayloads);
         }
 
         return response;
@@ -83,7 +103,7 @@ public class LoggingHttpClient implements HttpClient {
     public CompletableFuture<SuccessfulHttpResponse> executeAsync(HttpRequest request) {
         return failOnThrow(() -> {
             if (logRequests) {
-                HttpRequestLogger.log(log, request);
+                HttpRequestLogger.log(log, request, logPayloads);
             }
 
             CompletableFuture<SuccessfulHttpResponse> future = failOnThrow(
@@ -95,7 +115,7 @@ public class LoggingHttpClient implements HttpClient {
 
             CompletableFuture<SuccessfulHttpResponse> logged = future.whenComplete((response, throwable) -> {
                 if (response != null) {
-                    HttpResponseLogger.log(log, response);
+                    HttpResponseLogger.log(log, response, logPayloads);
                 }
             });
             propagateCancellation(logged, future);
@@ -107,7 +127,7 @@ public class LoggingHttpClient implements HttpClient {
     public void execute(HttpRequest request, ServerSentEventListener delegateListener) {
 
         if (logRequests) {
-            HttpRequestLogger.log(log, request);
+            HttpRequestLogger.log(log, request, logPayloads);
         }
 
         if (!logResponses) {
@@ -120,7 +140,7 @@ public class LoggingHttpClient implements HttpClient {
             @Override
             public void onOpen(SuccessfulHttpResponse response) {
                 if (logResponses) {
-                    HttpResponseLogger.log(log, response);
+                    HttpResponseLogger.log(log, response, logPayloads);
                 }
                 delegateListener.onOpen(response);
             }
@@ -157,7 +177,7 @@ public class LoggingHttpClient implements HttpClient {
     public void execute(HttpRequest request, ServerSentEventParser parser, ServerSentEventListener delegateListener) {
 
         if (logRequests) {
-            HttpRequestLogger.log(log, request);
+            HttpRequestLogger.log(log, request, logPayloads);
         }
 
         if (!logResponses) {
@@ -170,7 +190,7 @@ public class LoggingHttpClient implements HttpClient {
             @Override
             public void onOpen(SuccessfulHttpResponse response) {
                 if (logResponses) {
-                    HttpResponseLogger.log(log, response);
+                    HttpResponseLogger.log(log, response, logPayloads);
                 }
                 delegateListener.onOpen(response);
             }
@@ -217,8 +237,8 @@ public class LoggingHttpClient implements HttpClient {
         try {
             upstream = delegateHttpClient.stream(request, parser);
             if (upstream == null) {
-                throw new IllegalStateException(
-                        delegateHttpClient.getClass().getName() + ".stream(HttpRequest, ServerSentEventParser) returned null");
+                throw new IllegalStateException(delegateHttpClient.getClass().getName()
+                        + ".stream(HttpRequest, ServerSentEventParser) returned null");
             }
         } catch (Throwable error) {
             restoreInterruptIfInterrupted(error);
@@ -231,7 +251,7 @@ public class LoggingHttpClient implements HttpClient {
             public void subscribe(Flow.Subscriber<? super HttpStreamingEvent> downstream) {
 
                 if (logRequests) {
-                    HttpRequestLogger.log(log, request);
+                    HttpRequestLogger.log(log, request, logPayloads);
                 }
 
                 if (!logResponses) {
@@ -249,7 +269,7 @@ public class LoggingHttpClient implements HttpClient {
                     @Override
                     public void onNext(HttpStreamingEvent event) {
                         if (event instanceof HttpResponseReceived responseReceived) {
-                            HttpResponseLogger.log(log, responseReceived.response());
+                            HttpResponseLogger.log(log, responseReceived.response(), logPayloads);
                         } else if (event instanceof ServerSentEvent sse) {
                             log.debug("{}", sse);
                         }

@@ -1,5 +1,14 @@
 package dev.langchain4j.http.client.log;
 
+import static dev.langchain4j.http.client.HttpMethod.GET;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockingDetails;
+import static org.mockito.Mockito.when;
+
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.http.client.MockHttpClient;
@@ -9,25 +18,18 @@ import dev.langchain4j.http.client.sse.HttpStreamingEvent;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.http.client.sse.ServerSentEventParser;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.slf4j.Logger;
-
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Flow;
-
-import static dev.langchain4j.http.client.HttpMethod.GET;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.mockingDetails;
+import java.util.stream.Collectors;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.slf4j.Logger;
 
 class LoggingHttpClientTest {
 
@@ -88,8 +90,9 @@ class LoggingHttpClientTest {
 
         client.executeAsync(REQUEST).cancel(true);
 
-        assertThat(delegate.pendingResponses()).singleElement().satisfies(call -> assertThat(call)
-                .isCancelled());
+        assertThat(delegate.pendingResponses())
+                .singleElement()
+                .satisfies(call -> assertThat(call).isCancelled());
     }
 
     @Test
@@ -254,6 +257,49 @@ class LoggingHttpClientTest {
         return received;
     }
 
+    @Test
+    void execute_redacts_bodies_by_default_and_logs_them_when_logPayloads_is_true() {
+        String requestBody = "{\"prompt\":\"PRIVATE_PROMPT\"}";
+        String responseBody = "{\"content\":\"PRIVATE_COMPLETION\"}";
+        HttpRequest request = HttpRequest.builder()
+                .method(GET)
+                .url("http://localhost/x?api_key=URL_SECRET")
+                .body(requestBody)
+                .build();
+        SuccessfulHttpResponse response = SuccessfulHttpResponse.builder()
+                .statusCode(200)
+                .headers(Map.of("Content-Type", List.of("application/json")))
+                .body(responseBody)
+                .build();
+        MockHttpClient delegate = MockHttpClient.thatAlwaysResponds(response);
+
+        Logger redactedLog = mock(Logger.class);
+        new LoggingHttpClient(delegate, true, true, false, redactedLog).execute(request);
+        String redacted = invocationArguments(redactedLog);
+        assertThat(redacted)
+                .doesNotContain("PRIVATE_PROMPT")
+                .doesNotContain("PRIVATE_COMPLETION")
+                .doesNotContain("URL_SECRET")
+                .contains("<" + requestBody.getBytes(StandardCharsets.UTF_8).length + " bytes>")
+                .contains("<" + responseBody.getBytes(StandardCharsets.UTF_8).length + " bytes>");
+
+        Logger fullLog = mock(Logger.class);
+        new LoggingHttpClient(delegate, true, true, true, fullLog).execute(request);
+        String full = invocationArguments(fullLog);
+        assertThat(full)
+                .contains("PRIVATE_PROMPT")
+                .contains("PRIVATE_COMPLETION")
+                .doesNotContain("URL_SECRET")
+                .contains("api_key=");
+    }
+
+    private static String invocationArguments(Logger log) {
+        return mockingDetails(log).getInvocations().stream()
+                .flatMap(invocation -> Arrays.stream(invocation.getArguments()))
+                .map(String::valueOf)
+                .collect(Collectors.joining("\n"));
+    }
+
     private static long requestLogCount(Logger log) {
         return infoCount(log, "HTTP request:");
     }
@@ -384,7 +430,8 @@ class LoggingHttpClientTest {
         when(throwing.executeAsync(any())).thenThrow(failure);
         HttpClient returningNull = mock(HttpClient.class);
         when(returningNull.executeAsync(any())).thenReturn(null);
-        HttpRequest request = HttpRequest.builder().method(GET).url("http://localhost/test").build();
+        HttpRequest request =
+                HttpRequest.builder().method(GET).url("http://localhost/test").build();
 
         assertThat(new LoggingHttpClient(throwing, true, true).executeAsync(request))
                 .failsWithin(5, SECONDS)
@@ -404,33 +451,34 @@ class LoggingHttpClientTest {
         HttpClient throwing = mock(HttpClient.class);
         IllegalArgumentException failure = new IllegalArgumentException("invalid url");
         when(throwing.stream(any(), any())).thenThrow(failure);
-        HttpRequest request = HttpRequest.builder().method(GET).url("http://localhost/test").build();
+        HttpRequest request =
+                HttpRequest.builder().method(GET).url("http://localhost/test").build();
         List<Object> signals = new ArrayList<>();
 
         new LoggingHttpClient(throwing, true, true)
                 .stream(request, mock(ServerSentEventParser.class))
-                .subscribe(new Flow.Subscriber<HttpStreamingEvent>() {
+                        .subscribe(new Flow.Subscriber<HttpStreamingEvent>() {
 
-                    @Override
-                    public void onSubscribe(Flow.Subscription subscription) {
-                        signals.add("onSubscribe");
-                    }
+                            @Override
+                            public void onSubscribe(Flow.Subscription subscription) {
+                                signals.add("onSubscribe");
+                            }
 
-                    @Override
-                    public void onNext(HttpStreamingEvent event) {
-                        signals.add(event);
-                    }
+                            @Override
+                            public void onNext(HttpStreamingEvent event) {
+                                signals.add(event);
+                            }
 
-                    @Override
-                    public void onError(Throwable throwable) {
-                        signals.add(throwable);
-                    }
+                            @Override
+                            public void onError(Throwable throwable) {
+                                signals.add(throwable);
+                            }
 
-                    @Override
-                    public void onComplete() {
-                        signals.add("onComplete");
-                    }
-                });
+                            @Override
+                            public void onComplete() {
+                                signals.add("onComplete");
+                            }
+                        });
 
         assertThat(signals).containsExactly("onSubscribe", failure);
     }
