@@ -11,17 +11,17 @@ import static dev.langchain4j.model.ollama.OllamaImage.LLAMA_3_1;
 
 class OllamaAiServiceWithToolsIT extends AbstractOllamaToolsLanguageModelInfrastructure {
 
-    ChatModel model = OllamaChatModel.builder()
-            .baseUrl(ollamaBaseUrl(ollama))
-            .modelName(LLAMA_3_1)
-            .temperature(0.0)
-            .logRequests(true)
-            .logResponses(true)
-            .build();
-
     @Override
     protected List<ChatModel> models() {
-        return List.of(model);
+        // built here, not in a field: with the PER_CLASS lifecycle the test instance is created before the
+        // container is started in @BeforeAll
+        return List.of(OllamaChatModel.builder()
+                .baseUrl(ollamaBaseUrl(ollama))
+                .modelName(LLAMA_3_1)
+                .temperature(0.0)
+                .logRequests(true)
+                .logResponses(true)
+                .build());
     }
 
     @Override

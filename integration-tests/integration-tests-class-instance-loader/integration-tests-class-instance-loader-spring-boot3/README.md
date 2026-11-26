@@ -1,0 +1,1 @@
+Runs the app and tests of [integration-tests-class-instance-loader-spring](../integration-tests-class-instance-loader-spring) on Spring Boot 3, so that the [`ClassInstanceLoader`](../../../langchain4j-core/src/main/java/dev/langchain4j/classinstance/ClassInstanceLoader.java) is tested with both Spring Boot lines.

@@ -4,19 +4,30 @@ import dev.langchain4j.Internal;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
+import java.util.ListIterator;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
+/**
+ * Composes several {@link AgentListener}s into one, notifying them in a defined order: the callbacks that open a scope
+ * ({@code beforeAgentInvocation}, {@code beforeAgentToolExecution}, {@code afterAgenticScopeCreated}) and the events
+ * notified within it notify the listeners in the order they were registered, inherited listeners first, while the
+ * callbacks that close a scope ({@code afterAgentInvocation}, {@code onAgentInvocationError},
+ * {@code afterAgentToolExecution}, {@code beforeAgenticScopeDestroyed}, {@code onAgenticSystemSuspended}) notify them in
+ * the reverse order. This way the listeners nest like interceptors: a listener that makes a context current in
+ * {@code beforeAgentInvocation} and restores the previous one in {@code afterAgentInvocation} gives every listener
+ * registered after it that same context in both callbacks.
+ */
 @Internal
 public class ComposedAgentListener implements AgentListener {
 
-    private final Set<AgentListener> listeners;
+    private final List<AgentListener> listeners;
 
     private ComposedAgentListener(List<AgentListener> listeners) {
-        this.listeners = new HashSet<>(listeners);
+        this.listeners = listeners.stream().distinct().collect(Collectors.toCollection(ArrayList::new));
     }
 
     public ComposedAgentListener(AgentListener... listeners) {
@@ -40,9 +51,17 @@ public class ComposedAgentListener implements AgentListener {
 
     public void addListener(AgentListener listener) {
         if (listener instanceof ComposedAgentListener composed) {
-            this.listeners.addAll(composed.listeners);
+            for (AgentListener composedListener : composed.listeners) {
+                addIfAbsent(composedListener);
+            }
         } else {
-            this.listeners.add(listener);
+            addIfAbsent(listener);
+        }
+    }
+
+    private void addIfAbsent(AgentListener listener) {
+        if (!listeners.contains(listener)) {
+            listeners.add(listener);
         }
     }
 
@@ -57,12 +76,12 @@ public class ComposedAgentListener implements AgentListener {
 
     @Override
     public void afterAgentInvocation(final AgentResponse agentResponse) {
-        notifyEach(listener -> listener.afterAgentInvocation(agentResponse));
+        notifyEachInReverse(listener -> listener.afterAgentInvocation(agentResponse));
     }
 
     @Override
     public void onAgentInvocationError(final AgentInvocationError agentInvocationError) {
-        notifyEach(listener -> listener.onAgentInvocationError(agentInvocationError));
+        notifyEachInReverse(listener -> listener.onAgentInvocationError(agentInvocationError));
     }
 
     @Override
@@ -72,7 +91,7 @@ public class ComposedAgentListener implements AgentListener {
 
     @Override
     public void afterAgentToolExecution(AfterAgentToolExecution afterAgentToolExecution) {
-        notifyEach(listener -> listener.afterAgentToolExecution(afterAgentToolExecution));
+        notifyEachInReverse(listener -> listener.afterAgentToolExecution(afterAgentToolExecution));
     }
 
     @Override
@@ -97,24 +116,47 @@ public class ComposedAgentListener implements AgentListener {
 
     @Override
     public void beforeAgenticScopeDestroyed(final AgenticScope agenticScope) {
-        notifyEach(listener -> listener.beforeAgenticScopeDestroyed(agenticScope));
+        notifyEachInReverse(listener -> listener.beforeAgenticScopeDestroyed(agenticScope));
     }
 
     @Override
     public void onAgenticSystemSuspended(final AgenticScope agenticScope) {
-        notifyEach(listener -> listener.onAgenticSystemSuspended(agenticScope));
+        notifyEachInReverse(listener -> listener.onAgenticSystemSuspended(agenticScope));
+    }
+
+    private void notifyEach(Consumer<AgentListener> notification) {
+        notifyEach(listeners.iterator(), notification);
+    }
+
+    private void notifyEachInReverse(Consumer<AgentListener> notification) {
+        notifyEach(reverseIterator(), notification);
+    }
+
+    private Iterator<AgentListener> reverseIterator() {
+        ListIterator<AgentListener> iterator = listeners.listIterator(listeners.size());
+        return new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return iterator.hasPrevious();
+            }
+
+            @Override
+            public AgentListener next() {
+                return iterator.previous();
+            }
+        };
     }
 
     /**
-     * Notifies every composed listener, even when one of them throws: a failing listener must not keep the others,
-     * which may depend on the notification (e.g. to propagate a context), from being notified. Since the listeners are
-     * kept in a {@link HashSet}, their order is not deterministic, so without this a listener that throws would skip a
-     * different set of listeners from one run to the next. The first failure is rethrown once all the listeners have
-     * been notified, with any further ones added to it as suppressed exceptions.
+     * Notifies every given listener, in order, even when one of them throws: a failing listener must not keep the
+     * others, which may depend on the notification (e.g. to propagate a context), from being notified. The first
+     * failure is rethrown once all the listeners have been notified, with any further ones added to it as suppressed
+     * exceptions.
      */
-    private void notifyEach(Consumer<AgentListener> notification) {
+    private static void notifyEach(Iterator<AgentListener> listeners, Consumer<AgentListener> notification) {
         RuntimeException failure = null;
-        for (AgentListener listener : listeners) {
+        while (listeners.hasNext()) {
+            AgentListener listener = listeners.next();
             try {
                 notification.accept(listener);
             } catch (RuntimeException e) {

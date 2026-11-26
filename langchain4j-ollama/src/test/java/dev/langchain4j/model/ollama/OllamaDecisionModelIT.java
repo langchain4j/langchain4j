@@ -9,6 +9,7 @@ import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
 import dev.langchain4j.model.decision.DecisionModel;
 import dev.langchain4j.model.decision.common.AbstractDecisionModelIT;
 import dev.langchain4j.model.decision.listener.DecisionModelListener;
+import org.junit.jupiter.api.AfterAll;
 
 class OllamaDecisionModelIT extends AbstractDecisionModelIT {
 
@@ -21,6 +22,13 @@ class OllamaDecisionModelIT extends AbstractDecisionModelIT {
                     .withModel(TEV1);
             ollama.start();
             ollama.commitToImage(localOllamaImage);
+        }
+    }
+
+    @AfterAll
+    static void stopOllama() {
+        if (ollama != null) {
+            ollama.stop();
         }
     }
 

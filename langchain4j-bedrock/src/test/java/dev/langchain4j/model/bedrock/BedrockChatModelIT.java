@@ -45,8 +45,7 @@ class BedrockChatModelIT {
         ChatModel model =
                 BedrockChatModel.builder().modelId("us.amazon.nova-lite-v1:0").build();
         UserMessage msg = UserMessage.from(
-                PdfFileContent.from(
-                        Paths.get("src/test/resources/gemini-doc-snapshot.pdf").toUri()),
+                PdfFileContent.from(Paths.get("src/test/resources/gemini-doc-snapshot.pdf")),
                 TextContent.from("Provide a summary of the document"));
 
         // when
