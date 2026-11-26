@@ -288,7 +288,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         agentId();
 
         Object agent;
-        if (agentServiceClass.isInterface()) {
+        if (agentInstanceFactory == null) {
             agent = Proxy.newProxyInstance(
                     agentServiceClass.getClassLoader(),
                     new Class<?>[] {agentServiceClass, A2AClientInstance.class},

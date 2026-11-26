@@ -194,7 +194,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         this.arguments = localArguments();
 
         Object agent;
-        if (agentServiceClass.isInterface()) {
+        if (agentInstanceFactory == null) {
             agent = Proxy.newProxyInstance(
                     agentServiceClass.getClassLoader(),
                     new Class<?>[] {agentServiceClass, McpClientInstance.class},

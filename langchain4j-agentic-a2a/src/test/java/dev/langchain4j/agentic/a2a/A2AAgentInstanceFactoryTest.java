@@ -318,6 +318,26 @@ class A2AAgentInstanceFactoryTest {
         }
     }
 
+    /** What a factory set on the builder of an agent interface creates: an implementation forwarding in the same way. */
+    static class GeneratedInterfaceFixer implements InterfaceFixer, ForwardingA2AClientAgent {
+
+        private final InternalAgent agent;
+
+        GeneratedInterfaceFixer(InternalAgent agent) {
+            this.agent = agent;
+        }
+
+        @Override
+        public InternalAgent agent() {
+            return agent;
+        }
+
+        @Override
+        public String applyFix(String analysis) {
+            return forward(InterfaceFixer.class, "applyFix", analysis);
+        }
+    }
+
     /** The types of the agents that the factory was asked to create. */
     private final List<Class<?>> factoryCalls = new ArrayList<>();
 
@@ -462,5 +482,19 @@ class A2AAgentInstanceFactoryTest {
         assertThat(fixer).isInstanceOf(InterfaceFixer.class);
 
         assertThat(sequence.fix("a broken build")).isEqualTo("fixed");
+    }
+
+    @Test
+    void interface_based_a2a_agent_is_created_by_an_agent_instance_factory_set_on_its_builder() {
+        // unlike the factory of a configurator, which all the agents of an integration share, this one is set for
+        // this agent, so the builder uses it as the builders of the other agents do
+        InterfaceFixer fixer = AgenticServices.a2aBuilder(
+                        A2ALazyAgentCardTest.UNREACHABLE_A2A_SERVER_URL, InterfaceFixer.class)
+                .agentInstanceFactory(GeneratedInterfaceFixer::new)
+                .build();
+
+        assertThat(fixer).isInstanceOf(GeneratedInterfaceFixer.class);
+        assertThat(fixer.applyFix("a broken build")).isEqualTo("fixed");
+        verify(remoteFixer.client).sendMessage(any(Message.class), anyList(), any(), any());
     }
 }

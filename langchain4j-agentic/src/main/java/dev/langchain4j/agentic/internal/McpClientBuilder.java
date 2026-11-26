@@ -119,10 +119,12 @@ public interface McpClientBuilder<T> {
     McpClientBuilder<T> resolutionTimeout(Duration resolutionTimeout);
 
     /**
-     * Sets the factory creating the object that represents a typed agent whose type is a class, like the one that an
-     * integration sets as the {@code agentInstanceFactory} of an {@code AgentConfigurator}. Without it the type of the
-     * agent must be an interface, and {@link #build()} fails with an {@code IllegalArgumentException} for a class.
-     * The factory is called only for a class: an agent whose type is an interface is always a JDK proxy.
+     * Sets the factory creating the object that represents the agent, in place of the JDK proxy that {@link #build()}
+     * creates without it. It is the only way to create an agent whose type is a class: without a factory the type of
+     * the agent must be an interface, and {@link #build()} fails with an {@code IllegalArgumentException} for a class.
+     * A factory that is set is used whatever the type of the agent, as by the builders of the other agents, while a
+     * declarative agent is given the {@code agentInstanceFactory} of the {@code AgentConfigurator} only when its type
+     * is a class, so that one whose type is an interface is still a JDK proxy.
      * <p>
      * The factory receives the agent as an {@link InternalAgent} that is also an {@link InvocationHandler}, and
      * {@link #build()} fails with an {@code AgenticSystemConfigurationException} unless the object it returns is an
@@ -142,8 +144,8 @@ public interface McpClientBuilder<T> {
     McpClientBuilder<T> agentInstanceFactory(@Nullable Function<InternalAgent, Object> factory);
 
     /**
-     * Builds the MCP client agent: a proxy implementing the agent service interface or, when the type of the agent is
-     * a class, the object created by the {@link #agentInstanceFactory(Function) agent instance factory}.
+     * Builds the MCP client agent: the object created by the {@link #agentInstanceFactory(Function) agent instance
+     * factory} when one is set, otherwise a proxy implementing the agent service interface.
      *
      * @return the agent instance
      */

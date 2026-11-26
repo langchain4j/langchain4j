@@ -1137,8 +1137,12 @@ public class AgenticServices {
                         .map(AgentInvoker::parameterName)
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
-                .async(a2aClient.async())
-                .agentInstanceFactory(agentConfigurator.agentInstanceFactory());
+                .async(a2aClient.async());
+        // The factory of the configurator is the one of all the agents of an integration, which is not expected to
+        // know an agent that can be a JDK proxy: it is passed on only for a class, which cannot be created without it
+        if (!agentServiceClass.isInterface()) {
+            a2aClientBuilder.agentInstanceFactory(agentConfigurator.agentInstanceFactory());
+        }
         if (a2aClient.resolutionTimeoutSeconds() != -1) {
             a2aClientBuilder.resolutionTimeout(Duration.ofSeconds(a2aClient.resolutionTimeoutSeconds()));
         }
@@ -1212,8 +1216,9 @@ public class AgenticServices {
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(mcpAgent.outputKey(), mcpAgent.typedOutputKey()))
                 .async(mcpAgent.async());
-        // Set only when there is one, so that a builder compiled before this method was added keeps working without
-        if (agentConfigurator.agentInstanceFactory() != null) {
+        // Only for a class, as for an A2A client agent, so that a builder compiled before this method was added keeps
+        // working for an interface, also when the integration sets a factory
+        if (!agentServiceClass.isInterface()) {
             mcpClientBuilder.agentInstanceFactory(agentConfigurator.agentInstanceFactory());
         }
         if (mcpAgent.resolutionTimeoutSeconds() != -1) {

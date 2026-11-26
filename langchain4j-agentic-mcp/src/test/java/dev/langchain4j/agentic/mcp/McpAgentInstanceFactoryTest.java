@@ -315,6 +315,26 @@ class McpAgentInstanceFactoryTest {
         }
     }
 
+    /** What a factory set on the builder of an agent interface creates: an implementation forwarding in the same way. */
+    static class GeneratedInterfaceGreeter implements InterfaceGreeter, ForwardingMcpClientAgent {
+
+        private final InternalAgent agent;
+
+        GeneratedInterfaceGreeter(InternalAgent agent) {
+            this.agent = agent;
+        }
+
+        @Override
+        public InternalAgent agent() {
+            return agent;
+        }
+
+        @Override
+        public String greet(String name) {
+            return forward(InterfaceGreeter.class, "greet", name);
+        }
+    }
+
     /** The types of the agents that the factory was asked to create. */
     private final List<Class<?>> factoryCalls = new ArrayList<>();
 
@@ -461,5 +481,18 @@ class McpAgentInstanceFactoryTest {
         assertThat(greeter).isInstanceOf(InterfaceGreeter.class);
 
         assertThat(sequence.greet("Mario")).isEqualTo("Hello, Mario!");
+    }
+
+    @Test
+    void interface_based_mcp_agent_is_created_by_an_agent_instance_factory_set_on_its_builder() {
+        // unlike the factory of a configurator, which all the agents of an integration share, this one is set for
+        // this agent, so the builder uses it as the builders of the other agents do
+        InterfaceGreeter greeter = McpAgent.builder(mcpClient, InterfaceGreeter.class)
+                .agentInstanceFactory(GeneratedInterfaceGreeter::new)
+                .build();
+
+        assertThat(greeter).isInstanceOf(GeneratedInterfaceGreeter.class);
+        assertThat(greeter.greet("Mario")).isEqualTo("Hello, Mario!");
+        verify(mcpClient).executeTool(any());
     }
 }
