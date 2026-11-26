@@ -5,7 +5,7 @@
     <parent>
         <groupId>dev.langchain4j</groupId>
         <artifactId>langchain4j-integration-tests-parent</artifactId>
-        <version>1.24.0-beta34</version>
+        <version>1.24.1-beta34</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
 
@@ -57,7 +57,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j</artifactId>
-            <version>1.24.0</version>
+            <version>1.24.1</version>
         </dependency>
 
         <dependency>
@@ -75,7 +75,7 @@
         <dependency>
             <groupId>dev.langchain4j</groupId>
             <artifactId>langchain4j-test</artifactId>
-            <version>1.24.0-beta34</version>
+            <version>1.24.1-beta34</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
