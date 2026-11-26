@@ -201,6 +201,22 @@ class ApachePdfBoxDocumentParserTest {
     }
 
     @Test
+    void should_fail_when_one_page_has_more_than_max_characters_also_when_limit_per_page_is_disabled()
+            throws IOException {
+        DocumentParser parser = ApachePdfBoxDocumentParser.builder()
+                .maxCharacters(10)
+                .maxCharactersPerPage(-1)
+                .build();
+        // the same character is drawn 20 times at the same position: PDFBox reads 20 characters, but returns one
+        String content = "(a) Tj" + " ET BT /F1 1 Tf 10 700 Td (a) Tj".repeat(19);
+        assertThat(textLength(pdfWithContent(content, null))).isLessThanOrEqualTo(10);
+
+        assertThatThrownBy(() -> parser.parse(pdfWithContent(content, null)))
+                .isExactlyInstanceOf(RuntimeException.class)
+                .hasMessageStartingWith("The text extracted from the PDF document has more than 10 characters");
+    }
+
+    @Test
     void should_parse_page_whose_glyphs_are_read_as_several_characters_within_limits() throws IOException {
         DocumentParser parser = ApachePdfBoxDocumentParser.builder()
                 .maxCharacters(-1)

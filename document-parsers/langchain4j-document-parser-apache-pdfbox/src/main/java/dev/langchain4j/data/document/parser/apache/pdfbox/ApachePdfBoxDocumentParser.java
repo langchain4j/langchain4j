@@ -37,7 +37,8 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
  * 100,000 characters from a single page:
  * <ul>
  *     <li>The limit per document counts the characters of the returned text,
- *     including the spaces and line breaks that PDFBox adds between words, lines and pages.</li>
+ *     including the spaces and line breaks that PDFBox adds between words, lines and pages.
+ *     A single page from which PDFBox reads more characters than this limit also exceeds it.</li>
  *     <li>The limit per page counts the characters of the page's text as PDFBox reads it,
  *     before it adds spaces and line breaks. Every character drawn on the page counts, also when it is drawn
  *     more than once at the same position.</li>
@@ -130,7 +131,7 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
     public Document parse(InputStream inputStream) {
         try (PDDocument pdfDocument = PDDocument.load(inputStream)) {
             LimitedWriter writer = new LimitedWriter(maxCharacters);
-            new LimitedTextStripper(maxCharactersPerPage).writeText(pdfDocument, writer);
+            new LimitedTextStripper(maxCharacters, maxCharactersPerPage).writeText(pdfDocument, writer);
             String text = writer.toString();
             if (isNullOrBlank(text)) {
                 throw new BlankDocumentException();
@@ -153,12 +154,20 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
         return metadata;
     }
 
+    private static RuntimeException maxCharactersExceeded(int maxCharacters) {
+        return new RuntimeException("The text extracted from the PDF document has more than " + maxCharacters
+                + " characters, which is the maximum this parser extracts. To parse it, set a higher limit "
+                + "with ApachePdfBoxDocumentParser.builder().maxCharacters(...), or -1 for no limit.");
+    }
+
     private static class LimitedTextStripper extends PDFTextStripper {
 
+        private final int maxCharacters;
         private final int maxCharactersPerPage;
         private long charactersOnPage;
 
-        private LimitedTextStripper(int maxCharactersPerPage) throws IOException {
+        private LimitedTextStripper(int maxCharacters, int maxCharactersPerPage) throws IOException {
+            this.maxCharacters = maxCharacters;
             this.maxCharactersPerPage = maxCharactersPerPage;
         }
 
@@ -177,6 +186,9 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
                         + maxCharactersPerPage + " characters, which is the maximum this parser extracts from a page. "
                         + "To parse it, set a higher limit with "
                         + "ApachePdfBoxDocumentParser.builder().maxCharactersPerPage(...), or -1 for no limit.");
+            }
+            if (maxCharacters != NO_LIMIT && charactersOnPage > maxCharacters) {
+                throw maxCharactersExceeded(maxCharacters);
             }
         }
     }
@@ -210,9 +222,7 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
 
         private void ensureCapacityFor(int length) {
             if (maxCharacters != NO_LIMIT && (long) text.length() + length > maxCharacters) {
-                throw new RuntimeException("The text extracted from the PDF document has more than " + maxCharacters
-                        + " characters, which is the maximum this parser extracts. To parse it, set a higher limit "
-                        + "with ApachePdfBoxDocumentParser.builder().maxCharacters(...), or -1 for no limit.");
+                throw maxCharactersExceeded(maxCharacters);
             }
         }
 
@@ -258,8 +268,10 @@ public class ApachePdfBoxDocumentParser implements DocumentParser {
         /**
          * Sets the maximum number of characters of text that the parser extracts from the whole document.
          * The count includes the spaces and line breaks that PDFBox adds between words, lines and pages.
-         * If the text of a document has more characters, {@link ApachePdfBoxDocumentParser#parse(InputStream)}
-         * throws a {@link RuntimeException}.
+         * If the text of a document has more characters, or if PDFBox reads more characters from a single page
+         * (counted as for {@link #maxCharactersPerPage(Integer)}),
+         * {@link ApachePdfBoxDocumentParser#parse(InputStream)} throws a {@link RuntimeException}.
+         * So this limit also bounds the memory needed for one page when the limit per page is turned off.
          *
          * @param maxCharacters the maximum number of characters, a positive number, or {@code -1} for no limit;
          *                      {@code null} means the default, 10,000,000
