@@ -1,22 +1,37 @@
 package dev.langchain4j.model.openaiofficial;
 
+import static com.openai.core.ObjectMappers.jsonMapper;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.openai.client.OpenAIClientAsync;
 import com.openai.client.OpenAIClientAsyncImpl;
 import com.openai.core.ClientOptions;
 import com.openai.core.RequestOptions;
+import com.openai.core.http.AsyncStreamResponse;
 import com.openai.core.http.Headers;
 import com.openai.core.http.HttpClient;
 import com.openai.core.http.HttpRequest;
 import com.openai.core.http.HttpResponse;
+import com.openai.models.chat.completions.ChatCompletionChunk;
+import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.chat.response.PartialResponse;
+import dev.langchain4j.model.chat.response.PartialResponseContext;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -48,6 +63,34 @@ class OpenAiOfficialStreamingChatModelTest {
         assertThat(handler.response.get().aiMessage().text()).isEqualTo("Paris");
     }
 
+    @Test
+    void should_pass_streaming_handle_to_partial_response_delivered_during_subscribe() {
+        AsyncStreamResponse<ChatCompletionChunk> asyncStreamResponse = streamDeliveredDuringSubscribe(
+                chunk("{\"role\":\"assistant\",\"content\":\"Paris\"}", null), chunk("{}", "\"stop\""));
+        RecordingHandler handler = new RecordingHandler(false);
+
+        modelWith(asyncStreamResponse).chat("Hello", handler);
+
+        assertThat(handler.error.get()).isNull();
+        assertThat(handler.streamingHandles).hasSize(1).doesNotContainNull();
+        assertThat(handler.response.get().aiMessage().text()).isEqualTo("Paris");
+    }
+
+    @Test
+    void should_cancel_from_partial_response_delivered_during_subscribe() {
+        AsyncStreamResponse<ChatCompletionChunk> asyncStreamResponse = streamDeliveredDuringSubscribe(
+                chunk("{\"role\":\"assistant\",\"content\":\"Paris\"}", null));
+        RecordingHandler handler = new RecordingHandler(true);
+
+        modelWith(asyncStreamResponse).chat("Hello", handler);
+
+        assertThat(handler.streamingHandles).hasSize(1);
+        assertThat(handler.streamingHandles.get(0).isCancelled()).isTrue();
+        verify(asyncStreamResponse).close();
+        assertThat(handler.error.get()).isNull();
+        assertThat(handler.response.get()).isNull();
+    }
+
     private static RecordingHandler streamWith(String sseBody) throws Exception {
         OpenAIClientAsync client = new OpenAIClientAsyncImpl(ClientOptions.builder()
                 .apiKey("test-key")
@@ -59,10 +102,36 @@ class OpenAiOfficialStreamingChatModelTest {
                 .modelName("gpt-4o-mini")
                 .build();
 
-        RecordingHandler handler = new RecordingHandler();
+        RecordingHandler handler = new RecordingHandler(false);
         model.chat("Hello", handler);
         assertThat(handler.done.await(30, TimeUnit.SECONDS)).isTrue();
         return handler;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static AsyncStreamResponse<ChatCompletionChunk> streamDeliveredDuringSubscribe(String... chunks) {
+        AsyncStreamResponse<ChatCompletionChunk> asyncStreamResponse = mock(AsyncStreamResponse.class);
+        when(asyncStreamResponse.subscribe(any())).thenAnswer(invocation -> {
+            AsyncStreamResponse.Handler<ChatCompletionChunk> handler = invocation.getArgument(0);
+            for (String chunk : chunks) {
+                handler.onNext(jsonMapper().readValue(chunk, ChatCompletionChunk.class));
+            }
+            handler.onComplete(Optional.empty());
+            return asyncStreamResponse;
+        });
+        return asyncStreamResponse;
+    }
+
+    private static OpenAiOfficialStreamingChatModel modelWith(
+            AsyncStreamResponse<ChatCompletionChunk> asyncStreamResponse) {
+        OpenAIClientAsync client = mock(OpenAIClientAsync.class, RETURNS_DEEP_STUBS);
+        when(client.chat().completions().createStreaming(any(ChatCompletionCreateParams.class)))
+                .thenReturn(asyncStreamResponse);
+
+        return OpenAiOfficialStreamingChatModel.builder()
+                .openAIClientAsync(client)
+                .modelName("gpt-4o-mini")
+                .build();
     }
 
     private static String chunk(String delta, String finishReason) {
@@ -81,12 +150,23 @@ class OpenAiOfficialStreamingChatModelTest {
 
     private static class RecordingHandler implements StreamingChatResponseHandler {
 
+        private final boolean cancelOnPartialResponse;
         private final CountDownLatch done = new CountDownLatch(1);
+        private final List<StreamingHandle> streamingHandles = new CopyOnWriteArrayList<>();
         private final AtomicReference<ChatResponse> response = new AtomicReference<>();
         private final AtomicReference<Throwable> error = new AtomicReference<>();
 
+        RecordingHandler(boolean cancelOnPartialResponse) {
+            this.cancelOnPartialResponse = cancelOnPartialResponse;
+        }
+
         @Override
-        public void onPartialResponse(String partialResponse) {}
+        public void onPartialResponse(PartialResponse partialResponse, PartialResponseContext context) {
+            streamingHandles.add(context.streamingHandle());
+            if (cancelOnPartialResponse) {
+                context.streamingHandle().cancel();
+            }
+        }
 
         @Override
         public void onCompleteResponse(ChatResponse completeResponse) {
