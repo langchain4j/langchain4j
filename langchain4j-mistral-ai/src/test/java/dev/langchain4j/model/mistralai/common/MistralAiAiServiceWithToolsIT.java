@@ -41,6 +41,11 @@ class MistralAiAiServiceWithToolsIT extends AbstractAiServiceWithToolsIT {
     }
 
     @Override
+    @Disabled("Mistral is too strict and expects assistant message after tool message")
+    protected void should_keep_memory_consistent_when_a_tool_error_ends_the_invocation(ChatModel model) {
+    }
+
+    @Override
     protected String adaptPrompt1(String prompt) {
         // without this, Mistral calls both tools in a single parallel batch, guessing the result of the first one
         return prompt + ALWAYS_USE_AVAILABLE_TOOLS_TO_CALCULATE_THE_ANSWER + CALL_ONE_TOOL_AT_A_TIME;
