@@ -25,11 +25,15 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 
 /**
- * The tests of this class run in parallel (see junit-platform.properties) and share one Spring context.
+ * The tests of this class run in parallel with each other (see junit-platform.properties) and share one Spring
+ * context.
+ * <p>
+ * {@code @Execution(CONCURRENT)} is on the test methods, not on the class: on the class, it would also run this class
+ * at the same time as the other test classes, and Spring Boot applications that start at the same time can fail
+ * while they initialize Logback.
  */
 @SpringBootTest
 @Import(TestModels.class)
-@Execution(ExecutionMode.CONCURRENT)
 class ParallelCaptureTest {
 
     @Autowired
@@ -39,6 +43,7 @@ class ParallelCaptureTest {
     StreamingSupportAssistant streamingSupportAssistant;
 
     @RepeatedTest(10)
+    @Execution(ExecutionMode.CONCURRENT)
     void parallel_tests_capture_only_their_own_invocations(RepetitionInfo repetition) {
         String bookingNumber = "MS-P" + repetition.getCurrentRepetition();
 
@@ -51,6 +56,7 @@ class ParallelCaptureTest {
     }
 
     @RepeatedTest(5)
+    @Execution(ExecutionMode.CONCURRENT)
     void parallel_streaming_tests_capture_only_their_own_invocations() {
         AiServiceInvocation invocation =
                 capture(() -> streamingSupportAssistant.chat("Hi").ignoreErrors().start()).invocation();
@@ -59,6 +65,7 @@ class ParallelCaptureTest {
     }
 
     @Test
+    @Execution(ExecutionMode.CONCURRENT)
     void recordings_on_many_threads_at_once_do_not_see_each_other() throws Exception {
         int threads = 16;
         ExecutorService executor = Executors.newFixedThreadPool(threads);
