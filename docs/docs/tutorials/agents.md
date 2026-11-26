@@ -4380,6 +4380,42 @@ the agent's resolution timeout. A successful card is cached; this does not refre
 invocation. A `null` supplier, or a supplier/method returning `null` or an empty map, adds no headers. These headers
 apply only to card discovery; configure authentication for A2A messages separately through `clientCustomizer`.
 
+### Configuring every A2A client
+
+To apply the same configuration to all the A2A client agents of an application, including declarative ones, implement
+`A2AClientConfigurator` and register it with the `ServiceLoader`, in
+`META-INF/services/dev.langchain4j.agentic.a2a.A2AClientConfigurator`. This lets a framework, for example, add
+credentials to the card request and to the A2A messages of every agent:
+
+```java
+public class AuthenticatingConfigurator implements A2AClientConfigurator {
+
+    private final TokenSource tokens = TokenSource.create(); // your application's tokens
+
+    @Override
+    public Map<String, String> agentCardHeaders(A2AClientContext context) {
+        return Map.of("Authorization", "Bearer " + tokens.tokenFor(context.a2aServerUrl()));
+    }
+
+    @Override
+    public Map<String, String> messageHeaders(A2AClientContext context) {
+        return Map.of("Authorization", "Bearer " + tokens.tokenFor(context.agentCard().name()));
+    }
+}
+```
+
+`agentCardHeaders` is called each time the card is fetched, and `messageHeaders` for every message, so both can return
+a refreshed token. The `A2AClientContext` describes the agent: the URL it was built with, the tenant, the name of the
+local agent, its interface, and, for messages, the remote Agent Card, so credentials can be chosen per agent.
+
+Message headers are sent with each call, so they apply to every transport and an agent's own client customizer cannot
+remove them. When several configurators return the same header, the one found later wins; the agent's own
+`agentCardHeaders` take precedence over all of them.
+
+For anything headers cannot do, `customize(A2AClientContext, ClientBuilder)` receives the A2A SDK client builder before
+the agent's own client customizer. Note that `ClientBuilder.withTransport` replaces the configuration of a transport, so
+a customizer that configures the same transport replaces what was set there.
+
 ### Streaming A2A Client Listener
 
 When invoking a remote A2A agent with streaming enabled, you can use `A2AStreamingClientListener` to observe events received from the remote agent and control when the client should stop consuming the stream.
