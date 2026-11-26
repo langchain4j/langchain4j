@@ -189,6 +189,73 @@ class ChatCompletionResponseDeserializeTest {
     }
 
     @Test
+    void should_deserialize_delta_with_refusal() {
+
+        // given
+        // OpenAI streams the refusal text in a "refusal" field on the message delta
+        // when the model refuses to answer: https://github.com/langchain4j/langchain4j/issues/5813
+        String json = """
+                {
+                    "id": "chatcmpl-123",
+                    "object": "chat.completion.chunk",
+                    "created": 1742268380,
+                    "model": "gpt-4o",
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {
+                                "role": "assistant",
+                                "content": null,
+                                "refusal": "I'm sorry, I cannot assist with that request."
+                            },
+                            "finish_reason": "stop"
+                        }
+                    ]
+                }
+                """;
+
+        // when
+        ChatCompletionResponse response = Json.fromJson(json, ChatCompletionResponse.class);
+
+        // then
+        Delta delta = response.choices().get(0).delta();
+        assertThat(delta.content()).isNull();
+        assertThat(delta.refusal()).isEqualTo("I'm sorry, I cannot assist with that request.");
+    }
+
+    @Test
+    void should_deserialize_delta_without_refusal() {
+
+        // given
+        String json = """
+                {
+                    "id": "chatcmpl-123",
+                    "object": "chat.completion.chunk",
+                    "created": 1742268380,
+                    "model": "gpt-4o",
+                    "choices": [
+                        {
+                            "index": 0,
+                            "delta": {
+                                "role": "assistant",
+                                "content": "Hello"
+                            },
+                            "finish_reason": null
+                        }
+                    ]
+                }
+                """;
+
+        // when
+        ChatCompletionResponse response = Json.fromJson(json, ChatCompletionResponse.class);
+
+        // then
+        Delta delta = response.choices().get(0).delta();
+        assertThat(delta.content()).isEqualTo("Hello");
+        assertThat(delta.refusal()).isNull();
+    }
+
+    @Test
     void should_deserialize_message_without_reasoning_fields() {
 
         // given
