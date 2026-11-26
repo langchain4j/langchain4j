@@ -269,7 +269,7 @@ JsonSchemaElement arraySchema = JsonArraySchema.builder()
 
 The `JsonReferenceSchema` can be used to support recursion:
 ```java
-String reference = "person"; // reference should be unique withing the schema
+String reference = "person"; // reference should be unique within the schema
 
 JsonObjectSchema jsonObjectSchema = JsonObjectSchema.builder()
         .addStringProperty("name")

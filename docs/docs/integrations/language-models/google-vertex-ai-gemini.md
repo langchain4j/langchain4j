@@ -346,7 +346,7 @@ String answer = assistant.chat("How much is 74589613588 + 4786521789?");
 
 ### Grounding responses with Google Search results
 
-LLMs don't necessarily know tha answer to all possible questions!
+LLMs don't necessarily know the answer to all possible questions!
 It's even more the case for recent events or information that have happened past the end of their last training.
 It's possible to _ground_ Gemini's answers with fresh results from Google Search results:
 
