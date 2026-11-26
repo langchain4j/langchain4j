@@ -1,15 +1,23 @@
 package dev.langchain4j.store.embedding.filter.builder.sql;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.mock.ChatModelMock;
 import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.parser.sql.SqlFilterParser;
+import java.time.Duration;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 
 class LanguageModelSqlFilterBuilderTest {
 
@@ -88,6 +96,97 @@ class LanguageModelSqlFilterBuilderTest {
         // then
         verify(sqlFilterParser).parse(dirtySql);
         verify(sqlFilterParser).parse("SELECT * FROM table WHERE id = 1");
+        verifyNoMoreInteractions(sqlFilterParser);
+    }
+
+    @Test
+    void should_build_filter_from_long_chain_of_conditions() {
+
+        // given
+        String sql = "SELECT * FROM table WHERE column = 0" + " AND column = 1".repeat(50_000);
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(sql);
+
+        SqlFilterParser sqlFilterParser = spy(SqlFilterParser.builder()
+                .maxConditions(Integer.MAX_VALUE)
+                .parseTimeout(Duration.ofMinutes(1))
+                .build());
+
+        LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
+                .chatModel(chatModel)
+                .tableDefinition(tableDefinition)
+                .sqlFilterParser(sqlFilterParser)
+                .build();
+
+        // when
+        Filter filter = sqlFilterBuilder.build(Query.from("does not matter"));
+
+        // then
+        assertThat(filter.getClass()).isEqualTo(And.class);
+        verify(sqlFilterParser).parse(sql);
+        verifyNoMoreInteractions(sqlFilterParser);
+    }
+
+    static Stream<Arguments> should_return_no_filter_when_SQL_is_over_parser_limits() {
+        return Stream.of(
+                Arguments.of(
+                        "SELECT * FROM table WHERE column = 0" + " AND column = 1".repeat(100),
+                        "SqlFilterParser.builder().maxConditions(...)"),
+                Arguments.of(
+                        "SELECT * FROM table WHERE " + "(".repeat(51) + "column = 1" + ")".repeat(51),
+                        "SqlFilterParser.builder().maxNestingDepth(...)"));
+    }
+
+    @ParameterizedTest
+    @MethodSource
+    void should_return_no_filter_when_SQL_is_over_parser_limits(String sql, String builderOption) {
+
+        // given
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(sql);
+
+        LanguageModelSqlFilterBuilder sqlFilterBuilder = spy(LanguageModelSqlFilterBuilder.builder()
+                .chatModel(chatModel)
+                .tableDefinition(tableDefinition)
+                .sqlFilterParser(sqlFilterParser)
+                .build());
+
+        Query query = Query.from("does not matter");
+
+        // when
+        Filter filter = sqlFilterBuilder.build(query);
+
+        // then
+        assertThat(filter).isNull();
+
+        ArgumentCaptor<Exception> parsingError = ArgumentCaptor.forClass(Exception.class);
+        verify(sqlFilterBuilder).fallback(eq(query), eq(sql), eq(sql), parsingError.capture());
+        assertThat(parsingError.getValue())
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("more than the maximum of")
+                .hasMessageEndingWith("Increase it with " + builderOption);
+
+        verify(sqlFilterParser).parse(sql); // not parsed again, as the extracted SQL is the same
+        verifyNoMoreInteractions(sqlFilterParser);
+    }
+
+    @Test
+    void should_return_no_filter_when_SQL_has_long_unsupported_expression() {
+
+        // given
+        String sql = "SELECT * FROM table WHERE column = 1" + " XOR column = 1".repeat(20_000);
+        ChatModel chatModel = ChatModelMock.thatAlwaysResponds(sql);
+
+        LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
+                .chatModel(chatModel)
+                .tableDefinition(tableDefinition)
+                .sqlFilterParser(sqlFilterParser)
+                .build();
+
+        // when
+        Filter filter = sqlFilterBuilder.build(Query.from("does not matter"));
+
+        // then
+        assertThat(filter).isNull();
+        verify(sqlFilterParser).parse(sql);
         verifyNoMoreInteractions(sqlFilterParser);
     }
 

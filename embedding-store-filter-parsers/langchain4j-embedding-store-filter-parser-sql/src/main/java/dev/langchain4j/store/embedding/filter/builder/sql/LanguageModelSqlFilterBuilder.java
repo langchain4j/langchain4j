@@ -18,6 +18,7 @@ import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.parser.sql.SqlFilterParser;
 import java.util.HashMap;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -78,6 +79,38 @@ import org.slf4j.LoggerFactory;
  * In case SQL parsing fails (e.g., the generated SQL is invalid or contains text in addition to the SQL statement),
  * {@code LanguageModelSqlFilterBuilder} will first try to extract the valid SQL from the input string.
  * If parsing fails again, it will return {@code null}, meaning no filtering will be applied during the search.
+ * <br>
+ * The same happens when {@link SqlFilterParser} rejects the SQL, for example because it is over the limits
+ * for very large, deeply nested or slow to parse filters (see {@link SqlFilterParser#builder()}).
+ * To change these limits, pass a parser built with {@link SqlFilterParser#builder()} to
+ * {@link LanguageModelSqlFilterBuilderBuilder#sqlFilterParser(SqlFilterParser)}:
+ * <pre>{@code
+ * LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
+ *         .chatModel(model)
+ *         .tableDefinition(tableDefinition)
+ *         .sqlFilterParser(SqlFilterParser.builder().maxConditions(5000).build())
+ *         .build();
+ * }</pre>
+ * <br>
+ * Do not use {@code LanguageModelSqlFilterBuilder} for access control.
+ * The filter is written by a language model from the user's query, so the user can influence it.
+ * Also, when the SQL is rejected (for example, because it is over a limit) and the SQL extracted from
+ * the answer cannot be parsed either, no filter is applied.
+ * Keep your own filter outside the language model's output and combine it with the generated one:
+ * <pre>{@code
+ * ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+ *         .embeddingStore(embeddingStore)
+ *         .embeddingModel(embeddingModel)
+ *         .dynamicFilter(query -> {
+ *             String userId = query.metadata().invocationParameters().get("userId");
+ *             Filter userFilter = metadataKey("userId").isEqualTo(userId);
+ *             Filter generatedFilter = sqlFilterBuilder.build(query);
+ *             return generatedFilter == null ? userFilter : userFilter.and(generatedFilter);
+ *         })
+ *         .build();
+ * }</pre>
+ * Note that {@code filter(...)} and {@code dynamicFilter(...)} of {@link EmbeddingStoreContentRetriever}
+ * replace each other: only the one set last is used, so set your own filter inside {@code dynamicFilter(...)}.
  */
 @Experimental
 public class LanguageModelSqlFilterBuilder {
@@ -168,6 +201,10 @@ public class LanguageModelSqlFilterBuilder {
             log.trace("Cannot extract SQL, giving up");
             return null;
         }
+        if (extractedSql.equals(cleanedSql)) {
+            log.trace("Extracted SQL is the same as the SQL that failed to parse, giving up");
+            return null;
+        }
 
         try {
             log.trace("Extracted SQL: '{}'", extractedSql);
@@ -251,7 +288,16 @@ public class LanguageModelSqlFilterBuilder {
             return this;
         }
 
-        public LanguageModelSqlFilterBuilderBuilder sqlFilterParser(SqlFilterParser sqlFilterParser) {
+        /**
+         * Sets the {@link SqlFilterParser} that parses the SQL written by the language model.
+         * <p>
+         * Default value is {@code new SqlFilterParser()}, with the default limits
+         * for very large or deeply nested filters (see {@link SqlFilterParser#builder()}).
+         *
+         * @param sqlFilterParser the parser; {@code null} means the default
+         * @return this builder
+         */
+        public LanguageModelSqlFilterBuilderBuilder sqlFilterParser(@Nullable SqlFilterParser sqlFilterParser) {
             this.sqlFilterParser = sqlFilterParser;
             return this;
         }
