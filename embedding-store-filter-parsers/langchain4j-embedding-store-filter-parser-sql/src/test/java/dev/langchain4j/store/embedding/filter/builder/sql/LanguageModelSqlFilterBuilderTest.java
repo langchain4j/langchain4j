@@ -4,18 +4,25 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.ContentFilteredException;
+import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.filter.Filter;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.parser.sql.SqlFilterParser;
+import dev.langchain4j.test.mock.MockChatModel;
 import java.time.Duration;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 
@@ -188,6 +195,76 @@ class LanguageModelSqlFilterBuilderTest {
         assertThat(filter).isNull();
         verify(sqlFilterParser).parse(sql);
         verifyNoMoreInteractions(sqlFilterParser);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @EnumSource(
+            value = FinishReason.class,
+            names = {"STOP", "OTHER"})
+    void should_return_no_filter_when_model_returns_no_text(FinishReason finishReason) {
+
+        // given
+        MockChatModel chatModel = MockChatModel.thatResponds(emptyAnswer(finishReason));
+
+        LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
+                .chatModel(chatModel)
+                .tableDefinition(tableDefinition)
+                .sqlFilterParser(sqlFilterParser)
+                .build();
+
+        // when
+        Filter filter = sqlFilterBuilder.build(Query.from("hello"));
+
+        // then
+        assertThat(filter).isNull();
+        assertThat(chatModel.requests()).hasSize(1);
+        verifyNoInteractions(sqlFilterParser);
+    }
+
+    @Test
+    void should_fail_when_model_answer_is_cut_off_by_token_limit() {
+
+        // given
+        MockChatModel chatModel = MockChatModel.thatResponds(emptyAnswer(FinishReason.LENGTH));
+
+        LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
+                .chatModel(chatModel)
+                .tableDefinition(tableDefinition)
+                .sqlFilterParser(sqlFilterParser)
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> sqlFilterBuilder.build(Query.from("does not matter")))
+                .isExactlyInstanceOf(LangChain4jException.class)
+                .hasMessageContaining("finish reason: LENGTH");
+        verifyNoInteractions(sqlFilterParser);
+    }
+
+    @Test
+    void should_fail_when_model_answer_is_blocked_by_content_filter() {
+
+        // given
+        MockChatModel chatModel = MockChatModel.thatResponds(emptyAnswer(FinishReason.CONTENT_FILTER));
+
+        LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
+                .chatModel(chatModel)
+                .tableDefinition(tableDefinition)
+                .sqlFilterParser(sqlFilterParser)
+                .build();
+
+        // when-then
+        assertThatThrownBy(() -> sqlFilterBuilder.build(Query.from("does not matter")))
+                .isExactlyInstanceOf(ContentFilteredException.class)
+                .hasMessageContaining("finish reason: CONTENT_FILTER");
+        verifyNoInteractions(sqlFilterParser);
+    }
+
+    private static ChatResponse emptyAnswer(FinishReason finishReason) {
+        return ChatResponse.builder()
+                .aiMessage(AiMessage.builder().build())
+                .finishReason(finishReason)
+                .build();
     }
 
     @Test
