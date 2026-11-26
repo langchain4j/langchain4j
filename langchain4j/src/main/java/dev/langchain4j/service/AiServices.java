@@ -796,6 +796,8 @@ public abstract class AiServices<T> {
      * Within this handler, you can either:
      * <p>
      * 1. Throw an exception: this will stop the AI Service flow. This is the default behavior if no handler is configured.
+     * When the AI Service has a chat memory, the tool call then gets a result there that only says that the tool
+     * failed, so that later calls of the same conversation still work.
      * <p>
      * 2. Return a text message (e.g., an error description) that will be sent back to the LLM,
      * allowing it to respond appropriately (for example, by correcting the error and retrying).
@@ -842,6 +844,8 @@ public abstract class AiServices<T> {
      * Within this handler, you can either:
      * <p>
      * 1. Throw an exception: this will stop the AI Service flow.
+     * When the AI Service has a chat memory, the tool call then gets a result there that only says that the tool
+     * failed, so that later calls of the same conversation still work.
      * <p>
      * 2. Return a text message (e.g., an error description) that will be sent back to the LLM,
      * allowing it to respond appropriately (for example, by correcting the error and retrying).

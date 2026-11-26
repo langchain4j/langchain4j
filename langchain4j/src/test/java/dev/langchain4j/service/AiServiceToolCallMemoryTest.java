@@ -15,6 +15,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ToolErrorVisibleToLlm;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
@@ -121,6 +122,20 @@ class AiServiceToolCallMemoryTest {
                 throw new IllegalArgumentException("Division by zero in /opt/app/Calculator.java");
             }
             return a / b;
+        }
+    }
+
+    private static final ToolExecutionRequest FIND_ORDER = ToolExecutionRequest.builder()
+            .id("call-8")
+            .name("findOrder")
+            .arguments("{\"arg0\": \"42\"}")
+            .build();
+
+    static class Orders {
+
+        @Tool
+        String findOrder(String id) {
+            throw ToolErrorVisibleToLlm.from("There is no order " + id);
         }
     }
 
@@ -940,13 +955,118 @@ class AiServiceToolCallMemoryTest {
                 .tools(new Reports(), new Calculator())
                 .build();
 
-        assertThatThrownBy(() -> assistant.chat("Report and divide")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> assistant.chat("Report and divide"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .satisfies(error -> assertThat(error.getSuppressed())
+                        .singleElement()
+                        .satisfies(suppressed -> assertThat(suppressed).hasMessageContaining("the title cannot be read")));
 
         assertThat(toolResultsIn(memory))
                 .extracting(ToolExecutionResultMessage::id, ToolExecutionResultMessage::text)
                 .containsExactly(
                         tuple("call-7", "Tool 'report' failed, so the request was stopped"),
                         tuple("call-5", DIVIDE_FAILED));
+    }
+
+    @Test
+    void async_service_should_fail_with_the_tool_error_when_the_result_of_another_tool_cannot_be_converted() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(REPORT, DIVIDE_BY_ZERO)))
+                .chatMemory(memory)
+                .tools(new Reports(), new Calculator())
+                .build();
+
+        CompletableFuture<Result<String>> future = assistant.chat("Report and divide");
+
+        assertThat(future).failsWithin(10, SECONDS);
+        assertThat(catchThrowable(future::join))
+                .rootCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Division by zero");
+        assertThat(toolResultsIn(memory))
+                .extracting(ToolExecutionResultMessage::id, ToolExecutionResultMessage::text)
+                .containsExactly(
+                        tuple("call-7", "Tool 'report' failed, so the request was stopped"),
+                        tuple("call-4", DIVIDE_FAILED));
+    }
+
+    @Test
+    void reactive_service_should_fail_with_the_tool_error_when_the_result_of_another_tool_cannot_be_converted() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(MockStreamingChatModel.thatResponds(AiMessage.from(REPORT, DIVIDE_BY_ZERO)))
+                .chatMemory(memory)
+                .tools(new Reports(), new Calculator())
+                .build();
+
+        EventCollector collector = new EventCollector();
+        assistant.chat("Report and divide").subscribe(collector);
+
+        assertThat(collector.terminated).failsWithin(10, SECONDS);
+        assertThat(catchThrowable(collector.terminated::join))
+                .rootCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Division by zero");
+        assertThat(toolResultsIn(memory))
+                .extracting(ToolExecutionResultMessage::id, ToolExecutionResultMessage::text)
+                .containsExactly(
+                        tuple("call-7", "Tool 'report' failed, so the request was stopped"),
+                        tuple("call-4", DIVIDE_FAILED));
+    }
+
+    @Test
+    void sync_service_should_keep_the_error_text_a_handler_sent_to_the_llm_when_another_tool_ends_the_invocation() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        SyncAssistant assistant = AiServices.builder(SyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(FIND_ORDER, DIVIDE_BY_ZERO)))
+                .chatMemory(memory)
+                .tools(new Orders(), new Calculator())
+                .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm())
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Find the order and divide"))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(toolResultsIn(memory))
+                .extracting(
+                        ToolExecutionResultMessage::id,
+                        ToolExecutionResultMessage::toolName,
+                        ToolExecutionResultMessage::text,
+                        ToolExecutionResultMessage::isError)
+                .containsExactly(
+                        tuple("call-8", "findOrder", "There is no order 42", true),
+                        tuple("call-4", "divide", DIVIDE_FAILED, true));
+    }
+
+    @Test
+    void async_service_should_keep_the_error_text_a_handler_sent_to_the_llm_when_another_tool_ends_the_invocation() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(FIND_ORDER, DIVIDE_BY_ZERO)))
+                .chatMemory(memory)
+                .tools(new Orders(), new Calculator())
+                .build();
+
+        assertThat(assistant.chat("Find the order and divide")).failsWithin(10, SECONDS);
+
+        assertThat(toolResultsIn(memory))
+                .extracting(
+                        ToolExecutionResultMessage::id,
+                        ToolExecutionResultMessage::toolName,
+                        ToolExecutionResultMessage::text,
+                        ToolExecutionResultMessage::isError)
+                .containsExactly(
+                        tuple("call-8", "findOrder", "There is no order 42", true),
+                        tuple("call-4", "divide", DIVIDE_FAILED, true));
     }
 
     @Test

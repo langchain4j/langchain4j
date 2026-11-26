@@ -1,6 +1,5 @@
 package dev.langchain4j.service;
 
-import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.Exceptions.runtime;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.Utils.copy;
@@ -655,21 +654,26 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> toolFutures,
                 String preCollectedFailedToolName) {
 
-            ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
-                    context,
-                    toolRequests,
-                    toolResults,
-                    new ArrayList<>(),
-                    invocationContext,
-                    currentToolContext);
+            ToolService.ToolResultsOutcome outcome = firstError == null
+                    ? context.toolService.processToolResults(
+                            context, toolRequests, toolResults, new ArrayList<>(), invocationContext, currentToolContext)
+                    : context.toolService.processToolResultsOfFailedRound(
+                            context,
+                            toolRequests,
+                            toolResults,
+                            new ArrayList<>(),
+                            invocationContext,
+                            currentToolContext,
+                            firstError);
 
+            ChatMemory memory = getMemory();
             CompletableFuture<Void> compensated = context.toolService.compensateIfNeededAsync(
                     toolRequests,
                     toolResults,
                     outcome.resultMessages(),
                     compensableExecutions,
                     outcome.anyToolErrored(),
-                    getMemory(),
+                    memory,
                     messages,
                     invocationContext,
                     context.eventListenerRegistrar,
@@ -690,17 +694,14 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 // are saved first, so that no tool call in the chat memory is left without a result. When there was
                 // no tool error, surface the compensation failure directly.
                 if (firstError != null) {
-                    if (compensationError != null) {
-                        firstError.addSuppressed(unwrapCompletionException(compensationError));
+                    Throwable compensationCause = unwrapCompletionException(compensationError);
+                    if (compensationCause != null && compensationCause != firstError) {
+                        firstError.addSuppressed(compensationCause);
                     }
-                    failOnThrow(() -> context.toolService.saveResultsOfFailedRoundAsync(
-                                    getMemory(), toolRequests, outcome.resultMessages(), toolFutures, firstError))
-                            .whenComplete((ignored, memoryError) -> {
-                                if (memoryError != null && memoryError != firstError) {
-                                    firstError.addSuppressed(unwrapCompletionException(memoryError));
-                                }
-                                fail(firstError);
-                            });
+                    context.toolService
+                            .saveResultsOfFailedRoundAsync(
+                                    memory, toolRequests, outcome.resultMessages(), toolFutures, firstError)
+                            .whenComplete((ignored, neverFails) -> fail(firstError));
                     return;
                 }
                 if (compensationError != null) {
