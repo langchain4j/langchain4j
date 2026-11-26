@@ -1,6 +1,7 @@
 package dev.langchain4j.model.ollama;
 
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
+import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.OLLAMA_BASE_URL;
 import static dev.langchain4j.model.ollama.AbstractOllamaLanguageModelInfrastructure.ollamaBaseUrl;
 import static dev.langchain4j.model.ollama.OllamaImage.GRANITE_3_GUARDIAN;
 import static dev.langchain4j.model.ollama.OllamaImage.localOllamaImage;
@@ -16,11 +17,13 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
-class OllamaCustomMessageChatModelIT extends AbstractOllamaLanguageModelInfrastructure {
+class OllamaCustomMessageChatModelIT {
 
     private static final String MODEL_NAME = GRANITE_3_GUARDIAN;
+    private static LC4jOllamaContainer ollama;
 
     static {
         if (isNullOrEmpty(OLLAMA_BASE_URL)) {
@@ -29,6 +32,13 @@ class OllamaCustomMessageChatModelIT extends AbstractOllamaLanguageModelInfrastr
                     .withModel(MODEL_NAME);
             ollama.start();
             ollama.commitToImage(localOllamaImage);
+        }
+    }
+
+    @AfterAll
+    static void stopOllama() {
+        if (ollama != null) {
+            ollama.stop();
         }
     }
 

@@ -16,6 +16,7 @@ import dev.langchain4j.model.decision.response.DecisionResponse;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
 class OllamaDecisionModelImageIT {
@@ -35,6 +36,13 @@ class OllamaDecisionModelImageIT {
                     .withModel(CLEF_FLASH);
             ollama.start();
             ollama.commitToImage(localOllamaImage);
+        }
+    }
+
+    @AfterAll
+    static void stopOllama() {
+        if (ollama != null) {
+            ollama.stop();
         }
     }
 
