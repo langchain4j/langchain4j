@@ -13,7 +13,9 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.spi.FileTypeDetector;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 /**
  * <p>
@@ -143,6 +145,10 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
 
     /**
      * Guess the mime-type of a given URI.
+     * <p>
+     * For a URI with a scheme other than {@code file}, such as {@code https}, the mime-type is guessed from the file
+     * name only, as {@link #probeContentTypeFromName(URI)} does. The local file system is not accessed for such URIs.
+     * For a {@code file} URI, or a URI without a scheme, the file itself can also be read to guess its mime-type.
      *
      * @param uri the URI to the file whose mime-type we want to retrieve.
      *
@@ -150,6 +156,10 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
      *     returns null if no mapping was found.
      */
     public String probeContentType(URI uri) {
+        if (uri.getScheme() != null && !"file".equalsIgnoreCase(uri.getScheme())) {
+            return probeContentTypeFromName(uri);
+        }
+
         // First let's try to guess via the Path
         Path path = Path.of(uri.getPath());
         String mimeTypeFromPath = probeContentType(path);
@@ -172,6 +182,36 @@ public class CustomMimeTypesFileTypeDetector extends FileTypeDetector {
         } catch (IOException e) {
             return null;
         }
+    }
+
+    /**
+     * Guess the mime-type of a given URI from its file name only, whatever its scheme: from the mappings of this
+     * detector, then from {@link URLConnection#guessContentTypeFromName(String)}. The local file system is never
+     * accessed, and the path of the URI is not required to be a valid local path.
+     *
+     * @param uri the URI to the file whose mime-type we want to retrieve.
+     *
+     * @return a string representing the mime-type of the file named by the URI parameter,
+     *     or {@code null} if the URI has no file name or no mapping was found.
+     */
+    public @Nullable String probeContentTypeFromName(URI uri) {
+        // Opaque URIs (e.g. "data:image/png;base64,...") have no path component, URIs such as "https://example.com"
+        // have an empty one, and paths ending with "/" have no file name
+        String uriPath = uri.getPath();
+        if (uriPath == null) {
+            return null;
+        }
+        String fileName = uriPath.substring(uriPath.lastIndexOf('/') + 1);
+        if (fileName.isEmpty()) {
+            return null;
+        }
+        int lastDotPosition = fileName.lastIndexOf('.');
+        String mimeTypeFromMappings = lastDotPosition > 0
+                ? mappings.get(fileName.substring(lastDotPosition + 1).toLowerCase(Locale.ROOT))
+                : null;
+        return mimeTypeFromMappings != null
+                ? mimeTypeFromMappings
+                : URLConnection.guessContentTypeFromName(fileName);
     }
 
     static String extension(Path path) {

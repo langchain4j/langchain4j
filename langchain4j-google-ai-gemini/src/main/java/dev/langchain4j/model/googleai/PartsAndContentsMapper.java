@@ -80,7 +80,7 @@ final class PartsAndContentsMapper {
                 } else {
                     return GeminiContent.GeminiPart.builder()
                             .fileData(new GeminiFileData(
-                                    getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)),
+                                    getOrDefault(image.mimeType(), mimeTypeDetector.probeContentTypeFromName(url)),
                                     url.toString()))
                             .mediaResolution(mediaResolution)
                             .build();
@@ -98,7 +98,7 @@ final class PartsAndContentsMapper {
                             .build();
                 }
                 return GeminiContent.GeminiPart.builder()
-                        .fileData(new GeminiFileData(mimeTypeDetector.probeContentType(uri), uri.toString()))
+                        .fileData(new GeminiFileData(mimeTypeDetector.probeContentTypeFromName(uri), uri.toString()))
                         .build();
             } else {
                 return GeminiContent.GeminiPart.builder()
@@ -117,7 +117,7 @@ final class PartsAndContentsMapper {
                             .build();
                 }
                 return GeminiContent.GeminiPart.builder()
-                        .fileData(new GeminiFileData(mimeTypeDetector.probeContentType(uri), uri.toString()))
+                        .fileData(new GeminiFileData(mimeTypeDetector.probeContentTypeFromName(uri), uri.toString()))
                         .build();
             } else {
                 return GeminiContent.GeminiPart.builder()
@@ -138,7 +138,7 @@ final class PartsAndContentsMapper {
                             .build();
                 }
                 return GeminiContent.GeminiPart.builder()
-                        .fileData(new GeminiFileData(mimeTypeDetector.probeContentType(uri), uri.toString()))
+                        .fileData(new GeminiFileData(mimeTypeDetector.probeContentTypeFromName(uri), uri.toString()))
                         .build();
             } else {
                 return GeminiContent.GeminiPart.builder()
