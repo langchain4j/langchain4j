@@ -725,6 +725,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 toolResults,
                 toolErrors,
                 errorToRethrow,
+                toolExecutors,
                 compensableExecutions,
                 getMemory(),
                 null,

@@ -374,6 +374,9 @@ class ToolServiceTest {
         assertThat(toolError.getSuppressed()).containsExactly(listenerError);
     }
 
+    private static final Map<String, ToolExecutor> BOOK_ROOM_EXECUTORS =
+            Map.of("bookRoom", (request, memoryId) -> "booked");
+
     // separate but equal tool calls, as from a provider that sends no tool call ids (for example Gemini)
     private static ToolExecutionRequest bookRoomWithoutId() {
         return ToolExecutionRequest.builder().name("bookRoom").arguments("{}").build();
@@ -400,6 +403,7 @@ class ToolServiceTest {
                         results,
                         Map.of(second, toolError),
                         toolError,
+                        BOOK_ROOM_EXECUTORS,
                         null,
                         memory,
                         null,
@@ -428,7 +432,12 @@ class ToolServiceTest {
 
         assertThat(new ToolService()
                         .saveResultsOfFailedRoundAsync(
-                                memory, List.of(first, second), List.of(withToolError, withToolError), toolFutures, toolError))
+                                memory,
+                                List.of(first, second),
+                                List.of(withToolError, withToolError),
+                                toolFutures,
+                                BOOK_ROOM_EXECUTORS,
+                                toolError))
                 .succeedsWithin(Duration.ofSeconds(1));
 
         assertThat(toolResultTexts(memory))
@@ -480,6 +489,7 @@ class ToolServiceTest {
                         List.of(request),
                         List.of(ToolExecutionResultMessage.from(request, "booked")),
                         Map.of(request, CompletableFuture.failedFuture(error)),
+                        BOOK_ROOM_EXECUTORS,
                         error);
 
         assertThat(saved).succeedsWithin(Duration.ofSeconds(1));

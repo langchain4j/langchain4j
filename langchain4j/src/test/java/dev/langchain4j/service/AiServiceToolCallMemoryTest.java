@@ -773,16 +773,38 @@ class AiServiceToolCallMemoryTest {
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
 
         SyncAssistant assistant = AiServices.builder(SyncAssistant.class)
-                .chatModel(MockChatModel.thatResponds(AiMessage.from(NON_EXISTENT_TOOL)))
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(NON_EXISTENT_TOOL, GET_TEMPERATURE)))
                 .chatMemory(memory)
-                .tools(new Calculator())
+                .tools(new Calculator(), new Weather())
                 .build();
 
         assertThatThrownBy(() -> assistant.chat("Multiply")).hasMessageContaining("no such tool exists");
 
         assertThat(toolResultsIn(memory))
                 .extracting(ToolExecutionResultMessage::id, ToolExecutionResultMessage::text)
-                .containsExactly(tuple("call-6", "Tool 'multiply' failed, so the request was stopped"));
+                .containsExactly(
+                        tuple("call-6", "Tool 'multiply' does not exist, so the request was stopped"),
+                        tuple("call-2", "Tool 'temperature' was not executed because tool 'multiply' does not exist"));
+    }
+
+    @Test
+    void async_service_should_answer_a_call_of_a_tool_that_does_not_exist() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(NON_EXISTENT_TOOL, DIVIDE_FOUR_BY_TWO)))
+                .chatMemory(memory)
+                .tools(new Calculator())
+                .build();
+
+        assertThat(assistant.chat("Multiply and divide")).failsWithin(10, SECONDS);
+
+        assertThat(toolResultsIn(memory))
+                .extracting(ToolExecutionResultMessage::id, ToolExecutionResultMessage::text)
+                .containsExactly(
+                        tuple("call-6", "Tool 'multiply' does not exist, so the request was stopped"),
+                        tuple("call-3", "2.0"));
     }
 
     @Test

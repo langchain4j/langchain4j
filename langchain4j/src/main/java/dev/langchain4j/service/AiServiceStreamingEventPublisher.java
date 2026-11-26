@@ -700,7 +700,12 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     }
                     context.toolService
                             .saveResultsOfFailedRoundAsync(
-                                    memory, toolRequests, outcome.resultMessages(), toolFutures, firstError)
+                                    memory,
+                                    toolRequests,
+                                    outcome.resultMessages(),
+                                    toolFutures,
+                                    currentToolContext.toolExecutors(),
+                                    firstError)
                             .whenComplete((ignored, neverFails) -> fail(firstError));
                     return;
                 }

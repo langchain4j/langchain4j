@@ -1988,8 +1988,11 @@ for every tool call of that LLM response in the `ChatMemory`:
   (or a message saying that it was rolled back, when [compensation](#compensating-tool-actions) is enabled);
 - each tool that failed gets a message like _"Tool 'chargeCard' failed, so the request was stopped"_.
   The error itself is not included, so nothing from the exception reaches the LLM;
+- a call to a tool that does not exist gets a message like
+  _"Tool 'multiply' does not exist, so the request was stopped"_;
 - a tool that did not run because another tool failed first gets a message like
-  _"Tool 'sendReceipt' was not executed because tool 'chargeCard' failed"_.
+  _"Tool 'sendReceipt' was not executed because tool 'chargeCard' failed"_
+  (or _"... because tool 'multiply' does not exist"_).
 
 This way, the next call in the same conversation sends a valid history, and the LLM knows which tools ran.
 If saving these results fails, the error from the `ChatMemory` is added as a suppressed exception to the tool error,
