@@ -43,6 +43,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,7 +86,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     private AgentListener agentListener;
     private AgentCondition activationCondition;
-    private Function<InternalAgent, Object> agentInstanceFactory;
+    private @Nullable Function<InternalAgent, Object> agentInstanceFactory;
 
     DefaultMcpClientBuilder(Supplier<McpClient> mcpClientSupplier, Class<T> agentServiceClass) {
         this.mcpClientSupplier = mcpClientSupplier;
@@ -156,13 +157,18 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     }
 
     @Override
-    public McpClientBuilder<T> agentInstanceFactory(Function<InternalAgent, Object> factory) {
+    public McpClientBuilder<T> agentInstanceFactory(@Nullable Function<InternalAgent, Object> factory) {
         this.agentInstanceFactory = factory;
         return this;
     }
 
     @Override
     public T build() {
+        // A JDK proxy cannot extend a class: the agent is then the object that the factory of an integration creates
+        if (!agentServiceClass.isInterface() && agentInstanceFactory == null) {
+            throw new IllegalArgumentException("An MCP client agent must be defined by an interface, but "
+                    + agentServiceClass.getName() + " is a class");
+        }
         // An untyped agent would report no argument until its tool is resolved, while some planners read the
         // arguments at invocation without resolving it, so its input keys are mandatory, as for an untyped A2A agent
         if (agentServiceClass == UntypedAgent.class && inputKeys == null) {
@@ -172,7 +178,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         if (description == null) {
             description = agentMethod.map(DefaultMcpClientBuilder::annotatedDescription).orElse(null);
         }
-        // The local name, and the agent id derived from it, are fixed before the proxy is handed out, and the
+        // The local name, and the agent id derived from it, are fixed before the agent is handed out, and the
         // arguments are the local ones until the tool is resolved
         if (name == null) {
             name = defaultName();
@@ -194,11 +200,6 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
                     new Class<?>[] {agentServiceClass, McpClientInstance.class},
                     this);
         } else {
-            // A JDK proxy cannot extend a class: the agent is the object that the factory of an integration creates
-            if (agentInstanceFactory == null) {
-                throw new IllegalArgumentException("An MCP client agent must be defined by an interface, but "
-                        + agentServiceClass.getName() + " is a class");
-            }
             agent = agentInstanceFactory.apply(this);
             if (!agentServiceClass.isInstance(agent) || !(agent instanceof McpClientInstance)) {
                 throw new AgenticSystemConfigurationException("The agent instance factory of the MCP client agent '"

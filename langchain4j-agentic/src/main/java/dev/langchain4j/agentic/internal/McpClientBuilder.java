@@ -8,6 +8,7 @@ import java.time.Duration;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import org.jspecify.annotations.Nullable;
 
 public interface McpClientBuilder<T> {
 
@@ -138,7 +139,13 @@ public interface McpClientBuilder<T> {
      * @return this builder for method chaining
      * @since 1.25.0
      */
-    McpClientBuilder<T> agentInstanceFactory(Function<InternalAgent, Object> factory);
+    McpClientBuilder<T> agentInstanceFactory(@Nullable Function<InternalAgent, Object> factory);
 
+    /**
+     * Builds the MCP client agent: a proxy implementing the agent service interface or, when the type of the agent is
+     * a class, the object created by the {@link #agentInstanceFactory(Function) agent instance factory}.
+     *
+     * @return the agent instance
+     */
     T build();
 }

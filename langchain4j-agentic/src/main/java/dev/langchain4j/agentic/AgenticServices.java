@@ -49,6 +49,7 @@ import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.HelperMethod;
 import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.internal.McpClientBuilder;
 import dev.langchain4j.agentic.internal.McpService;
 import dev.langchain4j.agentic.internal.ResolvedParameters;
 import dev.langchain4j.agentic.observability.AgentListener;
@@ -430,7 +431,9 @@ public class AgenticServices {
      * received before using it, and do nothing with a context providing none of the builders it knows, since other
      * kinds of agents can be added to these. The {@code agentInstanceFactory} is applied to the same agents, and to
      * an A2A or MCP client agent whose type is a class, which cannot be created without it, while one whose type is
-     * an interface is always a JDK proxy.
+     * an interface is always a JDK proxy. What the factory must return for such an agent is described on
+     * {@link A2AClientBuilder#agentInstanceFactory(Function)} and
+     * {@link McpClientBuilder#agentInstanceFactory(Function)}.
      * <p>
      * It is how an integration registers something on every such agent, like an {@code AgentListener}: a listener
      * is notified of the events of the agent it is registered on, and of the agents below it when it is inherited,

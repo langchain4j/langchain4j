@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Builder for creating A2A client proxies that communicate with remote agents
@@ -216,7 +217,7 @@ public interface A2AClientBuilder<T> {
      * @return this builder for method chaining
      * @since 1.25.0
      */
-    default A2AClientBuilder<T> agentInstanceFactory(Function<InternalAgent, Object> factory) {
+    default A2AClientBuilder<T> agentInstanceFactory(@Nullable Function<InternalAgent, Object> factory) {
         return this;
     }
 

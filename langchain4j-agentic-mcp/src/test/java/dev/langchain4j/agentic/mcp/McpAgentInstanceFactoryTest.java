@@ -369,6 +369,21 @@ class McpAgentInstanceFactoryTest {
     }
 
     @Test
+    void class_based_mcp_agent_as_the_root_of_the_system_is_created_by_the_agent_instance_factory() {
+        Greeter greeter = AgenticServices.createAgenticSystem(Greeter.class, (ChatModel) null, configurator());
+
+        assertThat(factoryCalls).containsExactly(Greeter.class);
+        assertThat(greeter).isInstanceOf(GeneratedGreeter.class);
+
+        assertThat(greeter.greet("Mario")).isEqualTo("Hello, Mario!");
+
+        ArgumentCaptor<ToolExecutionRequest> request = ArgumentCaptor.forClass(ToolExecutionRequest.class);
+        verify(mcpClient).executeTool(request.capture());
+        assertThat(request.getValue().name()).isEqualTo("greet");
+        assertThat(request.getValue().arguments()).contains("\"name\"").contains("\"Mario\"");
+    }
+
+    @Test
     void async_class_based_mcp_agent_is_created_by_the_agent_instance_factory() {
         AsyncGreetingSequence sequence =
                 AgenticServices.createAgenticSystem(AsyncGreetingSequence.class, (ChatModel) null, configurator());

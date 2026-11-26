@@ -371,6 +371,20 @@ class A2AAgentInstanceFactoryTest {
     }
 
     @Test
+    void class_based_a2a_agent_as_the_root_of_the_system_is_created_by_the_agent_instance_factory() {
+        Fixer fixer = AgenticServices.createAgenticSystem(Fixer.class, (ChatModel) null, configurator());
+
+        assertThat(factoryCalls).containsExactly(Fixer.class);
+        assertThat(fixer).isInstanceOf(GeneratedFixer.class);
+
+        assertThat(fixer.applyFix("a broken build")).isEqualTo("fixed");
+
+        ArgumentCaptor<Message> message = ArgumentCaptor.forClass(Message.class);
+        verify(remoteFixer.client).sendMessage(message.capture(), anyList(), any(), any());
+        assertThat(message.getValue().parts()).containsExactly(new TextPart("a broken build"));
+    }
+
+    @Test
     void async_class_based_a2a_agent_is_created_by_the_agent_instance_factory() {
         AsyncFixingSequence sequence =
                 AgenticServices.createAgenticSystem(AsyncFixingSequence.class, (ChatModel) null, configurator());

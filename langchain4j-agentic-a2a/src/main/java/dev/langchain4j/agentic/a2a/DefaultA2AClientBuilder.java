@@ -83,6 +83,7 @@ import org.a2aproject.sdk.spec.Part;
 import org.a2aproject.sdk.spec.Task;
 import org.a2aproject.sdk.spec.TaskState;
 import org.a2aproject.sdk.spec.TextPart;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,7 +128,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private AgentListener agentListener;
     private A2AStreamingClientListener<TaskUpdateEvent> streamingClientListener;
     private AgentCondition activationCondition;
-    private Function<InternalAgent, Object> agentInstanceFactory;
+    private @Nullable Function<InternalAgent, Object> agentInstanceFactory;
 
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
         this(a2aServerUrl, agentServiceClass, null);
@@ -267,6 +268,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     @Override
     public T build() {
+        // A JDK proxy cannot extend a class: the agent is then the object that the factory of an integration creates
+        if (!agentServiceClass.isInterface() && agentInstanceFactory == null) {
+            throw new IllegalArgumentException("An A2A client agent must be defined by an interface, but "
+                    + agentServiceClass.getName() + " is a class");
+        }
         if (agentServiceClass == UntypedAgent.class && inputKeys == null) {
             throw new IllegalArgumentException("Input names must be provided for UntypedAgent.");
         }
@@ -278,7 +284,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     .map(DefaultA2AClientBuilder::annotatedDescription)
                     .orElse(null);
         }
-        // The local name, and the agent id derived from it, are fixed before the proxy is handed out
+        // The local name, and the agent id derived from it, are fixed before the agent is handed out
         agentId();
 
         Object agent;
@@ -288,11 +294,6 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     new Class<?>[] {agentServiceClass, A2AClientInstance.class},
                     this);
         } else {
-            // A JDK proxy cannot extend a class: the agent is the object that the factory of an integration creates
-            if (agentInstanceFactory == null) {
-                throw new IllegalArgumentException("An A2A client agent must be defined by an interface, but "
-                        + agentServiceClass.getName() + " is a class");
-            }
             agent = agentInstanceFactory.apply(this);
             if (!agentServiceClass.isInstance(agent) || !(agent instanceof A2AClientInstance)) {
                 throw new AgenticSystemConfigurationException("The agent instance factory of the A2A client agent '"
@@ -786,7 +787,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     }
 
     @Override
-    public DefaultA2AClientBuilder<T> agentInstanceFactory(Function<InternalAgent, Object> factory) {
+    public DefaultA2AClientBuilder<T> agentInstanceFactory(@Nullable Function<InternalAgent, Object> factory) {
         this.agentInstanceFactory = factory;
         return this;
     }
