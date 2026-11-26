@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agent.tool.P;
@@ -877,5 +878,52 @@ class McpAgentTest {
 
         assertThatThrownBy(() -> pipeline.invoke(Map.of("limit", "not-a-number")))
                 .isInstanceOf(NumberFormatException.class);
+    }
+
+    public interface TranslatorWithAnotherMethod {
+
+        @Agent
+        String translate(@V("text") String text, @V("language") String language);
+
+        String summarize(@V("text") String text);
+    }
+
+    @Test
+    void only_the_agent_method_invokes_the_tool() {
+        McpClient mcpClient = mockMcpClient("translate", "Translate text to a target language", "text", "language");
+        mockToolResult(mcpClient, "Hola mundo");
+        TranslatorWithAnotherMethod typed =
+                McpAgent.builder(mcpClient, TranslatorWithAnotherMethod.class).build();
+        UntypedAgent untyped =
+                McpAgent.builder(mcpClient).inputKeys("text", "language").build();
+
+        assertThatThrownBy(() -> typed.summarize("Hello world"))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("'summarize'")
+                .hasMessageContaining("is not the agent method of the MCP client agent 'translate'");
+        // UntypedAgent inherits this method from AgenticScopeAccess, and an MCP agent has no agentic scope of its own
+        assertThatThrownBy(() -> untyped.getAgenticScope("memory-id"))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("'getAgenticScope'");
+        verifyNoInteractions(mcpClient);
+
+        assertThat(typed.translate("Hello world", "Spanish")).isEqualTo("Hola mundo");
+        assertThat(untyped.invoke(Map.of("text", "Hello world", "language", "Spanish")))
+                .isEqualTo("Hola mundo");
+    }
+
+    @Test
+    void object_methods_of_an_mcp_agent_do_not_invoke_the_tool() {
+        McpClient mcpClient = mockMcpClient("translate", "Translate text to a target language", "text", "language");
+        TypedTranslator translator =
+                McpAgent.builder(mcpClient, TypedTranslator.class).build();
+        TypedTranslator anotherTranslator =
+                McpAgent.builder(mcpClient, TypedTranslator.class).build();
+
+        assertThat(translator.toString()).isEqualTo("McpClientAgent<TypedTranslator>");
+        assertThat(translator.hashCode()).isEqualTo(translator.hashCode());
+        assertThat(translator.equals(translator)).isTrue();
+        assertThat(translator.equals(anotherTranslator)).isFalse();
+        verifyNoInteractions(mcpClient);
     }
 }

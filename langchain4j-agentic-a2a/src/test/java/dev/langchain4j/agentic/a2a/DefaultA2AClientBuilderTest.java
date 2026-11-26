@@ -3,14 +3,18 @@ package dev.langchain4j.agentic.a2a;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
+import dev.langchain4j.agentic.Agent;
 import dev.langchain4j.agentic.UntypedAgent;
+import dev.langchain4j.agentic.a2a.A2ALazyAgentCardTest.ReplyingClient;
 import dev.langchain4j.agentic.agent.MissingArgumentException;
 import dev.langchain4j.agentic.internal.SuspendedResponse;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.observability.ComposedAgentListener;
 import dev.langchain4j.agentic.scope.AgenticSystemSuspendedException;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.service.V;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -366,5 +370,66 @@ class DefaultA2AClientBuilderTest {
         assertThatThrownBy(() -> agent.invoke(Map.of("first", "hello")))
                 .isInstanceOf(MissingArgumentException.class)
                 .hasMessageContaining("second");
+    }
+
+    private static AgentCard remoteFixerCard() {
+        return AgentCard.builder()
+                .name("remote-fixer")
+                .description("Fixes the analyzed problem")
+                .version("1.0.0")
+                .url("http://localhost")
+                .capabilities(new AgentCapabilities(false, false, false, List.of()))
+                .defaultInputModes(List.of("text"))
+                .defaultOutputModes(List.of("text"))
+                .skills(List.of())
+                .supportedInterfaces(List.of())
+                .build();
+    }
+
+    public interface FixerWithAnotherMethod {
+
+        @Agent
+        String fix(@V("analysis") String analysis);
+
+        String explain(@V("analysis") String analysis);
+    }
+
+    @Test
+    void only_the_agent_method_invokes_the_remote_agent() {
+        AgentCard card = remoteFixerCard();
+        Client client = new ReplyingClient("fixed", card).client;
+        FixerWithAnotherMethod typed =
+                new DefaultA2AClientBuilder<>(card, FixerWithAnotherMethod.class, client).build();
+        UntypedAgent untyped = new DefaultA2AClientBuilder<>(card, UntypedAgent.class, client)
+                .inputKeys("analysis")
+                .build();
+
+        assertThatThrownBy(() -> typed.explain("a broken build"))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("'explain'")
+                .hasMessageContaining("is not the agent method of the A2A client agent 'fix'");
+        // UntypedAgent inherits this method from AgenticScopeAccess, and an A2A agent has no agentic scope of its own
+        assertThatThrownBy(() -> untyped.getAgenticScope("memory-id"))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("'getAgenticScope'");
+        verifyNoInteractions(client);
+
+        assertThat(typed.fix("a broken build")).isEqualTo("fixed");
+        assertThat(untyped.invoke(Map.of("analysis", "a broken build"))).isEqualTo("fixed");
+    }
+
+    @Test
+    void object_methods_of_an_a2a_agent_do_not_invoke_the_remote_agent() {
+        Client client = mock(Client.class);
+        FixerWithAnotherMethod fixer =
+                new DefaultA2AClientBuilder<>(remoteFixerCard(), FixerWithAnotherMethod.class, client).build();
+        FixerWithAnotherMethod anotherFixer =
+                new DefaultA2AClientBuilder<>(remoteFixerCard(), FixerWithAnotherMethod.class, client).build();
+
+        assertThat(fixer.toString()).isEqualTo("A2AClientAgent<FixerWithAnotherMethod>");
+        assertThat(fixer.hashCode()).isEqualTo(fixer.hashCode());
+        assertThat(fixer.equals(fixer)).isTrue();
+        assertThat(fixer.equals(anotherFixer)).isFalse();
+        verifyNoInteractions(client);
     }
 }
