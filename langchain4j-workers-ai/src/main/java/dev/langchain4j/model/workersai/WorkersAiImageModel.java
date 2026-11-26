@@ -1,6 +1,7 @@
 package dev.langchain4j.model.workersai;
 
 import dev.langchain4j.data.image.Image;
+import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.model.image.ImageModel;
 import dev.langchain4j.model.output.FinishReason;
@@ -23,6 +24,10 @@ import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
 /**
  * WorkerAI Image model.
+ * <p>
+ * To edit an image, give its content as base64 data, for example
+ * {@code Image.builder().base64Data(base64Data).mimeType("image/png").build()}. The image and the mask are sent to
+ * Workers AI as the bytes of their files. Images given by URL are not supported.
  */
 public class WorkersAiImageModel extends AbstractWorkersAIModel implements ImageModel {
 
@@ -30,6 +35,10 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
      * The mime type returned by Workers
      */
     private static final String MIME_TYPE = "image/png";
+
+    static final String IMAGE_URL_NOT_SUPPORTED = "Workers AI does not support images given by URL; it needs the image"
+            + " content. Create the image from the content of a file or from its bytes, for example"
+            + " Image.builder().base64Data(base64Data).mimeType(mimeType).build()";
 
     /**
      * Constructor with Builder.
@@ -162,7 +171,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
     public Response<Image> edit(Image image, String prompt) {
         ensureNotBlank(prompt, "Prompt");
         ensureNotNull(image, "Image");
-        return new Response<>(convertAsImage(executeQuery(prompt, null, image)), null, FinishReason.STOP);
+        return new Response<>(convertAsImage(executeQuery(prompt, image, null)), null, FinishReason.STOP);
     }
 
     /** {@inheritDoc} */
@@ -170,7 +179,7 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
         ensureNotBlank(prompt, "Prompt");
         ensureNotNull(image, "Image");
         ensureNotNull(mask, "Mask");
-        return new Response<>(convertAsImage(executeQuery(prompt, mask, image)), null, FinishReason.STOP);
+        return new Response<>(convertAsImage(executeQuery(prompt, image, mask)), null, FinishReason.STOP);
     }
 
     /**
@@ -206,21 +215,17 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
      *    image.
      */
     private byte[] executeQuery(String prompt, Image image, Image mask) {
-        try {
-            // Mapping inbound
-            WorkersAiImageGenerationRequest imgReq = new WorkersAiImageGenerationRequest();
-            imgReq.setPrompt(prompt);
-            if (image != null) {
-                if (image.url() != null) {
-                    imgReq.setImage(getPixels(image.url().toURL()));
-                }
-            }
-            if (mask != null) {
-                if (mask.url() != null) {
-                    imgReq.setMask(getPixels(mask.url().toURL()));
-                }
-            }
+        // Mapping inbound
+        WorkersAiImageGenerationRequest imgReq = new WorkersAiImageGenerationRequest();
+        imgReq.setPrompt(prompt);
+        if (image != null) {
+            imgReq.setImage(bytes(image));
+        }
+        if (mask != null) {
+            imgReq.setMask(bytes(mask));
+        }
 
+        try {
             return client.generateImage(imgReq, accountId, modelName);
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -229,6 +234,10 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
 
     /**
      * Convert an image into a array of number, supposedly the Pixels.
+     * <p>
+     * This method reads the image from the given URL, including local {@code file:} URLs. Use it only with URLs that
+     * you control, never with URLs that come from end users or models.
+     *
      * @param imageUrl
      *      current image URL
      * @return
@@ -267,6 +276,24 @@ public class WorkersAiImageModel extends AbstractWorkersAIModel implements Image
             }
         }
         return pixelData;
+    }
+
+    /**
+     * Returns the bytes of the image file as values from 0 to 255, as Workers AI expects them.
+     */
+    private static int[] bytes(Image image) {
+        if (image.base64Data() == null) {
+            if (image.url() == null) {
+                throw new IllegalArgumentException("The image has neither base64 data nor a URL");
+            }
+            throw new UnsupportedFeatureException(IMAGE_URL_NOT_SUPPORTED);
+        }
+        byte[] bytes = Base64.getDecoder().decode(image.base64Data());
+        int[] values = new int[bytes.length];
+        for (int i = 0; i < bytes.length; i++) {
+            values[i] = Byte.toUnsignedInt(bytes[i]);
+        }
+        return values;
     }
 
     /**

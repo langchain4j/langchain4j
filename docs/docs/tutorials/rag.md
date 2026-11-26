@@ -32,8 +32,9 @@ thus capturing deeper semantic meanings.
 - Hybrid. Combining multiple search methods (e.g., full-text + vector) usually improves the effectiveness of the search.
 
 Currently, this page focuses mostly on vector search.
-Full-text and hybrid search are currently supported only by Azure AI Search integration and Elasticsearch,
-see `AzureAiSearchContentRetriever` and `ElasticsearchContentRetriever` for more details.
+Full-text search is currently supported by the Azure AI Search, Elasticsearch and Infinispan integrations,
+and hybrid search by Azure AI Search and Elasticsearch,
+see `AzureAiSearchContentRetriever`, `ElasticsearchContentRetriever` and `InfinispanContentRetriever` for more details.
 We plan to expand the RAG toolbox to include full-text and hybrid search in the near future.
 
 
@@ -125,6 +126,16 @@ is used to detect document types and parse them.
 Since we did not explicitly specify which `DocumentParser` to use,
 the `FileSystemDocumentLoader` will load an `ApacheTikaDocumentParser`,
 provided by `langchain4j-easy-rag` dependency through SPI.
+
+By default, this parser extracts at most 10,000,000 characters of text from a document.
+When a directory is loaded, documents with more text are skipped, with a warning in the log.
+To change the limit, pass the parser yourself, for example without a limit:
+```java
+List<Document> documents = FileSystemDocumentLoader.loadDocuments(
+        "/home/langchain4j/documentation",
+        ApacheTikaDocumentParser.builder().maxCharacters(-1).build());
+```
+See [Apache Tika](/integrations/document-parsers/apache-tika) for more details.
 </details>
 
 <details>
@@ -1011,6 +1022,12 @@ It can be found in the `langchain4j-community-neo4j-retriever` module.
 It supports full-text, vector, and hybrid search.
 It can be found in the `langchain4j-elasticsearch` module.
 Please refer to the `ElasticsearchContentRetriever` Javadoc for more information.
+
+#### Infinispan Content Retriever
+`InfinispanContentRetriever` is an integration with [Infinispan](https://infinispan.org/).
+It supports full-text search over the text stored by `InfinispanEmbeddingStore`.
+It can be found in the `langchain4j-infinispan` module.
+See the [Infinispan integration page](/integrations/embedding-stores/infinispan) for more details.
 
 ### Query Router
 `QueryRouter` is responsible for routing `Query` to the appropriate `ContentRetriever`(s).
