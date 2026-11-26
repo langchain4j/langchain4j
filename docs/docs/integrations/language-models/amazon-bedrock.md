@@ -95,6 +95,19 @@ StreamingChatModel model = BedrockStreamingChatModel.builder()
 
 - [BedrockStreamingChatModelExample](https://github.com/langchain4j/langchain4j-examples/blob/main/bedrock-examples/src/main/java/converse/BedrockStreamingChatModelExample.java)
 
+## Images and PDF files
+
+This integration sends images and PDF files to Bedrock as content: create it from a local file, for example with
+`ImageContent.from(Path.of("cat.png"), "image/png")` or `PdfFileContent.from(Path.of("report.pdf"))`, or from base64
+data. An image or PDF file given by URL is rejected with an `UnsupportedFeatureException`, see
+[Media given by URL](/tutorials/chat-and-language-models#media-given-by-url).
+
+Bedrock needs a name for each document, and the names in one request must be distinct. A PDF file created from a file
+or from base64 data is named `document-` followed by the first 12 hex digits of the SHA-256 hash of its content, so
+the same document gets the same name in every request and prompt caching keeps working. To refer to a document in a
+prompt, refer to its content or to its position, not to its file name. When a name appears more than once in a
+request, the later ones get a suffix (`-2`, `-3`, and so on) that gives a name not used yet in the request.
+
 ## Amazon Bedrock Guardrails
 
 `BedrockChatModel` and `BedrockStreamingChatModel` support [Amazon Bedrock Guardrails](https://docs.aws.amazon.com/bedrock/latest/userguide/guardrails.html).
