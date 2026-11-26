@@ -16,14 +16,14 @@ This integration is built on top of the **IBM watsonx.ai Java SDK**. Every model
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-watsonx</artifactId>
-    <version>1.24.0-beta34</version>
+    <version>1.24.1-beta34</version>
 </dependency>
 ```
 
 ### Jackson 3
 
 The watsonx.ai SDK reads and writes JSON through a separate binding module. `langchain4j-watsonx` brings the
-Jackson 2 one, `com.ibm.watsonx:watsonx-ai-jackson2`. Since `1.24.0-beta34`, if your application is on Jackson 3 and
+Jackson 2 one, `com.ibm.watsonx:watsonx-ai-jackson2`. Since `1.24.1-beta34`, if your application is on Jackson 3 and
 you want to remove Jackson 2 (see [Using Jackson 3](/tutorials/jackson-3)), replace it with `com.ibm.watsonx:watsonx-ai-jackson3`, in
 the same version as the `com.ibm.watsonx:watsonx-ai` that `langchain4j-watsonx` depends on:
 
@@ -31,7 +31,7 @@ the same version as the `com.ibm.watsonx:watsonx-ai` that `langchain4j-watsonx` 
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-watsonx</artifactId>
-    <version>1.24.0-beta34</version>
+    <version>1.24.1-beta34</version>
     <exclusions>
         <exclusion>
             <groupId>com.ibm.watsonx</groupId>
