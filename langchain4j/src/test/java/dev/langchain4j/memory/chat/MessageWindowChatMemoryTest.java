@@ -14,16 +14,21 @@ import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.HitCountChatMemoryStore.HitCounts;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
-import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import java.time.Duration;
 
 class MessageWindowChatMemoryTest implements WithAssertions {
     @Test
@@ -685,9 +690,15 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         ChatMemoryStore store = mock(ChatMemoryStore.class);
         when(store.getMessagesAsync(any())).thenThrow(failure);
         when(store.updateMessagesAsync(any(), any())).thenThrow(failure);
-        ChatMemory chatMemory = MessageWindowChatMemory.builder().maxMessages(10).chatMemoryStore(store).build();
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .build();
 
-        assertThat(chatMemory.messagesAsync()).failsWithin(Duration.ofSeconds(5)).withThrowableThat().withCause(failure);
+        assertThat(chatMemory.messagesAsync())
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .withCause(failure);
         assertThat(chatMemory.addAsync(List.of(userMessage("hi"))))
                 .failsWithin(Duration.ofSeconds(5))
                 .withThrowableThat()
@@ -704,7 +715,10 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         ChatMemoryStore store = mock(ChatMemoryStore.class);
         when(store.getMessagesAsync(any())).thenReturn(null);
         when(store.updateMessagesAsync(any(), any())).thenReturn(null);
-        ChatMemory chatMemory = MessageWindowChatMemory.builder().maxMessages(10).chatMemoryStore(store).build();
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .maxMessages(10)
+                .chatMemoryStore(store)
+                .build();
 
         assertThat(chatMemory.messagesAsync())
                 .failsWithin(Duration.ofSeconds(5))
@@ -734,7 +748,43 @@ class MessageWindowChatMemoryTest implements WithAssertions {
         boolean interruptFlagRestored = Thread.interrupted(); // also clears the flag for the next tests
 
         assertThat(interruptFlagRestored).isTrue();
-        assertThat(future).failsWithin(Duration.ofSeconds(5)).withThrowableThat().withCause(interrupted);
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .withCause(interrupted);
+    }
+
+    @Test
+    void concurrent_adds_should_keep_every_message() throws Exception {
+        UserMessage first = userMessage("A");
+        UserMessage second = userMessage("B");
+        ChatMemory chatMemory = MessageWindowChatMemory.builder()
+                .id("conv-1")
+                .maxMessages(10)
+                .chatMemoryStore(new ConcurrentAddRaceStore(2))
+                .build();
+
+        CyclicBarrier start = new CyclicBarrier(2);
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> firstAdd = executor.submit(() -> addAfter(start, chatMemory, first));
+            Future<?> secondAdd = executor.submit(() -> addAfter(start, chatMemory, second));
+            firstAdd.get(5, TimeUnit.SECONDS);
+            secondAdd.get(5, TimeUnit.SECONDS);
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertThat(chatMemory.messages()).containsExactlyInAnyOrder(first, second);
+    }
+
+    private static void addAfter(CyclicBarrier start, ChatMemory chatMemory, UserMessage message) {
+        try {
+            start.await(5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+        chatMemory.add(message);
     }
 
     @SuppressWarnings("unchecked")
