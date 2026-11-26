@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>dev.langchain4j</groupId>
+        <artifactId>langchain4j-integration-tests-parent</artifactId>
+        <version>1.25.0-beta35-SNAPSHOT</version>
+        <relativePath>../../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>langchain4j-integration-tests-class-metadata-provider-spring-boot3</artifactId>
+    <name>LangChain4j :: Integration Tests :: Class Metadata Provider :: Spring Boot 3</name>
+    <description>The app and tests of integration-tests-class-metadata-provider-spring, built and run on Spring Boot 3</description>
+
+    <licenses>
+        <license>
+            <name>Apache-2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>A business-friendly OSS license</comments>
+        </license>
+    </licenses>
+
+    <properties>
+        <spring-boot.version>3.5.16</spring-boot.version>
+        <!-- the logback-classic of LangChain4j's parent must match the logback-core of Spring Boot 3.5.16 -->
+        <logback.version>1.5.34</logback.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <!-- Imported first so that it wins over the Jackson version managed by the framework BOM below -->
+                <groupId>com.fasterxml.jackson</groupId>
+                <artifactId>jackson-bom</artifactId>
+                <version>${jackson.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <!-- Import dependency management from Spring Boot -->
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>dev.langchain4j</groupId>
+            <artifactId>langchain4j</artifactId>
+            <version>1.25.0-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <!-- the same app and tests as integration-tests-class-metadata-provider-spring, which runs them on Spring Boot 4 -->
+        <sourceDirectory>${project.basedir}/../integration-tests-class-metadata-provider-spring/src/main/java</sourceDirectory>
+        <testSourceDirectory>${project.basedir}/../integration-tests-class-metadata-provider-spring/src/test/java</testSourceDirectory>
+        <resources>
+            <resource>
+                <directory>${project.basedir}/../integration-tests-class-metadata-provider-spring/src/main/resources</directory>
+            </resource>
+        </resources>
+    </build>
+</project>

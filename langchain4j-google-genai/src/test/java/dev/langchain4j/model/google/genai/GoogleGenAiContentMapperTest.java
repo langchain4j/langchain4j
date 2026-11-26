@@ -19,6 +19,8 @@ import com.google.genai.types.FunctionCall;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.GenerateContentResponseUsageMetadata;
 import com.google.genai.types.Part;
+import com.google.genai.types.ToolCall;
+import com.google.genai.types.ToolResponse;
 import com.google.genai.types.Transcription;
 import com.google.genai.types.WordInfo;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -27,12 +29,16 @@ import dev.langchain4j.data.image.Image;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.AudioContent;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ChatMessageDeserializer;
+import dev.langchain4j.data.message.ChatMessageSerializer;
 import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.PdfFileContent;
 import dev.langchain4j.data.message.SystemMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.data.message.VideoContent;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import java.net.URI;
@@ -40,13 +46,19 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class GoogleGenAiContentMapperTest {
 
@@ -128,17 +140,71 @@ class GoogleGenAiContentMapperTest {
     }
 
     @Test
-    void should_convert_user_message_with_image_file_url(@TempDir Path tempDir) throws Exception {
+    void should_convert_user_message_with_image_read_from_a_local_file(@TempDir Path tempDir) throws Exception {
         Path imgFile = tempDir.resolve("test.png");
         Files.write(imgFile, "fake-image-data".getBytes());
 
-        Image image = Image.builder().url(imgFile.toUri()).build();
-        UserMessage message = UserMessage.from(new ImageContent(image));
+        UserMessage message = UserMessage.from(ImageContent.from(imgFile, "image/png"));
 
         Content result = GoogleGenAiContentMapper.toContent(message);
 
         assertThat(result.role().get()).isEqualTo("user");
-        assertThat(result.parts().get()).hasSize(1);
+        Blob blob = result.parts().get().get(0).inlineData().get();
+        assertThat(blob.data()).hasValue("fake-image-data".getBytes());
+        assertThat(blob.mimeType()).hasValue("image/png");
+    }
+
+    static Stream<Arguments> mediaGivenByUrl() {
+        return Stream.of(
+                Arguments.of(ImageContent.from("https://example.com/photos/cat.png"), "image/png"),
+                Arguments.of(ImageContent.from("http://example.com/photos/cat.png"), "image/png"),
+                Arguments.of(AudioContent.from("https://example.com/audio/speech.mp3"), "audio/mp3"),
+                Arguments.of(VideoContent.from("https://example.com/video/clip.mp4"), "video/mp4"),
+                Arguments.of(PdfFileContent.from("https://example.com/docs/report.pdf"), "application/pdf"),
+                Arguments.of(ImageContent.from("gs://bucket/image.png"), "image/png"),
+                Arguments.of(ImageContent.from("HTTPS://example.com/photos/cat.png"), "image/png"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("mediaGivenByUrl")
+    void should_pass_media_urls_on_to_gemini(dev.langchain4j.data.message.Content content, String mimeType) {
+        Content result = GoogleGenAiContentMapper.toContent(UserMessage.from(content));
+
+        Part part = result.parts().get().get(0);
+        assertThat(part.inlineData()).isEmpty();
+        assertThat(part.fileData().get().fileUri()).hasValue(urlOf(content));
+        assertThat(part.fileData().get().mimeType()).hasValue(mimeType);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"file:///etc/hosts.png", "/home/me/cat.png", "cat.png", "ftp://example.com/cat.png"})
+    void should_reject_media_given_by_other_urls(String url) {
+        for (dev.langchain4j.data.message.Content content : List.of(
+                ImageContent.from(url),
+                AudioContent.from(url),
+                VideoContent.from(url),
+                PdfFileContent.from(url))) {
+
+            assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(UserMessage.from(content)))
+                    .isExactlyInstanceOf(UnsupportedFeatureException.class)
+                    .hasMessage(GoogleGenAiContentMapper.URL_NOT_SUPPORTED);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"file:///tmp/imagen-image-1.png", "https://example.com/photos/cat.png"})
+    void should_send_the_content_of_media_that_has_both_content_and_a_url(String url) {
+        Image image = Image.builder()
+                .url(url)
+                .base64Data(Base64.getEncoder().encodeToString(new byte[] {1, 2, 3}))
+                .build();
+
+        Content result = GoogleGenAiContentMapper.toContent(UserMessage.from(ImageContent.from(image)));
+
+        Part part = result.parts().get().get(0);
+        assertThat(part.fileData()).isEmpty();
+        assertThat(part.inlineData().get().data()).hasValue(new byte[] {1, 2, 3});
+        assertThat(part.inlineData().get().mimeType()).hasValue("image/png");
     }
 
     @Test
@@ -544,28 +610,29 @@ class GoogleGenAiContentMapperTest {
     }
 
     @Test
-    void should_throw_when_reading_nonexistent_file() {
-        Image image =
-                Image.builder().url(URI.create("file:///nonexistent/file.png")).build();
-        UserMessage message = UserMessage.from(new ImageContent(image));
-
-        assertThatThrownBy(() -> GoogleGenAiContentMapper.toContent(message))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("nonexistent")
-                .hasMessageContaining("file.png");
-    }
-
-    @Test
-    void should_convert_user_message_with_image_url_and_explicit_mime_type(@TempDir Path tempDir) throws Exception {
-        Path imgFile = tempDir.resolve("test.dat");
-        Files.write(imgFile, "fake-image-data".getBytes());
-
-        Image image = Image.builder().url(imgFile.toUri()).mimeType("image/png").build();
+    void should_convert_user_message_with_image_url_and_explicit_mime_type() {
+        Image image = Image.builder()
+                .url("https://example.com/photos?id=42")
+                .mimeType("image/png")
+                .build();
         UserMessage message = UserMessage.from(new ImageContent(image));
 
         Content result = GoogleGenAiContentMapper.toContent(message);
 
         assertThat(result.parts().get()).hasSize(1);
+        assertThat(result.parts().get().get(0).fileData().get().fileUri()).hasValue("https://example.com/photos?id=42");
+        assertThat(result.parts().get().get(0).fileData().get().mimeType()).hasValue("image/png");
+    }
+
+    private static String urlOf(dev.langchain4j.data.message.Content content) {
+        if (content instanceof ImageContent image) {
+            return image.image().url().toString();
+        } else if (content instanceof AudioContent audio) {
+            return audio.audio().url().toString();
+        } else if (content instanceof VideoContent video) {
+            return video.video().url().toString();
+        }
+        return ((PdfFileContent) content).pdfFile().url().toString();
     }
 
     @Test
@@ -1538,6 +1605,161 @@ class GoogleGenAiContentMapperTest {
                         .aiMessage()
                         .text())
                 .isEqualTo("Code executed:\n```python\nx = 1\n```\n\n");
+    }
+
+    @Test
+    void should_keep_server_side_tool_parts_in_the_order_they_were_received() {
+        Part searchCall = searchCallPart();
+        Part searchResponse = searchResponsePart();
+        GenerateContentResponse response = responseWithParts(searchCall, searchResponse, functionCallPart());
+
+        AiMessage aiMessage =
+                GoogleGenAiContentMapper.toChatResponse(response, "test-model").aiMessage();
+
+        assertThat(aiMessage.attribute("server_side_tool_parts", List.class))
+                .containsExactly(searchCall.toJson(), searchResponse.toJson());
+        assertThat(aiMessage.toolExecutionRequests()).hasSize(1);
+    }
+
+    @Test
+    void should_keep_executed_code_and_its_result_as_server_side_tool_parts() {
+        Part code = Part.builder()
+                .executableCode(ExecutableCode.builder().language("PYTHON").code("print(6 * 7)"))
+                .thoughtSignature("code-signature".getBytes())
+                .build();
+        Part result = resultPart("OUTCOME_OK", "42\n");
+        GenerateContentResponse response = responseWithParts(code, result, functionCallPart());
+
+        AiMessage aiMessage =
+                GoogleGenAiContentMapper.toChatResponse(response, "test-model").aiMessage();
+
+        assertThat(aiMessage.text()).isNull();
+        assertThat(aiMessage.attribute("server_side_tool_parts", List.class))
+                .containsExactly(code.toJson(), result.toJson());
+    }
+
+    @Test
+    void should_not_keep_executed_code_as_server_side_tool_parts_when_it_is_added_to_the_text() {
+        Part searchCall = searchCallPart();
+        GenerateContentResponse response = responseWithParts(
+                searchCall, codePart("PYTHON", "print(6 * 7)"), resultPart("OUTCOME_OK", "42\n"), functionCallPart());
+
+        AiMessage aiMessage = GoogleGenAiContentMapper.toChatResponse(response, "test-model", false, true)
+                .aiMessage();
+
+        assertThat(aiMessage.text()).contains("print(6 * 7)").contains("42");
+        assertThat(aiMessage.attribute("server_side_tool_parts", List.class)).containsExactly(searchCall.toJson());
+    }
+
+    @Test
+    void should_send_back_server_side_tool_parts_before_the_function_call() {
+        Part searchCall = searchCallPart();
+        Part searchResponse = searchResponsePart();
+        GenerateContentResponse response = responseWithParts(searchCall, searchResponse, functionCallPart());
+        AiMessage aiMessage =
+                GoogleGenAiContentMapper.toChatResponse(response, "test-model").aiMessage();
+
+        List<Part> parts =
+                GoogleGenAiContentMapper.toContent(aiMessage, false).parts().orElseThrow();
+
+        assertThat(parts).hasSize(3);
+        assertThat(parts.get(0).toJson()).isEqualTo(searchCall.toJson());
+        assertThat(parts.get(0).thoughtSignature())
+                .hasValueSatisfying(signature -> assertThat(signature).isEqualTo("search-call-signature".getBytes()));
+        assertThat(parts.get(1).toJson()).isEqualTo(searchResponse.toJson());
+        assertThat(parts.get(2).functionCall().orElseThrow().id()).hasValue("call-2");
+        assertThat(parts.get(2).thoughtSignature())
+                .hasValueSatisfying(signature -> assertThat(signature).isEqualTo("function-call-signature".getBytes()));
+    }
+
+    @Test
+    void should_send_back_server_side_tool_parts_after_the_message_is_stored_and_loaded() {
+        Part searchCall = searchCallPart();
+        Part searchResponse = searchResponsePart();
+        GenerateContentResponse response = responseWithParts(searchCall, searchResponse, functionCallPart());
+        AiMessage aiMessage =
+                GoogleGenAiContentMapper.toChatResponse(response, "test-model").aiMessage();
+
+        ChatMessage loaded = ChatMessageDeserializer.messageFromJson(ChatMessageSerializer.messageToJson(aiMessage));
+
+        List<Part> parts =
+                GoogleGenAiContentMapper.toContent(loaded, false).parts().orElseThrow();
+        assertThat(parts).hasSize(3);
+        assertThat(parts.get(0).toJson()).isEqualTo(searchCall.toJson());
+        assertThat(parts.get(1).toJson()).isEqualTo(searchResponse.toJson());
+    }
+
+    @Test
+    void should_send_back_only_the_server_side_tool_parts_stored_as_json_strings() {
+        Part searchCall = searchCallPart();
+        AiMessage aiMessage = AiMessage.builder()
+                .text("It was completed in 1889.")
+                .attributes(Map.of(
+                        "server_side_tool_parts",
+                        Arrays.asList(Map.of("toolCall", Map.of("id", "call-1")), null, searchCall.toJson())))
+                .build();
+
+        List<Part> parts =
+                GoogleGenAiContentMapper.toContent(aiMessage, false).parts().orElseThrow();
+
+        assertThat(parts).hasSize(2);
+        assertThat(parts.get(0).toJson()).isEqualTo(searchCall.toJson());
+        assertThat(parts.get(1).text()).hasValue("It was completed in 1889.");
+    }
+
+    @Test
+    void should_not_capture_the_thought_signature_of_a_server_side_tool_part() {
+        GenerateContentResponse response = responseWithParts(searchCallPart());
+
+        AiMessage aiMessage =
+                GoogleGenAiContentMapper.toChatResponse(response, "test-model").aiMessage();
+
+        assertThat(aiMessage.attributes()).doesNotContainKey("thought_signature");
+    }
+
+    @Test
+    void should_not_add_server_side_tool_parts_when_the_response_has_none() {
+        GenerateContentResponse response = responseWithParts(Part.fromText("42"), functionCallPart());
+
+        AiMessage aiMessage =
+                GoogleGenAiContentMapper.toChatResponse(response, "test-model").aiMessage();
+
+        assertThat(aiMessage.attributes()).doesNotContainKey("server_side_tool_parts");
+        assertThat(GoogleGenAiContentMapper.toContent(aiMessage, false).parts().orElseThrow())
+                .hasSize(2);
+    }
+
+    private static Part searchCallPart() {
+        return Part.builder()
+                .toolCall(ToolCall.builder()
+                        .id("call-1")
+                        .toolType("GOOGLE_SEARCH_WEB")
+                        .args(Map.of("queries", List.of("Eiffel Tower completion year")))
+                        .build())
+                .thoughtSignature("search-call-signature".getBytes())
+                .build();
+    }
+
+    private static Part searchResponsePart() {
+        return Part.builder()
+                .toolResponse(ToolResponse.builder()
+                        .id("call-1")
+                        .toolType("GOOGLE_SEARCH_WEB")
+                        .response(Map.of("search_suggestions", "<div>Eiffel Tower</div>"))
+                        .build())
+                .thoughtSignature("search-response-signature".getBytes())
+                .build();
+    }
+
+    private static Part functionCallPart() {
+        return Part.builder()
+                .functionCall(FunctionCall.builder()
+                        .id("call-2")
+                        .name("record_fact")
+                        .args(Map.of("value", "1889"))
+                        .build())
+                .thoughtSignature("function-call-signature".getBytes())
+                .build();
     }
 
     private static Part codePart(String language, String code) {

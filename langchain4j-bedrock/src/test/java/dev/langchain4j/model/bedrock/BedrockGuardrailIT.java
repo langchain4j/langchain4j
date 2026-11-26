@@ -16,7 +16,10 @@ import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceListener;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.Result;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -48,8 +51,6 @@ import software.amazon.awssdk.services.bedrock.model.GuardrailTopicType;
 public class BedrockGuardrailIT {
     private static final String NOVA_MODEL = "us.amazon.nova-micro-v1:0";
     private static final String NOVA_VISION_MODEL = "us.amazon.nova-lite-v1:0";
-    private static final String CAT_IMAGE_URL = "https://raw.githubusercontent.com/langchain4j/langchain4j/main/"
-            + "langchain4j-core/src/test/resources/images/cat.jpg";
     private static final String GUARDRAIL_NAME_PREFIX = "Langchain_IT_";
     private static String guardrailId;
     private static String guardrailVersion;
@@ -373,7 +374,7 @@ public class BedrockGuardrailIT {
     }
 
     @Test
-    void should_pass_guarded_image_to_model_with_guard_content_placement() {
+    void should_pass_guarded_image_to_model_with_guard_content_placement() throws IOException {
         // Given
         ChatModel model =
                 modelWithGuardContentPlacement(NOVA_VISION_MODEL, BedrockGuardContentPlacement.LAST_USER_MESSAGE);
@@ -382,12 +383,18 @@ public class BedrockGuardrailIT {
         ChatResponse response = model.chat(ChatRequest.builder()
                 .messages(UserMessage.from(
                         TextContent.from("What animal is in the image? Answer with one word."),
-                        ImageContent.from(CAT_IMAGE_URL)))
+                        catImage()))
                 .build());
 
         // Then
         assertThat(response.finishReason()).isNotEqualTo(FinishReason.CONTENT_FILTER);
         assertThat(response.aiMessage().text()).containsIgnoringCase("cat");
+    }
+
+    private static ImageContent catImage() throws IOException {
+        try (InputStream inputStream = BedrockGuardrailIT.class.getResourceAsStream("/images/cat.jpg")) {
+            return ImageContent.from(Base64.getEncoder().encodeToString(inputStream.readAllBytes()), "image/jpeg");
+        }
     }
 
     private static ChatModel modelWithGuardContentPlacement(

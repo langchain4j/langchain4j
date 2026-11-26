@@ -16,7 +16,8 @@ public interface McpService {
      *
      * @param mcpClientSupplier the supplier of the client, wrapping the {@code @McpClientSupplier} method
      * @param mcpClientType the declared return type of that method
-     * @param agentServiceClass the interface of the agent
+     * @param agentServiceClass the type of the agent: an interface, or a class when the builder is given an agent
+     *                          instance factory
      */
     <T> McpClientBuilder<T> mcpBuilder(
             Supplier<Object> mcpClientSupplier, Class<?> mcpClientType, Class<T> agentServiceClass);

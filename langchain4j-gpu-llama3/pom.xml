@@ -198,7 +198,7 @@
                 <maven.test.skip>false</maven.test.skip>
                 <maven.compiler.testSkip>false</maven.compiler.testSkip>
                 <skipTests>false</skipTests>
-                <skipITs>false</skipITs>
+                <skipITs>${skipTests}</skipITs>
             </properties>
             <build>
                 <defaultGoal>clean generate-test-resources compile test-compile exec:exec</defaultGoal>

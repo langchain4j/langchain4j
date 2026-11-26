@@ -2,11 +2,23 @@ package dev.langchain4j.experimental.rag.content.retriever.sql;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.ContentFilteredException;
+import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.model.chat.ChatModel;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.rag.content.Content;
+import dev.langchain4j.rag.query.Query;
+import dev.langchain4j.test.mock.MockChatModel;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -15,6 +27,10 @@ import java.util.Arrays;
 import java.util.List;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.stubbing.OngoingStubbing;
 
 class SqlDatabaseContentRetrieverTest {
@@ -51,6 +67,87 @@ class SqlDatabaseContentRetrieverTest {
     @Test
     void clean_should_return_plain_text_unchanged() {
         assertThat(retriever.clean("SELECT * FROM customer")).isEqualTo("SELECT * FROM customer");
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @EnumSource(value = FinishReason.class, names = {"STOP", "OTHER"})
+    void should_return_empty_list_when_model_returns_no_text(FinishReason finishReason) {
+        DataSource dataSource = mock(DataSource.class);
+        MockChatModel chatModel = MockChatModel.thatResponds(emptyAnswer(finishReason));
+        SqlDatabaseContentRetriever retriever = retriever(dataSource, chatModel);
+
+        List<Content> contents = retriever.retrieve(Query.from("hello"));
+
+        assertThat(contents).isEmpty();
+        assertThat(chatModel.requests()).hasSize(1);
+        verifyNoInteractions(dataSource);
+    }
+
+    @Test
+    void should_fail_when_model_answer_is_cut_off_by_token_limit() {
+        DataSource dataSource = mock(DataSource.class);
+        MockChatModel chatModel = MockChatModel.thatResponds(emptyAnswer(FinishReason.LENGTH));
+        SqlDatabaseContentRetriever retriever = retriever(dataSource, chatModel);
+
+        assertThatThrownBy(() -> retriever.retrieve(Query.from("How many customers are there?")))
+                .isExactlyInstanceOf(LangChain4jException.class)
+                .hasMessageContaining("finish reason: LENGTH");
+        assertThat(chatModel.requests()).hasSize(1);
+        verifyNoInteractions(dataSource);
+    }
+
+    @Test
+    void should_fail_when_model_answer_is_blocked_by_content_filter() {
+        DataSource dataSource = mock(DataSource.class);
+        MockChatModel chatModel = MockChatModel.thatResponds(emptyAnswer(FinishReason.CONTENT_FILTER));
+        SqlDatabaseContentRetriever retriever = retriever(dataSource, chatModel);
+
+        assertThatThrownBy(() -> retriever.retrieve(Query.from("How many customers are there?")))
+                .isExactlyInstanceOf(ContentFilteredException.class)
+                .hasMessageContaining("finish reason: CONTENT_FILTER");
+        assertThat(chatModel.requests()).hasSize(1);
+        verifyNoInteractions(dataSource);
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "INSERT INTO customers (customer_id, first_name) VALUES (7, 'James')",
+                "UPDATE customers SET email = 'bad@guy.com' WHERE customer_id = 1",
+                "DELETE FROM customers WHERE customer_id = 1",
+                "DROP TABLE orders",
+                "```sql\nINSERT INTO customers (customer_id, first_name) VALUES (7, 'James')\n```"
+            })
+    void should_not_execute_statements_other_than_select(String modelAnswer) {
+        DataSource dataSource = mock(DataSource.class);
+        MockChatModel chatModel = MockChatModel.thatResponds(modelAnswer);
+        SqlDatabaseContentRetriever retriever = retriever(dataSource, chatModel);
+
+        List<Content> contents = retriever.retrieve(Query.from("Insert new customer James Bond with ID=7"));
+
+        assertThat(contents).isEmpty();
+        assertThat(chatModel.requests()).hasSize(1);
+        verifyNoInteractions(dataSource);
+    }
+
+    @Test
+    void should_execute_select_even_when_asked_to_write() throws SQLException {
+        // a model may answer a write request with a harmless SELECT: it is executed like any other SELECT
+        Statement statement = mockStatementReturningSingleRow(List.of("error"), "INSERT");
+        Connection connection = mock(Connection.class);
+        when(connection.createStatement()).thenReturn(statement);
+        DataSource dataSource = mock(DataSource.class);
+        when(dataSource.getConnection()).thenReturn(connection);
+        MockChatModel chatModel = MockChatModel.thatResponds("SELECT 'INSERT' AS error;");
+        SqlDatabaseContentRetriever retriever = retriever(dataSource, chatModel);
+
+        List<Content> contents = retriever.retrieve(Query.from("Insert new customer James Bond with ID=7"));
+
+        assertThat(contents).hasSize(1);
+        assertThat(contents.get(0).textSegment().text())
+                .isEqualTo("Result of executing 'SELECT 'INSERT' AS error;':\nerror\nINSERT");
+        verify(statement).executeQuery("SELECT 'INSERT' AS error;");
     }
 
     @Test
@@ -119,6 +216,23 @@ class SqlDatabaseContentRetrieverTest {
         String result = retriever.execute("SELECT id, name FROM customers", statement);
 
         assertThat(result).isEqualTo("id,name\n1,Alice\n2,\"Bob, Jr.\"\n3,");
+    }
+
+    private static SqlDatabaseContentRetriever retriever(DataSource dataSource, ChatModel chatModel) {
+        return SqlDatabaseContentRetriever.builder()
+                .dataSource(dataSource)
+                .sqlDialect("PostgreSQL")
+                .databaseStructure("test")
+                .chatModel(chatModel)
+                .maxRetries(1)
+                .build();
+    }
+
+    private static ChatResponse emptyAnswer(FinishReason finishReason) {
+        return ChatResponse.builder()
+                .aiMessage(AiMessage.builder().build())
+                .finishReason(finishReason)
+                .build();
     }
 
     private static Statement mockStatementReturningSingleRow(List<String> columnNames, Object... rowValues)

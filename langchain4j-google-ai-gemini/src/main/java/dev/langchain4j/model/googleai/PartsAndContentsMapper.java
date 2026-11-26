@@ -5,7 +5,6 @@ import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
-import static dev.langchain4j.internal.Utils.readBytes;
 import static dev.langchain4j.model.googleai.FunctionMapper.toToolExecutionRequests;
 import static dev.langchain4j.model.googleai.Json.fromJson;
 import static java.util.stream.Collectors.joining;
@@ -35,7 +34,6 @@ import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFunctionCal
 import dev.langchain4j.model.googleai.GeminiContent.GeminiPart.GeminiFunctionResponse;
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -79,14 +77,6 @@ final class PartsAndContentsMapper {
                 if (url.getScheme() != null && url.getScheme().equals("data")) {
                     return GeminiContent.GeminiPart.builder()
                             .inlineData(parseDataUri(url))
-                            .mediaResolution(mediaResolution)
-                            .build();
-                } else if (url.getScheme() != null && url.getScheme().startsWith("http")) {
-                    byte[] imageBytes = readBytes(url.toString());
-                    String base64Data = Base64.getEncoder().encodeToString(imageBytes);
-                    return GeminiContent.GeminiPart.builder()
-                            .inlineData(new GeminiBlob(
-                                    getOrDefault(image.mimeType(), mimeTypeDetector.probeContentType(url)), base64Data))
                             .mediaResolution(mediaResolution)
                             .build();
                 } else {

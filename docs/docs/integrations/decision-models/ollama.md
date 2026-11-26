@@ -153,16 +153,11 @@ In named fields, an image is replaced the same way, so that its name says what i
 all fields, so questions can refer to them, for example "Does [image 2] show the same item as
 [image 1]?". This `[image N]` convention comes from LangChain4j, not from Ollama.
 
-Images can be given as base64 data, or by an `http`, `https` or `file` URL, in which case they are downloaded or read
-by your application, on the calling thread (also for `decideAsync()`), before the request is sent. `data:` URLs are
-not supported. Other contents, such as audio, are rejected with an `UnsupportedFeatureException` before calling
-Ollama.
-
-:::caution
-Do not pass image URLs that come from untrusted sources, such as users, tools or retrieved content: your application
-would download any `http` URL and read any local `file` URL, and send the content to Ollama. Download and check such
-images yourself, and pass them as base64 data.
-:::
+Ollama needs the content of each image: create it from a local file, for example with
+`ImageContent.from(Path.of("photo.jpg"), "image/jpeg")`, which reads the file when the content is created, or from
+base64 data. An image given by URL is rejected with an `UnsupportedFeatureException` before calling Ollama, see
+[Media given by URL](/tutorials/chat-and-language-models#media-given-by-url). Other contents, such as audio, are
+rejected with an `UnsupportedFeatureException` too.
 
 ## Questions and answers
 
