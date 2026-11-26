@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -17,6 +18,7 @@ import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.test.mock.MockChatModel;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -28,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.stubbing.OngoingStubbing;
 
 class SqlDatabaseContentRetrieverTest {
@@ -105,6 +108,46 @@ class SqlDatabaseContentRetrieverTest {
                 .hasMessageContaining("finish reason: CONTENT_FILTER");
         assertThat(chatModel.requests()).hasSize(1);
         verifyNoInteractions(dataSource);
+    }
+
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "INSERT INTO customers (customer_id, first_name) VALUES (7, 'James')",
+                "UPDATE customers SET email = 'bad@guy.com' WHERE customer_id = 1",
+                "DELETE FROM customers WHERE customer_id = 1",
+                "DROP TABLE orders",
+                "```sql\nINSERT INTO customers (customer_id, first_name) VALUES (7, 'James')\n```"
+            })
+    void should_not_execute_statements_other_than_select(String modelAnswer) {
+        DataSource dataSource = mock(DataSource.class);
+        MockChatModel chatModel = MockChatModel.thatResponds(modelAnswer);
+        SqlDatabaseContentRetriever retriever = retriever(dataSource, chatModel);
+
+        List<Content> contents = retriever.retrieve(Query.from("Insert new customer James Bond with ID=7"));
+
+        assertThat(contents).isEmpty();
+        assertThat(chatModel.requests()).hasSize(1);
+        verifyNoInteractions(dataSource);
+    }
+
+    @Test
+    void should_execute_select_even_when_asked_to_write() throws SQLException {
+        // a model may answer a write request with a harmless SELECT: it is executed like any other SELECT
+        Statement statement = mockStatementReturningSingleRow(List.of("error"), "INSERT");
+        Connection connection = mock(Connection.class);
+        when(connection.createStatement()).thenReturn(statement);
+        DataSource dataSource = mock(DataSource.class);
+        when(dataSource.getConnection()).thenReturn(connection);
+        MockChatModel chatModel = MockChatModel.thatResponds("SELECT 'INSERT' AS error;");
+        SqlDatabaseContentRetriever retriever = retriever(dataSource, chatModel);
+
+        List<Content> contents = retriever.retrieve(Query.from("Insert new customer James Bond with ID=7"));
+
+        assertThat(contents).hasSize(1);
+        assertThat(contents.get(0).textSegment().text())
+                .isEqualTo("Result of executing 'SELECT 'INSERT' AS error;':\nerror\nINSERT");
+        verify(statement).executeQuery("SELECT 'INSERT' AS error;");
     }
 
     @Test

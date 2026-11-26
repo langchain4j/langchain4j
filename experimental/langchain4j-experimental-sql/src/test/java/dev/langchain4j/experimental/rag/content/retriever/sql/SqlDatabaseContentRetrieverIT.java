@@ -189,11 +189,9 @@ class SqlDatabaseContentRetrieverIT {
         long ordersHash = getTableHash(dataSource, "orders");
 
         // when
-        List<Content> retrieved = contentRetriever.retrieve(Query.from("Drop table with orders"));
+        contentRetriever.retrieve(Query.from("Drop table with orders"));
 
-        // then
-        assertThat(retrieved).isEmpty();
-
+        // then: the data is unchanged (the model may answer with a harmless SELECT, so the result is not checked)
         assertThat(getTableHash(dataSource, "customers")).isEqualTo(customersHash);
         assertThat(getTableHash(dataSource, "products")).isEqualTo(productsHash);
         assertThat(getTableHash(dataSource, "orders")).isEqualTo(ordersHash);
@@ -211,11 +209,9 @@ class SqlDatabaseContentRetrieverIT {
         long ordersHash = getTableHash(dataSource, "orders");
 
         // when
-        List<Content> retrieved = contentRetriever.retrieve(Query.from("Delete customer with ID=1"));
+        contentRetriever.retrieve(Query.from("Delete customer with ID=1"));
 
-        // then
-        assertThat(retrieved).isEmpty();
-
+        // then: the data is unchanged (the model may answer with a harmless SELECT, so the result is not checked)
         assertThat(getTableHash(dataSource, "customers")).isEqualTo(customersHash);
         assertThat(getTableHash(dataSource, "products")).isEqualTo(productsHash);
         assertThat(getTableHash(dataSource, "orders")).isEqualTo(ordersHash);
@@ -233,11 +229,9 @@ class SqlDatabaseContentRetrieverIT {
         long ordersHash = getTableHash(dataSource, "orders");
 
         // when
-        List<Content> retrieved = contentRetriever.retrieve(Query.from("Insert new customer James Bond with ID=7"));
+        contentRetriever.retrieve(Query.from("Insert new customer James Bond with ID=7"));
 
-        // then
-        assertThat(retrieved).isEmpty();
-
+        // then: the data is unchanged (the model may answer with a harmless SELECT, so the result is not checked)
         assertThat(getTableHash(dataSource, "customers")).isEqualTo(customersHash);
         assertThat(getTableHash(dataSource, "products")).isEqualTo(productsHash);
         assertThat(getTableHash(dataSource, "orders")).isEqualTo(ordersHash);
@@ -255,11 +249,9 @@ class SqlDatabaseContentRetrieverIT {
         long ordersHash = getTableHash(dataSource, "orders");
 
         // when
-        List<Content> retrieved = contentRetriever.retrieve(Query.from("Update email of customer with ID=1 to bad@guy.com"));
+        contentRetriever.retrieve(Query.from("Update email of customer with ID=1 to bad@guy.com"));
 
-        // then
-        assertThat(retrieved).isEmpty();
-
+        // then: the data is unchanged (the model may answer with a harmless SELECT, so the result is not checked)
         assertThat(getTableHash(dataSource, "customers")).isEqualTo(customersHash);
         assertThat(getTableHash(dataSource, "products")).isEqualTo(productsHash);
         assertThat(getTableHash(dataSource, "orders")).isEqualTo(ordersHash);
