@@ -6,6 +6,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.Struct;
 import com.google.protobuf.util.JsonFormat;
 import dev.langchain4j.store.embedding.filter.Filter;
+import dev.langchain4j.store.embedding.filter.comparison.IsEqualTo;
 import dev.langchain4j.store.embedding.filter.comparison.IsGreaterThan;
 import dev.langchain4j.store.embedding.filter.comparison.IsLessThan;
 import org.junit.jupiter.api.Test;
@@ -60,6 +61,32 @@ class PineconeMetadataFilterMapperTest {
         String should = "{\"$or\":[{\"key\":{\"$lte\":1.0}},{\"key\":{\"$gte\":10.0}}]}";
         Filter filter = new IsGreaterThan("key", 1).and(new IsLessThan("key", 10));
         Struct map = PineconeMetadataFilterMapper.map(Filter.not(filter));
+        assertThat(printer.print(map)).isEqualTo(should);
+    }
+
+    @Test
+    void notNot() throws InvalidProtocolBufferException {
+        String should = "{\"key\":{\"$gt\":1.0}}";
+        Filter filter = Filter.not(Filter.not(new IsGreaterThan("key", 1)));
+        Struct map = PineconeMetadataFilterMapper.map(filter);
+        assertThat(printer.print(map)).isEqualTo(should);
+    }
+
+    @Test
+    void notCombineAndWithNestedNot() throws InvalidProtocolBufferException {
+        // not(type == "doc" and not(status == "archived")) -> type != "doc" or status == "archived"
+        String should = "{\"$or\":[{\"type\":{\"$ne\":\"doc\"}},{\"status\":{\"$eq\":\"archived\"}}]}";
+        Filter filter = Filter.not(new IsEqualTo("type", "doc").and(Filter.not(new IsEqualTo("status", "archived"))));
+        Struct map = PineconeMetadataFilterMapper.map(filter);
+        assertThat(printer.print(map)).isEqualTo(should);
+    }
+
+    @Test
+    void notCombineOrWithNestedNot() throws InvalidProtocolBufferException {
+        // not(key > 1 or not(key < 10)) -> key <= 1 and key < 10
+        String should = "{\"$and\":[{\"key\":{\"$lte\":1.0}},{\"key\":{\"$lt\":10.0}}]}";
+        Filter filter = Filter.not(new IsGreaterThan("key", 1).or(Filter.not(new IsLessThan("key", 10))));
+        Struct map = PineconeMetadataFilterMapper.map(filter);
         assertThat(printer.print(map)).isEqualTo(should);
     }
 }
