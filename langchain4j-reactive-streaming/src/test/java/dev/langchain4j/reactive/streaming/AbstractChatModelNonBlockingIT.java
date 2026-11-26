@@ -3,6 +3,7 @@ package dev.langchain4j.reactive.streaming;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static dev.langchain4j.reactive.streaming.ReactiveStreamingTestSupport.stackTracesOf;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -150,7 +151,8 @@ public abstract class AbstractChatModelNonBlockingIT {
 
         assertThat(response.aiMessage().text()).isNotBlank();
         assertThat(violations)
-                .as("BlockHound detected blocking calls on the worker threads (logging=%s) — see stack(s) below", logging)
+                .withFailMessage(() -> "BlockHound detected blocking calls on the worker threads (logging=%s):%n%s"
+                        .formatted(logging, stackTracesOf(violations)))
                 .isEmpty();
     }
 
@@ -166,7 +168,8 @@ public abstract class AbstractChatModelNonBlockingIT {
                         logging, capture.deliveryThreads)
                 .anyMatch(name -> name.startsWith(policedThreadNamePrefix()));
         assertThat(violations)
-                .as("BlockHound detected blocking calls on the worker threads (logging=%s) — see stack(s) below", logging)
+                .withFailMessage(() -> "BlockHound detected blocking calls on the worker threads (logging=%s):%n%s"
+                        .formatted(logging, stackTracesOf(violations)))
                 .isEmpty();
     }
 
