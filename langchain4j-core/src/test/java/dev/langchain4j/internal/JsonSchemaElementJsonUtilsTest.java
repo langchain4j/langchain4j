@@ -266,29 +266,133 @@ class JsonSchemaElementJsonUtilsTest {
                 .hasMessageContaining("$defs");
     }
 
-    // ---- raw fallback for extra keywords ----
+    // ---- validation constraints ----
 
     @Test
-    void should_fallback_to_raw_for_string_with_format() {
+    void should_round_trip_string_constraints() {
+        assertRoundTrip(JsonStringSchema.builder()
+                .description("a name")
+                .minLength(1)
+                .maxLength(100)
+                .pattern("^[A-Z]+$")
+                .format("date-time")
+                .build());
+    }
+
+    @Test
+    void should_round_trip_integer_constraints() {
+        assertRoundTrip(JsonIntegerSchema.builder()
+                .minimum(0L)
+                .maximum(150L)
+                .exclusiveMinimum(-1L)
+                .exclusiveMaximum(151L)
+                .build());
+    }
+
+    @Test
+    void should_round_trip_number_constraints() {
+        assertRoundTrip(JsonNumberSchema.builder()
+                .minimum(0.5)
+                .maximum(99.9)
+                .exclusiveMinimum(0.0)
+                .exclusiveMaximum(100.0)
+                .build());
+    }
+
+    @Test
+    void should_round_trip_array_constraints() {
+        assertRoundTrip(JsonArraySchema.builder()
+                .items(JsonStringSchema.builder().build())
+                .minItems(1)
+                .maxItems(10)
+                .uniqueItems(true)
+                .build());
+    }
+
+    @Test
+    void should_parse_string_with_format_as_typed_schema() {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("type", "string");
         map.put("format", "date-time");
-        assertRawFallback(map);
+
+        JsonSchemaElement element = JsonSchemaElementJsonUtils.fromMap(map);
+
+        assertThat(element)
+                .isEqualTo(JsonStringSchema.builder().format("date-time").build());
+        assertThat(JsonSchemaElementJsonUtils.toMap(element)).isEqualTo(map);
     }
 
     @Test
-    void should_fallback_to_raw_for_string_with_pattern() {
+    void should_fallback_to_raw_for_non_integral_min_length() {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("type", "string");
-        map.put("pattern", "^[A-Z]+$");
+        map.put("minLength", 5.5);
         assertRawFallback(map);
     }
 
     @Test
-    void should_fallback_to_raw_for_integer_with_minimum() {
+    void should_fallback_to_raw_for_non_string_pattern() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "string");
+        map.put("pattern", 123);
+        assertRawFallback(map);
+    }
+
+    @Test
+    void should_fallback_to_raw_for_non_string_format() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "string");
+        map.put("format", true);
+        assertRawFallback(map);
+    }
+
+    @Test
+    void should_fallback_to_raw_for_min_length_exceeding_int_range() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "string");
+        map.put("minLength", 4294967296L);
+        assertRawFallback(map);
+    }
+
+    @Test
+    void should_fallback_to_raw_for_max_items_exceeding_int_range() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "array");
+        map.put("items", Map.of("type", "string"));
+        map.put("maxItems", 4294967296L);
+        assertRawFallback(map);
+    }
+
+    @Test
+    void should_fallback_to_raw_for_non_integral_integer_minimum() {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("type", "integer");
-        map.put("minimum", 0);
+        map.put("minimum", 0.5);
+        assertRawFallback(map);
+    }
+
+    @Test
+    void should_fallback_to_raw_for_non_numeric_number_minimum() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "number");
+        map.put("minimum", "zero");
+        assertRawFallback(map);
+    }
+
+    @Test
+    void should_fallback_to_raw_for_non_boolean_unique_items() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "array");
+        map.put("items", Map.of("type", "string"));
+        map.put("uniqueItems", "yes");
+        assertRawFallback(map);
+    }
+
+    @Test
+    void should_fallback_to_raw_for_unsupported_string_keyword() {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("type", "string");
+        map.put("contentEncoding", "base64");
         assertRawFallback(map);
     }
 
@@ -309,10 +413,10 @@ class JsonSchemaElementJsonUtilsTest {
 
     @Test
     void should_round_trip_nested_with_raw_fallback_child() {
-        // outer object is typed, child with format falls back to raw
+        // outer object is typed, child with an unsupported keyword falls back to raw
         Map<String, Object> childMap = new LinkedHashMap<>();
         childMap.put("type", "string");
-        childMap.put("format", "date-time");
+        childMap.put("contentEncoding", "base64");
 
         Map<String, Object> propsMap = new LinkedHashMap<>();
         propsMap.put("name", Map.of("type", "string"));

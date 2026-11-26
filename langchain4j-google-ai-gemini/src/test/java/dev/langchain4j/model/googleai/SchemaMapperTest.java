@@ -37,6 +37,71 @@ public class SchemaMapperTest {
     }
 
     @Test
+    public void should_map_string_schema_constraints() {
+        // given
+        JsonStringSchema stringSchema = JsonStringSchema.builder()
+                .minLength(1)
+                .maxLength(100)
+                .pattern("^[A-Z]+$")
+                .format("date-time")
+                .build();
+
+        // when
+        GeminiSchema result = SchemaMapper.fromJsonSchemaToGSchema(stringSchema);
+
+        // then
+        assertThat(result.getMinLength()).isEqualTo("1");
+        assertThat(result.getMaxLength()).isEqualTo("100");
+        assertThat(result.getPattern()).isEqualTo("^[A-Z]+$");
+        assertThat(result.getFormat()).isEqualTo("date-time");
+    }
+
+    @Test
+    public void should_map_integer_schema_constraints() {
+        // given
+        JsonIntegerSchema integerSchema =
+                JsonIntegerSchema.builder().minimum(0L).maximum(150L).build();
+
+        // when
+        GeminiSchema result = SchemaMapper.fromJsonSchemaToGSchema(integerSchema);
+
+        // then
+        assertThat(result.getMinimum()).isEqualTo(0.0);
+        assertThat(result.getMaximum()).isEqualTo(150.0);
+    }
+
+    @Test
+    public void should_map_number_schema_constraints() {
+        // given
+        JsonNumberSchema numberSchema =
+                JsonNumberSchema.builder().minimum(0.5).maximum(99.9).build();
+
+        // when
+        GeminiSchema result = SchemaMapper.fromJsonSchemaToGSchema(numberSchema);
+
+        // then
+        assertThat(result.getMinimum()).isEqualTo(0.5);
+        assertThat(result.getMaximum()).isEqualTo(99.9);
+    }
+
+    @Test
+    public void should_map_array_schema_constraints() {
+        // given
+        JsonArraySchema arraySchema = JsonArraySchema.builder()
+                .items(JsonStringSchema.builder().build())
+                .minItems(1)
+                .maxItems(10)
+                .build();
+
+        // when
+        GeminiSchema result = SchemaMapper.fromJsonSchemaToGSchema(arraySchema);
+
+        // then
+        assertThat(result.getMinItems()).isEqualTo("1");
+        assertThat(result.getMaxItems()).isEqualTo("10");
+    }
+
+    @Test
     public void should_map_boolean_schema() {
         // given
         JsonBooleanSchema boolSchema = JsonBooleanSchema.builder()
