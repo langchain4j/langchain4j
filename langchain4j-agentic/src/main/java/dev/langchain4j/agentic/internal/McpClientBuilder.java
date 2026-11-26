@@ -3,8 +3,10 @@ package dev.langchain4j.agentic.internal;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import java.lang.reflect.InvocationHandler;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
 public interface McpClientBuilder<T> {
@@ -114,6 +116,29 @@ public interface McpClientBuilder<T> {
      * @since 1.24.0
      */
     McpClientBuilder<T> resolutionTimeout(Duration resolutionTimeout);
+
+    /**
+     * Sets the factory creating the object that represents a typed agent whose type is a class, like the one that an
+     * integration sets as the {@code agentInstanceFactory} of an {@code AgentConfigurator}. Without it the type of the
+     * agent must be an interface, and {@link #build()} fails with an {@code IllegalArgumentException} for a class.
+     * The factory is called only for a class: an agent whose type is an interface is always a JDK proxy.
+     * <p>
+     * The factory receives the agent as an {@link InternalAgent} that is also an {@link InvocationHandler}, and
+     * {@link #build()} fails with an {@code AgenticSystemConfigurationException} unless the object it returns is an
+     * instance of the agent type implementing {@code McpClientInstance}. That object must forward the agent method
+     * and the methods of {@code McpClientInstance} to the {@code invoke} method of the agent it received, and the
+     * methods of {@link InternalAgent} and {@link AgentInstance} either in the same way or by calling them on that
+     * agent. Each of them must be passed to {@code invoke} as the {@code Method} that the agent type or the interface
+     * declares, and not as the one overriding it in the class of the returned object, which is rejected with an
+     * {@code UnsupportedOperationException}: only the agent method invokes the tool. When the object also
+     * implements {@link AgenticScopeOwner}, its {@code withAgenticScope} method must return the object itself, since
+     * an MCP client agent has no agentic scope of its own.
+     *
+     * @param factory the factory of the object representing the agent, or {@code null} for none
+     * @return this builder for method chaining
+     * @since 1.25.0
+     */
+    McpClientBuilder<T> agentInstanceFactory(Function<InternalAgent, Object> factory);
 
     T build();
 }

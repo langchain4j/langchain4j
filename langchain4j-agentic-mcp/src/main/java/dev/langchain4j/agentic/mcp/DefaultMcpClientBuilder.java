@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -84,6 +85,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
 
     private AgentListener agentListener;
     private AgentCondition activationCondition;
+    private Function<InternalAgent, Object> agentInstanceFactory;
 
     DefaultMcpClientBuilder(Supplier<McpClient> mcpClientSupplier, Class<T> agentServiceClass) {
         this.mcpClientSupplier = mcpClientSupplier;
@@ -154,6 +156,12 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     }
 
     @Override
+    public McpClientBuilder<T> agentInstanceFactory(Function<InternalAgent, Object> factory) {
+        this.agentInstanceFactory = factory;
+        return this;
+    }
+
+    @Override
     public T build() {
         // An untyped agent would report no argument until its tool is resolved, while some planners read the
         // arguments at invocation without resolving it, so its input keys are mandatory, as for an untyped A2A agent
@@ -179,8 +187,26 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
         }
         this.arguments = localArguments();
 
-        Object agent = Proxy.newProxyInstance(
-                agentServiceClass.getClassLoader(), new Class<?>[] {agentServiceClass, McpClientInstance.class}, this);
+        Object agent;
+        if (agentServiceClass.isInterface()) {
+            agent = Proxy.newProxyInstance(
+                    agentServiceClass.getClassLoader(),
+                    new Class<?>[] {agentServiceClass, McpClientInstance.class},
+                    this);
+        } else {
+            // A JDK proxy cannot extend a class: the agent is the object that the factory of an integration creates
+            if (agentInstanceFactory == null) {
+                throw new IllegalArgumentException("An MCP client agent must be defined by an interface, but "
+                        + agentServiceClass.getName() + " is a class");
+            }
+            agent = agentInstanceFactory.apply(this);
+            if (!agentServiceClass.isInstance(agent) || !(agent instanceof McpClientInstance)) {
+                throw new AgenticSystemConfigurationException("The agent instance factory of the MCP client agent '"
+                        + name + "' must return an instance of " + agentServiceClass.getName()
+                        + " implementing " + McpClientInstance.class.getName() + ", but it returned "
+                        + (agent == null ? "null" : "an instance of " + agent.getClass().getName()));
+            }
+        }
 
         return (T) agent;
     }
@@ -329,7 +355,7 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
         if (method.getDeclaringClass() == AgentInstance.class || method.getDeclaringClass() == InternalAgent.class) {
             try {
-                return method.invoke(Proxy.getInvocationHandler(proxy), args);
+                return method.invoke(this, args);
             } catch (InvocationTargetException e) {
                 if (e.getCause() instanceof Error error) {
                     throw error;
@@ -351,7 +377,44 @@ public class DefaultMcpClientBuilder<T> implements McpClientBuilder<T>, Internal
             };
         }
 
+        if (method.getDeclaringClass() == Object.class) {
+            return switch (method.getName()) {
+                case "equals" -> proxy == args[0];
+                case "toString" -> toString();
+                case "hashCode" -> System.identityHashCode(this);
+                default ->
+                    throw new UnsupportedOperationException("Unknown method on Object class: " + method.getName());
+            };
+        }
+
+        // Only the agent method invokes the tool: any other method would invoke it with arguments that are not the
+        // ones of the tool, like a method of the interfaces above passed as the override of a generated subclass
+        if (!isAgentMethod(method)) {
+            throw new UnsupportedOperationException(
+                    "Method '" + method.getName() + "' of " + method.getDeclaringClass().getName()
+                            + " is not the agent method of the MCP client agent '" + name() + "'");
+        }
+
         return invokeTool(method, args);
+    }
+
+    /**
+     * Whether the given method is the one invoking the tool: the agent method of a typed agent, or one of the methods
+     * that {@link UntypedAgent} declares for an untyped one. A typed agent whose agent method cannot be told, having
+     * neither an annotated method nor a single abstract one, has it among the methods of its type.
+     */
+    private boolean isAgentMethod(Method method) {
+        if (agentServiceClass == UntypedAgent.class) {
+            return method.getDeclaringClass() == UntypedAgent.class;
+        }
+        return agentMethod
+                .map(method::equals)
+                .orElseGet(() -> method.getDeclaringClass().isAssignableFrom(agentServiceClass));
+    }
+
+    @Override
+    public String toString() {
+        return "McpClientAgent<" + agentServiceClass.getSimpleName() + ">";
     }
 
     /** The configured tool name, else the name of the single tool of the server, resolved at this point. */

@@ -4,10 +4,12 @@ import dev.langchain4j.agentic.observability.A2AStreamingClientListener;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import java.lang.reflect.InvocationHandler;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
@@ -193,9 +195,36 @@ public interface A2AClientBuilder<T> {
     }
 
     /**
-     * Builds the A2A client proxy implementing the agent service interface.
+     * Sets the factory creating the object that represents a typed agent whose type is a class, like the one that an
+     * integration sets as the {@code agentInstanceFactory} of an {@code AgentConfigurator}. Without it the type of the
+     * agent must be an interface, and {@link #build()} fails with an {@code IllegalArgumentException} for a class.
+     * The factory is called only for a class: an agent whose type is an interface is always a JDK proxy. A builder
+     * implementation that does not support it ignores the factory.
+     * <p>
+     * The factory receives the agent as an {@link InternalAgent} that is also an {@link InvocationHandler}, and
+     * {@link #build()} fails with an {@code AgenticSystemConfigurationException} unless the object it returns is an
+     * instance of the agent type implementing {@code A2AClientInstance}. That object must forward the agent method
+     * and the methods of {@code A2AClientInstance} to the {@code invoke} method of the agent it received, and the
+     * methods of {@link InternalAgent} and {@link AgentInstance} either in the same way or by calling them on that
+     * agent. Each of them must be passed to {@code invoke} as the {@code Method} that the agent type or the interface
+     * declares, and not as the one overriding it in the class of the returned object, which is rejected with an
+     * {@code UnsupportedOperationException}: only the agent method invokes the remote agent. When the object also
+     * implements {@link AgenticScopeOwner}, its {@code withAgenticScope} method must return the object itself, since
+     * an A2A client agent has no agentic scope of its own.
      *
-     * @return the proxy instance
+     * @param factory the factory of the object representing the agent, or {@code null} for none
+     * @return this builder for method chaining
+     * @since 1.25.0
+     */
+    default A2AClientBuilder<T> agentInstanceFactory(Function<InternalAgent, Object> factory) {
+        return this;
+    }
+
+    /**
+     * Builds the A2A client agent: a proxy implementing the agent service interface or, when the type of the agent is
+     * a class, the object created by the {@link #agentInstanceFactory(Function) agent instance factory}.
+     *
+     * @return the agent instance
      */
     T build();
 }

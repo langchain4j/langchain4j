@@ -127,6 +127,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private AgentListener agentListener;
     private A2AStreamingClientListener<TaskUpdateEvent> streamingClientListener;
     private AgentCondition activationCondition;
+    private Function<InternalAgent, Object> agentInstanceFactory;
 
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
         this(a2aServerUrl, agentServiceClass, null);
@@ -280,8 +281,26 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         // The local name, and the agent id derived from it, are fixed before the proxy is handed out
         agentId();
 
-        Object agent = Proxy.newProxyInstance(
-                agentServiceClass.getClassLoader(), new Class<?>[] {agentServiceClass, A2AClientInstance.class}, this);
+        Object agent;
+        if (agentServiceClass.isInterface()) {
+            agent = Proxy.newProxyInstance(
+                    agentServiceClass.getClassLoader(),
+                    new Class<?>[] {agentServiceClass, A2AClientInstance.class},
+                    this);
+        } else {
+            // A JDK proxy cannot extend a class: the agent is the object that the factory of an integration creates
+            if (agentInstanceFactory == null) {
+                throw new IllegalArgumentException("An A2A client agent must be defined by an interface, but "
+                        + agentServiceClass.getName() + " is a class");
+            }
+            agent = agentInstanceFactory.apply(this);
+            if (!agentServiceClass.isInstance(agent) || !(agent instanceof A2AClientInstance)) {
+                throw new AgenticSystemConfigurationException("The agent instance factory of the A2A client agent '"
+                        + name() + "' must return an instance of " + agentServiceClass.getName()
+                        + " implementing " + A2AClientInstance.class.getName() + ", but it returned "
+                        + (agent == null ? "null" : "an instance of " + agent.getClass().getName()));
+            }
+        }
 
         return (T) agent;
     }
@@ -290,7 +309,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
         if (method.getDeclaringClass() == AgentInstance.class || method.getDeclaringClass() == InternalAgent.class) {
             try {
-                return method.invoke(Proxy.getInvocationHandler(proxy), args);
+                return method.invoke(this, args);
             } catch (InvocationTargetException e) {
                 if (e.getCause() instanceof Error error) {
                     throw error;
@@ -308,6 +327,24 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     throw new UnsupportedOperationException(
                             "Unknown method on A2AClientInstance class : " + method.getName());
             };
+        }
+
+        if (method.getDeclaringClass() == Object.class) {
+            return switch (method.getName()) {
+                case "equals" -> proxy == args[0];
+                case "toString" -> toString();
+                case "hashCode" -> System.identityHashCode(this);
+                default ->
+                    throw new UnsupportedOperationException("Unknown method on Object class : " + method.getName());
+            };
+        }
+
+        // Only the agent method invokes the remote agent: any other method would send it arguments that are not a
+        // request, like a method of the interfaces above passed as the override of a generated subclass
+        if (!isAgentMethod(method)) {
+            throw new UnsupportedOperationException(
+                    "Method '" + method.getName() + "' of " + method.getDeclaringClass().getName()
+                            + " is not the agent method of the A2A client agent '" + name() + "'");
         }
 
         boolean wrapWithScope = method.getReturnType() == ResultWithAgenticScope.class;
@@ -335,6 +372,25 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         return method.getReturnType() == ResultWithAgenticScope.class
                 ? new ResultWithAgenticScope<>(scope, result.parsedResult)
                 : result.parsedResult;
+    }
+
+    /**
+     * Whether the given method is the one invoking the remote agent: the agent method of a typed agent, or one of the
+     * methods that {@link UntypedAgent} declares for an untyped one. A typed agent whose agent method cannot be told,
+     * having neither an annotated method nor a single abstract one, has it among the methods of its type.
+     */
+    private boolean isAgentMethod(Method method) {
+        if (agentServiceClass == UntypedAgent.class) {
+            return method.getDeclaringClass() == UntypedAgent.class;
+        }
+        return agentMethod()
+                .map(method::equals)
+                .orElseGet(() -> method.getDeclaringClass().isAssignableFrom(agentServiceClass));
+    }
+
+    @Override
+    public String toString() {
+        return "A2AClientAgent<" + agentServiceClass.getSimpleName() + ">";
     }
 
     private static Type getReturnType(Method method) {
@@ -726,6 +782,12 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     "The resolution timeout of an A2A client agent must not be negative: " + resolutionTimeout);
         }
         this.resolutionTimeout = resolutionTimeout;
+        return this;
+    }
+
+    @Override
+    public DefaultA2AClientBuilder<T> agentInstanceFactory(Function<InternalAgent, Object> factory) {
+        this.agentInstanceFactory = factory;
         return this;
     }
 
