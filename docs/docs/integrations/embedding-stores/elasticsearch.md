@@ -56,7 +56,7 @@ ElasticsearchEmbeddingStore store = ElasticsearchEmbeddingStore.builder()
 
 It comes with the following options:
 
-* `indexName`: the name of the Elasticsearch index to use. Default is `default`.
+* `indexName`: the name of the Elasticsearch index to use. Default is `default`. Created on the first write if it does not exist. See [Metadata](#metadata).
 * `configuration`: the `ElasticsearchConfiguration` to use. Default is `ElasticsearchConfigurationKnn`.
 * `refresh`: when documents written or removed by ID become visible to search. Default is `Refresh.False`.
 
@@ -109,6 +109,21 @@ them by filter, configure `Refresh.WaitFor` so the writes are searchable before 
 See the
 [Elasticsearch refresh parameter documentation](https://www.elastic.co/docs/reference/elasticsearch/rest-apis/refresh-parameter)
 for details.
+
+### Metadata
+
+String metadata filters compare the stored value exactly. That includes values that look like dates, such as
+`2026-11-21`, and values longer than 256 characters, such as long source URLs. A string range compares the whole value,
+so `"alpha zulu"` is not greater than `"m"`.
+
+The first write creates the index when it does not exist yet. That index turns date detection off and maps
+`metadata.*` strings to `text` with a `keyword` sub-field (`ignore_above` 32766). Equality, membership and range
+filters on strings use that keyword field. Numeric metadata stays on its numeric field.
+
+An index that already exists is left unchanged. If you create it yourself, Elasticsearch still maps date-like strings
+as dates and ignores keyword values longer than 256 characters. String filters then miss those values, and
+`isNotEqualTo` / `isNotIn` match every document. Let the store create the index, or use the same mapping, when you need
+those filters. `removeAll()` drops the index, and the next write creates it again with this mapping.
 
 ### Storing documents without an embedding
 
