@@ -275,15 +275,17 @@ class QdrantFilterConverterTest {
         float value = 0.1f;
 
         // What Qdrant actually persists for metadata.put("k", 0.1f):
-        double stored =
-                ValueMapFactory.valueMap(Collections.singletonMap("k", value)).get("k").getDoubleValue();
+        double stored = ValueMapFactory.valueMap(Collections.singletonMap("k", value))
+                .get("k")
+                .getDoubleValue();
 
         // What the IsEqualTo filter searches for:
         Common.Filter convertedFilter = QdrantFilterConverter.convertExpression(new IsEqualTo("k", value));
         double searchedGte = convertedFilter.getMust(0).getField().getRange().getGte();
 
         assertThat(searchedGte)
-                .as("equality range bound must equal the stored representation, otherwise IsEqualTo(0.1f) never matches a row stored with put(\"k\", 0.1f)")
+                .as(
+                        "equality range bound must equal the stored representation, otherwise IsEqualTo(0.1f) never matches a row stored with put(\"k\", 0.1f)")
                 .isEqualTo(stored);
     }
 }
