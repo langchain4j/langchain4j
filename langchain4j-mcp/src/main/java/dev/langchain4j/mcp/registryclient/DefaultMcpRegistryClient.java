@@ -14,20 +14,16 @@ import dev.langchain4j.mcp.registryclient.model.McpRegistryHealth;
 import dev.langchain4j.mcp.registryclient.model.McpRegistryPong;
 import dev.langchain4j.mcp.registryclient.model.McpServerList;
 import dev.langchain4j.mcp.registryclient.model.McpServerListRequest;
-import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class DefaultMcpRegistryClient implements McpRegistryClient {
 
@@ -54,9 +50,9 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
             boolean logResponses) {
         this.baseUrl = Utils.getOrDefault(baseUrl, OFFICIAL_REGISTRY_URL);
         this.headers = Utils.getOrDefault(headers, () -> HashMap::new);
-        HttpClient httpClientToUse =
-                Utils.getOrDefault(httpClient, () -> HttpClientBuilderLoader.loadHttpClientBuilder()
-                        .build());
+        HttpClient httpClientToUse = Utils.getOrDefault(
+                httpClient,
+                () -> HttpClientBuilderLoader.loadHttpClientBuilder().build());
         if (logRequests || logResponses) {
             this.httpClient = new LoggingHttpClient(httpClientToUse, logRequests, logResponses);
         } else {
@@ -67,10 +63,10 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
     @Override
     public McpServerList listServers(McpServerListRequest request) {
         Objects.requireNonNull(request, "request must not be null");
-        String params = processServerListRequestPathParams(request);
         HttpRequest httpRequest = HttpRequest.builder()
                 .method(HttpMethod.GET)
-                .url(baseUrl, !params.isEmpty() ? "/v0/servers?" + params : "/v0/servers")
+                .url(baseUrl, "/v0/servers")
+                .addQueryParams(serverListQueryParams(request))
                 .addHeaders(currentHeaders())
                 .build();
         return sendAndProcessResponse(httpRequest, McpServerList.class);
@@ -147,24 +143,24 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
         return URLEncoder.encode(parameter, StandardCharsets.UTF_8);
     }
 
-    private String processServerListRequestPathParams(McpServerListRequest request) {
-        List<String> params = new ArrayList<>();
+    private Map<String, String> serverListQueryParams(McpServerListRequest request) {
+        Map<String, String> params = new LinkedHashMap<>();
         if (request.getCursor() != null) {
-            params.add("cursor=" + request.getCursor());
+            params.put("cursor", request.getCursor());
         }
         if (request.getLimit() != null) {
-            params.add("limit=" + request.getLimit());
+            params.put("limit", request.getLimit().toString());
         }
         if (request.getSearch() != null) {
-            params.add("search=" + request.getSearch());
+            params.put("search", request.getSearch());
         }
         if (request.getUpdatedSince() != null) {
-            params.add("updated_since=" + request.getUpdatedSince().format(DATE_TIME_FORMATTER));
+            params.put("updated_since", request.getUpdatedSince().format(DATE_TIME_FORMATTER));
         }
         if (request.getVersion() != null) {
-            params.add("version=" + request.getVersion());
+            params.put("version", request.getVersion());
         }
-        return params.stream().collect(Collectors.joining("&"));
+        return params;
     }
 
     private <T> T sendAndProcessResponse(HttpRequest httpRequest, Class<T> returnType) {
