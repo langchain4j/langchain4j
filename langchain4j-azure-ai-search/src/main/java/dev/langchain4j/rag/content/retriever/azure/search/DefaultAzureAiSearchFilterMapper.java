@@ -7,7 +7,7 @@ import dev.langchain4j.store.embedding.filter.comparison.*;
 import dev.langchain4j.store.embedding.filter.logical.And;
 import dev.langchain4j.store.embedding.filter.logical.Not;
 import dev.langchain4j.store.embedding.filter.logical.Or;
-import java.util.Collection;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -15,6 +15,12 @@ import java.util.stream.Collectors;
  * Use the default structure of the Azure AI Search Index.
  */
 public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapper {
+
+    /**
+     * Without an explicit delimiter, {@code search.in} splits the value list on spaces and commas,
+     * so a value such as {@code "New York"} would be matched as {@code "New"} or {@code "York"}.
+     */
+    private static final String SEARCH_IN_DELIMITER = "|";
 
     public DefaultAzureAiSearchFilterMapper() {}
 
@@ -71,7 +77,7 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
         if (filter instanceof IsGreaterThanOrEqualTo) return "k/value ge '%s'";
         if (filter instanceof IsLessThan) return "k/value lt '%s'";
         if (filter instanceof IsLessThanOrEqualTo) return "k/value le '%s'";
-        if (filter instanceof IsIn) return "search.in(k/value, ('%s'))";
+        if (filter instanceof IsIn) return "search.in(k/value, '%s', '" + SEARCH_IN_DELIMITER + "')";
         // not use, it raplace by Not ( IsIn )
         //        if (filter instanceof IsNotIn) return "not search.in(k/value, ('%s'))";
         throw new UnsupportedOperationException(
@@ -83,8 +89,19 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
     }
 
     private String mapIsIn(IsIn filter) {
+        List<String> values = filter.comparisonValues().stream()
+                .map(Object::toString)
+                .sorted()
+                .toList();
+        if (values.stream().anyMatch(value -> value.contains(SEARCH_IN_DELIMITER))) {
+            // the delimiter cannot be escaped inside search.in, so compare the values one by one
+            String anyOf = values.stream()
+                    .map(value -> "k/value eq '" + escape(value) + "'")
+                    .collect(Collectors.joining(" or "));
+            return format("metadata/attributes/any(k: k/key eq '%s' and (%s))", escape(filter.key()), anyOf);
+        }
         return formatComparisonFilter(
-                filter.key(), mapSearchInValues(filter.comparisonValues()), getComparisonFormat(filter));
+                filter.key(), String.join(SEARCH_IN_DELIMITER, values), getComparisonFormat(filter));
     }
 
     private String mapIsLessThanOrEqualTo(IsLessThanOrEqualTo filter) {
@@ -109,10 +126,6 @@ public class DefaultAzureAiSearchFilterMapper implements AzureAiSearchFilterMapp
 
     private String mapIsNotEqualTo(IsNotEqualTo filter) {
         return map(Filter.not(new IsEqualTo(filter.key(), filter.comparisonValue())));
-    }
-
-    private String mapSearchInValues(Collection<?> comparisonValues) {
-        return comparisonValues.stream().map(Object::toString).sorted().collect(Collectors.joining(", "));
     }
 
     private String formatComparisonFilter(String key, String value, String format) {

@@ -3,6 +3,8 @@ package dev.langchain4j.store.embedding.azure.search;
 import static dev.langchain4j.internal.RetryUtils.withRetry;
 import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_FIELD_ID;
 import static dev.langchain4j.store.embedding.azure.search.AbstractAzureAiSearchEmbeddingStore.DEFAULT_INDEX_NAME;
+import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
+import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
 
@@ -12,6 +14,7 @@ import com.azure.search.documents.indexes.SearchIndexClientBuilder;
 import com.azure.search.documents.indexes.models.SearchField;
 import com.azure.search.documents.indexes.models.SearchFieldDataType;
 import com.azure.search.documents.indexes.models.SearchIndex;
+import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.allminilml6v2q.AllMiniLmL6V2QuantizedEmbeddingModel;
@@ -128,5 +131,25 @@ class AzureAiSearchEmbeddingStoreIT extends EmbeddingStoreWithFilteringIT {
                 AZURE_SEARCH_ENDPOINT, new AzureKeyCredential(AZURE_SEARCH_KEY), false, null, null, null);
 
         assertThat(store.searchClient.getIndexName()).isEqualTo(DEFAULT_INDEX_NAME);
+    }
+
+    @Test
+    void should_filter_by_isIn_with_values_containing_spaces_and_commas() {
+        should_filter_by_metadata(
+                metadataKey("city").isIn("New York", "Paris, France"),
+                asList(new Metadata().put("city", "New York"), new Metadata().put("city", "Paris, France")),
+                asList(
+                        new Metadata().put("city", "New"),
+                        new Metadata().put("city", "York"),
+                        new Metadata().put("city", "Paris"),
+                        new Metadata()));
+    }
+
+    @Test
+    void should_filter_by_isNotIn_with_values_containing_spaces() {
+        should_filter_by_metadata(
+                metadataKey("city").isNotIn("New York", "Los Angeles"),
+                asList(new Metadata().put("city", "New"), new Metadata().put("city", "York"), new Metadata()),
+                asList(new Metadata().put("city", "New York"), new Metadata().put("city", "Los Angeles")));
     }
 }
