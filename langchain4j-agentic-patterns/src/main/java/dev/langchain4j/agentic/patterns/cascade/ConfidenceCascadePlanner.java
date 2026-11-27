@@ -84,7 +84,13 @@ public class ConfidenceCascadePlanner implements Planner {
     /** The default yes/no question asked to grade the answer of a tier. */
     public static final String DEFAULT_QUESTION = "Does the answer fully and correctly address the request?";
 
-    static final String QUESTION_NAME = "accepted";
+    /**
+     * The name of the yes/no question asked to grade the answer of a tier, in the request sent to the decision model
+     * and in its response: {@code decisionResponse.yesNo(QUESTION_NAME).probability()} is the probability that the
+     * answer is acceptable.
+     */
+    public static final String QUESTION_NAME = "accepted";
+
     static final String ANSWER_KEY = "candidateAnswer";
 
     private static final String CONFIDENCE_CASCADE_KEY_PREFIX = "confidence-cascade-";

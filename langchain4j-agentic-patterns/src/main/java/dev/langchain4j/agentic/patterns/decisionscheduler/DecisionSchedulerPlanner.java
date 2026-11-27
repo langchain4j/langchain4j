@@ -139,7 +139,18 @@ public class DecisionSchedulerPlanner implements Planner {
     /** The default maximum number of subagent invocations. */
     public static final int DEFAULT_MAX_INVOCATIONS = 10;
 
-    static final String GOAL_QUESTION_NAME = "goal-reached";
+    /**
+     * The name of the yes/no question asking whether the goal has been reached, in the request sent to the decision
+     * model at each step and in its response: {@code decisionResponse.yesNo(GOAL_QUESTION_NAME).probability()} is the
+     * probability that the goal has been reached. When one of the subagents writes the result, the question is not
+     * asked, and so has no answer, until the result is in the scope.
+     * <p>
+     * The other questions of the request are named after the subagents that can run:
+     * {@code decisionResponse.scale(name).mean()} is the mean usefulness level of the subagent with that name, from 0
+     * to the number of levels minus 1. A subagent sharing its name with another subagent, or with this question, is
+     * named after its {@link AgentInstance#agentId() id} instead.
+     */
+    public static final String GOAL_QUESTION_NAME = "goal-reached";
 
     private static final String DECISION_SCHEDULER_KEY_PREFIX = "decision-scheduler-";
     private static final String INVOCATIONS_STATE_KEY = DECISION_SCHEDULER_KEY_PREFIX + "invocations";

@@ -122,7 +122,7 @@ public class DecisionSchedulerMedicalIT {
      * the activation threshold.
      */
     private static String agentToInvoke(DecisionResponse decision) {
-        if (decision.answers().get("goal-reached") instanceof YesNoAnswer goal
+        if (decision.answers().get(DecisionSchedulerPlanner.GOAL_QUESTION_NAME) instanceof YesNoAnswer goal
                 && goal.probability() >= GOAL_THRESHOLD) {
             return null;
         }

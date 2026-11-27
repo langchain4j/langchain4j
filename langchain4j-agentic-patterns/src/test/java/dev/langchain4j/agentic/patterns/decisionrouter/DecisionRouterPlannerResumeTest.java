@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic.patterns.decisionrouter;
 
-import static dev.langchain4j.agentic.patterns.decisionrouter.DecisionRouterPlanner.QUESTION_NAME;
+import static dev.langchain4j.agentic.patterns.decisionrouter.DecisionRouterPlanner.CHOICE_QUESTION_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
@@ -116,8 +116,8 @@ class DecisionRouterPlannerResumeTest {
         AgenticScopePersister.setStore(new JsonInMemoryStore());
         // asking again would route to the medical expert
         MockDecisionModel model = MockDecisionModel.thatAnswers(
-                        Map.of(QUESTION_NAME, ChoiceAnswer.builder().value("askUser").build()))
-                .thenAnswers(Map.of(QUESTION_NAME, ChoiceAnswer.builder().value("medical").build()));
+                        Map.of(CHOICE_QUESTION_NAME, ChoiceAnswer.builder().value("askUser").build()))
+                .thenAnswers(Map.of(CHOICE_QUESTION_NAME, ChoiceAnswer.builder().value("medical").build()));
         ResumableRouter router = AgenticServices.plannerBuilder(ResumableRouter.class)
                 .subAgents(medicalExpert, legalReviewer)
                 .outputKey("response")
