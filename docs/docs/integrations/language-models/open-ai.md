@@ -251,6 +251,12 @@ langchain4j.open-ai.streaming-chat-model.custom-parameters.<key>=<value>
 ```
 
 
+## Reading the provider's finish reason
+
+`OpenAiChatModel` responses and the final `OpenAiStreamingChatModel` response expose the original Chat Completions `finish_reason` via `OpenAiChatResponseMetadata.rawFinishReason()`. It returns `null` if the provider did not supply a value.
+
+`ChatResponse.finishReason()` still returns the portable `FinishReason` mapping. Use the raw value when an OpenAI-compatible provider reports additional reasons, such as DeepSeek's `aborted` or `insufficient_system_resource`.
+
 ## Creating `OpenAiModerationModel`
 
 ### Plain Java

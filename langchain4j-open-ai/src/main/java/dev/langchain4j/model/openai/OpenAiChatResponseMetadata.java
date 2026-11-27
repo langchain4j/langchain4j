@@ -14,6 +14,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
     private final Long created;
     private final String serviceTier;
     private final String systemFingerprint;
+    private final String rawFinishReason;
     private final SuccessfulHttpResponse rawHttpResponse;
     private final List<ServerSentEvent> rawServerSentEvents;
     private final List<LogProb> logProbs;
@@ -23,6 +24,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         this.created = builder.created;
         this.serviceTier = builder.serviceTier;
         this.systemFingerprint = builder.systemFingerprint;
+        this.rawFinishReason = builder.rawFinishReason;
         this.rawHttpResponse = builder.rawHttpResponse;
         this.rawServerSentEvents = copy(builder.rawServerSentEvents);
         this.logProbs = builder.logProbs;
@@ -59,6 +61,14 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         return systemFingerprint;
     }
 
+    /**
+     * Returns the provider's {@code finish_reason} from the Chat Completions response,
+     * or {@code null} if the provider did not supply a value.
+     */
+    public String rawFinishReason() {
+        return rawFinishReason;
+    }
+
     public SuccessfulHttpResponse rawHttpResponse() {
         return rawHttpResponse;
     }
@@ -77,6 +87,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
                 .created(created)
                 .serviceTier(serviceTier)
                 .systemFingerprint(systemFingerprint)
+                .rawFinishReason(rawFinishReason)
                 .rawHttpResponse(rawHttpResponse)
                 .rawServerSentEvents(rawServerSentEvents)
                 .logProbs(logProbs);
@@ -91,6 +102,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         return Objects.equals(created, that.created)
                 && Objects.equals(serviceTier, that.serviceTier)
                 && Objects.equals(systemFingerprint, that.systemFingerprint)
+                && Objects.equals(rawFinishReason, that.rawFinishReason)
                 && Objects.equals(rawHttpResponse, that.rawHttpResponse)
                 && Objects.equals(rawServerSentEvents, that.rawServerSentEvents)
                 && Objects.equals(logProbs, that.logProbs);
@@ -103,6 +115,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
                 created,
                 serviceTier,
                 systemFingerprint,
+                rawFinishReason,
                 rawHttpResponse,
                 rawServerSentEvents,
                 logProbs);
@@ -117,7 +130,8 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
                 + finishReason() + ", created="
                 + created + ", serviceTier='"
                 + serviceTier + '\'' + ", systemFingerprint='"
-                + systemFingerprint + '\'' + ", rawHttpResponse="
+                + systemFingerprint + '\'' + ", rawFinishReason='"
+                + rawFinishReason + '\'' + ", rawHttpResponse="
                 + rawHttpResponse + ", rawServerSentEvents="
                 + rawServerSentEvents + ", logProbs="
                 + logProbs + '}';
@@ -132,6 +146,7 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
         private Long created;
         private String serviceTier;
         private String systemFingerprint;
+        private String rawFinishReason;
         private SuccessfulHttpResponse rawHttpResponse;
         private List<ServerSentEvent> rawServerSentEvents;
         private List<LogProb> logProbs;
@@ -148,6 +163,11 @@ public class OpenAiChatResponseMetadata extends ChatResponseMetadata {
 
         public Builder systemFingerprint(String systemFingerprint) {
             this.systemFingerprint = systemFingerprint;
+            return this;
+        }
+
+        public Builder rawFinishReason(String rawFinishReason) {
+            this.rawFinishReason = rawFinishReason;
             return this;
         }
 

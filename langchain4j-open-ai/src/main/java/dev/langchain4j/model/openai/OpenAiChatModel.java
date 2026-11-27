@@ -204,11 +204,13 @@ public class OpenAiChatModel implements ChatModel {
             throw new InternalServerException(noChoicesErrorMessage(parsedAndRawResponse.rawHttpResponse()));
         }
 
+        String rawFinishReason = openAiResponse.choices().get(0).finishReason();
         OpenAiChatResponseMetadata responseMetadata = OpenAiChatResponseMetadata.builder()
                 .id(openAiResponse.id())
                 .modelName(openAiResponse.model())
                 .tokenUsage(tokenUsageFrom(openAiResponse.usage()))
-                .finishReason(finishReasonFrom(openAiResponse.choices().get(0).finishReason()))
+                .finishReason(finishReasonFrom(rawFinishReason))
+                .rawFinishReason(rawFinishReason)
                 .created(openAiResponse.created())
                 .serviceTier(openAiResponse.serviceTier())
                 .systemFingerprint(openAiResponse.systemFingerprint())
