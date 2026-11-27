@@ -60,8 +60,8 @@ public class CosineSimilarity {
             normB += (double) vectorB[i] * vectorB[i];
         }
 
-        // Avoid division by zero.
-        return dotProduct / Math.max(Math.sqrt(normA) * Math.sqrt(normB), EPSILON);
+        double denominator = Math.sqrt(normA) * Math.sqrt(normB);
+        return denominator == 0.0 ? 0.0 : dotProduct / denominator;
     }
 
     /**
