@@ -9,6 +9,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.List;
@@ -137,8 +139,8 @@ public abstract class AbstractHttpClientPublisherNonBlockingIT {
 
         // ...and no blocking call was detected on the transport threads anywhere in the pipeline.
         assertThat(violations)
-                .as("BlockHound detected blocking calls on the transport threads (logging=%s) — see stack(s) below",
-                        logging)
+                .withFailMessage(() -> "BlockHound detected blocking calls on the transport threads (logging=%s):%n%s"
+                        .formatted(logging, stackTracesOf(violations)))
                 .isEmpty();
     }
 
@@ -164,6 +166,18 @@ public abstract class AbstractHttpClientPublisherNonBlockingIT {
         assertThat(violations)
                 .as("BlockHound must flag a blocking call on a policed transport thread")
                 .isNotEmpty();
+    }
+
+    /**
+     * The full stack trace of each recorded violation. AssertJ's default failure message cuts every stack after a few
+     * frames, so it shows BlockHound's own frames but not the code that actually blocked.
+     */
+    private static String stackTracesOf(List<Throwable> violations) {
+        StringWriter stackTraces = new StringWriter();
+        PrintWriter writer = new PrintWriter(stackTraces);
+        violations.forEach(violation -> violation.printStackTrace(writer));
+        writer.flush();
+        return stackTraces.toString();
     }
 
     private Capture awaitEvents(HttpClient client, int count) throws Exception {

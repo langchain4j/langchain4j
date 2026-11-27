@@ -24,6 +24,7 @@ import dev.langchain4j.mcp.protocol.McpCallToolRequest;
 import dev.langchain4j.mcp.protocol.McpInitializeRequest;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.protocol.McpPingResponse;
+import dev.langchain4j.mcp.protocol.McpSubscriptionsListenRequest;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.HashMap;
@@ -31,10 +32,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.net.ssl.SSLContext;
 import org.junit.jupiter.api.AfterEach;
@@ -782,6 +785,46 @@ class StreamableHttpMcpTransportSpiTest {
         assertThatThrownBy(() -> StreamableHttpMcpTransport.builder().httpClient(null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("httpClient");
+    }
+
+    @Test
+    void should_invoke_onFailure_when_an_sse_stream_fails() throws Exception {
+        start(builder());
+        transport.setModernProtocol(true);
+        CountDownLatch failed = new CountDownLatch(1);
+        AtomicBoolean invoked = new AtomicBoolean();
+        transport.onFailure(() -> {
+            invoked.set(true);
+            failed.countDown();
+        });
+
+        CompletableFuture<String> listen = transport.sendRequest(new McpSubscriptionsListenRequest(1L));
+        StreamExchange exchange = httpClient.nextExchange();
+        exchange.open(200, Map.of("Content-Type", List.of("text/event-stream")));
+        exchange.fail(new IOException("Connection prematurely closed"));
+
+        assertThat(listen)
+                .failsWithin(5, TimeUnit.SECONDS)
+                .withThrowableThat()
+                .havingCause()
+                .isInstanceOf(IOException.class)
+                .withMessageContaining("Connection prematurely closed");
+        assertThat(failed.await(5, TimeUnit.SECONDS)).isTrue();
+        assertThat(invoked).isTrue();
+    }
+
+    @Test
+    void should_complete_an_open_sse_future_when_the_stream_ends() throws Exception {
+        start(builder());
+        transport.setModernProtocol(true);
+
+        CompletableFuture<String> listen = transport.sendRequest(new McpSubscriptionsListenRequest(2L));
+        StreamExchange exchange = httpClient.nextExchange();
+        exchange.open(200, Map.of("Content-Type", List.of("text/event-stream")));
+        exchange.complete();
+
+        assertThat(listen).succeedsWithin(5, TimeUnit.SECONDS);
+        assertThat(listen.get()).isNull();
     }
 
     private StreamableHttpMcpTransport.Builder builder() {

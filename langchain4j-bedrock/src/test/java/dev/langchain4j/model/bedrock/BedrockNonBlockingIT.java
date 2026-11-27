@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.reactive.streaming.ReactiveStreamingTestSupport.stackTracesOf;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.data.message.UserMessage;
@@ -136,8 +137,10 @@ class BedrockNonBlockingIT {
                 .isNotNull()
                 .isNotEqualTo(callerThread);
         // ...and our pipeline performed no blocking call on the AWS SDK response-completion threads.
-        assertThat(pipelineBlockingViolations())
-                .as("BlockHound detected blocking on the AWS SDK response threads - see stack(s) below")
+        List<Throwable> pipelineBlockingViolations = pipelineBlockingViolations();
+        assertThat(pipelineBlockingViolations)
+                .withFailMessage(() -> "BlockHound detected blocking on the AWS SDK response threads:%n%s"
+                        .formatted(stackTracesOf(pipelineBlockingViolations)))
                 .isEmpty();
     }
 
@@ -156,9 +159,10 @@ class BedrockNonBlockingIT {
                 .as("at least one event must be delivered on a policed event-loop thread; delivered on: %s",
                         capture.deliveryThreads())
                 .anyMatch(name -> name.startsWith(EVENT_LOOP_THREAD_PREFIX));
-        assertThat(pipelineBlockingViolations())
-                .as("BlockHound detected blocking on the AWS SDK event-loop threads (logging=%s) - see stack(s) below",
-                        logging)
+        List<Throwable> pipelineBlockingViolations = pipelineBlockingViolations();
+        assertThat(pipelineBlockingViolations)
+                .withFailMessage(() -> "BlockHound detected blocking on the AWS SDK event-loop threads (logging=%s):%n%s"
+                        .formatted(logging, stackTracesOf(pipelineBlockingViolations)))
                 .isEmpty();
     }
 
