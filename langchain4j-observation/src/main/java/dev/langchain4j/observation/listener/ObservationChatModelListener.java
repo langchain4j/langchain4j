@@ -8,7 +8,6 @@ import static dev.langchain4j.observation.convention.ChatModelDocumentation.LowC
 import static java.util.Optional.ofNullable;
 
 import dev.langchain4j.Experimental;
-import dev.langchain4j.model.ModelProvider;
 import dev.langchain4j.model.chat.listener.ChatModelErrorContext;
 import dev.langchain4j.model.chat.listener.ChatModelListener;
 import dev.langchain4j.model.chat.listener.ChatModelRequestContext;
@@ -20,6 +19,7 @@ import dev.langchain4j.observation.context.ChatModelObservationContext;
 import dev.langchain4j.observation.convention.ChatModelConvention;
 import dev.langchain4j.observation.convention.ChatModelDocumentation;
 import dev.langchain4j.observation.convention.DefaultChatModelConvention;
+import dev.langchain4j.observation.convention.OTelGenAiProviderName;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Meter.MeterProvider;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -87,7 +87,7 @@ public class ObservationChatModelListener implements ChatModelListener {
 
                 providerName = ofNullable(requestContext)
                         .map(ChatModelRequestContext::modelProvider)
-                        .map(ModelProvider::name)
+                        .map(OTelGenAiProviderName::fromModelProvider)
                         .orElse(UNKNOWN);
 
                 requestModel = ofNullable(requestContext)

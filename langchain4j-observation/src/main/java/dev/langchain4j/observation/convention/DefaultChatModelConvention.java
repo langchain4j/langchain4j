@@ -68,7 +68,7 @@ public class DefaultChatModelConvention implements ChatModelConvention {
 
         result = ofNullable(requestContext)
                 .map(ChatModelRequestContext::modelProvider)
-                .map(p -> KeyValue.of(PROVIDER_NAME, p.name()))
+                .map(p -> KeyValue.of(PROVIDER_NAME, OTelGenAiProviderName.fromModelProvider(p)))
                 .map(result::and)
                 .orElse(result.and(KeyValue.of(PROVIDER_NAME, UNKNOWN)));
 
