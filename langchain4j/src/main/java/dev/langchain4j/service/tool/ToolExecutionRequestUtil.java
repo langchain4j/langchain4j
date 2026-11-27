@@ -3,14 +3,14 @@ package dev.langchain4j.service.tool;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 
+import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.internal.Json;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import dev.langchain4j.Internal;
-import dev.langchain4j.agent.tool.ToolExecutionRequest;
-import dev.langchain4j.internal.Json;
 
 /**
  * Utility class for {@link ToolExecutionRequest}.
@@ -18,7 +18,6 @@ import dev.langchain4j.internal.Json;
 @Internal
 public class ToolExecutionRequestUtil {
 
-    private static final Pattern TRAILING_COMMA_PATTERN = Pattern.compile(",(\\s*[}\\]])");
     private static final Pattern LEADING_TRAILING_QUOTE_PATTERN = Pattern.compile("^\"|\"$");
     private static final Pattern ESCAPED_QUOTE_PATTERN = Pattern.compile("\\\\\"");
 
@@ -56,13 +55,19 @@ public class ToolExecutionRequestUtil {
         try {
             return Json.fromJson(arguments, MAP_TYPE);
         } catch (Exception ignored) {
-            String normalizedArguments = removeTrailingComma(normalizeJsonString(arguments));
-            return Json.fromJson(normalizedArguments, MAP_TYPE);
+            try {
+                // Repair structural trailing commas before touching escapes in string values.
+                return Json.fromJson(removeTrailingComma(arguments), MAP_TYPE);
+            } catch (Exception ignoredAgain) {
+                String normalizedArguments = removeTrailingComma(normalizeJsonString(arguments));
+                return Json.fromJson(normalizedArguments, MAP_TYPE);
+            }
         }
     }
 
     /**
      * Removes trailing commas before closing braces or brackets in JSON strings.
+     * Commas inside quoted string values and their escape sequences are preserved.
      *
      * @param json the JSON string
      * @return the corrected JSON string
@@ -71,8 +76,48 @@ public class ToolExecutionRequestUtil {
         if (isNullOrEmpty(json)) {
             return json;
         }
-        Matcher matcher = TRAILING_COMMA_PATTERN.matcher(json);
-        return matcher.replaceAll("$1");
+
+        StringBuilder result = new StringBuilder(json.length());
+        boolean insideString = false;
+        boolean escaped = false;
+
+        for (int i = 0; i < json.length(); i++) {
+            char c = json.charAt(i);
+            if (insideString) {
+                if (escaped) {
+                    escaped = false;
+                } else if (c == '\\') {
+                    escaped = true;
+                } else if (c == '"') {
+                    insideString = false;
+                }
+            } else if (c == '"') {
+                insideString = true;
+            } else if (c == ',' && isFollowedByClosingBraceOrBracket(json, i + 1)) {
+                continue; // skip the trailing comma
+            }
+            result.append(c);
+        }
+
+        return result.toString();
+    }
+
+    private static boolean isFollowedByClosingBraceOrBracket(String json, int fromIndex) {
+        for (int i = fromIndex; i < json.length(); i++) {
+            char c = json.charAt(i);
+            if (c == '}' || c == ']') {
+                return true;
+            }
+            if (!isWhitespace(c)) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isWhitespace(char c) {
+        // same characters as the "\s" regex character class
+        return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == 0x0B;
     }
 
     /**
