@@ -4,12 +4,14 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils.fromJson;
+import static dev.langchain4j.model.mistralai.internal.client.MistralAiJsonUtils.providerErrorMessageFrom;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.finishReasonFrom;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.toToolExecutionRequests;
 import static dev.langchain4j.model.mistralai.internal.mapper.MistralAiMapper.tokenUsageFrom;
 
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.http.client.sse.ServerSentEventListener;
 import dev.langchain4j.internal.ExceptionMapper;
@@ -36,6 +38,7 @@ class MistralAiFimServerSentEventListener implements ServerSentEventListener {
     private List<ToolExecutionRequest> toolExecutionRequests;
     private TokenUsage tokenUsage;
     private FinishReason finishReason;
+    private volatile boolean failed;
 
     public MistralAiFimServerSentEventListener(
             StreamingResponseHandler<String> handler,
@@ -47,6 +50,10 @@ class MistralAiFimServerSentEventListener implements ServerSentEventListener {
 
     @Override
     public void onEvent(ServerSentEvent event) {
+        if (failed) {
+            return;
+        }
+
         String data = event.data();
         if ("[DONE]".equals(data)) {
             String responseContent = toResponse.apply(contentBuilder.toString(), toolExecutionRequests);
@@ -57,6 +64,20 @@ class MistralAiFimServerSentEventListener implements ServerSentEventListener {
                 withLoggingExceptions(() -> handler.onError(e));
             }
         } else {
+            // Some OpenAI-compatible providers (vLLM, LiteLLM, OpenRouter, DeepSeek) report mid-stream
+            // failures with HTTP 200 as chunks carrying a top-level "error" object: fail the stream
+            // immediately with the provider's message/type/code instead of treating it as a chunk
+            String providerErrorMessage = providerErrorMessageFrom(data);
+            if (providerErrorMessage != null) {
+                failed = true;
+                try {
+                    handler.onError(new InternalServerException("Chat completion failed: " + providerErrorMessage));
+                } catch (Exception e) {
+                    withLoggingExceptions(() -> handler.onError(e));
+                }
+                return;
+            }
+
             MistralAiChatCompletionResponse chatCompletionResponse =
                     fromJson(data, MistralAiChatCompletionResponse.class);
             MistralAiChatCompletionChoice choice =
