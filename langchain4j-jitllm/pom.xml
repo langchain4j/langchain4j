@@ -15,7 +15,7 @@
     <properties>
         <maven.compiler.release>21</maven.compiler.release>
         <!-- the published artifact depends on the JDK 22+ build of jitllm; JDK 21 users switch to the jdk21 build -->
-        <jitllm.version>1.0.2-jdk22plus</jitllm.version>
+        <jitllm.version>3.1.0-jdk22plus</jitllm.version>
         <tornadovm.home>${env.TORNADOVM_HOME}</tornadovm.home>
         <!-- Which ITs the run-tests profile executes; overridable with -Dit.selection=... -->
         <it.selection>--scan-classpath --include-classname=.*IT</it.selection>
@@ -98,7 +98,7 @@
                 <jdk>21</jdk>
             </activation>
             <properties>
-                <jitllm.version>1.0.2-jdk21</jitllm.version>
+                <jitllm.version>3.1.0-jdk21</jitllm.version>
                 <!-- the jdk21 build of jitllm uses java.lang.foreign, a preview API on JDK 21 -->
                 <argLine>--enable-preview</argLine>
             </properties>
@@ -137,7 +137,10 @@
                                 <argument>--jvm=@${project.basedir}/src/test/resources/tornado-jvm.args</argument>
                                 <argument>-cp</argument>
                                 <argument>${project.build.outputDirectory}:${project.build.testOutputDirectory}:${test.classpath}</argument>
-                                <argument>--params=execute ${it.selection}</argument>
+                                <!-- TornadoVM 8.x SDKs put the JUnit Platform on the module path; the vintage
+                                     engine bundled in junit-platform-console-standalone cannot read it, and no
+                                     test needs it -->
+                                <argument>--params=execute --exclude-engine=junit-vintage ${it.selection}</argument>
                                 <argument>org.junit.platform.console.ConsoleLauncher</argument>
                             </arguments>
                         </configuration>

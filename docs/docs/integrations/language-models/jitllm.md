@@ -30,11 +30,11 @@ implementation 'dev.langchain4j:langchain4j-jitllm:1.24.1-beta34'
   Phi-3, IBM Granite 3.3 / 4.0, Gemma 4 and DeepSeek-R1-Distill.
   Tested models are collected on [Hugging Face](https://huggingface.co/beehive-lab/collections).
 * The JVM option `--add-modules jdk.incubator.vector`.
-* To run on a GPU: a [TornadoVM SDK](https://www.tornadovm.org/downloads) for your JDK line (`jdk21` or `jdk22plus`)
-  and for your GPU's backend, for example installed with SDKMAN! (`sdk install tornadovm`).
+* To run on a GPU: a [TornadoVM SDK](https://www.tornadovm.org/downloads) 8.2.0 for your JDK line
+  (`jdk21` or `jdk22plus`) and for your GPU's backend, for example installed with SDKMAN! (`sdk install tornadovm`).
   The JVM must be started through TornadoVM's `tornado` launcher with `-Duse.tornadovm=true`.
-* To run on the CPU in a plain JVM (without the TornadoVM launcher): `io.github.beehive-lab:tornado-api:7.0.1-jdk22plus`
-  (`7.0.1-jdk21` on JDK 21) as a `runtime` dependency. Leave it out when running through TornadoVM, which already provides it.
+* To run on the CPU in a plain JVM (without the TornadoVM launcher): `io.github.beehive-lab:tornado-api:8.2.0-jdk22plus`
+  (`8.2.0-jdk21` on JDK 21) as a `runtime` dependency. Leave it out when running through TornadoVM, which already provides it.
 
 Only the JVM mode is supported; GraalVM native images are not.
 
@@ -60,7 +60,7 @@ because the `jdk21` build uses the Foreign Function & Memory API, which is a pre
 <dependency>
     <groupId>io.github.beehive-lab</groupId>
     <artifactId>jitllm</artifactId>
-    <version>1.0.2-jdk21</version>
+    <version>3.1.0-jdk21</version>
 </dependency>
 ```
 
