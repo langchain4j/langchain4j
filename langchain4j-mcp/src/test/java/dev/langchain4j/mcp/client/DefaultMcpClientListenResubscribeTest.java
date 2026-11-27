@@ -7,12 +7,15 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
 import dev.langchain4j.mcp.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.protocol.McpServerDiscoverRequest;
 import dev.langchain4j.mcp.protocol.McpSubscriptionsListenRequest;
+import dev.langchain4j.spi.CapturedContext;
+import dev.langchain4j.spi.ExecutorProvider;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.time.Duration;
@@ -20,11 +23,16 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 public class DefaultMcpClientListenResubscribeTest {
 
@@ -65,7 +73,7 @@ public class DefaultMcpClientListenResubscribeTest {
     }
 
     @Test
-    public void should_resubscribe_when_listen_is_rejected() throws Exception {
+    public void should_resubscribe_when_listen_is_rejected_with_a_retryable_error() throws Exception {
         McpTransport transport = mock(McpTransport.class);
         when(transport.requiresCancellationNotification()).thenReturn(false);
 
@@ -81,7 +89,7 @@ public class DefaultMcpClientListenResubscribeTest {
                 int n = listenCalls.incrementAndGet();
                 if (n == 1) {
                     return CompletableFuture.completedFuture(
-                            "{\"error\":{\"code\":-32601,\"message\":\"Method not found\"}}");
+                            "{\"error\":{\"code\":-32603,\"message\":\"Internal error\"}}");
                 }
                 listenStartedAgain.countDown();
                 return new CompletableFuture<>();
@@ -305,6 +313,137 @@ public class DefaultMcpClientListenResubscribeTest {
 
             assertThat(listenCalls.get()).isEqualTo(1);
             assertThat(firstListen.isDone()).isFalse();
+        }
+    }
+
+    @Test
+    public void should_not_resubscribe_when_listen_is_rejected_as_method_not_found() throws Exception {
+        McpTransport transport = mock(McpTransport.class);
+        when(transport.requiresCancellationNotification()).thenReturn(false);
+
+        AtomicInteger listenCalls = new AtomicInteger();
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            McpClientMessage message =
+                    invocation.getArgument(0, McpCallContext.class).message();
+            if (message instanceof McpServerDiscoverRequest) {
+                return CompletableFuture.completedFuture(discoverResult());
+            }
+            if (message instanceof McpSubscriptionsListenRequest) {
+                listenCalls.incrementAndGet();
+                return CompletableFuture.completedFuture(
+                        "{\"error\":{\"code\":-32601,\"message\":\"Method not found\"}}");
+            }
+            return CompletableFuture.completedFuture("{}");
+        });
+
+        try (DefaultMcpClient client = client(transport).build()) {
+            assertThat(listenCalls.get()).isEqualTo(1);
+            Thread.sleep(300);
+            assertThat(listenCalls.get()).isEqualTo(1);
+            assertThat(retryAttempt(client).get()).isEqualTo(0);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {401, 403})
+    public void should_not_resubscribe_when_listen_fails_with_non_retryable_http_status(int status) throws Exception {
+        McpTransport transport = mock(McpTransport.class);
+        when(transport.requiresCancellationNotification()).thenReturn(false);
+
+        AtomicInteger listenCalls = new AtomicInteger();
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            McpClientMessage message =
+                    invocation.getArgument(0, McpCallContext.class).message();
+            if (message instanceof McpServerDiscoverRequest) {
+                return CompletableFuture.completedFuture(discoverResult());
+            }
+            if (message instanceof McpSubscriptionsListenRequest) {
+                listenCalls.incrementAndGet();
+                return CompletableFuture.failedFuture(new HttpException(status, "Unexpected status code: " + status));
+            }
+            return CompletableFuture.completedFuture("{}");
+        });
+
+        try (DefaultMcpClient client = client(transport).build()) {
+            assertThat(listenCalls.get()).isEqualTo(1);
+            Thread.sleep(300);
+            assertThat(listenCalls.get()).isEqualTo(1);
+            assertThat(retryAttempt(client).get()).isEqualTo(0);
+        }
+    }
+
+    @Test
+    public void should_resubscribe_on_the_configured_executor_with_captured_context() throws Exception {
+        McpTransport transport = mock(McpTransport.class);
+        when(transport.requiresCancellationNotification()).thenReturn(false);
+
+        ThreadLocal<String> token = new ThreadLocal<>();
+        token.set("request-token");
+        AtomicReference<String> tokenOnRetry = new AtomicReference<>();
+        AtomicReference<String> retryThreadName = new AtomicReference<>();
+        CountDownLatch listenStartedAgain = new CountDownLatch(1);
+        AtomicInteger listenCalls = new AtomicInteger();
+        CompletableFuture<String> firstListen = new CompletableFuture<>();
+
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            McpClientMessage message =
+                    invocation.getArgument(0, McpCallContext.class).message();
+            if (message instanceof McpServerDiscoverRequest) {
+                return CompletableFuture.completedFuture(discoverResult());
+            }
+            if (message instanceof McpSubscriptionsListenRequest) {
+                int n = listenCalls.incrementAndGet();
+                if (n == 1) {
+                    return firstListen;
+                }
+                tokenOnRetry.set(token.get());
+                retryThreadName.set(Thread.currentThread().getName());
+                listenStartedAgain.countDown();
+                return new CompletableFuture<>();
+            }
+            return CompletableFuture.completedFuture("{}");
+        });
+
+        ExecutorService pool = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r, "list-change-resubscribe-pool");
+            t.setDaemon(true);
+            return t;
+        });
+        ExecutorProvider previous = ExecutorProvider.get();
+        ExecutorProvider.set(new ExecutorProvider() {
+            @Override
+            public Executor executor() {
+                return null;
+            }
+
+            @Override
+            public CapturedContext captureContext() {
+                String value = token.get();
+                return task -> () -> {
+                    String previousValue = token.get();
+                    token.set(value);
+                    try {
+                        task.run();
+                    } finally {
+                        token.set(previousValue);
+                    }
+                };
+            }
+        });
+        try (DefaultMcpClient client =
+                client(transport).listChangeResubscribeExecutor(pool).build()) {
+            // Drop the token from this thread so a retry that forgot the
+            // captured context would send the listen without it.
+            token.remove();
+            firstListen.completeExceptionally(new RuntimeException("Connection prematurely closed"));
+            assertThat(listenStartedAgain.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(listenCalls.get()).isGreaterThanOrEqualTo(2);
+            assertThat(tokenOnRetry.get()).isEqualTo("request-token");
+            assertThat(retryThreadName.get()).isEqualTo("list-change-resubscribe-pool");
+        } finally {
+            ExecutorProvider.set(previous);
+            pool.shutdownNow();
+            token.remove();
         }
     }
 
