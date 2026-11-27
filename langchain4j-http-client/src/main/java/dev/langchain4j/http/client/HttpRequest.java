@@ -7,6 +7,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static java.util.Arrays.asList;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.joining;
 
 import dev.langchain4j.Experimental;
@@ -232,9 +233,7 @@ public class HttpRequest {
          */
         @Experimental
         public Builder addFormDataFile(String name, String fileName, String contentType, byte[] content) {
-            if (content.length == 0) {
-                return this;
-            }
+            requireNonNull(content, "content");
             if (this.formDataFiles == null) {
                 this.formDataFiles = new LinkedHashMap<>();
             }
