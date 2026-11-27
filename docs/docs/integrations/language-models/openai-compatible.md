@@ -51,6 +51,7 @@ Below we provide specific examples for popular OpenAI-compatible APIs, including
 - [Prerequisites for Using OpenAI-Compatible Language Models](#prerequisites-for-using-openai-compatible-language-models)
 - [OrcaRouter](#orcarouter)
 - [Tuning Engines](#tuning-engines)
+- [Hubris](#hubris)
 - [Groq](#groq)
 - [Docker Model Runner](#docker-model-runner)
 - [GPT4All](#gpt4all)
@@ -118,6 +119,25 @@ ChatModel model = OpenAiChatModel.builder()
         .modelName("gpt-4o-mini")
         .build();
 ```
+
+## Hubris
+
+**Deployment:** SaaS (key required)
+
+**Description:** [Hubris](https://hubris.pro) is an OpenAI-compatible LLM gateway billed in Russian rubles: one API key and one balance for 500+ models from OpenAI, Anthropic, Google, DeepSeek, Qwen, Z.ai, Moonshot, xAI and MiniMax. Model names use the `vendor/model` form from the [catalog](https://hubris.pro/models), and the same key also serves `/v1/embeddings` for OpenAI text-embedding models.
+
+**Setup:**
+To use Hubris, you'll need an API key from [hubris.pro/keys](https://hubris.pro/keys) (keys start with `sk-gw-`).
+
+Configure LangChain4j's `OpenAiChatModel` or `OpenAiStreamingChatModel`:
+```java
+ChatModel model = OpenAiChatModel.builder()
+        .baseUrl("https://api.hubris.pro/v1")
+        .apiKey(System.getenv("HUBRIS_API_KEY")) // Your actual key, e.g. "sk-gw-..."
+        .modelName("anthropic/claude-sonnet-5") // Or any other model from the Hubris catalog
+        .build();
+```
+You can find available model names and prices on the [Hubris models page](https://hubris.pro/models).
 
 ## Groq
 
