@@ -54,7 +54,7 @@ class ListResourcesToolExecutor implements ToolExecutor {
                         resource.description(),
                         resource.mimeType()));
             }
-            for (McpResourceTemplate template : client.listResourceTemplates()) {
+            for (McpResourceTemplate template : client.listResourceTemplates(invocationContext)) {
                 descriptions.add(new ResourceDescription(
                         client.key(),
                         null,
