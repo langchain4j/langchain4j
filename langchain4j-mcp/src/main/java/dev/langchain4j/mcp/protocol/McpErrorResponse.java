@@ -29,13 +29,13 @@ public class McpErrorResponse extends McpJsonRpcMessage {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Error {
 
-        private final int code;
+        private final long code;
         private final String message;
         private final Object data;
 
         @JsonCreator
         public Error(
-                @JsonProperty("code") int code,
+                @JsonProperty("code") long code,
                 @JsonProperty("message") String message,
                 @JsonProperty("data") Object data) {
             this.code = code;
@@ -43,7 +43,7 @@ public class McpErrorResponse extends McpJsonRpcMessage {
             this.data = data;
         }
 
-        public int getCode() {
+        public long getCode() {
             return code;
         }
 

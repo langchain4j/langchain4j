@@ -11,7 +11,6 @@ import org.junit.jupiter.api.Test;
 
 class McpProtocolSerializationTest {
 
-
     @Test
     void should_serialize_error_response_omitting_null_data() throws Exception {
         // given
@@ -180,6 +179,26 @@ class McpProtocolSerializationTest {
         assertThat(json.get("method").asText()).isEqualTo("initialize");
         assertThat(json.get("params").get("protocolVersion").asText()).isEqualTo("2025-06-18");
         assertThat(json.get("params").get("clientInfo").get("name").asText()).isEqualTo("test");
+    }
+
+    @Test
+    void should_deserialize_64_bit_error_code() {
+        String json = """
+                {
+                  "jsonrpc": "2.0",
+                  "id": 1,
+                  "error": {
+                    "code": 10990201005,
+                    "message": "Moderation blocked"
+                  }
+                }
+                """;
+
+        McpErrorResponse response = McpJson.deserialize(json, McpErrorResponse.class);
+
+        assertThat(response.getError()).isNotNull();
+        assertThat(response.getError().getCode()).isEqualTo(10990201005L);
+        assertThat(response.getError().getMessage()).isEqualTo("Moderation blocked");
     }
 
     @Test
