@@ -16,8 +16,8 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
+import dev.langchain4j.test.mock.MockChatModel;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -138,6 +138,26 @@ class AiServicesWithToolsWithDefaultValuesTest {
         verifyNoMoreInteractions(tool);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_primitive_char_when_LLM_omits_it(String missingArguments) {
+        class Tools {
+            @Tool
+            void process(@P(defaultValue = ",") char separator) {}
+        }
+        Tools tool = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
+                .tools(tool)
+                .build();
+
+        assistant.chat("call the tool");
+
+        verify(tool).process(',');
+        verifyNoMoreInteractions(tool);
+    }
+
     // ---------------------------------------------------------------------
     // Boxed / object scalar types
     // ---------------------------------------------------------------------
@@ -159,6 +179,26 @@ class AiServicesWithToolsWithDefaultValuesTest {
         assistant.chat("call the tool");
 
         verify(tool).process(42);
+        verifyNoMoreInteractions(tool);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"arg0\":null}"})
+    void should_substitute_default_for_boxed_Character_when_LLM_omits_it(String missingArguments) {
+        class Tools {
+            @Tool
+            void process(@P(defaultValue = "7") Character digit) {}
+        }
+        Tools tool = spy(new Tools());
+
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .chatModel(mockReturningToolCallWithArgs("process", missingArguments))
+                .tools(tool)
+                .build();
+
+        assistant.chat("call the tool");
+
+        verify(tool).process('7');
         verifyNoMoreInteractions(tool);
     }
 
