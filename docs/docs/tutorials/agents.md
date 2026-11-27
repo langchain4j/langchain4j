@@ -1179,7 +1179,7 @@ so it will reveal the nested sequence of agents invocations necessary to generat
 
 ```
 AgentInvocation{agent=Sequential, startTime=2026-03-18T17:27:28.099439515, finishTime=2026-03-18T17:27:38.683498783, duration=10584 ms, tokens=0, inputs={topic=dragons and wiz..., style=comedy}, output=In a realm wher...}
-|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.24.0287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
+|=> AgentInvocation{agent=generateStory, startTime=2026-03-18T17:27:28.1.24.1287, finishTime=2026-03-18T17:27:31.033561726, duration=2932 ms, tokens=127, inputs={topic=dragons and wiz...}, output=In a realm wher...}
 |=> AgentInvocation{agent=reviewLoop, startTime=2026-03-18T17:27:31.035952285, finishTime=2026-03-18T17:27:38.683438433, duration=7647 ms, tokens=0, inputs={score=0.8, topic=dragons and wiz..., style=comedy, story=In a realm wher...}, output=null}
     |=> AgentInvocation{agent=scoreStyle, iteration=0, startTime=2026-03-18T17:27:31.036155107, finishTime=2026-03-18T17:27:31.671478699, duration=635 ms, tokens=152, inputs={style=comedy, story=In a realm wher...}, output=0.2}
     |=> AgentInvocation{agent=editStory, iteration=0, startTime=2026-03-18T17:27:31.671711250, finishTime=2026-03-18T17:27:38.182881941, duration=6511 ms, tokens=491, inputs={style=comedy, story=In a realm wher...}, output=In a realm wher...}
@@ -1750,7 +1750,7 @@ AgentInvocation{agentName='withdraw', arguments={user=Mario, amount=115.0}}
 
 AgentInvocation{agentName='credit', arguments={user=Georgios, amount=115.0}}
 
-AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.24.0 USD. The conversion rate was 1.15 EUR to USD.}}
+AgentInvocation{agentName='done', arguments={response=The transfer of 100 EUR from Mario's account to Georgios' account has been completed. Mario's balance is 885.0 USD, and Georgios' balance is 1.24.1 USD. The conversion rate was 1.15 EUR to USD.}}
 ```
 
 The last invocation is a special one that signals the supervisor believes the task has been completed, and returns as a response a summary of all the operations performed.
@@ -4399,6 +4399,42 @@ Both the programmatic supplier and the annotated method normally run on a LangCh
 the agent's resolution timeout. A successful card is cached; this does not refresh credentials on every agent
 invocation. A `null` supplier, or a supplier/method returning `null` or an empty map, adds no headers. These headers
 apply only to card discovery; configure authentication for A2A messages separately through `clientCustomizer`.
+
+### Configuring every A2A client
+
+To apply the same configuration to all the A2A client agents of an application, including declarative ones, implement
+`A2AClientConfigurator` and register it with the `ServiceLoader`, in
+`META-INF/services/dev.langchain4j.agentic.a2a.A2AClientConfigurator`. This lets a framework, for example, add
+credentials to the card request and to the A2A messages of every agent:
+
+```java
+public class AuthenticatingConfigurator implements A2AClientConfigurator {
+
+    private final TokenSource tokens = TokenSource.create(); // your application's tokens
+
+    @Override
+    public Map<String, String> agentCardHeaders(A2AClientContext context) {
+        return Map.of("Authorization", "Bearer " + tokens.tokenFor(context.a2aServerUrl()));
+    }
+
+    @Override
+    public Map<String, String> messageHeaders(A2AClientContext context) {
+        return Map.of("Authorization", "Bearer " + tokens.tokenFor(context.agentCard().name()));
+    }
+}
+```
+
+`agentCardHeaders` is called each time the card is fetched, and `messageHeaders` for every message, so both can return
+a refreshed token. The `A2AClientContext` describes the agent: the URL it was built with, the tenant, the name of the
+local agent, its interface, and, for messages, the remote Agent Card, so credentials can be chosen per agent.
+
+Message headers are sent with each call, so they apply to every transport and an agent's own client customizer cannot
+remove them. When several configurators return the same header, the one found later wins; the agent's own
+`agentCardHeaders` take precedence over all of them.
+
+For anything headers cannot do, `customize(A2AClientContext, ClientBuilder)` receives the A2A SDK client builder before
+the agent's own client customizer. Note that `ClientBuilder.withTransport` replaces the configuration of a transport, so
+a customizer that configures the same transport replaces what was set there.
 
 ### Streaming A2A Client Listener
 

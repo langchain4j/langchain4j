@@ -32,6 +32,7 @@ import dev.langchain4j.agentic.scope.ResultWithAgenticScope;
 import dev.langchain4j.invocation.LangChain4jManaged;
 import dev.langchain4j.service.ParameterNameResolver;
 import dev.langchain4j.service.output.ServiceOutputParser;
+import dev.langchain4j.spi.ServiceHelper;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -42,6 +43,7 @@ import java.lang.reflect.Type;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,6 +74,7 @@ import org.a2aproject.sdk.client.http.A2AHttpClientConfiguration;
 import org.a2aproject.sdk.client.http.A2AHttpClientFactory;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransport;
 import org.a2aproject.sdk.client.transport.jsonrpc.JSONRPCTransportConfigBuilder;
+import org.a2aproject.sdk.client.transport.spi.interceptors.ClientCallContext;
 import org.a2aproject.sdk.spec.A2AClientError;
 import org.a2aproject.sdk.spec.A2AClientException;
 import org.a2aproject.sdk.spec.AgentCard;
@@ -83,6 +86,7 @@ import org.a2aproject.sdk.spec.Part;
 import org.a2aproject.sdk.spec.Task;
 import org.a2aproject.sdk.spec.TaskState;
 import org.a2aproject.sdk.spec.TextPart;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -113,6 +117,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private volatile Client a2aClient;
     private Consumer<ClientBuilder> clientCustomizer;
     private Supplier<Map<String, String>> agentCardHeaders;
+    // Loaded once: every agent applies the same configurators
+    private static final Collection<A2AClientConfigurator> CONFIGURATORS =
+            ServiceHelper.loadFactories(A2AClientConfigurator.class);
 
     private String name;
     private String agentId;
@@ -127,6 +134,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private AgentListener agentListener;
     private A2AStreamingClientListener<TaskUpdateEvent> streamingClientListener;
     private AgentCondition activationCondition;
+    private @Nullable Function<InternalAgent, Object> agentInstanceFactory;
 
     DefaultA2AClientBuilder(String a2aServerUrl, Class<T> agentServiceClass) {
         this(a2aServerUrl, agentServiceClass, null);
@@ -141,11 +149,10 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         String cardTenant = this.tenant;
         A2AHttpClient httpClient = A2AHttpClientFactory.create(A2AHttpClientConfiguration.DEFAULT);
         cardResolver(a2aServerUrl, cardTenant, null, httpClient);
-        this.cardResolution = new LazyResolution<>(this::describeCard, () -> {
-            Supplier<Map<String, String>> headers = agentCardHeaders;
-            return cardResolver(a2aServerUrl, cardTenant, headers == null ? null : headers.get(), httpClient)
-                    .getAgentCard();
-        });
+        this.cardResolution = new LazyResolution<>(
+                this::describeCard,
+                () -> cardResolver(a2aServerUrl, cardTenant, cardHeaders(), httpClient)
+                        .getAgentCard());
         this.clientFactory = this::buildClient;
     }
 
@@ -194,6 +201,52 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     + "': it must be an absolute http or https URL, like http://localhost:8080");
         }
         return cardResolver;
+    }
+
+    private Map<String, String> cardHeaders() {
+        A2AClientContext context = context(tenant, null);
+        Map<String, String> headers = new HashMap<>();
+        for (A2AClientConfigurator configurator : CONFIGURATORS) {
+            Map<String, String> configured = configurator.agentCardHeaders(context);
+            if (configured != null) {
+                headers.putAll(configured);
+            }
+        }
+        Supplier<Map<String, String>> own = agentCardHeaders;
+        Map<String, String> ownHeaders = own == null ? null : own.get();
+        if (ownHeaders != null) {
+            headers.putAll(ownHeaders);
+        }
+        return headers.isEmpty() ? null : headers;
+    }
+
+    /**
+     * The headers of the configurators for one message, sent with the call so that every transport adds them and a
+     * client customizer cannot remove them.
+     */
+    private ClientCallContext callContext(String callTenant) {
+        if (CONFIGURATORS.isEmpty()) {
+            return null;
+        }
+        A2AClientContext context = context(callTenant, resolveAgentCard());
+        Map<String, String> headers = new HashMap<>();
+        for (A2AClientConfigurator configurator : CONFIGURATORS) {
+            Map<String, String> configured = configurator.messageHeaders(context);
+            if (configured != null) {
+                headers.putAll(configured);
+            }
+        }
+        return headers.isEmpty() ? null : new ClientCallContext(new HashMap<>(), headers);
+    }
+
+    private A2AClientContext context(String contextTenant, AgentCard card) {
+        return A2AClientContext.builder()
+                .a2aServerUrl(a2aServerUrl)
+                .tenant(contextTenant)
+                .agentName(name())
+                .agentInterface(agentServiceClass)
+                .agentCard(card)
+                .build();
     }
 
     private String describeCard() {
@@ -253,10 +306,15 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     private Client buildClient(AgentCard card) {
         try {
             ClientBuilder cb = Client.builder(card);
+            if (clientCustomizer == null) {
+                cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder());
+            }
+            A2AClientContext context = context(tenant, card);
+            for (A2AClientConfigurator configurator : CONFIGURATORS) {
+                configurator.customize(context, cb);
+            }
             if (clientCustomizer != null) {
                 clientCustomizer.accept(cb);
-            } else {
-                cb.withTransport(JSONRPCTransport.class, new JSONRPCTransportConfigBuilder());
             }
             return cb.build();
         } catch (A2AClientException e) {
@@ -266,6 +324,11 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
 
     @Override
     public T build() {
+        // A JDK proxy cannot extend a class: the agent is then the object that the factory of an integration creates
+        if (!agentServiceClass.isInterface() && agentInstanceFactory == null) {
+            throw new IllegalArgumentException("An A2A client agent must be defined by an interface, but "
+                    + agentServiceClass.getName() + " is a class");
+        }
         if (agentServiceClass == UntypedAgent.class && inputKeys == null) {
             throw new IllegalArgumentException("Input names must be provided for UntypedAgent.");
         }
@@ -277,11 +340,24 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     .map(DefaultA2AClientBuilder::annotatedDescription)
                     .orElse(null);
         }
-        // The local name, and the agent id derived from it, are fixed before the proxy is handed out
+        // The local name, and the agent id derived from it, are fixed before the agent is handed out
         agentId();
 
-        Object agent = Proxy.newProxyInstance(
-                agentServiceClass.getClassLoader(), new Class<?>[] {agentServiceClass, A2AClientInstance.class}, this);
+        Object agent;
+        if (agentInstanceFactory == null) {
+            agent = Proxy.newProxyInstance(
+                    agentServiceClass.getClassLoader(),
+                    new Class<?>[] {agentServiceClass, A2AClientInstance.class},
+                    this);
+        } else {
+            agent = agentInstanceFactory.apply(this);
+            if (!agentServiceClass.isInstance(agent) || !(agent instanceof A2AClientInstance)) {
+                throw new AgenticSystemConfigurationException("The agent instance factory of the A2A client agent '"
+                        + name() + "' must return an instance of " + agentServiceClass.getName()
+                        + " implementing " + A2AClientInstance.class.getName() + ", but it returned "
+                        + (agent == null ? "null" : "an instance of " + agent.getClass().getName()));
+            }
+        }
 
         return (T) agent;
     }
@@ -290,7 +366,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
     public Object invoke(Object proxy, Method method, Object[] args) throws Exception {
         if (method.getDeclaringClass() == AgentInstance.class || method.getDeclaringClass() == InternalAgent.class) {
             try {
-                return method.invoke(Proxy.getInvocationHandler(proxy), args);
+                return method.invoke(this, args);
             } catch (InvocationTargetException e) {
                 if (e.getCause() instanceof Error error) {
                     throw error;
@@ -308,6 +384,24 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     throw new UnsupportedOperationException(
                             "Unknown method on A2AClientInstance class : " + method.getName());
             };
+        }
+
+        if (method.getDeclaringClass() == Object.class) {
+            return switch (method.getName()) {
+                case "equals" -> proxy == args[0];
+                case "toString" -> toString();
+                case "hashCode" -> System.identityHashCode(this);
+                default ->
+                    throw new UnsupportedOperationException("Unknown method on Object class : " + method.getName());
+            };
+        }
+
+        // Only the agent method invokes the remote agent: any other method would send it arguments that are not a
+        // request, like a method of the interfaces above passed as the override of a generated subclass
+        if (!isAgentMethod(method)) {
+            throw new UnsupportedOperationException(
+                    "Method '" + method.getName() + "' of " + method.getDeclaringClass().getName()
+                            + " is not the agent method of the A2A client agent '" + name() + "'");
         }
 
         boolean wrapWithScope = method.getReturnType() == ResultWithAgenticScope.class;
@@ -335,6 +429,25 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
         return method.getReturnType() == ResultWithAgenticScope.class
                 ? new ResultWithAgenticScope<>(scope, result.parsedResult)
                 : result.parsedResult;
+    }
+
+    /**
+     * Whether the given method is the one invoking the remote agent: the agent method of a typed agent, or one of the
+     * methods that {@link UntypedAgent} declares for an untyped one. A typed agent whose agent method cannot be told,
+     * having neither an annotated method nor a single abstract one, has it among the methods of its type.
+     */
+    private boolean isAgentMethod(Method method) {
+        if (agentServiceClass == UntypedAgent.class) {
+            return method.getDeclaringClass() == UntypedAgent.class;
+        }
+        return agentMethod()
+                .map(method::equals)
+                .orElseGet(() -> method.getDeclaringClass().isAssignableFrom(agentServiceClass));
+    }
+
+    @Override
+    public String toString() {
+        return "A2AClientAgent<" + agentServiceClass.getSimpleName() + ">";
     }
 
     private static Type getReturnType(Method method) {
@@ -480,6 +593,7 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                 getEventConsumers(responseContextId, openTaskId, messageResponse);
         Consumer<Throwable> streamingErrorHandler = error -> handleStreamEnd(error, messageResponse);
         Client client = client();
+        ClientCallContext callContext = callContext(callTenant);
         if (callTenant != null) {
             client.sendMessage(
                     MessageSendParams.builder()
@@ -488,9 +602,9 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                             .build(),
                     consumers,
                     streamingErrorHandler,
-                    null);
+                    callContext);
         } else {
-            client.sendMessage(message, consumers, streamingErrorHandler, null);
+            client.sendMessage(message, consumers, streamingErrorHandler, callContext);
         }
 
         try {
@@ -726,6 +840,12 @@ public class DefaultA2AClientBuilder<T> implements A2AClientBuilder<T>, Internal
                     "The resolution timeout of an A2A client agent must not be negative: " + resolutionTimeout);
         }
         this.resolutionTimeout = resolutionTimeout;
+        return this;
+    }
+
+    @Override
+    public DefaultA2AClientBuilder<T> agentInstanceFactory(@Nullable Function<InternalAgent, Object> factory) {
+        this.agentInstanceFactory = factory;
         return this;
     }
 

@@ -3,9 +3,12 @@ package dev.langchain4j.agentic.internal;
 import dev.langchain4j.agentic.observability.AgentListener;
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.scope.AgenticScope;
+import java.lang.reflect.InvocationHandler;
 import java.time.Duration;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
 import java.util.function.Predicate;
+import org.jspecify.annotations.Nullable;
 
 public interface McpClientBuilder<T> {
 
@@ -115,5 +118,36 @@ public interface McpClientBuilder<T> {
      */
     McpClientBuilder<T> resolutionTimeout(Duration resolutionTimeout);
 
+    /**
+     * Sets the factory creating the object that represents the agent, in place of the JDK proxy that {@link #build()}
+     * creates without it. It is the only way to create an agent whose type is a class: without a factory the type of
+     * the agent must be an interface, and {@link #build()} fails with an {@code IllegalArgumentException} for a class.
+     * A factory that is set is used whatever the type of the agent, as by the builders of the other agents, while a
+     * declarative agent is given the {@code agentInstanceFactory} of the {@code AgentConfigurator} only when its type
+     * is a class, so that one whose type is an interface is still a JDK proxy.
+     * <p>
+     * The factory receives the agent as an {@link InternalAgent} that is also an {@link InvocationHandler}, and
+     * {@link #build()} fails with an {@code AgenticSystemConfigurationException} unless the object it returns is an
+     * instance of the agent type implementing {@code McpClientInstance}. That object must forward the agent method
+     * and the methods of {@code McpClientInstance} to the {@code invoke} method of the agent it received, and the
+     * methods of {@link InternalAgent} and {@link AgentInstance} either in the same way or by calling them on that
+     * agent. Each of them must be passed to {@code invoke} as the {@code Method} that the agent type or the interface
+     * declares, and not as the one overriding it in the class of the returned object, which is rejected with an
+     * {@code UnsupportedOperationException}: only the agent method invokes the tool. When the object also
+     * implements {@link AgenticScopeOwner}, its {@code withAgenticScope} method must return the object itself, since
+     * an MCP client agent has no agentic scope of its own.
+     *
+     * @param factory the factory of the object representing the agent, or {@code null} for none
+     * @return this builder for method chaining
+     * @since 1.25.0
+     */
+    McpClientBuilder<T> agentInstanceFactory(@Nullable Function<InternalAgent, Object> factory);
+
+    /**
+     * Builds the MCP client agent: the object created by the {@link #agentInstanceFactory(Function) agent instance
+     * factory} when one is set, otherwise a proxy implementing the agent service interface.
+     *
+     * @return the agent instance
+     */
     T build();
 }

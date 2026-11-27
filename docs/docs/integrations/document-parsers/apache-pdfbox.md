@@ -11,7 +11,7 @@ sidebar_position: 4
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-document-parser-apache-pdfbox</artifactId>
-    <version>1.24.0-beta34</version>
+    <version>1.24.1-beta34</version>
 </dependency>
 ```
 
@@ -48,6 +48,7 @@ and reads at most 100,000 characters from a single page:
 
 - The limit per document counts the characters of the returned text,
   including the spaces and line breaks that PDFBox adds between words, lines and pages.
+  A single page from which PDFBox reads more characters than this limit also exceeds it.
 - The limit per page counts the characters of the page's text as PDFBox reads it, before it adds spaces and line breaks.
   Every character drawn on the page counts, also when it is drawn more than once at the same position.
 
