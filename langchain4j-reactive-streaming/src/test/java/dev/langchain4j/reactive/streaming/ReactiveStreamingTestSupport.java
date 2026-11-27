@@ -2,6 +2,8 @@ package dev.langchain4j.reactive.streaming;
 
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.PartialResponse;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.List;
 import java.util.concurrent.Flow;
 import org.reactivestreams.tck.TestEnvironment;
@@ -113,5 +115,20 @@ public final class ReactiveStreamingTestSupport {
                 // backend's internals, not our pipeline. Tolerate it so logging=true does not flake.
                 .allowBlockingCallsInside("org.tinylog.core.WritingThread", "add")
                 .blockingMethodCallback(method -> violations.add(new BlockingOperationError(method)));
+    }
+
+    /**
+     * The full stack trace of each recorded BlockHound violation, for the failure message of an assertion on them.
+     * AssertJ's default message cuts every stack after a few frames, so it shows BlockHound's own frames but not the
+     * code that actually blocked.
+     *
+     * @param violations the blocking calls recorded by a {@link #blockHoundBuilder(List, String...)} callback
+     */
+    public static String stackTracesOf(List<Throwable> violations) {
+        StringWriter stackTraces = new StringWriter();
+        PrintWriter writer = new PrintWriter(stackTraces);
+        violations.forEach(violation -> violation.printStackTrace(writer));
+        writer.flush();
+        return stackTraces.toString();
     }
 }
