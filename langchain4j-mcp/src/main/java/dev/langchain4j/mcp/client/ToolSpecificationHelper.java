@@ -88,13 +88,14 @@ class ToolSpecificationHelper {
      */
     private static JsonSchemaElement jsonNodeToJsonSchemaElement(
             Map<String, Object> node, Map<String, Object> definitions, Set<String> resolvingRefs) {
-        // MCP SEP-2106 allows composition keywords such as anyOf alongside type "object", and the tool
-        // inputSchema root is always type "object". JsonObjectSchema cannot represent a schema-level anyOf,
-        // so an object-typed node is parsed as an object (its anyOf constraint is not carried over) rather
+        // MCP SEP-2106 allows composition keywords such as anyOf/oneOf alongside type "object", and the tool
+        // inputSchema root is always type "object". JsonObjectSchema cannot represent a schema-level anyOf/oneOf,
+        // so an object-typed node is parsed as an object (its anyOf/oneOf constraint is not carried over) rather
         // than as a JsonAnyOfSchema that the root would then fail to cast.
-        if (node.containsKey("anyOf") && !isObjectType(node)) {
+        if ((node.containsKey("anyOf") || node.containsKey("oneOf")) && !isObjectType(node)) {
+            Object variants = node.containsKey("anyOf") ? node.get("anyOf") : node.get("oneOf");
             JsonAnyOfSchema.Builder anyOf = JsonAnyOfSchema.builder();
-            JsonSchemaElement[] types = array(node.get("anyOf")).stream()
+            JsonSchemaElement[] types = array(variants).stream()
                     .map(item -> jsonNodeToJsonSchemaElement(object(item), definitions, resolvingRefs))
                     .toArray(JsonSchemaElement[]::new);
             anyOf.anyOf(types);
@@ -110,6 +111,9 @@ class ToolSpecificationHelper {
             }
         }
         Object typeNode = node.get("type");
+        if (typeNode == null && node.get("const") instanceof String) {
+            typeNode = "string";
+        }
         // If no type is specified, default to object schema
         if (typeNode == null || "object".equals(typeNode)) {
             JsonObjectSchema.Builder builder = JsonObjectSchema.builder();
@@ -198,6 +202,13 @@ class ToolSpecificationHelper {
                         builder.description(string(node.get("description")));
                     }
                     builder.enumValues(toStringArray(node.get("enum")));
+                    return builder.build();
+                } else if (node.get("const") instanceof String constValue) {
+                    JsonEnumSchema.Builder builder = JsonEnumSchema.builder();
+                    if (node.containsKey("description")) {
+                        builder.description(string(node.get("description")));
+                    }
+                    builder.enumValues(constValue);
                     return builder.build();
                 } else {
                     JsonStringSchema.Builder builder = JsonStringSchema.builder();
