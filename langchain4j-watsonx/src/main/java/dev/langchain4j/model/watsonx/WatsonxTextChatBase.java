@@ -184,8 +184,8 @@ abstract class WatsonxTextChatBase<R extends BaseChatRequest> extends WatsonxCha
          * @param repetitionPenalty must be {@code null}
          * @return {@code this}
          * @deprecated the watsonx.ai chat API does not support a repetition penalty, so a non-null value makes
-         * building the model throw an {@link UnsupportedFeatureException}. Use {@link #frequencyPenalty(Double)} or
-         * {@link #presencePenalty(Double)} to discourage repetition. This method will be removed no earlier than 6
+         * building the model throw an {@link UnsupportedFeatureException}. Use {@code frequencyPenalty(Double)} or
+         * {@code presencePenalty(Double)} to discourage repetition. This method will be removed no earlier than 6
          * months after 1.24.0-beta34.
          */
         @Deprecated(since = "1.24.0-beta34", forRemoval = true)
