@@ -99,6 +99,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
     private final Executor toolExecutor;
     private final Executor completeResponseProcessingExecutor;
     private final Queue<StartedTool> startedTools = new ConcurrentLinkedQueue<>();
+    private final Object toolStartMonitor = new Object();
+    private boolean toolDispatchClosed;
     private final @Nullable List<CompensableToolExecution> compensableExecutions;
 
     // Only used when compensation on tool errors is enabled, and written under the monitor of compensableExecutions.
@@ -115,7 +117,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private record ToolRequestResult(ToolExecutionResult result, Throwable error) {}
 
-    private record StartedTool(ToolExecutionRequest request, CompletableFuture<ToolRequestResult> execution) {}
+    private record StartedTool(
+            int index, ToolExecutionRequest request, CompletableFuture<ToolRequestResult> execution) {}
 
     AiServiceStreamingResponseHandler(
             ChatRequest chatRequest,
@@ -249,30 +252,120 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     @Override
     public void onCompleteToolCall(CompleteToolCall completeToolCall) {
-        if (toolExecutor != null) {
-            ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
-            if (compensableExecutions == null) {
-                CompletableFuture<ToolRequestResult> execution;
-                try {
-                    execution = CompletableFuture.supplyAsync(() -> executeCatching(toolRequest), toolExecutor);
-                } catch (RuntimeException rejected) {
-                    execution = CompletableFuture.failedFuture(rejected);
-                }
-                startedTools.add(new StartedTool(toolRequest, execution));
-                return;
-            }
-            // registered before it starts, so that a cancellation waits for it, also when the executor runs it inline
+        if (toolExecutor == null) {
+            return;
+        }
+        ToolExecutionRequest toolRequest = completeToolCall.toolExecutionRequest();
+        if (compensableExecutions == null) {
             CompletableFuture<Void> start = new CompletableFuture<>();
-            StartedTool startedTool = new StartedTool(
-                    toolRequest, start.thenApplyAsync(ignored -> executeCatching(toolRequest), toolExecutor));
-            synchronized (compensableExecutions) {
-                if (cancelled) {
+            CompletableFuture<ToolRequestResult> execution =
+                    start.thenApplyAsync(ignored -> executeCatching(toolRequest), toolExecutor);
+            synchronized (toolStartMonitor) {
+                if (toolDispatchClosed) {
                     return;
                 }
-                startedTools.add(startedTool);
+                startedTools.add(new StartedTool(completeToolCall.index(), toolRequest, execution));
             }
             start.complete(null);
+            return;
         }
+        // registered before it starts, so that a cancellation waits for it, also when the executor runs it inline
+        CompletableFuture<Void> start = new CompletableFuture<>();
+        StartedTool startedTool = new StartedTool(
+                completeToolCall.index(),
+                toolRequest,
+                start.thenApplyAsync(ignored -> executeCatching(toolRequest), toolExecutor));
+        synchronized (compensableExecutions) {
+            if (cancelled || toolDispatchClosed) {
+                return;
+            }
+            startedTools.add(startedTool);
+        }
+        start.complete(null);
+    }
+
+    private List<StartedTool> closeAndSnapshotStartedTools() {
+        synchronized (toolDispatchLock()) {
+            toolDispatchClosed = true;
+            return new ArrayList<>(startedTools);
+        }
+    }
+
+    private Object toolDispatchLock() {
+        return compensableExecutions != null ? compensableExecutions : toolStartMonitor;
+    }
+
+    private CompletableFuture<ToolRequestResult> startToolExecution(ToolExecutionRequest toolRequest) {
+        try {
+            return CompletableFuture.supplyAsync(() -> executeCatching(toolRequest), toolExecutor);
+        } catch (RuntimeException rejected) {
+            return CompletableFuture.failedFuture(rejected);
+        }
+    }
+
+    private static StartedTool[] matchStartedTools(List<ToolExecutionRequest> declared, List<StartedTool> started) {
+        StartedTool[] matched = new StartedTool[declared.size()];
+        if (started.size() == declared.size()) {
+            for (int i = 0; i < declared.size(); i++) {
+                matched[i] = started.get(i);
+            }
+            return matched;
+        }
+        boolean[] consumed = new boolean[started.size()];
+        for (int i = 0; i < declared.size(); i++) {
+            for (int j = 0; j < started.size(); j++) {
+                if (!consumed[j] && started.get(j).request().equals(declared.get(i))) {
+                    matched[i] = started.get(j);
+                    consumed[j] = true;
+                    break;
+                }
+            }
+        }
+        for (int i = 0; i < declared.size(); i++) {
+            if (matched[i] != null) {
+                continue;
+            }
+            String id = declared.get(i).id();
+            if (id == null || countUnmatchedWithId(declared, matched, id) != 1) {
+                continue;
+            }
+            int found = -1;
+            for (int j = 0; j < started.size(); j++) {
+                if (consumed[j] || !id.equals(started.get(j).request().id())) {
+                    continue;
+                }
+                if (found != -1) {
+                    found = -1;
+                    break;
+                }
+                found = j;
+            }
+            if (found != -1) {
+                matched[i] = started.get(found);
+                consumed[found] = true;
+            }
+        }
+        for (int j = 0; j < started.size(); j++) {
+            if (consumed[j]) {
+                continue;
+            }
+            int index = started.get(j).index();
+            if (index < declared.size() && matched[index] == null) {
+                matched[index] = started.get(j);
+                consumed[j] = true;
+            }
+        }
+        return matched;
+    }
+
+    private static int countUnmatchedWithId(List<ToolExecutionRequest> declared, StartedTool[] matched, String id) {
+        int count = 0;
+        for (int i = 0; i < declared.size(); i++) {
+            if (matched[i] == null && id.equals(declared.get(i).id())) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private ToolRequestResult executeCatching(ToolExecutionRequest toolRequest) {
@@ -407,23 +500,45 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             List<ToolExecutionRequest> executedRequests = aiMessage.toolExecutionRequests();
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults = new LinkedHashMap<>();
             if (toolExecutor != null) {
-                executedRequests = new ArrayList<>();
+                List<StartedTool> started = closeAndSnapshotStartedTools();
+                List<ToolExecutionRequest> declared = executedRequests;
+                StartedTool[] matched = matchStartedTools(declared, started);
+                executedRequests = new ArrayList<>(declared.size());
+                List<CompletableFuture<ToolRequestResult>> executions = new ArrayList<>(declared.size());
+                int missing = 0;
+                for (int i = 0; i < declared.size(); i++) {
+                    StartedTool startedTool = matched[i];
+                    if (startedTool != null) {
+                        executedRequests.add(startedTool.request());
+                        executions.add(startedTool.execution());
+                    } else {
+                        missing++;
+                        ToolExecutionRequest request = declared.get(i);
+                        executedRequests.add(request);
+                        executions.add(startToolExecution(request));
+                    }
+                }
+                if (missing > 0) {
+                    LOG.warn(
+                            "Executing {} tool call(s) from the model response that were never delivered via onCompleteToolCall",
+                            missing);
+                }
                 Map<ToolExecutionRequest, Throwable> toolErrors = new LinkedHashMap<>();
-                for (StartedTool startedTool : startedTools) {
-                    executedRequests.add(startedTool.request());
+                for (int i = 0; i < executedRequests.size(); i++) {
+                    ToolExecutionRequest request = executedRequests.get(i);
                     try {
-                        ToolRequestResult toolRequestResult = startedTool.execution().get();
+                        ToolRequestResult toolRequestResult = executions.get(i).get();
                         if (toolRequestResult.error() != null) {
-                            toolErrors.put(startedTool.request(), toolRequestResult.error());
+                            toolErrors.put(request, toolRequestResult.error());
                         } else {
-                            toolResults.put(startedTool.request(), toolRequestResult.result());
+                            toolResults.put(request, toolRequestResult.result());
                         }
                     } catch (ExecutionException e) {
                         if (e.getCause() instanceof VirtualMachineError vmError) {
                             throw vmError;
                         }
                         // e.g. the tool executor rejected the tool
-                        toolErrors.put(startedTool.request(), e.getCause());
+                        toolErrors.put(request, e.getCause());
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                         throw new RuntimeException(e);
@@ -540,7 +655,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     methodKey,
                     compensableExecutions);
 
-            CurrentInvocation.runWith(invocationContext, () -> context.streamingChatModel.chat(next.chatRequest(), HandlerWithoutInvocation.wrap(handler)));
+            CurrentInvocation.runWith(
+                    invocationContext,
+                    () -> context.streamingChatModel.chat(next.chatRequest(), HandlerWithoutInvocation.wrap(handler)));
         } else {
             ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
 
@@ -661,9 +778,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 .whenComplete((ignored, error) -> {
                     Map<ToolExecutionRequest, ToolExecutionResult> results = new LinkedHashMap<>();
                     for (StartedTool startedTool : drained) {
-                        ToolRequestResult toolRequestResult = startedTool.execution().isCompletedExceptionally()
-                                ? null
-                                : startedTool.execution().getNow(null);
+                        ToolRequestResult toolRequestResult =
+                                startedTool.execution().isCompletedExceptionally()
+                                        ? null
+                                        : startedTool.execution().getNow(null);
                         if (toolRequestResult != null && toolRequestResult.error() == null) {
                             results.put(startedTool.request(), toolRequestResult.result());
                         }
@@ -734,11 +852,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
         return context.toolService.executeTool(
-                invocationContext,
-                toolExecutors,
-                toolRequest,
-                beforeToolExecutionHandler,
-                toolExecutionHandler);
+                invocationContext, toolExecutors, toolRequest, beforeToolExecutionHandler, toolExecutionHandler);
     }
 
     private ChatMemory getMemory() {
