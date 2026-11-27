@@ -38,3 +38,17 @@ header > h1,
 h2 > a {
     font-size: 2rem !important;
 }
+
+/* Keep navbar on one line between desktop and mobile breakpoints */
+@media (min-width: 997px) and (max-width: 1280px) {
+    .navbar__link {
+        white-space: nowrap;
+        padding-left: 0.4rem;
+        padding-right: 0.4rem;
+        font-size: 0.9rem;
+    }
+
+    .navbar__search-input {
+        width: 8rem;
+    }
+}

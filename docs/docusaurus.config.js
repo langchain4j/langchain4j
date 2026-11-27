@@ -95,19 +95,22 @@ const config = {
                     { to: '/category/integrations', label: 'Integrations', position: 'left' },
                     { to: '/useful-materials', label: 'Useful Materials', position: 'left' },
                     {
-                        href: 'https://github.com/langchain4j/langchain4j-examples',
-                        label: 'Examples',
+                        label: 'Resources',
                         position: 'left',
-                    },
-                    {
-                        href: 'https://chat.langchain4j.dev/',
-                        label: 'Docu chatbot',
-                        position: 'left',
-                    },
-                    {
-                        href: 'https://docs.langchain4j.dev/apidocs/index.html',
-                        label: 'Javadoc',
-                        position: 'left'
+                        items: [
+                            {
+                                href: 'https://github.com/langchain4j/langchain4j-examples',
+                                label: 'Examples',
+                            },
+                            {
+                                href: 'https://chat.langchain4j.dev/',
+                                label: 'Docu chatbot',
+                            },
+                            {
+                                href: 'https://docs.langchain4j.dev/apidocs/index.html',
+                                label: 'Javadoc',
+                            },
+                        ],
                     },
                     {
                         href: 'https://github.com/langchain4j/langchain4j',
@@ -115,14 +118,18 @@ const config = {
                         position: 'right',
                     },
                     {
-                        href: 'https://twitter.com/langchain4j',
-                        label: 'Twitter',
+                        label: 'Community',
                         position: 'right',
-                    },
-                    {
-                        href: 'https://discord.com/invite/JzTFvyjG6R',
-                        label: 'Discord',
-                        position: 'right',
+                        items: [
+                            {
+                                href: 'https://twitter.com/langchain4j',
+                                label: 'Twitter',
+                            },
+                            {
+                                href: 'https://discord.com/invite/JzTFvyjG6R',
+                                label: 'Discord',
+                            },
+                        ],
                     },
                 ],
             },
