@@ -14,7 +14,6 @@ import dev.langchain4j.model.output.Response;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.TokenStream;
 import java.lang.reflect.Type;
-import java.util.Map;
 import java.util.Optional;
 
 @Internal
@@ -134,10 +133,6 @@ public class ServiceOutputParser {
     }
 
     private static boolean schemaNotRequired(Class<?> type) {
-        return isReturnedAsIs(type)
-                || type == String.class
-                || type == Map.class
-                || type == void.class
-                || type == Void.class;
+        return isReturnedAsIs(type) || type == String.class || type == void.class || type == Void.class;
     }
 }
