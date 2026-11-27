@@ -178,8 +178,8 @@ public class DefaultMcpClient implements McpClient {
             progressHandler = builder.progressHandler;
             pingTimeout = getOrDefault(builder.pingTimeout, Duration.ofSeconds(10));
             reconnectInterval = getOrDefault(builder.reconnectInterval, Duration.ofSeconds(5));
-            listChangeResubscribeExecutor = getOrDefault(
-                    builder.listChangeResubscribeExecutor, DefaultExecutorProvider::getDefaultExecutor);
+            listChangeResubscribeExecutor =
+                    getOrDefault(builder.listChangeResubscribeExecutor, DefaultExecutorProvider::getDefaultExecutor);
             autoHealthCheck = getOrDefault(builder.autoHealthCheck, Boolean.TRUE);
             autoHealthCheckInterval = getOrDefault(builder.autoHealthCheckInterval, Duration.ofSeconds(30));
             listeners = List.copyOf(builder.listeners);
