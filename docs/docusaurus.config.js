@@ -17,7 +17,7 @@ const config = {
     onDuplicateRoutes: 'warn', // ideally this should have a stricter value set - 'throw'
 
     // Set the production url of your site here
-    url: 'https://langchain4j.github.io/',
+    url: 'https://docs.langchain4j.dev',
     // Set the /<baseUrl>/ pathname under which your site is served
     // For GitHub pages deployment, it is often '/<projectName>/'
     baseUrl: '/',
