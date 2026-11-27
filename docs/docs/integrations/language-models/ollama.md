@@ -36,7 +36,7 @@ To get started, add the following dependencies to your project's `pom.xml`:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ollama</artifactId>
-    <version>1.24.0</version>
+    <version>1.24.1</version>
 </dependency>
 
 <dependency>
@@ -316,7 +316,7 @@ Import the Spring Boot starter for Ollama:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-ollama-spring-boot4-starter</artifactId>
-    <version>1.24.0-beta34</version>
+    <version>1.24.1-beta34</version>
 </dependency>
 ```
 
@@ -500,6 +500,12 @@ ChatResponse chatResponse = ollamaChatModel.chat(ChatRequest.builder().messages(
 
 System.out.println(chatResponse.aiMessage().text()); // "Yes" (meaning risk detected by Granite Guardian)
 ```
+
+### Images
+
+Ollama needs the content of each image: create it from a local file, for example with
+`ImageContent.from(Path.of("cat.png"), "image/png")`, or from base64 data. An image given by URL is rejected with an
+`UnsupportedFeatureException`, see [Media given by URL](/tutorials/chat-and-language-models#media-given-by-url).
 
 ### Decision models
 

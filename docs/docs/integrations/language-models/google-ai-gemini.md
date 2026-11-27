@@ -44,7 +44,7 @@ To answer yes/no, choice and scale questions with probabilities, see the
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-google-ai-gemini</artifactId>
-    <version>1.24.0</version>
+    <version>1.24.1</version>
 </dependency>
 ```
 
@@ -680,9 +680,8 @@ In input, Gemini accepts:
 The example below shows how to mix a text prompt with an image:
 
 ```java
-// PNG of the cute colorful parrot mascot of the LangChain4j project
-String base64Img = b64encoder.encodeToString(readBytes(
-  "https://avatars.githubusercontent.com/u/132277850?v=4"));
+// PNG of the cute colorful parrot mascot of the LangChain4j project, read from a local file
+ImageContent logo = ImageContent.from(Path.of("langchain4j-parrot.png"), "image/png");
 
 ChatModel gemini = GoogleAiGeminiChatModel.builder()
     .apiKey(System.getenv("GEMINI_AI_KEY"))
@@ -691,7 +690,7 @@ ChatModel gemini = GoogleAiGeminiChatModel.builder()
 
 ChatResponse response = gemini.chat(
     UserMessage.from(
-        ImageContent.from(base64Img, "image/png"),
+        logo,
         TextContent.from("""
             Do you think this logo fits well
             with the project description?
@@ -699,6 +698,13 @@ ChatResponse response = gemini.chat(
     )
 );
 ```
+
+Media can also be given by URL, for example with `ImageContent.from("https://example.com/cat.png")`.
+This integration passes media URLs on to Gemini as they are, and Gemini downloads the media itself.
+See the [Gemini API documentation](https://ai.google.dev/gemini-api/docs/file-input-methods) for the URLs it accepts,
+such as public `https` URLs, Files API URIs and YouTube URLs, and for its rules for media given by URL, such as the
+size of each file and the media types. A chat memory sends the media URLs of earlier messages again with every request.
+A `data:` URL, for example `data:image/png;base64,...`, is decoded and sent as content.
 
 ### Image Generation Output
 

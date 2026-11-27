@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -101,6 +102,13 @@ class GoogleGenAiContentMapper {
         EXTENSION_TO_MIME_TYPE.put("json", "text/plain");
     }
 
+    private static final Set<String> URL_SCHEMES_PASSED_ON = Set.of("gs", "http", "https");
+
+    static final String URL_NOT_SUPPORTED = "Google GenAI does not support media given by this kind of URL"
+            + " (only gs://, http:// and https:// URLs are passed on to Gemini). Create the content from a file or"
+            + " from its bytes, for example ImageContent.from(Path, String), PdfFileContent.from(Path),"
+            + " AudioContent.from(Path, String) or VideoContent.from(Path, String)";
+
     private static final String SYSTEM_ROLE = "system";
     private static final String USER_ROLE = "user";
     private static final String MODEL_ROLE = "model";
@@ -113,6 +121,10 @@ class GoogleGenAiContentMapper {
     // Signature of the last part of a response that carries no function call.
     private static final String THOUGHT_SIGNATURE_KEY =
             "thought_signature"; // do not change, will break backward compatibility!
+
+    // Built-in tool calls and responses, executed code and its result, as JSON in the order they were received.
+    static final String SERVER_SIDE_TOOL_PARTS_KEY =
+            "server_side_tool_parts"; // do not change, will break backward compatibility!
 
     static Content toSystemInstruction(List<ChatMessage> messages) {
         String systemInstructions = messages.stream()
@@ -209,6 +221,14 @@ class GoogleGenAiContentMapper {
             List<Part> parts = new ArrayList<>();
             if (sendThinking && !isNullOrEmpty(aiMsg.thinking())) {
                 parts.add(Part.builder().text(aiMsg.thinking()).thought(true).build());
+            }
+            List<?> serverSideToolParts = aiMsg.attribute(SERVER_SIDE_TOOL_PARTS_KEY, List.class);
+            if (serverSideToolParts != null) {
+                for (Object serverSideToolPart : serverSideToolParts) {
+                    if (serverSideToolPart instanceof String jsonPart) {
+                        parts.add(Part.fromJson(jsonPart));
+                    }
+                }
             }
             if (aiMsg.text() != null) {
                 Part.Builder textPartBuilder = Part.builder().text(aiMsg.text());
@@ -326,10 +346,15 @@ class GoogleGenAiContentMapper {
         Map<String, Object> attributes = new HashMap<>();
         List<Image> generatedImages = new ArrayList<>();
         List<Audio> generatedAudio = new ArrayList<>();
+        List<String> serverSideToolParts = new ArrayList<>();
 
         if (content != null) {
             List<Part> parts = content.parts().orElse(List.of());
             for (Part part : parts) {
+                if (isServerSideToolPart(part) && !(includeCodeExecutionOutput && isCodeExecutionPart(part))) {
+                    serverSideToolParts.add(part.toJson());
+                }
+
                 if (part.text().isPresent()) {
                     if (part.thought().orElse(false)) {
                         if (returnThinking) {
@@ -377,6 +402,7 @@ class GoogleGenAiContentMapper {
             if (!parts.isEmpty()) {
                 Part lastPart = parts.get(parts.size() - 1);
                 if (lastPart.functionCall().isEmpty()
+                        && !isServerSideToolPart(lastPart)
                         && lastPart.thoughtSignature().isPresent()) {
                     attributes.put(
                             THOUGHT_SIGNATURE_KEY,
@@ -390,6 +416,9 @@ class GoogleGenAiContentMapper {
             }
             if (!generatedAudio.isEmpty()) {
                 attributes.put(GENERATED_AUDIO_KEY, generatedAudio);
+            }
+            if (!serverSideToolParts.isEmpty()) {
+                attributes.put(SERVER_SIDE_TOOL_PARTS_KEY, serverSideToolParts);
             }
         }
 
@@ -429,6 +458,14 @@ class GoogleGenAiContentMapper {
                 .build();
 
         return ChatResponse.builder().aiMessage(aiMessage).metadata(metadata).build();
+    }
+
+    private static boolean isServerSideToolPart(Part part) {
+        return part.toolCall().isPresent() || part.toolResponse().isPresent() || isCodeExecutionPart(part);
+    }
+
+    private static boolean isCodeExecutionPart(Part part) {
+        return part.executableCode().isPresent() || part.codeExecutionResult().isPresent();
     }
 
     /**
@@ -584,18 +621,17 @@ class GoogleGenAiContentMapper {
     }
 
     private static Part getPart(URI url, String mimeType, String base64data, byte[] binaryData) {
-        if (url != null) {
-            String effectiveMimeType = getOrDefault(mimeType, () -> detectMimeType(url));
-            if (url.getScheme().equals("gs")) {
-                return fromMimeTypeAndData(effectiveMimeType, url);
-            } else {
-                return fromMimeTypeAndData(effectiveMimeType, dev.langchain4j.internal.Utils.readBytes(url.toString()));
+        if (binaryData == null && base64data == null && url != null) {
+            if (url.getScheme() == null || !URL_SCHEMES_PASSED_ON.contains(url.getScheme().toLowerCase(Locale.ROOT))) {
+                throw new UnsupportedFeatureException(URL_NOT_SUPPORTED);
             }
-        } else if (binaryData != null) {
-            return fromMimeTypeAndData(mimeType, binaryData);
-        } else {
-            return fromMimeTypeAndData(mimeType, Base64.getDecoder().decode(base64data));
+            return fromMimeTypeAndData(getOrDefault(mimeType, () -> detectMimeType(url)), url);
         }
+        String effectiveMimeType = url == null ? mimeType : getOrDefault(mimeType, () -> detectMimeType(url));
+        if (binaryData != null) {
+            return fromMimeTypeAndData(effectiveMimeType, binaryData);
+        }
+        return fromMimeTypeAndData(effectiveMimeType, Base64.getDecoder().decode(base64data));
     }
 
     static String detectMimeType(URI url) {

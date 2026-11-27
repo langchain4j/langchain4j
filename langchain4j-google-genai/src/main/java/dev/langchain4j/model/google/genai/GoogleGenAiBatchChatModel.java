@@ -223,6 +223,8 @@ public final class GoogleGenAiBatchChatModel implements BatchChatModel {
                 googleSearchEnabled,
                 googleMapsEnabled,
                 urlContextEnabled,
+                false,
+                client.vertexAI(),
                 allowedFunctionNames,
                 vertexSearchDatastore,
                 labels,

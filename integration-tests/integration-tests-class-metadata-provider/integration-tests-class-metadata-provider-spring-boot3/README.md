@@ -1,0 +1,1 @@
+Runs the app and tests of [integration-tests-class-metadata-provider-spring](../integration-tests-class-metadata-provider-spring) on Spring Boot 3, so that the [`ClassMetadataProvider`](../../../langchain4j-core/src/main/java/dev/langchain4j/classinstance/ClassMetadataProvider.java) is tested with both Spring Boot lines.

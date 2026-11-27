@@ -765,7 +765,7 @@ For this, please import `langchain4j-reactor` module:
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-reactor</artifactId>
-    <version>1.24.0-beta34</version>
+    <version>1.24.1-beta34</version>
 </dependency>
 ```
 ```java
@@ -1111,7 +1111,7 @@ or, in the long run, even fine-tune a small specialized model for each specific 
 
 ## Testing
 
-- [An example of integration testing for a Customer Support Agent](https://github.com/langchain4j/langchain4j-examples/blob/main/customer-support-agent-example/src/test/java/dev/langchain4j/example/CustomerSupportAgentIT.java)
+- [Testing](/tutorials/testing): how to test AI Services, with model mocks, checks of what they did and model judges
 
 
 ## Related Tutorials

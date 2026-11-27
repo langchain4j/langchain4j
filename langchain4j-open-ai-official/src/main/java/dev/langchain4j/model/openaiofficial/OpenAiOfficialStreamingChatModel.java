@@ -42,7 +42,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatModel implements StreamingChatModel {
 
@@ -114,16 +113,15 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
             StringBuffer textBuilder = new StringBuffer();
             StringBuffer refusalBuilder = new StringBuffer();
             ToolCallBuilder toolCallBuilder = new ToolCallBuilder();
-            AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
 
             MappingTrackingStreamingChatResponseHandler trackingHandler =
                     new MappingTrackingStreamingChatResponseHandler(handler);
 
-            AsyncStreamResponse<ChatCompletionChunk> asyncStreamResponse = asyncClient
-                    .chat()
-                    .completions()
-                    .createStreaming(chatCompletionCreateParams)
-                    .subscribe(new AsyncStreamResponse.Handler<>() {
+            AsyncStreamResponse<ChatCompletionChunk> asyncStreamResponse =
+                    asyncClient.chat().completions().createStreaming(chatCompletionCreateParams);
+            StreamingHandle streamingHandle = new OpenAiOfficialStreamingHandle(asyncStreamResponse);
+
+            asyncStreamResponse.subscribe(new AsyncStreamResponse.Handler<>() {
 
                         @Override
                         public void onNext(ChatCompletionChunk completion) {
@@ -131,7 +129,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                             manageChatCompletionChunks(
                                     completion,
                                     trackingHandler,
-                                    streamingHandle.get(),
+                                    streamingHandle,
                                     responseMetadataBuilder,
                                     textBuilder,
                                     refusalBuilder,
@@ -144,7 +142,7 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
 
                         @Override
                         public void onComplete(Optional<Throwable> error) {
-                            if (streamingHandle.get().isCancelled()) {
+                            if (streamingHandle.isCancelled()) {
                                 return;
                             }
 
@@ -178,8 +176,6 @@ public class OpenAiOfficialStreamingChatModel extends OpenAiOfficialBaseChatMode
                             }
                         }
                     });
-
-            streamingHandle.set(new OpenAiOfficialStreamingHandle(asyncStreamResponse));
         } catch (Exception e) {
             withLoggingExceptions(() -> handler.onError(e));
         }

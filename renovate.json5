@@ -249,6 +249,12 @@
             "allowedVersions": "(,2.2)"
         },
         {
+            // these apps run the tests of their Spring Boot 4 siblings on Spring Boot 3, so that both lines are tested
+            "matchFileNames": ["integration-tests/**/*-spring-boot3/pom.xml"],
+            "matchPackageNames": ["org.springframework.boot:*"],
+            "allowedVersions": "(,4)"
+        },
+        {
             // the Milvus tests pin one image per server major version; a new major gets its own entry instead
             "matchDatasources": ["docker"],
             "matchPackageNames": ["milvusdb/milvus"],
