@@ -152,11 +152,9 @@ public interface ToolGuardrailService {
      * The configuration of the input guardrails of the tools, which also sets the arguments rewrite note of
      * {@link GuardedToolExecution#resultTextForLlm(String)}.
      *
-     * @return The configuration, the default one if none was given.
+     * @return The configuration, the default one if none was given, never {@code null}.
      */
-    default ToolInputGuardrailsConfig toolInputGuardrailsConfig() {
-        return ToolInputGuardrailsConfig.builder().build();
-    }
+    ToolInputGuardrailsConfig toolInputGuardrailsConfig();
 
     /**
      * Executes the input guardrails of the tool.

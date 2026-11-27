@@ -18,6 +18,7 @@ import dev.langchain4j.guardrail.ToolOutputGuardrail;
 import dev.langchain4j.guardrail.ToolOutputGuardrailException;
 import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
+import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.ToolExecutionResult;
@@ -799,6 +800,11 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
         @Override
         public Class<?> aiServiceClass() {
             return delegate.aiServiceClass();
+        }
+
+        @Override
+        public ToolInputGuardrailsConfig toolInputGuardrailsConfig() {
+            return delegate.toolInputGuardrailsConfig();
         }
 
         @Override
