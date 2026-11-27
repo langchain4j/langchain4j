@@ -492,6 +492,7 @@ class PlannerTokenUsageTest {
 
         // the model answered and was billed, even if the supervisor could not read its reply
         assertThat(responses).extracting(PlannerModelResponse::tokenUsage).containsExactly(new TokenUsage(100, 20));
+        assertThat(responses.get(0).chatResponse().aiMessage().text()).isEqualTo("this is not an agent invocation");
         AgentInvocation failed = monitor.failedExecutions().get(0).topLevelInvocations();
         assertThat(failed.tokenUsage()).contains(new TokenUsage(100, 20));
         assertThat(failed.modelName()).contains("planning-model");

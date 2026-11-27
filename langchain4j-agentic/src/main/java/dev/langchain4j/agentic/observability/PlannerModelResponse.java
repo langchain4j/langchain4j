@@ -95,7 +95,8 @@ public final class PlannerModelResponse {
     }
 
     /**
-     * Returns the response of the chat model called by the planner, or {@code null} if it called a decision model.
+     * Returns the response of the chat model called by the planner, or {@code null} if it called a decision model or
+     * if this notification was created without the response.
      */
     public @Nullable ChatResponse chatResponse() {
         return chatResponse;
@@ -103,7 +104,7 @@ public final class PlannerModelResponse {
 
     /**
      * Returns the response of the decision model called by the planner, with its answers and their probabilities, or
-     * {@code null} if it called a chat model.
+     * {@code null} if it called a chat model or if this notification was created without the response.
      */
     public @Nullable DecisionResponse decisionResponse() {
         return decisionResponse;

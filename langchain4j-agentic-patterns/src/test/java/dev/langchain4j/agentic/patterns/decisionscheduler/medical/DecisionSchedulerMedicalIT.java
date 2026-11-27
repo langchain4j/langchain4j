@@ -2,7 +2,6 @@ package dev.langchain4j.agentic.patterns.decisionscheduler.medical;
 
 import static dev.langchain4j.agentic.patterns.DecisionModels.decisionModel;
 import static dev.langchain4j.agentic.patterns.Models.baseModel;
-import static java.util.Comparator.comparingDouble;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agentic.AgenticServices;
@@ -17,11 +16,11 @@ import dev.langchain4j.agentic.patterns.blackboard.BlackboardMedicalAgents.Medic
 import dev.langchain4j.agentic.patterns.blackboard.BlackboardMedicalAgents.SymptomExtractor;
 import dev.langchain4j.agentic.patterns.decisionscheduler.DecisionSchedulerPlanner;
 import dev.langchain4j.model.decision.response.DecisionAnswer;
+import dev.langchain4j.model.decision.response.DecisionResponse;
 import dev.langchain4j.model.decision.response.ScaleAnswer;
 import dev.langchain4j.model.decision.response.YesNoAnswer;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -36,25 +35,23 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 public class DecisionSchedulerMedicalIT {
 
     private static final String GOAL = "A diagnosis based on the symptoms and on the lab analysis is available";
+    private static final double GOAL_THRESHOLD = 0.5;
+    private static final double ACTIVATION_THRESHOLD = 0.5;
 
     @Test
     void medical_diagnosis_with_the_decision_scheduler() {
         AgentMonitor monitor = new AgentMonitor();
         // prints the answers of each decision of the scheduler: the usefulness of every agent that can run and, once
-        // there is a diagnosis, the probability that the goal has been reached. It also collects the question with
-        // the highest probability of each decision
-        List<String> chosenQuestions = new ArrayList<>();
+        // there is a diagnosis, the probability that the goal has been reached
+        List<DecisionResponse> decisions = new ArrayList<>();
         AgentListener decisionPrinter = new AgentListener() {
             @Override
             public void onPlannerModelResponse(PlannerModelResponse plannerModelResponse) {
-                Map<String, DecisionAnswer> answers =
-                        plannerModelResponse.decisionResponse().answers();
+                DecisionResponse decision = plannerModelResponse.decisionResponse();
+                // recorded before reading it, since an exception thrown by a listener is only logged
+                decisions.add(decision);
                 System.out.println("Decision:");
-                answers.forEach((question, answer) -> System.out.println("  " + question + ": " + answer));
-                chosenQuestions.add(Collections.max(
-                                answers.entrySet(),
-                                comparingDouble(entry -> probability(entry.getValue())))
-                        .getKey());
+                decision.answers().forEach((question, answer) -> System.out.println("  " + question + ": " + answer));
             }
         };
 
@@ -76,8 +73,8 @@ public class DecisionSchedulerMedicalIT {
                 .planner(() -> DecisionSchedulerPlanner.builder()
                         .decisionModel(decisionModel())
                         .goal(GOAL)
-                        .goalThreshold(0.5)
-                        .activationThreshold(0.5)
+                        .goalThreshold(GOAL_THRESHOLD)
+                        .activationThreshold(ACTIVATION_THRESHOLD)
                         .build())
                 .outputKey("diagnosis")
                 .listener(monitor)
@@ -106,23 +103,40 @@ public class DecisionSchedulerMedicalIT {
         // the tokens of the decision calls of the scheduler itself, without the ones of its subagents
         assertThat(monitor.successfulExecutions().get(0).topLevelInvocations().totalTokenCount())
                 .isPositive();
-        // at each decision the scheduler invoked the agent of the question with the highest probability, until that
-        // question was the one asking whether the goal has been reached
-        System.out.println("Chosen questions: " + chosenQuestions);
-        List<String> expectedQuestions = new ArrayList<>(path);
-        expectedQuestions.add("goal-reached");
-        assertThat(chosenQuestions).isEqualTo(expectedQuestions);
+        // one decision before each invocation, and a last one that stopped the scheduler, unless no agent was left
+        assertThat(decisions).doesNotContainNull().hasSizeBetween(path.size(), path.size() + 1);
+        for (int i = 0; i < path.size(); i++) {
+            assertThat(agentToInvoke(decisions.get(i))).isEqualTo(path.get(i));
+        }
+        if (decisions.size() > path.size()) {
+            assertThat(agentToInvoke(decisions.get(path.size()))).isNull();
+        }
 //        HtmlReportGenerator.generateReport(monitor,
 //                Path.of("src", "test", "resources", "medical-decision-scheduler.html"));
     }
 
     /**
-     * The value that the scheduler compares: the probability that the goal has been reached for the goal question,
-     * and the mean usefulness level of an agent, scaled between 0 and 1, for the question about that agent.
+     * The agent that the scheduler invokes after this decision, or {@code null} if it stops there: it stops when the
+     * probability that the goal has been reached is at least the goal threshold, and otherwise invokes the most useful
+     * agent, the first one asked winning a tie, when its mean usefulness level, scaled between 0 and 1, is at least
+     * the activation threshold.
      */
-    private static double probability(DecisionAnswer answer) {
-        return answer instanceof YesNoAnswer yesNo
-                ? yesNo.probability()
-                : ((ScaleAnswer) answer).mean() / (DecisionSchedulerPlanner.DEFAULT_USEFULNESS_LEVELS.size() - 1);
+    private static String agentToInvoke(DecisionResponse decision) {
+        if (decision.answers().get("goal-reached") instanceof YesNoAnswer goal
+                && goal.probability() >= GOAL_THRESHOLD) {
+            return null;
+        }
+        String mostUseful = null;
+        double highestScore = -1;
+        for (Map.Entry<String, DecisionAnswer> entry : decision.answers().entrySet()) {
+            if (entry.getValue() instanceof ScaleAnswer usefulness) {
+                double score = usefulness.mean() / (DecisionSchedulerPlanner.DEFAULT_USEFULNESS_LEVELS.size() - 1);
+                if (score > highestScore) {
+                    mostUseful = entry.getKey();
+                    highestScore = score;
+                }
+            }
+        }
+        return highestScore >= ACTIVATION_THRESHOLD ? mostUseful : null;
     }
 }
