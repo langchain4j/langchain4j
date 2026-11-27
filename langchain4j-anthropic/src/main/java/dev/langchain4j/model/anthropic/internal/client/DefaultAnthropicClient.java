@@ -28,6 +28,7 @@ import static java.util.stream.Collectors.joining;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.RetriableException;
 import dev.langchain4j.http.client.HttpClient;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.http.client.HttpClientBuilderLoader;
@@ -63,16 +64,16 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
-import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
-import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
+import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -84,6 +85,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Flow.Publisher;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
@@ -266,7 +268,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
      * without ever parking a thread.
      */
     @Override
-    public CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(AnthropicCreateMessageRequest request) {
+    public CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(
+            AnthropicCreateMessageRequest request) {
         HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
         return httpClient.executeAsync(httpRequest).thenApply(rawResponse -> {
             AnthropicCreateMessageResponse parsedResponse =
@@ -298,6 +301,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
      *   <li>{@code message_stop}: End of message, triggers complete response callback</li>
      *   <li>{@code error}: Error event from the API</li>
      * </ul>
+     *
+     * <p>Exactly one terminal callback is delivered to the handler: {@code onCompleteResponse} when
+     * {@code message_stop} is received, or {@code onError} when an {@code error} event or a transport failure is
+     * received, or when the stream ends before {@code message_stop} (reported as a {@link RetriableException}).
+     * No terminal callback is delivered when the caller cancels the stream through its {@link StreamingHandle}.</p>
      *
      * @param request the message creation request (should have {@code stream: true})
      * @param options options controlling what data to return (e.g., thinking outputs, server tool results)
@@ -361,6 +369,10 @@ public class DefaultAnthropicClient extends AnthropicClient {
             final AtomicReference<SuccessfulHttpResponse> rawHttpResponse = new AtomicReference<>();
             final Queue<ServerSentEvent> rawServerSentEvents = new ConcurrentLinkedQueue<>();
 
+            // Guards the single terminal signal of this stream: whichever comes first (message_stop, an "error"
+            // event, a transport failure or the end of the HTTP body) is delivered, everything after it is dropped.
+            final AtomicBoolean terminated = new AtomicBoolean();
+
             @Override
             public void onOpen(SuccessfulHttpResponse response) {
                 rawHttpResponse.set(response);
@@ -373,6 +385,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
             @Override
             public void onEvent(ServerSentEvent event, ServerSentEventContext context) {
+                if (terminated.get()) {
+                    // A terminal signal has already been delivered; anything received afterwards is ignored.
+                    return;
+                }
+
                 if (streamingHandle == null) {
                     streamingHandle = toStreamingHandle(context.parsingHandle());
                 }
@@ -600,8 +617,18 @@ public class DefaultAnthropicClient extends AnthropicClient {
             }
 
             private void handleMessageStop() {
-                ChatResponse completeResponse = build();
-                onCompleteResponse(handler, completeResponse);
+                ChatResponse completeResponse;
+                try {
+                    completeResponse = build();
+                } catch (Exception e) {
+                    // Exceptions thrown from onEvent() are only logged by the SSE parser, so a failure to build the
+                    // response must be reported here, otherwise the stream would end without a terminal signal.
+                    failOnce(e);
+                    return;
+                }
+                if (terminated.compareAndSet(false, true)) {
+                    onCompleteResponse(handler, completeResponse);
+                }
             }
 
             private ChatResponse build() {
@@ -679,14 +706,36 @@ public class DefaultAnthropicClient extends AnthropicClient {
             }
 
             private void handleError(AnthropicStreamingData data) {
-                withLoggingExceptions(
-                        () -> handler.onError(new AnthropicStreamingException(data.error.message, data.error.type)));
+                failOnce(new AnthropicStreamingException(data.error.message, data.error.type));
             }
 
             @Override
             public void onError(Throwable error) {
-                RuntimeException mappedError = ExceptionMapper.DEFAULT.mapException(error);
-                withLoggingExceptions(() -> handler.onError(mappedError));
+                failOnce(ExceptionMapper.DEFAULT.mapException(error));
+            }
+
+            @Override
+            public void onClose() {
+                if (terminated.get()) {
+                    return;
+                }
+                if (streamingHandle != null && streamingHandle.isCancelled()) {
+                    // The caller cancelled the stream, so ending before message_stop is expected and not an error.
+                    return;
+                }
+                // The HTTP body ended before message_stop (e.g. the connection was cut by a proxy or the network).
+                // Without a terminal signal here, the caller would wait forever.
+                String message = "Anthropic stream ended before the message_stop event";
+                if (stopReason != null) {
+                    message += " (stop_reason '" + stopReason + "' was received)";
+                }
+                failOnce(new RetriableException(message));
+            }
+
+            private void failOnce(Throwable error) {
+                if (terminated.compareAndSet(false, true)) {
+                    withLoggingExceptions(() -> handler.onError(error));
+                }
             }
         };
     }
@@ -704,9 +753,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
         HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
         return HttpStreamingChatPublisher.create(
-                bufferSize,
-                () -> httpClient.stream(httpRequest, new DefaultServerSentEventParser()),
-                tube -> {
+                bufferSize, () -> httpClient.stream(httpRequest, new DefaultServerSentEventParser()), tube -> {
                     ServerSentEventListener eventListener =
                             buildStreamingEventListener(new TubeBackedStreamingChatResponseHandler(tube), options);
                     return new HttpStreamingChatPublisher.Sink() {
