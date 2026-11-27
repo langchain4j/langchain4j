@@ -14,10 +14,8 @@ import dev.langchain4j.mcp.registryclient.model.McpRegistryHealth;
 import dev.langchain4j.mcp.registryclient.model.McpRegistryPong;
 import dev.langchain4j.mcp.registryclient.model.McpServerList;
 import dev.langchain4j.mcp.registryclient.model.McpServerListRequest;
-import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.util.ArrayList;
@@ -54,9 +52,9 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
             boolean logResponses) {
         this.baseUrl = Utils.getOrDefault(baseUrl, OFFICIAL_REGISTRY_URL);
         this.headers = Utils.getOrDefault(headers, () -> HashMap::new);
-        HttpClient httpClientToUse =
-                Utils.getOrDefault(httpClient, () -> HttpClientBuilderLoader.loadHttpClientBuilder()
-                        .build());
+        HttpClient httpClientToUse = Utils.getOrDefault(
+                httpClient,
+                () -> HttpClientBuilderLoader.loadHttpClientBuilder().build());
         if (logRequests || logResponses) {
             this.httpClient = new LoggingHttpClient(httpClientToUse, logRequests, logResponses);
         } else {
@@ -131,7 +129,7 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
     }
 
     private Map<String, String> currentHeaders() {
-        Map<String, String> map = headers.get();
+        Map<String, String> map = new HashMap<>(headers.get());
         map.put("Content-Type", "application/json");
         map.put("Accept", "application/json, application/problem+json");
         return map;
@@ -197,11 +195,18 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
             return this;
         }
 
+        /**
+         * Sets custom headers. The map is copied for each request and is never modified by the client.
+         */
         public Builder headers(Map<String, String> headers) {
             this.headers = () -> headers;
             return this;
         }
 
+        /**
+         * Supplies custom headers once per request. The returned map is copied before protocol defaults are added,
+         * so it may be immutable. Changes returned by the supplier take effect on subsequent requests.
+         */
         public Builder headersSupplier(Supplier<Map<String, String>> headers) {
             this.headers = headers;
             return this;
