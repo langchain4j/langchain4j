@@ -10,7 +10,6 @@ import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.decision.response.DecisionResponse;
-import dev.langchain4j.model.output.TokenUsage;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -51,11 +50,11 @@ public record PlanningContext(
     }
 
     /**
-     * Reports the response of a chat model that the planner called itself to decide what to do. Its token usage and
-     * its model name are notified to the {@link AgentListener#onPlannerModelResponse(PlannerModelResponse) listeners}
-     * of the agent running the planner, so that the token usage is counted on the invocation of that agent, for
-     * instance by the {@code AgentMonitor}: a model call that is not reported is invisible to them. Call it as soon
-     * as the model returns, once for each call.
+     * Reports the response of a chat model that the planner called itself to decide what to do. The response is
+     * notified to the {@link AgentListener#onPlannerModelResponse(PlannerModelResponse) listeners} of the agent
+     * running the planner, so that its token usage is counted on the invocation of that agent, for instance by the
+     * {@code AgentMonitor}: a model call that is not reported is invisible to them. Call it as soon as the model
+     * returns, once for each call.
      * <p>
      * A planner calling its model through an AI service calls this method from an
      * {@code AiServiceResponseReceivedListener} registered on that service, which receives each response of the
@@ -68,26 +67,26 @@ public record PlanningContext(
      */
     public void reportChatModelResponse(@Nullable ChatResponse chatResponse) {
         if (chatResponse != null) {
-            reportModelResponse(chatResponse.tokenUsage(), chatResponse.modelName());
+            reportModelResponse(new PlannerModelResponse(agenticScope, plannerAgent, chatResponse));
         }
     }
 
     /**
      * Reports the response of a decision model that the planner called itself to decide what to do, like
-     * {@link #reportChatModelResponse(ChatResponse)} does for a chat model.
+     * {@link #reportChatModelResponse(ChatResponse)} does for a chat model. The listeners receive the response with
+     * its answers and their probabilities.
      *
      * @param decisionResponse the response returned by the decision model, or {@code null}, which is ignored
      */
     public void reportDecisionModelResponse(@Nullable DecisionResponse decisionResponse) {
         if (decisionResponse != null) {
-            reportModelResponse(decisionResponse.tokenUsage(), decisionResponse.modelName());
+            reportModelResponse(new PlannerModelResponse(agenticScope, plannerAgent, decisionResponse));
         }
     }
 
-    private void reportModelResponse(@Nullable TokenUsage tokenUsage, @Nullable String modelName) {
+    private void reportModelResponse(PlannerModelResponse plannerModelResponse) {
         if (plannerAgent instanceof InternalAgent agent) {
-            onPlannerModelResponse(
-                    agent.listener(), new PlannerModelResponse(agenticScope, plannerAgent, tokenUsage, modelName));
+            onPlannerModelResponse(agent.listener(), plannerModelResponse);
         }
     }
 }

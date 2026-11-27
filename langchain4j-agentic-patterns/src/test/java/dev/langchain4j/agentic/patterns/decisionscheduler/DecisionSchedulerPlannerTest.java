@@ -19,6 +19,8 @@ import dev.langchain4j.agentic.agent.AgentUnavailableException;
 import dev.langchain4j.agentic.agent.ErrorRecoveryResult;
 import dev.langchain4j.agentic.observability.HtmlReportGenerator;
 import dev.langchain4j.agentic.observability.AgentMonitor;
+import dev.langchain4j.agentic.observability.AgentListener;
+import dev.langchain4j.agentic.observability.PlannerModelResponse;
 import dev.langchain4j.agentic.planner.Action;
 import dev.langchain4j.agentic.planner.AgentArgument;
 import dev.langchain4j.agentic.planner.AgentInstance;
@@ -1092,15 +1094,24 @@ class DecisionSchedulerPlannerTest {
     void shouldCountEveryDecisionCallOnTheScheduler() {
         Map<String, Double> scores = Map.of("tracker", 0.9, "advisor", 0.2, "writer", 0.6);
         // the goal is reached once the writer wrote the reply, which happens with the second invocation
-        MockDecisionModel model = MockDecisionModel.thatResponds(decisionWithTokens(0.1, scores))
-                .thenResponds(decisionWithTokens(0.1, scores))
-                .thenResponds(decisionWithTokens(0.9, scores));
+        DecisionResponse first = decisionWithTokens(0.1, scores);
+        DecisionResponse second = decisionWithTokens(0.1, scores);
+        DecisionResponse third = decisionWithTokens(0.9, scores);
+        MockDecisionModel model =
+                MockDecisionModel.thatResponds(first).thenResponds(second).thenResponds(third);
         AgentMonitor monitor = new AgentMonitor();
+        List<PlannerModelResponse> responses = new CopyOnWriteArrayList<>();
         SupportDesk desk = AgenticServices.plannerBuilder(SupportDesk.class)
                 .subAgents(tracker(), advisor(), writer())
                 .outputKey("reply")
                 .planner(() -> planner(model).build())
                 .listener(monitor)
+                .listener(new AgentListener() {
+                    @Override
+                    public void onPlannerModelResponse(PlannerModelResponse plannerModelResponse) {
+                        responses.add(plannerModelResponse);
+                    }
+                })
                 .build();
 
         desk.handle(TICKET);
@@ -1110,5 +1121,10 @@ class DecisionSchedulerPlannerTest {
         var invocation = monitor.successfulExecutions().get(0).topLevelInvocations();
         assertThat(invocation.tokenUsage()).contains(new TokenUsage(120, 6));
         assertThat(invocation.modelName()).contains("decision-model");
+        // the listeners receive the response of each decision, with the answers the scheduler acted on
+        assertThat(responses)
+                .extracting(PlannerModelResponse::decisionResponse)
+                .containsExactly(first, second, third);
+        assertThat(responses).extracting(PlannerModelResponse::chatResponse).containsOnlyNulls();
     }
 }

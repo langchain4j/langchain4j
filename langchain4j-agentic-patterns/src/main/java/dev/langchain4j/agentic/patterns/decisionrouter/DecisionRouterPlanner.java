@@ -88,7 +88,17 @@ public class DecisionRouterPlanner implements Planner {
     public static final PromptTemplate DEFAULT_RELEVANCE_QUESTION_TEMPLATE =
             PromptTemplate.from("Should the agent '{{name}}' ({{description}}) handle this request?");
 
-    static final String QUESTION_NAME = "decision-agent";
+    /**
+     * The name of the choice question asked to choose among the subagents when the router has no activation
+     * threshold, in the request sent to the decision model and in its response:
+     * {@code decisionResponse.choice(CHOICE_QUESTION_NAME).value()} is the name of the chosen subagent.
+     * <p>
+     * With an activation threshold this question is not asked, and each yes/no question is named after its subagent:
+     * {@code decisionResponse.yesNo(name).probability()} is the probability that the subagent with that name should
+     * handle the request. In both cases a subagent sharing its name with another one is named after its
+     * {@link AgentInstance#agentId() id} instead.
+     */
+    public static final String CHOICE_QUESTION_NAME = "agent";
 
     private static final String DECISION_ROUTER_KEY_PREFIX = "decision-router-";
     private static final String ACTIVATED_STATE_KEY = DECISION_ROUTER_KEY_PREFIX + "activated";
@@ -236,7 +246,7 @@ public class DecisionRouterPlanner implements Planner {
         // an agent without a description is described by its name
         candidates.forEach(agent ->
                 choice.option(key(agent), isNullOrBlank(agent.description()) ? agent.name() : agent.description()));
-        return Map.of(QUESTION_NAME, choice.build());
+        return Map.of(CHOICE_QUESTION_NAME, choice.build());
     }
 
     private YesNoQuestion relevanceQuestion(AgentInstance agent) {
@@ -306,7 +316,7 @@ public class DecisionRouterPlanner implements Planner {
                 .build());
         planningContext.reportDecisionModelResponse(response);
         List<String> chosen = activationThreshold == null
-                ? List.of(response.choice(QUESTION_NAME).value())
+                ? List.of(response.choice(CHOICE_QUESTION_NAME).value())
                 : candidates.stream()
                         .map(this::key)
                         .filter(key -> response.yesNo(key).probability() >= activationThreshold)

@@ -46,8 +46,9 @@ public interface AgentListener {
      * receives the response of a model that it called itself to decide what to do, as reported by the planner through
      * the {@link PlanningContext#reportChatModelResponse reportChatModelResponse} or
      * {@link PlanningContext#reportDecisionModelResponse reportDecisionModelResponse} method of its
-     * {@code PlanningContext}. The notification carries the token usage and the model name of that
-     * response. The model calls of the subagents are not notified here, but by their own invocations.
+     * {@code PlanningContext}. The notification carries that response, which is a chat response or a decision
+     * response with its answers and their probabilities, together with its token usage and its model name. The model
+     * calls of the subagents are not notified here, but by their own invocations.
      * It is called on the thread running the planner, before the planner acts on the response, so also when the
      * invocation of the agent later fails.
      */

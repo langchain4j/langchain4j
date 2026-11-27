@@ -183,6 +183,8 @@ class PlannerTokenUsageTest {
                 .containsExactly(new TokenUsage(100, 20), new TokenUsage(30, 5));
         assertThat(responses).extracting(PlannerModelResponse::modelName).containsOnly("planning-model");
         PlannerModelResponse first = responses.get(0);
+        assertThat(first.chatResponse().aiMessage().text()).isEqualTo("go on");
+        assertThat(first.decisionResponse()).isNull();
         assertThat(first.agenticScope()).isNotNull();
         assertThat(first.agentId()).isEqualTo(first.agent().agentId());
     }
@@ -197,8 +199,30 @@ class PlannerTokenUsageTest {
         assertThat(responses).hasSize(1);
         PlannerModelResponse response = responses.get(0);
         assertThat(response.agentName()).isEqualTo("pattern");
+        assertThat(response.chatResponse()).isNull();
+        assertThat(response.decisionResponse().yesNo("invoke").probability()).isEqualTo(0.9);
         assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(40, 2));
         assertThat(response.modelName()).isEqualTo("decision-model");
+    }
+
+    @Test
+    void notification_created_without_the_response_has_only_its_token_usage_and_model_name() {
+        PlannerModelResponse response = new PlannerModelResponse(null, null, new TokenUsage(40, 2), "decision-model");
+
+        assertThat(response.chatResponse()).isNull();
+        assertThat(response.decisionResponse()).isNull();
+        assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(40, 2));
+        assertThat(response.modelName()).isEqualTo("decision-model");
+    }
+
+    @Test
+    void notification_cannot_be_created_from_a_null_response() {
+        assertThatThrownBy(() -> new PlannerModelResponse(null, null, (ChatResponse) null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("chatResponse cannot be null");
+        assertThatThrownBy(() -> new PlannerModelResponse(null, null, (DecisionResponse) null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("decisionResponse cannot be null");
     }
 
     @Test
@@ -418,6 +442,8 @@ class PlannerTokenUsageTest {
                 .extracting(PlannerModelResponse::tokenUsage)
                 .containsExactly(new TokenUsage(100, 20), new TokenUsage(30, 5));
         assertThat(responses).extracting(PlannerModelResponse::modelName).containsOnly("planning-model");
+        assertThat(responses.get(0).chatResponse().aiMessage()).isEqualTo(INVOKE_ASSISTANT);
+        assertThat(responses.get(1).chatResponse().aiMessage()).isEqualTo(DONE);
     }
 
     @Test
@@ -476,6 +502,7 @@ class PlannerTokenUsageTest {
 
         // the model answered and was billed, even if the supervisor could not read its reply
         assertThat(responses).extracting(PlannerModelResponse::tokenUsage).containsExactly(new TokenUsage(100, 20));
+        assertThat(responses.get(0).chatResponse().aiMessage().text()).isEqualTo("this is not an agent invocation");
         AgentInvocation failed = monitor.failedExecutions().get(0).topLevelInvocations();
         assertThat(failed.tokenUsage()).contains(new TokenUsage(100, 20));
         assertThat(failed.modelName()).contains("planning-model");
