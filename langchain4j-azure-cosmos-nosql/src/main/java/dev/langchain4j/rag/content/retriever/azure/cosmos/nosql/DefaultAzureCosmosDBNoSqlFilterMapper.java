@@ -26,18 +26,20 @@ import java.util.stream.Collectors;
  * Maps {@link Filter} objects to Azure Cosmos DB NoSQL filter strings.
  * Supports standard comparison operators and full-text search functions.
  * <p>
- * A filter names the document property to compare through its metadata key. The key is rendered as the
- * quoted property accessor, so the key {@code category} produces {@code c["category"]}. A dot separates
- * path segments rather than forming part of a name, so {@code metadata.category} produces
- * {@code c["metadata"]["category"]}, and a property whose own name contains a dot cannot be addressed.
- * Every other character is taken literally, including spaces, punctuation, and names that collide with a
- * Cosmos DB reserved word.
+ * Standard comparison filters address entries in the document's {@code metadata} object, so the key
+ * {@code category} produces {@code c["metadata"]["category"]}. Metadata keys are literal property names,
+ * including dots, spaces, punctuation, and Cosmos DB reserved words. For backward compatibility, a key
+ * starting with {@code metadata.} is still interpreted as a dotted document path, so
+ * {@code metadata.category} also produces {@code c["metadata"]["category"]}.
  * <p>
- * A document is stored as {@code id}, {@code embedding}, {@code text} and {@code metadata}, with the
- * metadata of a {@link dev.langchain4j.data.segment.TextSegment} nested under {@code metadata}. To filter
- * on a metadata entry, prefix its name with {@code metadata.}: the key {@code metadata.category} matches
- * the metadata entry named {@code category}, whereas the bare key {@code category} looks for a top-level
- * property of that name and so matches nothing.
+ * Full-text filters address document properties instead: {@code new FullTextContains("text", "word")}
+ * searches {@code c["text"]}. Dots in full-text keys separate document path segments. Full-text and
+ * metadata filters can be combined with logical operators.
+ * <p>
+ * This integration stores metadata values as strings. Numeric comparisons also use
+ * {@code StringToNumber}, so they work numerically with existing string-backed metadata as well as
+ * native JSON numbers. String comparisons remain lexicographic. Missing metadata entries do not match
+ * positive comparisons, but do match their negations, including {@link IsNotEqualTo} and {@link IsNotIn}.
  * <p>
  * Keys and values are both escaped, so neither can end the quoted text it sits in and add query syntax
  * of its own. A key that arrived from untrusted input and looks like a fragment of a query is therefore
@@ -123,7 +125,7 @@ public class DefaultAzureCosmosDBNoSqlFilterMapper implements AzureCosmosDBNoSql
     }
 
     private String mapIsEqualTo(IsEqualTo filter) {
-        return format(getComparisonFormat(filter), formatKey(filter.key()), formatValue(filter.comparisonValue()));
+        return mapComparison(filter.key(), filter.comparisonValue(), getComparisonFormat(filter));
     }
 
     private String mapIsNotEqualTo(IsNotEqualTo filter) {
@@ -131,24 +133,28 @@ public class DefaultAzureCosmosDBNoSqlFilterMapper implements AzureCosmosDBNoSql
     }
 
     private String mapIsGreaterThan(IsGreaterThan filter) {
-        return format(getComparisonFormat(filter), formatKey(filter.key()), formatValue(filter.comparisonValue()));
+        return mapComparison(filter.key(), filter.comparisonValue(), getComparisonFormat(filter));
     }
 
     private String mapIsGreaterThanOrEqualTo(IsGreaterThanOrEqualTo filter) {
-        return format(getComparisonFormat(filter), formatKey(filter.key()), formatValue(filter.comparisonValue()));
+        return mapComparison(filter.key(), filter.comparisonValue(), getComparisonFormat(filter));
     }
 
     private String mapIsLessThan(IsLessThan filter) {
-        return format(getComparisonFormat(filter), formatKey(filter.key()), formatValue(filter.comparisonValue()));
+        return mapComparison(filter.key(), filter.comparisonValue(), getComparisonFormat(filter));
     }
 
     private String mapIsLessThanOrEqualTo(IsLessThanOrEqualTo filter) {
-        return format(getComparisonFormat(filter), formatKey(filter.key()), formatValue(filter.comparisonValue()));
+        return mapComparison(filter.key(), filter.comparisonValue(), getComparisonFormat(filter));
     }
 
     private String mapIsIn(IsIn filter) {
         String values = mapInValues(filter.comparisonValues());
-        return format("%s IN (%s)", formatKey(filter.key()), values);
+        return formatMetadataComparison(
+                filter.key(),
+                "%s IN (%s)",
+                values,
+                filter.comparisonValues().stream().anyMatch(Number.class::isInstance));
     }
 
     private String mapIsNotIn(IsNotIn filter) {
@@ -156,7 +162,22 @@ public class DefaultAzureCosmosDBNoSqlFilterMapper implements AzureCosmosDBNoSql
     }
 
     private String mapContainsString(ContainsString filter) {
-        return format(getComparisonFormat(filter), formatKey(filter.key()), formatValue(filter.comparisonValue()));
+        return mapComparison(filter.key(), filter.comparisonValue(), getComparisonFormat(filter));
+    }
+
+    private String mapComparison(String key, Object value, String comparisonFormat) {
+        return formatMetadataComparison(key, comparisonFormat, formatValue(value), value instanceof Number);
+    }
+
+    private String formatMetadataComparison(
+            String key, String comparisonFormat, String value, boolean containsNumbers) {
+        String metadataKey = formatMetadataKey(key);
+        String comparison = format(comparisonFormat, metadataKey, value);
+        if (containsNumbers) {
+            comparison += " OR " + format(comparisonFormat, "StringToNumber(" + metadataKey + ")", value);
+        }
+        // Cosmos comparisons can return undefined; negating a missing metadata entry must return true.
+        return format("((%s) ?? false)", comparison);
     }
 
     // Full-text search mappings
@@ -178,13 +199,13 @@ public class DefaultAzureCosmosDBNoSqlFilterMapper implements AzureCosmosDBNoSql
         return comparisonValues.stream().map(this::formatValue).sorted().collect(Collectors.joining(", "));
     }
 
-    /**
-     * Renders a metadata key as a Cosmos DB property accessor. The key is split on {@code .} so that a
-     * dotted key keeps addressing a nested property, and each segment is placed into the quoted
-     * {@code ["..."]} accessor, which - unlike the bare {@code c.key} form - can express any property
-     * name. Escaping the segments means a key can never break out of the accessor and inject query
-     * syntax; an injected key is interpreted only as a property path, not as a query expression.
-     */
+    private String formatMetadataKey(String key) {
+        if (key.startsWith("metadata.")) {
+            return formatKey(key);
+        }
+        return "c[\"metadata\"][\"" + escape(key) + "\"]";
+    }
+
     private String formatKey(String key) {
         StringBuilder accessor = new StringBuilder("c");
         for (String segment : key.split("\\.", -1)) {
