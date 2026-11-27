@@ -119,20 +119,20 @@ ChatModel model = OpenAiChatModel.builder()
 
 **Deployment:** SaaS (key required)
 
-**Description:** [Hubris](https://hubris.pw) is an OpenAI-compatible LLM gateway billed in Russian rubles: one API key and one balance for 500+ models from OpenAI, Anthropic, Google, DeepSeek, Qwen, Z.ai, Moonshot, xAI and MiniMax. Model names use the `vendor/model` form from the [catalog](https://hubris.pw/models), and the same key also serves `/v1/embeddings` for OpenAI text-embedding models.
+**Description:** [Hubris](https://hubris.pro) is an OpenAI-compatible LLM gateway billed in Russian rubles: one API key and one balance for 500+ models from OpenAI, Anthropic, Google, DeepSeek, Qwen, Z.ai, Moonshot, xAI and MiniMax. Model names use the `vendor/model` form from the [catalog](https://hubris.pro/models), and the same key also serves `/v1/embeddings` for OpenAI text-embedding models.
 
 **Setup:**
-To use Hubris, you'll need an API key from [hubris.pw/keys](https://hubris.pw/keys) (keys start with `sk-gw-`).
+To use Hubris, you'll need an API key from [hubris.pro/keys](https://hubris.pro/keys) (keys start with `sk-gw-`).
 
 Configure LangChain4j's `OpenAiChatModel` or `OpenAiStreamingChatModel`:
 ```java
 ChatModel model = OpenAiChatModel.builder()
-        .baseUrl("https://api.hubris.pw/v1")
+        .baseUrl("https://api.hubris.pro/v1")
         .apiKey(System.getenv("HUBRIS_API_KEY")) // Your actual key, e.g. "sk-gw-..."
         .modelName("anthropic/claude-sonnet-5") // Or any other model from the Hubris catalog
         .build();
 ```
-You can find available model names and prices on the [Hubris models page](https://hubris.pw/models).
+You can find available model names and prices on the [Hubris models page](https://hubris.pro/models).
 
 ## Groq
 
