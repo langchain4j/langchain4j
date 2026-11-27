@@ -53,7 +53,7 @@ Add `langchain4j-test` to your test dependencies. Its version comes from the `la
         <dependency>
           <groupId>dev.langchain4j</groupId>
           <artifactId>langchain4j-bom</artifactId>
-          <version>1.24.0</version>
+          <version>1.24.1</version>
           <type>pom</type>
           <scope>import</scope>
         </dependency>
@@ -71,19 +71,19 @@ Add `langchain4j-test` to your test dependencies. Its version comes from the `la
   </TabItem>
   <TabItem value="gradleGroovy" label="Gradle (Groovy)">
     ```groovy
-    testImplementation platform('dev.langchain4j:langchain4j-bom:1.24.0')
+    testImplementation platform('dev.langchain4j:langchain4j-bom:1.24.1')
     testImplementation 'dev.langchain4j:langchain4j-test'
     ```
   </TabItem>
   <TabItem value="gradleKotlin" label="Gradle (Kotlin)">
     ```kotlin
-    testImplementation(platform("dev.langchain4j:langchain4j-bom:1.24.0"))
+    testImplementation(platform("dev.langchain4j:langchain4j-bom:1.24.1"))
     testImplementation("dev.langchain4j:langchain4j-test")
     ```
   </TabItem>
 </Tabs>
 
-Without the BOM, note that `langchain4j-test` has a beta version: `1.24.0-beta34` goes with LangChain4j `1.24.0`.
+Without the BOM, note that `langchain4j-test` has a beta version: `1.24.1-beta34` goes with LangChain4j `1.24.1`.
 The examples also use JUnit and the `langchain4j` module, which provides [AI Services](/tutorials/ai-services).
 
 All assertions on this page, including the AssertJ ones, come with a single static import:

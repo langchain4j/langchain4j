@@ -299,6 +299,10 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
         return remoteCache;
     }
 
+    public InfinispanStoreConfiguration storeConfiguration() {
+        return storeConfiguration;
+    }
+
     public void clearCache() {
         remoteCache.clear();
     }
@@ -316,6 +320,7 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
         private String metadataItemName;
         private boolean registerSchema = true;
         private boolean createCache = true;
+        private String textFieldAnnotation;
 
         /**
          * Infinispan cache name to be used, will be created on first access
@@ -406,6 +411,16 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
         }
 
         /**
+         * Protobuf annotation for the text field. Defaults to {@code @Basic(projectable=true)}.
+         * Set to {@link InfinispanStoreConfiguration#TEXT_FIELD_ANNOTATION_FULLTEXT} to enable
+         * full-text search on the same cache used by an {@code InfinispanContentRetriever}.
+         */
+        public Builder textFieldAnnotation(String textFieldAnnotation) {
+            this.textFieldAnnotation = textFieldAnnotation;
+            return this;
+        }
+
+        /**
          * Infinispan Configuration Builder
          */
         public Builder infinispanConfigBuilder(ConfigurationBuilder builder) {
@@ -432,7 +447,8 @@ public class InfinispanEmbeddingStore implements EmbeddingStore<TextSegment> {
                             langchainItemName,
                             metadataItemName,
                             createCache,
-                            registerSchema));
+                            registerSchema,
+                            textFieldAnnotation));
         }
     }
 }

@@ -34,7 +34,7 @@ public final class LangchainSchemaCreator {
                 .addField(Type.Scalar.STRING, "id", 1)
                 .addComment("@Basic(projectable=true)")
                 .addField(Type.Scalar.STRING, "text", 2)
-                .addComment("@Basic(projectable=true)")
+                .addComment(storeConfiguration.textFieldAnnotation())
                 .addRepeatedField(Type.Scalar.FLOAT, "embedding", 3)
                 .addComment(String.format(
                         "@Vector(dimension=%d, similarity=%s)",

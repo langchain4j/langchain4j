@@ -32,8 +32,9 @@ thus capturing deeper semantic meanings.
 - Hybrid. Combining multiple search methods (e.g., full-text + vector) usually improves the effectiveness of the search.
 
 Currently, this page focuses mostly on vector search.
-Full-text and hybrid search are currently supported only by Azure AI Search integration and Elasticsearch,
-see `AzureAiSearchContentRetriever` and `ElasticsearchContentRetriever` for more details.
+Full-text search is currently supported by the Azure AI Search, Elasticsearch and Infinispan integrations,
+and hybrid search by Azure AI Search and Elasticsearch,
+see `AzureAiSearchContentRetriever`, `ElasticsearchContentRetriever` and `InfinispanContentRetriever` for more details.
 We plan to expand the RAG toolbox to include full-text and hybrid search in the near future.
 
 
@@ -105,7 +106,7 @@ adjusting and customizing more and more aspects.
 <dependency>
     <groupId>dev.langchain4j</groupId>
     <artifactId>langchain4j-easy-rag</artifactId>
-    <version>1.24.0-beta34</version>
+    <version>1.24.1-beta34</version>
 </dependency>
 ```
 On Windows, Easy RAG needs a recent JDK, because it runs an in-process embedding model.
@@ -125,6 +126,16 @@ is used to detect document types and parse them.
 Since we did not explicitly specify which `DocumentParser` to use,
 the `FileSystemDocumentLoader` will load an `ApacheTikaDocumentParser`,
 provided by `langchain4j-easy-rag` dependency through SPI.
+
+By default, this parser extracts at most 10,000,000 characters of text from a document.
+When a directory is loaded, documents with more text are skipped, with a warning in the log.
+To change the limit, pass the parser yourself, for example without a limit:
+```java
+List<Document> documents = FileSystemDocumentLoader.loadDocuments(
+        "/home/langchain4j/documentation",
+        ApacheTikaDocumentParser.builder().maxCharacters(-1).build());
+```
+See [Apache Tika](/integrations/document-parsers/apache-tika) for more details.
 </details>
 
 <details>
@@ -662,6 +673,97 @@ For example, `ContainsString` is currently supported only by Milvus, PgVector an
 
 More details about `Filter` can be found [here](https://github.com/langchain4j/langchain4j/pull/610).
 
+#### Parsing a Filter from SQL
+`SqlFilterParser` turns an SQL `WHERE` clause into a `Filter`.
+It is in the `langchain4j-embedding-store-filter-parser-sql` module:
+
+```xml
+<dependency>
+    <groupId>dev.langchain4j</groupId>
+    <artifactId>langchain4j-embedding-store-filter-parser-sql</artifactId>
+    <version>1.24.1-beta34</version>
+</dependency>
+```
+
+```java
+Filter filter = new SqlFilterParser().parse("category = 'docs' AND year >= 2024");
+```
+
+`SqlFilterParser` has limits for very large or deeply nested filters.
+By default, it throws an `IllegalArgumentException` when a filter has more than 100 conditions
+(each comparison, `IN` and `BETWEEN` counts as one),
+has parentheses nested more than 50 levels deep (parentheses of function calls and `IN` lists count too),
+or takes longer than 5 seconds to parse.
+Very large filters, for example with thousands of conditions or `IN` values,
+can take several seconds to parse on a slow or busy machine,
+so increase the parse timeout too if you use such filters.
+You can change these limits:
+
+```java
+SqlFilterParser sqlFilterParser = SqlFilterParser.builder()
+        .maxConditions(5000)
+        .maxNestingDepth(100)
+        .parseTimeout(Duration.ofSeconds(10))
+        .build();
+```
+
+`SqlFilterParser` also throws an `IllegalArgumentException` when a filter contains
+a `CASE` or `CAST` expression, a nested `SELECT` or an array (for example, `ARRAY[1, 2]`), as these are not supported.
+
+`LanguageModelSqlFilterBuilder` from the same module creates a `Filter` for a `Query` with the help of an LLM.
+First, describe the `Metadata` of your `TextSegment`s as if it were an SQL table, using `TableDefinition`:
+
+```java
+TableDefinition tableDefinition = TableDefinition.builder()
+        .name("documentation")
+        .addColumn("product", "VARCHAR", "one of [iPhone, iPad, MacBook]")
+        .build();
+```
+
+Then create a `LanguageModelSqlFilterBuilder` and use it as the dynamic filter of an `EmbeddingStoreContentRetriever`
+(see [Embedding Store Content Retriever](#embedding-store-content-retriever)):
+
+```java
+LanguageModelSqlFilterBuilder sqlFilterBuilder = LanguageModelSqlFilterBuilder.builder()
+        .chatModel(chatModel)
+        .tableDefinition(tableDefinition)
+        .sqlFilterParser(sqlFilterParser) // optional, new SqlFilterParser() by default
+        .build();
+
+ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+        .embeddingStore(embeddingStore)
+        .embeddingModel(embeddingModel)
+        .dynamicFilter(sqlFilterBuilder::build)
+        .build();
+```
+
+With its default prompt, `LanguageModelSqlFilterBuilder` asks the LLM for an SQL query that answers the `Query`,
+for example `SELECT * FROM documentation WHERE product = 'iPhone'`,
+and `SqlFilterParser` turns the `WHERE` clause of this query into a `Filter`.
+
+Do not use `LanguageModelSqlFilterBuilder` for access control.
+The filter is written by an LLM from the user's query, so the user can influence it.
+Also, when the parser rejects the SQL (for example, because it is over one of the limits above),
+`LanguageModelSqlFilterBuilder` tries once more with the SQL statement it extracts from the LLM's answer,
+and when that fails too, it returns `null` and no filter is applied to the search.
+Keep your own filter outside the LLM's output and combine it with the generated one:
+
+```java
+ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+        .embeddingStore(embeddingStore)
+        .embeddingModel(embeddingModel)
+        .dynamicFilter(query -> {
+            String userId = query.metadata().invocationParameters().get("userId");
+            Filter userFilter = metadataKey("userId").isEqualTo(userId);
+            Filter generatedFilter = sqlFilterBuilder.build(query);
+            return generatedFilter == null ? userFilter : userFilter.and(generatedFilter);
+        })
+        .build();
+```
+
+Note that `filter(...)` and `dynamicFilter(...)` of `EmbeddingStoreContentRetriever` replace each other:
+only the one set last is used, so set your own filter inside `dynamicFilter(...)`, as shown above.
+
 
 #### EmbeddingSearchResult
 The `EmbeddingSearchResult` represents a result of a search in an `EmbeddingStore`.
@@ -1011,6 +1113,12 @@ It can be found in the `langchain4j-community-neo4j-retriever` module.
 It supports full-text, vector, and hybrid search.
 It can be found in the `langchain4j-elasticsearch` module.
 Please refer to the `ElasticsearchContentRetriever` Javadoc for more information.
+
+#### Infinispan Content Retriever
+`InfinispanContentRetriever` is an integration with [Infinispan](https://infinispan.org/).
+It supports full-text search over the text stored by `InfinispanEmbeddingStore`.
+It can be found in the `langchain4j-infinispan` module.
+See the [Infinispan integration page](/integrations/embedding-stores/infinispan) for more details.
 
 ### Query Router
 `QueryRouter` is responsible for routing `Query` to the appropriate `ContentRetriever`(s).

@@ -49,6 +49,7 @@ import dev.langchain4j.agentic.internal.AgentInvoker;
 import dev.langchain4j.agentic.internal.AgentUtil;
 import dev.langchain4j.agentic.internal.HelperMethod;
 import dev.langchain4j.agentic.internal.InternalAgent;
+import dev.langchain4j.agentic.internal.McpClientBuilder;
 import dev.langchain4j.agentic.internal.McpService;
 import dev.langchain4j.agentic.internal.ResolvedParameters;
 import dev.langchain4j.agentic.observability.AgentListener;
@@ -428,7 +429,11 @@ public class AgenticServices {
      * {@code agentBuilder()} for an AI agent, {@code decisionAgentBuilder()} for a decision agent and
      * {@code agenticService()} for an agent orchestrating subagents. So a configurator must check which builder it
      * received before using it, and do nothing with a context providing none of the builders it knows, since other
-     * kinds of agents can be added to these. The {@code agentInstanceFactory} is applied to the same agents.
+     * kinds of agents can be added to these. The {@code agentInstanceFactory} is applied to the same agents, and to
+     * an A2A or MCP client agent whose type is a class, which cannot be created without it, while one whose type is
+     * an interface is always a JDK proxy. What the factory must return for such an agent is described on
+     * {@link A2AClientBuilder#agentInstanceFactory(Function)} and
+     * {@link McpClientBuilder#agentInstanceFactory(Function)}.
      * <p>
      * It is how an integration registers something on every such agent, like an {@code AgentListener}: a listener
      * is notified of the events of the agent it is registered on, and of the agents below it when it is inherited,
@@ -635,14 +640,12 @@ public class AgenticServices {
         if (agent == null) {
             Optional<Method> a2aClientMethod = getAnnotatedMethodOnClass(agentServiceClass, A2AClientAgent.class);
             if (a2aClientMethod.isPresent()) {
-                return createA2AClient(
-                        agentServiceClass, a2aClientMethod.get(), helpers(agentServiceClass, agentConfigurator));
+                return createA2AClient(agentServiceClass, a2aClientMethod.get(), agentConfigurator);
             }
 
             Optional<Method> mcpClientMethod = getAnnotatedMethodOnClass(agentServiceClass, McpClientAgent.class);
             if (mcpClientMethod.isPresent()) {
-                return createMcpClient(
-                        agentServiceClass, mcpClientMethod.get(), helpers(agentServiceClass, agentConfigurator));
+                return createMcpClient(agentServiceClass, mcpClientMethod.get(), agentConfigurator);
             }
 
             if (isDecisionAgent(agentServiceClass)) {
@@ -1044,8 +1047,7 @@ public class AgenticServices {
 
         Optional<Method> a2aClientMethod = getAnnotatedMethodOnClass(agentServiceClass, A2AClientAgent.class);
         if (a2aClientMethod.isPresent()) {
-            return agentToExecutor(createA2AClient(
-                    agentServiceClass, a2aClientMethod.get(), helpers(agentServiceClass, agentConfigurator)));
+            return agentToExecutor(createA2AClient(agentServiceClass, a2aClientMethod.get(), agentConfigurator));
         }
 
         Optional<Method> registryAgentMethod = getAnnotatedMethodOnClass(agentServiceClass, RegistryAgent.class);
@@ -1056,8 +1058,7 @@ public class AgenticServices {
 
         Optional<Method> mcpClientMethod = getAnnotatedMethodOnClass(agentServiceClass, McpClientAgent.class);
         if (mcpClientMethod.isPresent()) {
-            return createMcpClientAgent(
-                    agentServiceClass, mcpClientMethod.get(), helpers(agentServiceClass, agentConfigurator));
+            return createMcpClientAgent(agentServiceClass, mcpClientMethod.get(), agentConfigurator);
         }
 
         if (isDecisionAgent(agentServiceClass)) {
@@ -1111,7 +1112,9 @@ public class AgenticServices {
         return agentToExecutor(agent);
     }
 
-    private static <T> T createA2AClient(Class<T> agentServiceClass, Method a2aMethod, AgentHelpers helpers) {
+    private static <T> T createA2AClient(
+            Class<T> agentServiceClass, Method a2aMethod, AgentConfigurator agentConfigurator) {
+        AgentHelpers helpers = helpers(agentServiceClass, agentConfigurator);
         var a2aClient = a2aMethod.getAnnotation(A2AClientAgent.class);
         String a2aServerUrl = resolveA2AServerUrl(helpers, a2aClient);
         // checked before creating the builder, which validates the A2A server URL, and its resolved parameters are
@@ -1135,6 +1138,11 @@ public class AgenticServices {
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(a2aClient.outputKey(), a2aClient.typedOutputKey()))
                 .async(a2aClient.async());
+        // The factory of the configurator is the one of all the agents of an integration, which is not expected to
+        // know an agent that can be a JDK proxy: it is passed on only for a class, which cannot be created without it
+        if (!agentServiceClass.isInterface()) {
+            a2aClientBuilder.agentInstanceFactory(agentConfigurator.agentInstanceFactory());
+        }
         if (a2aClient.resolutionTimeoutSeconds() != -1) {
             a2aClientBuilder.resolutionTimeout(Duration.ofSeconds(a2aClient.resolutionTimeoutSeconds()));
         }
@@ -1174,11 +1182,13 @@ public class AgenticServices {
     }
 
     private static AgentExecutor createMcpClientAgent(
-            Class<?> agentServiceClass, Method mcpMethod, AgentHelpers helpers) {
-        return agentToExecutor(createMcpClient(agentServiceClass, mcpMethod, helpers));
+            Class<?> agentServiceClass, Method mcpMethod, AgentConfigurator agentConfigurator) {
+        return agentToExecutor(createMcpClient(agentServiceClass, mcpMethod, agentConfigurator));
     }
 
-    private static <T> T createMcpClient(Class<T> agentServiceClass, Method mcpMethod, AgentHelpers helpers) {
+    private static <T> T createMcpClient(
+            Class<T> agentServiceClass, Method mcpMethod, AgentConfigurator agentConfigurator) {
+        AgentHelpers helpers = helpers(agentServiceClass, agentConfigurator);
         var mcpAgent = mcpMethod.getAnnotation(McpClientAgent.class);
 
         HelperMethod mcpClientSupplierMethod = helpers.select(McpClientSupplier.class)
@@ -1206,6 +1216,11 @@ public class AgenticServices {
                         .toArray(String[]::new))
                 .outputKey(AgentUtil.outputKey(mcpAgent.outputKey(), mcpAgent.typedOutputKey()))
                 .async(mcpAgent.async());
+        // Only for a class, as for an A2A client agent, so that a builder compiled before this method was added keeps
+        // working for an interface, also when the integration sets a factory
+        if (!agentServiceClass.isInterface()) {
+            mcpClientBuilder.agentInstanceFactory(agentConfigurator.agentInstanceFactory());
+        }
         if (mcpAgent.resolutionTimeoutSeconds() != -1) {
             mcpClientBuilder.resolutionTimeout(Duration.ofSeconds(mcpAgent.resolutionTimeoutSeconds()));
         }

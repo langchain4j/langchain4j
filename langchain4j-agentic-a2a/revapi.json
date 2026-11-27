@@ -18,6 +18,12 @@
         },
         {
           "ignore": true,
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class org.a2aproject.sdk.client.ClientBuilder",
+          "justification": "A2AClientConfigurator.customize deliberately receives the A2A SDK ClientBuilder, as an escape hatch for configuration that headers cannot express"
+        },
+        {
+          "ignore": true,
           "code": "java.method.returnTypeChanged",
           "old": "method io.a2a.spec.AgentCard dev.langchain4j.agentic.a2a.A2AClientInstance::agentCard()",
           "new": "method org.a2aproject.sdk.spec.AgentCard dev.langchain4j.agentic.a2a.A2AClientInstance::agentCard()",

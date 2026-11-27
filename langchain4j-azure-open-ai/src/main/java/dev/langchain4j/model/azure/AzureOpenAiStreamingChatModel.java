@@ -63,7 +63,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
-import reactor.core.Disposable;
+import reactor.core.publisher.BaseSubscriber;
 import reactor.core.publisher.Flux;
 
 /**
@@ -238,45 +238,51 @@ public class AzureOpenAiStreamingChatModel implements StreamingChatModel {
 
         AtomicReference<String> responseId = new AtomicReference<>();
         AtomicReference<String> responseModelName = new AtomicReference<>();
-        AtomicReference<StreamingHandle> streamingHandle = new AtomicReference<>();
 
-        Disposable disposable = chatCompletionsStream.subscribe(
-                chatCompletion -> {
-                    responseBuilder.append(chatCompletion);
-                    handle(chatCompletion, toolCallBuilder, handler, streamingHandle.get());
+        chatCompletionsStream.subscribe(new BaseSubscriber<>() {
 
-                    if (isNotNullOrBlank(chatCompletion.getId())) {
-                        responseId.set(chatCompletion.getId());
-                    }
-                    if (isNotNullOrBlank(chatCompletion.getModel())) {
-                        responseModelName.set(chatCompletion.getModel());
-                    }
-                },
-                error -> {
-                    RuntimeException mappedError = AzureOpenAiExceptionMapper.INSTANCE.mapException(error);
-                    withLoggingExceptions(() -> handler.onError(mappedError));
-                },
-                () -> {
-                    if (toolCallBuilder.hasRequests()) {
-                        onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
-                    }
+            private final StreamingHandle streamingHandle = new AzureOpenAiStreamingHandle(this);
 
-                    Response<AiMessage> response = responseBuilder.build();
+            @Override
+            protected void hookOnNext(ChatCompletions chatCompletion) {
+                responseBuilder.append(chatCompletion);
+                handle(chatCompletion, toolCallBuilder, handler, streamingHandle);
 
-                    ChatResponse chatResponse = ChatResponse.builder()
-                            .aiMessage(response.content())
-                            .metadata(ChatResponseMetadata.builder()
-                                    .id(responseId.get())
-                                    .modelName(responseModelName.get())
-                                    .tokenUsage(response.tokenUsage())
-                                    .finishReason(response.finishReason())
-                                    .build())
-                            .build();
+                if (isNotNullOrBlank(chatCompletion.getId())) {
+                    responseId.set(chatCompletion.getId());
+                }
+                if (isNotNullOrBlank(chatCompletion.getModel())) {
+                    responseModelName.set(chatCompletion.getModel());
+                }
+            }
 
-                    onCompleteResponse(handler, chatResponse);
-                });
+            @Override
+            protected void hookOnError(Throwable error) {
+                RuntimeException mappedError = AzureOpenAiExceptionMapper.INSTANCE.mapException(error);
+                withLoggingExceptions(() -> handler.onError(mappedError));
+            }
 
-        streamingHandle.set(new AzureOpenAiStreamingHandle(disposable));
+            @Override
+            protected void hookOnComplete() {
+                if (toolCallBuilder.hasRequests()) {
+                    onCompleteToolCall(handler, toolCallBuilder.buildAndReset());
+                }
+
+                Response<AiMessage> response = responseBuilder.build();
+
+                ChatResponse chatResponse = ChatResponse.builder()
+                        .aiMessage(response.content())
+                        .metadata(ChatResponseMetadata.builder()
+                                .id(responseId.get())
+                                .modelName(responseModelName.get())
+                                .tokenUsage(response.tokenUsage())
+                                .finishReason(response.finishReason())
+                                .build())
+                        .build();
+
+                onCompleteResponse(handler, chatResponse);
+            }
+        });
     }
 
     private static void handle(

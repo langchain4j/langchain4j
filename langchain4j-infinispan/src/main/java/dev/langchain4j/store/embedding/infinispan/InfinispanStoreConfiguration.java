@@ -1,5 +1,9 @@
 package dev.langchain4j.store.embedding.infinispan;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import org.jspecify.annotations.Nullable;
+
 /**
  * Holds configuration for the store
  */
@@ -14,7 +18,8 @@ public record InfinispanStoreConfiguration(
         String langchainItemName,
         String metadataItemName,
         boolean createCache,
-        boolean registerSchema) {
+        boolean registerSchema,
+        String textFieldAnnotation) {
 
     /**
      * Default Cache Config
@@ -51,12 +56,25 @@ public record InfinispanStoreConfiguration(
     public static final String DEFAULT_SIMILARITY = "COSINE";
 
     /**
-     * Creates the configuration and sets default values
+     * Default Protobuf annotation of the text field: the text is stored and can be projected, but it is not
+     * analyzed, so full-text queries cannot use it.
+     */
+    public static final String TEXT_FIELD_ANNOTATION_BASIC = "@Basic(projectable=true)";
+
+    /**
+     * Protobuf annotation of the text field that enables full-text search with the {@code standard} analyzer,
+     * as needed by {@code InfinispanContentRetriever}.
+     */
+    public static final String TEXT_FIELD_ANNOTATION_FULLTEXT = "@Text(projectable=true, analyzer=\"standard\")";
+
+    /**
+     * Creates the configuration and sets default values, with the text field annotated with
+     * {@link #TEXT_FIELD_ANNOTATION_BASIC}.
      *
      * @param cacheName, mandatory
      * @param dimension, mandatory
      * @param distance, defaults to 3
-     * @param similarity, defaults COUSINE
+     * @param similarity, defaults to COSINE
      * @param cacheConfig, the full cache configuration
      * @param packageItem, optional the package item
      * @param fileName, optional file name
@@ -77,6 +95,53 @@ public record InfinispanStoreConfiguration(
             String metadataItemName,
             boolean createCache,
             boolean registerSchema) {
+        this(
+                cacheName,
+                dimension,
+                distance,
+                similarity,
+                cacheConfig,
+                packageItem,
+                fileName,
+                langchainItemName,
+                metadataItemName,
+                createCache,
+                registerSchema,
+                null);
+    }
+
+    /**
+     * Creates the configuration and sets default values
+     *
+     * @param cacheName, mandatory
+     * @param dimension, mandatory
+     * @param distance, defaults to 3
+     * @param similarity, defaults to COSINE
+     * @param cacheConfig, the full cache configuration
+     * @param packageItem, optional the package item
+     * @param fileName, optional file name
+     * @param langchainItemName, optional item name
+     * @param metadataItemName, optional metadata item name
+     * @param createCache, defaults to true. Disables creating the cache on startup
+     * @param registerSchema, defaults to true. Disables registering the schema in the server
+     * @param textFieldAnnotation, optional Protobuf annotation of the text field, defaults to
+     *                             {@link #TEXT_FIELD_ANNOTATION_BASIC}. Use {@link #TEXT_FIELD_ANNOTATION_FULLTEXT}
+     *                             to enable full-text search
+     */
+    public InfinispanStoreConfiguration(
+            String cacheName,
+            Integer dimension,
+            Integer distance,
+            String similarity,
+            String cacheConfig,
+            String packageItem,
+            String fileName,
+            String langchainItemName,
+            String metadataItemName,
+            boolean createCache,
+            boolean registerSchema,
+            @Nullable String textFieldAnnotation) {
+        ensureNotNull(dimension, "dimension");
         this.cacheName = cacheName;
         this.dimension = dimension;
         this.cacheConfig = cacheConfig;
@@ -88,6 +153,7 @@ public record InfinispanStoreConfiguration(
         this.metadataItemName = metadataItemName != null ? metadataItemName : DEFAULT_METADATA_ITEM + dimension;
         this.createCache = createCache;
         this.registerSchema = registerSchema;
+        this.textFieldAnnotation = textFieldAnnotation != null ? textFieldAnnotation : TEXT_FIELD_ANNOTATION_BASIC;
     }
 
     /**
