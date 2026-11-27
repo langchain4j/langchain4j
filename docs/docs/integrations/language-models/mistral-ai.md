@@ -555,7 +555,7 @@ public class HelloWorld {
         String prompt = "public static void main(String[] args) {";
 
         CompletableFuture<Response<String>> futureResponse = new CompletableFuture<>();
-        codestral.generate(prompt, new StreamingResponseHandler() {
+        codestralStream.generate(prompt, new StreamingResponseHandler<String>() {
             @Override
             public void onNext(String token) {
                 System.out.print(token);
