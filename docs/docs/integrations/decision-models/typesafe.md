@@ -11,6 +11,7 @@ sidebar_position: 1
 `TypeSafeDecisionModel` implements the [`DecisionModel`](/tutorials/decision-models) API on top of it.
 
 The same API is also implemented by other servers, for example
+[Nace (Drex)](/integrations/decision-models/nace),
 [OpenRouter](https://openrouter.ai/docs/guides/community/jev) and inference servers such as
 [SGLang](https://docs.sglang.io/docs/supported-models/decision_models) running open models.
 `TypeSafeDecisionModel` can be used with any of them by setting the base URL (see [below](#other-servers)).
