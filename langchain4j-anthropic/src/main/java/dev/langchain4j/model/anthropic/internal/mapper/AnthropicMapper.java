@@ -124,8 +124,11 @@ public class AnthropicMapper {
                         anthropicMessages.add(new AnthropicMessage(USER, toolContents));
                         toolContents = new ArrayList<>();
                     }
-                    anthropicMessages.add(
-                            new AnthropicMessage(SYSTEM, List.of(new AnthropicTextContent(systemMessage.text()))));
+                    AnthropicCacheControl cacheControl = isMarkedForCaching(systemMessage.attributes())
+                            ? AnthropicCacheType.EPHEMERAL.cacheControl(cacheTtl)
+                            : null;
+                    anthropicMessages.add(new AnthropicMessage(
+                            SYSTEM, List.of(new AnthropicTextContent(systemMessage.text(), cacheControl))));
                 }
             } else {
                 conversationStarted = true;
