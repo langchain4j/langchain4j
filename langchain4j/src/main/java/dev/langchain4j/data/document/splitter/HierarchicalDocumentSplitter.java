@@ -182,8 +182,11 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
                         tokenCountEstimator == null ? "characters" : "tokens"));
             }
 
-            for (TextSegment segment : subSegments) {
-                segments.add(createSegment(segment.text(), document, index.getAndIncrement()));
+            for (int i = 0; i < subSegments.size(); i++) {
+                TextSegment segment = subSegments.get(i);
+                if (i != 0 || !isOnlyTheOverlap(segment.text(), overlap)) {
+                    segments.add(createSegment(segment.text(), document, index.getAndIncrement()));
+                }
             }
 
             overlap = overlapFrom(subSegments.get(subSegments.size() - 1).text());
@@ -197,6 +200,21 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
         }
 
         return segments;
+    }
+
+    /**
+     * Tells whether a segment returned by the sub-splitter holds nothing but the overlap that was passed
+     * to it in front of the part. That text already ends the previous segment, so emitting it again
+     * would only add a duplicate.
+     *
+     * <p>Whitespace is ignored because the overlap is joined with this splitter's delimiter, while the
+     * sub-splitter joins the same text with its own.
+     */
+    private static boolean isOnlyTheOverlap(String segmentText, String overlap) {
+        if (Utils.isNullOrBlank(overlap)) {
+            return false;
+        }
+        return segmentText.replaceAll("\\s+", "").equals(overlap.replaceAll("\\s+", ""));
     }
 
     /**

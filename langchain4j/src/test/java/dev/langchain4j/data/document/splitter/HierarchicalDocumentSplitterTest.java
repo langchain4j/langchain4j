@@ -169,6 +169,71 @@ class HierarchicalDocumentSplitterTest implements WithAssertions {
                 .hasMessageContaining("100 characters long");
     }
 
+    // When a part doesn't fit, the overlap carried from the previous segment is passed to the
+    // sub-splitter together with that part. The sub-splitter emitted that overlap as a segment of
+    // its own, so the same text came out once per splitter level. See issue #7191.
+    @Test
+    void split_should_not_emit_a_segment_that_contains_only_the_overlap() {
+        String text = "Refund policy applies to all plans.\n\n"
+                + "Candidates can ask for a refund within seven days of paying. "
+                + "Refunds take five working days to arrive. Premium plans renew every month.";
+        DocumentSplitter splitter = DocumentSplitters.recursive(90, 40);
+
+        List<TextSegment> segments = splitter.split(Document.from(text));
+
+        assertThat(segments)
+                .extracting(TextSegment::text)
+                .containsExactly(
+                        "Refund policy applies to all plans.",
+                        "Refund policy applies to all plans. Candidates can ask for a refund within seven days of",
+                        "paying.",
+                        "paying. Refunds take five working days to arrive. Premium plans renew every month.");
+        assertThat(segments)
+                .extracting(segment -> segment.metadata().getInteger("index"))
+                .containsExactly(0, 1, 2, 3);
+    }
+
+    // The overlap is joined with this splitter's delimiter ("\n\n" for paragraphs), but the sub-splitter
+    // joins the same sentences with its own (" " for sentences). So the copy it emits differs from the
+    // overlap only in whitespace. See issue #7191.
+    @Test
+    void split_should_not_emit_the_overlap_alone_when_the_sub_splitter_joins_it_with_other_whitespace() {
+        String text = "Refunds are allowed. Plans renew monthly.\n\n"
+                + "Candidates can ask for a refund within seven days of paying the fee.";
+        DocumentSplitter splitter = new DocumentByParagraphSplitter(60, 50);
+
+        List<TextSegment> segments = splitter.split(Document.from(text));
+
+        assertThat(segments)
+                .extracting(TextSegment::text)
+                .containsExactly(
+                        "Refunds are allowed. Plans renew monthly.",
+                        "Refunds are allowed. Plans renew monthly. Candidates can ask",
+                        "Plans renew monthly. Candidates can ask for a refund within",
+                        "Candidates can ask for a refund within seven days of paying",
+                        "the fee.");
+        assertThat(segments)
+                .extracting(segment -> segment.metadata().getInteger("index"))
+                .containsExactly(0, 1, 2, 3, 4);
+    }
+
+    @Test
+    void split_should_split_into_paragraphs_and_sentences_without_repeats_when_there_is_no_overlap() {
+        String text = "Refund policy applies to all plans.\n\n"
+                + "Candidates can ask for a refund within seven days of paying. "
+                + "Refunds take five working days to arrive. Premium plans renew every month.";
+        DocumentSplitter splitter = DocumentSplitters.recursive(90, 0);
+
+        List<TextSegment> segments = splitter.split(Document.from(text));
+
+        assertThat(segments)
+                .extracting(TextSegment::text)
+                .containsExactly(
+                        "Refund policy applies to all plans.",
+                        "Candidates can ask for a refund within seven days of paying.",
+                        "Refunds take five working days to arrive. Premium plans renew every month.");
+    }
+
     static class EmptyResultSplitter extends HierarchicalDocumentSplitter {
 
         EmptyResultSplitter() {
