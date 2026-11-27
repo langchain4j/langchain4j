@@ -3,7 +3,9 @@ package dev.langchain4j.model.openai;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.http.client.sse.ServerSentEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.openai.internal.ParsedAndRawResponse;
 import dev.langchain4j.model.openai.internal.chat.*;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -310,6 +312,64 @@ class OpenAiStreamingResponseBuilderTest {
         // Then: logProbs stays null (backward compatible)
         OpenAiChatResponseMetadata metadata = (OpenAiChatResponseMetadata) chatResponse.metadata();
         assertThat(metadata.logProbs()).isNull();
+    }
+
+    @Test
+    void should_surface_in_band_provider_error_from_chunk_that_also_carries_choices() {
+        // Given: a regular chunk carrying a top-level "error" object alongside "choices"
+        // (OpenRouter's documented mid-stream error shape)
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+
+        ChatCompletionResponse chunk = ChatCompletionResponse.builder()
+                .id("cmpl-abc123")
+                .model("gpt-4o-mini")
+                .choices(List.of(ChatCompletionChoice.builder()
+                        .index(0)
+                        .delta(Delta.builder().content("").build())
+                        .finishReason("error")
+                        .build()))
+                .build();
+
+        // When
+        builder.append(ParsedAndRawResponse.builder()
+                .parsedResponse(chunk)
+                .rawServerSentEvent(new ServerSentEvent(
+                        "",
+                        "{\"id\":\"cmpl-abc123\",\"object\":\"chat.completion.chunk\",\"error\":"
+                                + "{\"code\":\"server_error\",\"message\":\"Provider disconnected unexpectedly\"},"
+                                + "\"choices\":[{\"index\":0,\"delta\":{\"content\":\"\"},"
+                                + "\"finish_reason\":\"error\"}]}"))
+                .build());
+
+        // Then
+        assertThat(builder.errorMessage())
+                .isEqualTo("Chat completion failed: Provider disconnected unexpectedly (code: server_error)");
+    }
+
+    @Test
+    void should_not_surface_provider_error_when_content_merely_mentions_error() {
+        // Given: a normal content chunk whose text merely contains the word "error"
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+
+        ChatCompletionResponse chunk = ChatCompletionResponse.builder()
+                .id("resp_1")
+                .model("gpt-4o-mini")
+                .choices(List.of(ChatCompletionChoice.builder()
+                        .index(0)
+                        .delta(Delta.builder().content("No \"error\" occurred").build())
+                        .build()))
+                .build();
+
+        // When
+        builder.append(ParsedAndRawResponse.builder()
+                .parsedResponse(chunk)
+                .rawServerSentEvent(new ServerSentEvent(
+                        "", "{\"choices\":[{\"index\":0,\"delta\":{\"content\":\"No \\\"error\\\" occurred\"}}]}"))
+                .build());
+
+        // Then
+        assertThat(builder.errorMessage()).isNull();
+        assertThat(builder.build().aiMessage().text()).isEqualTo("No \"error\" occurred");
     }
 
     private static ChatCompletionResponse chatCompletionResponseWithLogProb(

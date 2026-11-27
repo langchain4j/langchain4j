@@ -96,12 +96,11 @@ public class OpenAiStreamingResponseBuilder {
             ServerSentEvent rawServerSentEvent = parsedAndRawResponse.rawServerSentEvent();
             if (rawServerSentEvent != null) {
                 rawServerSentEvents.add(rawServerSentEvent);
-                ChatCompletionResponse parsedResponse = parsedAndRawResponse.parsedResponse();
-                if (parsedResponse == null || isNullOrEmpty(parsedResponse.choices())) {
-                    String errorMessage = providerErrorMessageFrom(rawServerSentEvent.data());
-                    if (errorMessage != null) {
-                        providerErrorMessage.compareAndSet(null, errorMessage);
-                    }
+                // Check every chunk: some providers (e.g. OpenRouter) send an error as a regular chunk
+                // carrying a top-level "error" alongside "choices" (finish_reason "error")
+                String errorMessage = providerErrorMessageFrom(rawServerSentEvent.data());
+                if (errorMessage != null) {
+                    providerErrorMessage.compareAndSet(null, errorMessage);
                 }
             }
 
