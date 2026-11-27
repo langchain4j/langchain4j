@@ -147,6 +147,11 @@ public class TestToolGuardrailServiceBuilderFactory implements ToolGuardrailServ
         }
 
         @Override
+        public ToolInputGuardrailsConfig toolInputGuardrailsConfig() {
+            return this.delegate.toolInputGuardrailsConfig();
+        }
+
+        @Override
         public ToolInputGuardrailResult executeInputGuardrails(ToolKey key, ToolInputGuardrailRequest request) {
             return this.delegate.executeInputGuardrails(key, request);
         }

@@ -10,6 +10,7 @@ import dev.langchain4j.agent.tool.ToolSource;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.guardrail.ToolInputGuardrail;
 import dev.langchain4j.guardrail.ToolOutputGuardrail;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -32,6 +33,8 @@ public class AiServiceTool {
     private final ToolExecutor toolExecutor;
     private final ReturnBehavior returnBehavior;
     private final ToolSource toolSource;
+    // the source given to the builder, null for the default: a copy with another executor gets the default of that one
+    private final @Nullable ToolSource explicitToolSource;
     private final List<ToolInputGuardrail> toolInputGuardrails;
     private final List<ToolOutputGuardrail> toolOutputGuardrails;
 
@@ -40,6 +43,7 @@ public class AiServiceTool {
         this.toolExecutor = ensureNotNull(builder.toolExecutor, "toolExecutor");
         this.returnBehavior = getOrDefault(builder.returnBehavior, ReturnBehavior.TO_LLM);
         this.toolSource = Optional.ofNullable(builder.toolSource).orElseGet(() -> defaultToolSource(builder.toolExecutor));
+        this.explicitToolSource = builder.toolSource;
         this.toolInputGuardrails = copy(builder.toolInputGuardrails);
         this.toolOutputGuardrails = copy(builder.toolOutputGuardrails);
     }
@@ -158,7 +162,7 @@ public class AiServiceTool {
                 .toolSpecification(toolSpecification)
                 .toolExecutor(toolExecutor)
                 .returnBehavior(returnBehavior)
-                .toolSource(toolSource)
+                .toolSource(explicitToolSource)
                 .toolInputGuardrails(toolInputGuardrails)
                 .toolOutputGuardrails(toolOutputGuardrails);
     }
@@ -221,7 +225,7 @@ public class AiServiceTool {
          */
         @Experimental
         public Builder toolInputGuardrails(@Nullable List<? extends ToolInputGuardrail> toolInputGuardrails) {
-            this.toolInputGuardrails = (toolInputGuardrails != null) ? List.copyOf(toolInputGuardrails) : null;
+            this.toolInputGuardrails = withoutNullEntries(toolInputGuardrails, "toolInputGuardrails");
             return this;
         }
 
@@ -235,7 +239,7 @@ public class AiServiceTool {
          */
         @Experimental
         public Builder toolInputGuardrails(ToolInputGuardrail... toolInputGuardrails) {
-            return toolInputGuardrails((toolInputGuardrails != null) ? List.of(toolInputGuardrails) : null);
+            return toolInputGuardrails((toolInputGuardrails != null) ? Arrays.asList(toolInputGuardrails) : null);
         }
 
         /**
@@ -249,7 +253,7 @@ public class AiServiceTool {
          */
         @Experimental
         public Builder toolOutputGuardrails(@Nullable List<? extends ToolOutputGuardrail> toolOutputGuardrails) {
-            this.toolOutputGuardrails = (toolOutputGuardrails != null) ? List.copyOf(toolOutputGuardrails) : null;
+            this.toolOutputGuardrails = withoutNullEntries(toolOutputGuardrails, "toolOutputGuardrails");
             return this;
         }
 
@@ -263,7 +267,7 @@ public class AiServiceTool {
          */
         @Experimental
         public Builder toolOutputGuardrails(ToolOutputGuardrail... toolOutputGuardrails) {
-            return toolOutputGuardrails((toolOutputGuardrails != null) ? List.of(toolOutputGuardrails) : null);
+            return toolOutputGuardrails((toolOutputGuardrails != null) ? Arrays.asList(toolOutputGuardrails) : null);
         }
 
         /**
@@ -279,6 +283,16 @@ public class AiServiceTool {
 
         public AiServiceTool build() {
             return new AiServiceTool(this);
+        }
+
+        private static <T> @Nullable List<T> withoutNullEntries(@Nullable List<? extends T> entries, String setting) {
+            if (entries == null) {
+                return null;
+            }
+            for (int i = 0; i < entries.size(); i++) {
+                ensureNotNull(entries.get(i), "%s[%s] cannot be null", setting, i);
+            }
+            return List.copyOf(entries);
         }
     }
 }

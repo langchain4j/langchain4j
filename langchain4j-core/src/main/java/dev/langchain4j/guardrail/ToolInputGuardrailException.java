@@ -32,13 +32,13 @@ public final class ToolInputGuardrailException extends GuardrailException {
      * Creates the exception with a message and a cause.
      *
      * @param message the message
-     * @param cause the cause
+     * @param cause the cause, or {@code null} when there is none
      */
-    public ToolInputGuardrailException(String message, Throwable cause) {
+    public ToolInputGuardrailException(String message, @Nullable Throwable cause) {
         this(message, cause, null);
     }
 
-    private ToolInputGuardrailException(String message, Throwable cause, @Nullable String arguments) {
+    private ToolInputGuardrailException(String message, @Nullable Throwable cause, @Nullable String arguments) {
         super(message, cause);
         this.arguments = arguments;
     }

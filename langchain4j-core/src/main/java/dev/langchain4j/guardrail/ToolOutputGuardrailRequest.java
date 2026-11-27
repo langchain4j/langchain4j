@@ -78,9 +78,10 @@ public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOu
     }
 
     /**
-     * @return the tool arguments as a JSON string
+     * @return the tool arguments as a JSON string, or {@code null} when the tool call has none (see
+     *         {@link #argumentsAsMap()}, which gives an empty map for them)
      */
-    public String arguments() {
+    public @Nullable String arguments() {
         return toolExecutionRequest.arguments();
     }
 

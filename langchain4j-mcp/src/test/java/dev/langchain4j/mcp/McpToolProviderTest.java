@@ -41,6 +41,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -416,6 +417,28 @@ class McpToolProviderTest {
                 .extracting(AiServiceTool::toolSource)
                 .containsOnly(ToolSource.mcp("mcp-1"))
                 .hasSize(2);
+    }
+
+    @Test
+    void should_build_the_resource_tools_and_their_source_from_one_read_of_the_considered_clients() {
+        var trusted = mockResourceClient("trusted", "trusted_tool");
+        var removed = mockResourceClient("removed", "removed_tool");
+        var toolProvider = resourcesToolProvider(trusted, removed);
+        // a list that changes while it is read: iterating it sees only the trusted client, a stream of it also the
+        // removed one
+        var consideredClients = new ArrayList<>(List.of(trusted)) {
+            @Override
+            public Stream<McpClient> stream() {
+                return Stream.of(trusted, removed);
+            }
+        };
+
+        var result = toolProvider.provideTools(toolProviderRequest(), consideredClients);
+        toolByName(result, "list_resources").toolExecutor().execute(listResourcesRequest(), null);
+
+        assertThat(toolByName(result, "list_resources").toolSource()).isEqualTo(ToolSource.mcp("trusted"));
+        verify(trusted).listResources(any());
+        verify(removed, never()).listResources(any());
     }
 
     @Test

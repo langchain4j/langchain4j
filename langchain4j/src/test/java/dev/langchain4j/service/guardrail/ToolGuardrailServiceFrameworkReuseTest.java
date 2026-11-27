@@ -12,6 +12,7 @@ import dev.langchain4j.guardrail.ToolInputGuardrailResult;
 import dev.langchain4j.guardrail.ToolOutputGuardrail;
 import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
+import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.ToolExecutionResult;
@@ -121,6 +122,43 @@ class ToolGuardrailServiceFrameworkReuseTest {
                 .returns("done", ToolExecutionResult::resultText)
                 .returns(false, ToolExecutionResult::isError);
         assertThat(execution.failedStage()).isEmpty();
+    }
+
+    @Test
+    void the_framework_gives_the_llm_the_text_of_the_result_with_the_note_of_a_rewrite() {
+        var service = ToolGuardrailService.builder(FrameworkAiService.class).build();
+        var key = service.bind(
+                null,
+                frameworkTool(
+                        input("tool input", request -> ToolInputGuardrailResult.successWith(REWRITTEN)),
+                        output("tool output", request -> ToolOutputGuardrailResult.success())));
+
+        var execution = service.executeGuardrails(key, CALL, PARAMS, recordingTool(new ArrayList<>()));
+
+        // the framework keeps the call of the LLM in its history, so the LLM is told what ran
+        assertThat(execution.resultTextForLlm(execution.result().resultText()))
+                .isEqualTo("<tool_arguments_changed>The arguments of this call were changed before it ran: "
+                        + REWRITTEN + "</tool_arguments_changed>\ndone");
+        // the result itself stays the result of the tool
+        assertThat(execution.result().resultText()).isEqualTo("done");
+    }
+
+    @Test
+    void the_framework_gives_the_llm_the_text_of_the_result_as_is_when_the_note_is_disabled() {
+        var service = ToolGuardrailService.builder(FrameworkAiService.class)
+                .inputGuardrailsConfig(ToolInputGuardrailsConfig.builder()
+                        .argumentsRewriteNoteEnabled(false)
+                        .build())
+                .build();
+        var key = service.bind(
+                null,
+                frameworkTool(
+                        input("tool input", request -> ToolInputGuardrailResult.successWith(REWRITTEN)),
+                        output("tool output", request -> ToolOutputGuardrailResult.success())));
+
+        var execution = service.executeGuardrails(key, CALL, PARAMS, recordingTool(new ArrayList<>()));
+
+        assertThat(execution.resultTextForLlm(execution.result().resultText())).isEqualTo("done");
     }
 
     @Test

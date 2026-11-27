@@ -189,4 +189,19 @@ class DefaultToolGuardrailServiceTest {
         assertThat(service.hasInputGuardrails(key)).isFalse();
         assertThat(service.hasOutputGuardrails(key)).isFalse();
     }
+
+    @Test
+    void the_input_config_is_the_one_given_to_the_builder_or_one_default_config() {
+        var config = ToolInputGuardrailsConfig.builder().build();
+        var configured = ToolGuardrailService.builder(Assistant.class)
+                .inputGuardrailsConfig(config)
+                .build();
+        var unconfigured = ToolGuardrailService.builder(Assistant.class).build();
+
+        assertThat(configured.toolInputGuardrailsConfig()).isSameAs(config);
+        // read for every tool result, so it is not resolved anew each time
+        assertThat(unconfigured.toolInputGuardrailsConfig())
+                .isNotNull()
+                .isSameAs(unconfigured.toolInputGuardrailsConfig());
+    }
 }

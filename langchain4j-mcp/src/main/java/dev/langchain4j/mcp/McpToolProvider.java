@@ -194,14 +194,16 @@ public class McpToolProvider implements ToolProvider {
             BiPredicate<McpClient, ToolSpecification> mcpToolsFilter,
             List<McpClient> consideredMcpClients) {
 
+        // read once, so the tools, the keys of the resource tools and the clients they reach are the same ones
+        List<McpClient> consideredClientsSnapshot = new ArrayList<>(consideredMcpClients);
         // a null client fails like a client that cannot list its tools (see failIfOneServerFails)
         List<McpClient> clientsSnapshot =
-                consideredMcpClients.stream().filter(Objects::nonNull).toList();
+                consideredClientsSnapshot.stream().filter(Objects::nonNull).toList();
         ToolProviderResult.Builder builder = ToolProviderResult.builder();
         List<String> resourcesServerKeys = new ArrayList<>();
         boolean everyClientHasAKey = true;
 
-        for (McpClient mcpClient : consideredMcpClients) {
+        for (McpClient mcpClient : consideredClientsSnapshot) {
             try {
                 List<String> clientServerKeys = serverKeys(mcpClient);
                 resourcesServerKeys.addAll(clientServerKeys);

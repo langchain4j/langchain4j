@@ -11,6 +11,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.invocation.InvocationContext;
+import org.jspecify.annotations.Nullable;
 
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
@@ -72,10 +73,11 @@ public class ToolExecution {
      * Returns the tool execution result as object.
      * This object is the actual value returned by the tool.
      *
-     * @return the result of the tool execution.
+     * @return the result of the tool execution, or {@code null} when the tool returned none, and when a tool output
+     *         guardrail rewrote or rejected the result (the object no longer matches what the LLM sees)
      * @see #result()
      */
-    public Object resultObject() {
+    public @Nullable Object resultObject() {
         return result.result();
     }
 

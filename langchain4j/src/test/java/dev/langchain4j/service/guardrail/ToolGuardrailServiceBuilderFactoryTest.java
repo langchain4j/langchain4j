@@ -3,14 +3,20 @@ package dev.langchain4j.service.guardrail;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.Tool;
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.guardrail.ToolInputGuardrail;
+import dev.langchain4j.guardrail.ToolInputGuardrailResult;
 import dev.langchain4j.guardrail.ToolOutputGuardrail;
 import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
+import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.ToolOutputGuardrailsConfig;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.guardrail.TestToolGuardrailServiceBuilderFactory.RecordingBuilder;
 import dev.langchain4j.service.guardrail.TestToolGuardrailServiceBuilderFactory.RecordingService;
 import dev.langchain4j.test.mock.MockChatModel;
+import java.util.Map;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -62,6 +68,29 @@ class ToolGuardrailServiceBuilderFactoryTest {
                 .singleElement()
                 .extracting(RecordingService::boundToolNames, InstanceOfAssertFactories.list(String.class))
                 .containsExactly("weather");
+    }
+
+    @Test
+    void the_tool_guardrail_service_of_the_spi_factory_gets_the_input_config_that_disables_the_note() {
+        ToolInputGuardrail cappingTheDays = request -> ToolInputGuardrailResult.successWithArguments(Map.of("days", 1));
+        var model = MockChatModel.thatResponds(
+                AiMessage.from(MockChatModel.toolCall("weather", Map.of("days", 7))), AiMessage.from("done"));
+
+        AiServices.builder(SpiAssistant.class)
+                .chatModel(model)
+                .tools(new WeatherTools())
+                .toolInputGuardrails(cappingTheDays)
+                .toolInputGuardrailsConfig(ToolInputGuardrailsConfig.builder()
+                        .argumentsRewriteNoteEnabled(false)
+                        .build())
+                .build()
+                .chat("weather?");
+
+        assertThat(model.requests().get(1).messages())
+                .filteredOn(ToolExecutionResultMessage.class::isInstance)
+                .map(ToolExecutionResultMessage.class::cast)
+                .singleElement()
+                .returns("sunny", ToolExecutionResultMessage::text);
     }
 
     @Test

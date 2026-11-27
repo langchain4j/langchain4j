@@ -131,8 +131,10 @@ public interface ToolGuardrailService {
      *                  the tool: the class of the object the {@code @Tool} method of the tool was found on (the object
      *                  given to {@code AiServices.tools(..)}). {@code null} for a tool that was not found on an object
      *                  (an {@link AiServiceTool} given directly, or provided by a
-     *                  {@link ToolProvider} such as an MCP server); the declaring class of
-     *                  the tool method is then used, if the tool has one.
+     *                  {@link ToolProvider} such as an MCP server); when the executor of the tool is a
+     *                  {@code DefaultToolExecutor}, the runtime class of the object it invokes the method on is then
+     *                  used (for a JDK dynamic proxy, which only implements interfaces, the declaring class of the
+     *                  method), otherwise no class annotation applies.
      * @param tool      The tool. Must not be null.
      * @return The {@link ToolKey} that identifies this tool to this service: pass it to
      *         {@link #executeInputGuardrails(ToolKey, ToolInputGuardrailRequest)},
@@ -226,7 +228,10 @@ public interface ToolGuardrailService {
      * Executes a tool call through the tool guardrails of the tool: the input guardrails, then {@code tool}, then the
      * output guardrails. It is the tool counterpart of {@link GuardrailService#executeGuardrails(Object,
      * InputGuardrailRequest)}: it builds the guardrail requests and turns the guardrail
-     * results into the request the tool runs with and the result the LLM sees, so a caller needs nothing else.
+     * results into the request the tool runs with and the result to send to the LLM. One thing is left to the caller:
+     * the text of the result it sends to the LLM, and the text that replaces the result when the call is rolled back,
+     * go through {@link GuardedToolExecution#resultTextForLlm(String)}, which adds the note that tells the LLM that
+     * an input guardrail changed the arguments of its call.
      * <ul>
      *     <li>Without guardrails for the tool, {@code tool} runs with {@code request}, and its result is returned as
      *     is.</li>

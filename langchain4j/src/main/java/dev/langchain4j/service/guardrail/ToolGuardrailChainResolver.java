@@ -15,8 +15,10 @@ import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -59,6 +61,7 @@ final class ToolGuardrailChainResolver {
     private final List<GuardrailEntry<ToolInputGuardrail>> globalInputGuardrails;
     private final List<GuardrailEntry<ToolOutputGuardrail>> globalOutputGuardrails;
     private final ToolInputGuardrailsConfig inputConfig;
+    private final ToolInputGuardrailsConfig effectiveInputConfig;
     private final ToolOutputGuardrailsConfig outputConfig;
     private final ClassMetadataProviderFactory<Object> classMetadataProviderFactory;
     private final Optional<ToolInputGuardrailExecutor> globalInputExecutor;
@@ -82,6 +85,8 @@ final class ToolGuardrailChainResolver {
         this.globalInputGuardrails = copy(globalInputGuardrails);
         this.globalOutputGuardrails = copy(globalOutputGuardrails);
         this.inputConfig = inputConfig;
+        this.effectiveInputConfig = Optional.ofNullable(inputConfig)
+                .orElseGet(() -> ToolInputGuardrailsConfig.builder().build());
         this.outputConfig = outputConfig;
         this.classMetadataProviderFactory = ensureNotNull(classMetadataProviderFactory, "classMetadataProviderFactory");
         this.globalInputExecutor = executor(
@@ -95,8 +100,7 @@ final class ToolGuardrailChainResolver {
      * The configuration of the input guardrails, the default one when none was given.
      */
     ToolInputGuardrailsConfig inputConfig() {
-        return Optional.ofNullable(this.inputConfig)
-                .orElseGet(() -> ToolInputGuardrailsConfig.builder().build());
+        return this.effectiveInputConfig;
     }
 
     /**
@@ -183,12 +187,15 @@ final class ToolGuardrailChainResolver {
     /**
      * The class whose hierarchy holds the annotations of a tool method: the class of the object the method is invoked
      * on when it is the declaring class of the method or a subclass of it (a proxy that subclasses the class of the
-     * application, such as a CGLIB proxy, reaches the annotations of that class through its hierarchy). Otherwise
-     * (a JDK dynamic proxy, which only implements the interfaces) the declaring class of the method, or the
-     * annotations of the class of the application would be lost.
+     * application, such as a CGLIB proxy, reaches the annotations of that class through its hierarchy). Otherwise,
+     * and always for a JDK dynamic proxy, the declaring class of the method: a JDK proxy only implements interfaces,
+     * so the annotations of the class of the application would be lost, and those of the other interfaces of the
+     * proxy, which have nothing to do with the tool, would apply.
      */
     private static Class<?> annotatedClass(Class<?> runtimeClass, Method method) {
-        return method.getDeclaringClass().isAssignableFrom(runtimeClass) ? runtimeClass : method.getDeclaringClass();
+        return (method.getDeclaringClass().isAssignableFrom(runtimeClass) && !Proxy.isProxyClass(runtimeClass))
+                ? runtimeClass
+                : method.getDeclaringClass();
     }
 
     /**
@@ -330,6 +337,11 @@ final class ToolGuardrailChainResolver {
      */
     private record Declared<A extends Annotation>(String site, A annotation) {}
 
+    /**
+     * The class, its superclasses, then their interfaces, nearest first: the interfaces the classes implement, then
+     * the interfaces those extend, level by level, so an interface comes before the interfaces it extends, also when
+     * another interface of the class extends them too.
+     */
     private static Stream<Class<?>> hierarchy(Class<?> clazz) {
         var classes = new ArrayList<Class<?>>();
 
@@ -337,17 +349,16 @@ final class ToolGuardrailChainResolver {
             classes.add(current);
         }
 
-        var interfaces = classes.stream()
-                .flatMap(c -> Stream.of(c.getInterfaces()))
-                .flatMap(ToolGuardrailChainResolver::withSuperInterfaces);
+        var interfaces = new LinkedHashSet<Class<?>>();
 
-        return Stream.concat(classes.stream(), interfaces).distinct();
-    }
+        for (List<Class<?>> level = classes; !level.isEmpty(); ) {
+            level = level.stream()
+                    .flatMap(c -> Stream.of(c.getInterfaces()))
+                    .filter(interfaces::add)
+                    .toList();
+        }
 
-    private static Stream<Class<?>> withSuperInterfaces(Class<?> anInterface) {
-        return Stream.concat(
-                Stream.of(anInterface),
-                Stream.of(anInterface.getInterfaces()).flatMap(ToolGuardrailChainResolver::withSuperInterfaces));
+        return Stream.concat(classes.stream(), interfaces.stream());
     }
 
     /**

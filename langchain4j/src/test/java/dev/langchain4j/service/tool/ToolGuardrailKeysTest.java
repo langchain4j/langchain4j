@@ -133,6 +133,28 @@ class ToolGuardrailKeysTest {
     }
 
     @Test
+    void setting_the_same_tool_guardrail_service_again_keeps_the_keys_of_the_tools() {
+        var toolService = new ToolService();
+        toolService.tools(List.<AiServiceTool>of(search()));
+        var service = ToolGuardrailService.builder(Assistant.class).build();
+        toolService.toolGuardrailService(service);
+        var key = keyOfSearch(toolService);
+
+        // what every build() of an AiServices builder does, while an AI service built before may be running
+        toolService.toolGuardrailService(service);
+
+        assertThat(keyOfSearch(toolService)).isNotNull().isSameAs(key);
+    }
+
+    private static ToolGuardrailService.ToolKey keyOfSearch(ToolService toolService) {
+        var userMessage = UserMessage.from("where?");
+        return toolService
+                .createContext(InvocationContext.builder().build(), userMessage, List.of(userMessage))
+                .toolGuardrailKeys()
+                .get("search");
+    }
+
+    @Test
     void without_a_tool_guardrail_service_no_tool_guardrails_run() {
         var context = ToolServiceContext.builder()
                 .effectiveTools(List.of(SEARCH))

@@ -13,6 +13,7 @@ import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.service.guardrail.ToolGuardrailService;
 import dev.langchain4j.service.guardrail.ToolGuardrailService.ToolKey;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
@@ -324,17 +325,31 @@ public class ToolServiceContext {
         }
 
         /**
+         * Sets the service that executes the tool guardrails, and binds on demand the tools that have no
+         * {@linkplain #toolGuardrailKeys(Map) key}.
+         *
+         * @param toolGuardrailService the tool guardrail service, or {@code null} (the default) for no tool
+         *                             guardrails: then no tool guardrail runs, whatever the keys
+         * @return this builder
          * @since 1.25.0
          */
-        public Builder toolGuardrailService(ToolGuardrailService toolGuardrailService) {
+        public Builder toolGuardrailService(@Nullable ToolGuardrailService toolGuardrailService) {
             this.toolGuardrailService = toolGuardrailService;
             return this;
         }
 
         /**
+         * Sets the {@link GuardrailRequestParams} of the AI service invocation, which the tool guardrails receive in
+         * their requests, so they see the same context as the AI service guardrails and their events reach the
+         * listeners registered for the invocation.
+         *
+         * @param guardrailRequestParams the parameters, or {@code null} (the default) when the context is not created
+         *                               by an AI service invocation: the tool guardrails then run with minimal
+         *                               parameters (an empty user message template and no variables)
+         * @return this builder
          * @since 1.25.0
          */
-        public Builder guardrailRequestParams(GuardrailRequestParams guardrailRequestParams) {
+        public Builder guardrailRequestParams(@Nullable GuardrailRequestParams guardrailRequestParams) {
             this.guardrailRequestParams = guardrailRequestParams;
             return this;
         }

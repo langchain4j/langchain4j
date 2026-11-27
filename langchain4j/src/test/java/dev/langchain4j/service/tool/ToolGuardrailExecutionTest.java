@@ -1197,6 +1197,109 @@ class ToolGuardrailExecutionTest {
                 .isEqualTo("sanitized tool list");
     }
 
+    @Test
+    void the_built_in_tool_search_tool_is_guarded_also_when_the_ai_service_has_no_other_tool() {
+        var calls = new CopyOnWriteArrayList<String>();
+        ToolInputGuardrail global = request -> {
+            calls.add(request.toolName());
+            return ToolInputGuardrailResult.success();
+        };
+        var strategy = new SimpleToolSearchStrategy();
+        var searchTool =
+                strategy.getToolSearchTools(InvocationContext.builder().build()).get(0);
+        var model = MockChatModel.thatResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name(searchTool.name())
+                        .arguments("{\"terms\":[\"search\"]}")
+                        .build()),
+                AiMessage.from("done"));
+
+        AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .toolSearchStrategy(strategy)
+                .toolInputGuardrails(global)
+                .build()
+                .chat("hello");
+
+        assertThat(calls).containsExactly(searchTool.name());
+    }
+
+    @Test
+    void a_tool_search_result_that_an_output_guardrail_turned_into_an_error_adds_no_tool() {
+        var strategy = new SimpleToolSearchStrategy();
+        var searchTool =
+                strategy.getToolSearchTools(InvocationContext.builder().build()).get(0);
+        ToolOutputGuardrail rejectingTheSearch = request -> request.toolName().equals(searchTool.name())
+                ? ToolOutputGuardrailResult.successWith(List.of(TextContent.from("The search failed")), true)
+                : ToolOutputGuardrailResult.success();
+        var model = MockChatModel.thatResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name(searchTool.name())
+                        .arguments("{\"terms\":[\"search\"]}")
+                        .build()),
+                AiMessage.from("done"),
+                AiMessage.from("done again"));
+        var assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .chatMemory(MessageWindowChatMemory.withMaxMessages(20))
+                .tools(List.<AiServiceTool>of(AiServiceTool.builder()
+                        .toolSpecification(SEARCH)
+                        .toolExecutor(new RecordingTool(false))
+                        .build()))
+                .toolSearchStrategy(strategy)
+                .toolOutputGuardrails(rejectingTheSearch)
+                .build();
+
+        assistant.chat("hello");
+        assistant.chat("hello again");
+
+        // the request after the search, and the first request of the next invocation, which reads the chat memory
+        assertThat(model.requests()).hasSize(3);
+        assertThat(model.requests().get(1).toolSpecifications())
+                .extracting(ToolSpecification::name)
+                .doesNotContain("search");
+        assertThat(model.requests().get(2).toolSpecifications())
+                .extracting(ToolSpecification::name)
+                .doesNotContain("search");
+    }
+
+    @Test
+    void the_contents_of_a_tool_result_reach_the_llm_as_they_are_when_there_is_no_note() {
+        // a subclass of TextContent, such as an integration may return
+        var text = new TextContent("found") {};
+        ToolExecutor tool = new ToolExecutor() {
+            @Override
+            public String execute(ToolExecutionRequest request, Object memoryId) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
+                return ToolExecutionResult.builder().resultContents(List.of(text)).build();
+            }
+        };
+        ToolInputGuardrail accepting = request -> ToolInputGuardrailResult.success();
+        var model = modelCallingSearch();
+
+        AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(List.<AiServiceTool>of(AiServiceTool.builder()
+                        .toolSpecification(SEARCH)
+                        .toolExecutor(tool)
+                        .build()))
+                .toolInputGuardrails(accepting)
+                .build()
+                .chat("hello");
+
+        assertThat(model.requests().get(1).messages())
+                .filteredOn(ToolExecutionResultMessage.class::isInstance)
+                .map(ToolExecutionResultMessage.class::cast)
+                .singleElement()
+                .satisfies(message -> assertThat(message.contents()).singleElement().isSameAs(text));
+    }
+
     /** Thrown by an arguments error handler, so a test can tell that the handler decided the failure. */
     static final class ArgumentsErrorHandled extends RuntimeException {
 

@@ -212,11 +212,16 @@ public class ToolService {
     /**
      * Sets the service that executes the tool guardrails, and binds every tool registered so far to it (the tools
      * registered later are bound when they are registered, and the tools of {@link ToolProvider}s when they are
-     * provided). {@code null}, the default, means that tool guardrails are not executed.
+     * provided). {@code null}, the default, means that tool guardrails are not executed. Setting the service that is
+     * already set changes nothing: the tools keep their keys.
      *
      * @since 1.25.0
      */
     public void toolGuardrailService(ToolGuardrailService toolGuardrailService) {
+        if (toolGuardrailService == this.toolGuardrailService) {
+            // every build() of an AiServices builder sets it again, while an AI service built before may be running
+            return;
+        }
         this.toolGuardrailService = toolGuardrailService;
         this.toolGuardrailKeys.clear();
         this.guardedTools.values().forEach(this::bindGuardedTool);
@@ -247,8 +252,20 @@ public class ToolService {
             AiServiceTool tool,
             Map<String, ToolKey> keys) {
         Optional.ofNullable(toolGuardrailService)
-                .map(service -> service.bind(toolClass, tool))
+                .map(service -> ensureKey(service.bind(toolClass, tool), service, tool.name()))
                 .ifPresent(key -> keys.put(tool.name(), key));
+    }
+
+    /**
+     * The key that {@code service} bound a tool with. A service that returns none fails, instead of leaving the tool
+     * without its guardrails.
+     */
+    static ToolKey ensureKey(@Nullable ToolKey key, ToolGuardrailService service, String toolName) {
+        if (key == null) {
+            throw new IllegalStateException("%s.bind(Class, AiServiceTool) returned no key for the tool '%s'"
+                    .formatted(service.getClass().getName(), toolName));
+        }
+        return key;
     }
 
     /**
@@ -664,7 +681,8 @@ public class ToolService {
     private ToolServiceContext createContextFromStaticToolsAndProviders(
             InvocationContext invocationContext, UserMessage userMessage, List<ChatMessage> messages) {
         if (this.toolProviders.isEmpty()) {
-            if (this.toolSpecifications.isEmpty()) {
+            // with a tool search strategy, the context gets the tool search tool, which is bound on demand
+            if (this.toolSpecifications.isEmpty() && (this.toolSearchService == null)) {
                 return ToolServiceContext.Empty.INSTANCE;
             }
 
@@ -1676,7 +1694,7 @@ public class ToolService {
             @Nullable Consumer<AiServiceStreamingEvent.ToolCompensatedEvent> streamEventEmitter,
             Optional<FailedStep> collectedFailedStep,
             @Nullable Throwable invocationError) {
-        return rollBackIfNeededAsync(
+        return failOnThrow(() -> rollBackIfNeededAsync(
                 ToolRound.callsOf(round),
                 resultMessages,
                 compensableExecutions,
@@ -1688,7 +1706,7 @@ public class ToolService {
                 streamEventEmitter,
                 true,
                 collectedFailedStep.orElse(null),
-                invocationError);
+                invocationError));
     }
 
     /**
@@ -2610,10 +2628,13 @@ public class ToolService {
      * them through the tool guardrails: {@link ToolRound#executeTool} / {@link ToolRound#startTool} execute a call,
      * and {@link ToolRound#complete} / {@link ToolRound#completeAsync} report the round.
      * <p>
-     * The round applies the tool guardrails of the tools that {@code toolServiceContext} has a binding for. Create the
-     * context with {@link #createContext(InvocationContext, UserMessage, List, GuardrailRequestParams)}, which binds
-     * the tools of this service and of its tool providers. A tool of a context built without bindings, for example
-     * with {@link ToolServiceContext#builder()}, runs <b>without</b> tool guardrails.
+     * The round applies the tool guardrails of the {@linkplain ToolServiceContext#toolGuardrailService() tool guardrail
+     * service} of {@code toolServiceContext}: a tool that the context has a {@linkplain
+     * ToolServiceContext#toolGuardrailKeys() key} for runs the guardrails of its key, and a tool without a key is bound
+     * on demand, so it gets at least the guardrails that apply to every tool. Only the tools of a context without a
+     * tool guardrail service run <b>without</b> tool guardrails. Create the context with
+     * {@link #createContext(InvocationContext, UserMessage, List, GuardrailRequestParams)}, which binds the tools of
+     * this service and of its tool providers, and carries the parameters the tool guardrails get.
      *
      * @param toolServiceContext the context of the tools of the invocation; {@code null} for a round without tools
      * @param listenerRegistrar  the registrar of the invocation, for the events of the round; may be {@code null}
@@ -3100,13 +3121,20 @@ public class ToolService {
 
     /**
      * A round for the deprecated methods that only have the executors: it applies the tool guardrails of the tools
-     * registered on this service, whose keys are known, and binds the other tools on demand.
+     * registered on this service, whose keys are known, and binds the other tools on demand. An executor that is not
+     * the one registered under its name is another tool, so it is bound on demand too.
      */
     private ToolRound registeredToolsRound(
             Map<String, ToolExecutor> toolExecutors, InvocationContext invocationContext) {
+        Map<String, ToolKey> keysOfRegisteredExecutors = new HashMap<>();
+        this.toolGuardrailKeys.forEach((toolName, key) -> {
+            if (toolExecutors.get(toolName) == this.toolExecutors.get(toolName)) {
+                keysOfRegisteredExecutors.put(toolName, key);
+            }
+        });
         var context = ToolServiceContext.builder()
                 .toolExecutors(toolExecutors)
-                .toolGuardrailKeys(this.toolGuardrailKeys)
+                .toolGuardrailKeys(keysOfRegisteredExecutors)
                 .toolGuardrailService(this.toolGuardrailService)
                 .build();
         return ToolRound.start(this, context, invocationContext, null, null);
@@ -3278,8 +3306,13 @@ public class ToolService {
         return firstText
                 .stream()
                 .mapToObj(index -> {
+                    var text = ((TextContent) contents.get(index)).text();
+                    var textWithNote = textForLlm.apply(text);
+                    if (textWithNote.equals(text)) {
+                        return contents;
+                    }
                     var updated = new ArrayList<>(contents);
-                    updated.set(index, TextContent.from(textForLlm.apply(((TextContent) contents.get(index)).text())));
+                    updated.set(index, TextContent.from(textWithNote));
                     return List.copyOf(updated);
                 })
                 .findFirst()

@@ -86,7 +86,7 @@ class ToolServiceDeprecatedExecutionTest {
     @Test
     void execute_tool_applies_the_guardrails_of_a_registered_tool() {
         var toolService = toolService(null, registeredTool("guarded", REJECTING));
-        var executors = Map.of("guarded", tool());
+        var executors = toolService.toolExecutors();
 
         assertThat(toolService.executeTool(CONTEXT, executors, call("guarded"), null, null))
                 .returns(true, ToolExecutionResult::isError)
@@ -101,6 +101,32 @@ class ToolServiceDeprecatedExecutionTest {
         assertThat(toolService
                         .startTool(call("guarded"), executors, CONTEXT, null, null, SAME_THREAD)
                         .join())
+                .returns(true, ToolExecutionResult::isError)
+                .returns("rejected", ToolExecutionResult::resultText);
+    }
+
+    @Test
+    void another_executor_with_the_name_of_a_registered_tool_does_not_get_the_guardrails_of_that_tool() {
+        var toolService = toolService(null, registeredTool("guarded", REJECTING));
+        // the caller's own executor, which the guardrails of the registered tool were not resolved for
+        var executors = Map.of("guarded", tool());
+
+        assertThat(toolService.executeTool(CONTEXT, executors, call("guarded"), null, null))
+                .returns(false, ToolExecutionResult::isError)
+                .returns("raw result", ToolExecutionResult::resultText);
+        assertThat(toolService
+                        .startTool(call("guarded"), executors, CONTEXT, null, null, SAME_THREAD)
+                        .join())
+                .returns(false, ToolExecutionResult::isError)
+                .returns("raw result", ToolExecutionResult::resultText);
+    }
+
+    @Test
+    void another_executor_with_the_name_of_a_registered_tool_gets_the_global_guardrails() {
+        var toolService = toolService(REJECTING, registeredTool("guarded"));
+        var executors = Map.of("guarded", tool());
+
+        assertThat(toolService.executeTool(CONTEXT, executors, call("guarded"), null, null))
                 .returns(true, ToolExecutionResult::isError)
                 .returns("rejected", ToolExecutionResult::resultText);
     }

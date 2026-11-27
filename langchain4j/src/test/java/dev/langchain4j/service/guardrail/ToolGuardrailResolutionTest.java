@@ -321,6 +321,41 @@ class ToolGuardrailResolutionTest {
         }
     }
 
+    /** Another interface of a JDK proxy, unrelated to its tool. */
+    @ToolOutputGuardrails(OutOfTool.class)
+    public interface UnrelatedApi {}
+
+    @ToolOutputGuardrails(OutClass.class)
+    public interface GuardedLookupApi {
+        @Tool
+        String lookup();
+    }
+
+    // a diamond: Left and Right both extend Ancestor, and Right, nearer than Ancestor, has its own guardrails
+
+    @ToolInputGuardrails({})
+    public interface Ancestor {
+        @Tool
+        @ToolInputGuardrails({})
+        String find();
+    }
+
+    public interface Left extends Ancestor {}
+
+    @ToolInputGuardrails(InClass.class)
+    public interface Right extends Ancestor {
+        @Override
+        @ToolInputGuardrails(InMethod.class)
+        String find();
+    }
+
+    public static class Diamond implements Left, Right {
+        @Override
+        public String find() {
+            return "found";
+        }
+    }
+
     /** A tool registered through {@code tools(Map)}, as a framework does, running {@code method} on {@code target}. */
     private static Setup mapTool(Object target, Method method) {
         var setup = new Setup();
@@ -394,6 +429,27 @@ class ToolGuardrailResolutionTest {
         var setup = mapTool(new StringFinder(), Finder.class.getMethod("find", Object.class));
 
         assertThat(setup.inputChain("tool")).containsExactly(InMethod.class);
+    }
+
+    @Test
+    void a_jdk_proxy_target_does_not_get_the_class_annotations_of_another_interface_of_the_proxy() throws Exception {
+        var method = GuardedLookupApi.class.getMethod("lookup");
+        var proxy = Proxy.newProxyInstance(
+                GuardedLookupApi.class.getClassLoader(),
+                new Class<?>[] {UnrelatedApi.class, GuardedLookupApi.class},
+                (ignored, invoked, arguments) -> "found");
+
+        var setup = mapTool(proxy, method);
+
+        assertThat(setup.outputChain("tool")).containsExactly(OutClass.class);
+    }
+
+    @Test
+    void a_nearer_interface_wins_over_an_interface_both_of_its_siblings_extend() throws Exception {
+        var setup = mapTool(new Diamond(), Diamond.class.getMethod("find"));
+
+        // the class level and the method level each take the nearest declaration: Right, not Ancestor through Left
+        assertThat(setup.inputChain("tool")).containsExactly(InClass.class, InMethod.class);
     }
 
     // --- helpers --------------------------------------------------------------------------------

@@ -59,7 +59,7 @@ public class ToolArgumentsParser {
      * @param json the JSON string
      * @return the corrected JSON string
      */
-    public static String removeTrailingComma(String json) {
+    static String removeTrailingComma(String json) {
         if (isNullOrEmpty(json)) {
             return json;
         }
@@ -72,7 +72,7 @@ public class ToolArgumentsParser {
      * @param arguments the raw JSON string
      * @return the normalized JSON string
      */
-    public static String normalizeJsonString(String arguments) {
+    static String normalizeJsonString(String arguments) {
         if (isNullOrEmpty(arguments)) {
             return arguments;
         }

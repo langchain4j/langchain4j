@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Describes where a tool comes from.
@@ -159,10 +160,10 @@ public sealed interface ToolSource permits ToolSource.Local, ToolSource.Mcp, Too
         Set<String> serverKeys();
 
         /**
-         * @param serverKey an MCP server key.
+         * @param serverKey an MCP server key. {@code null} is involved in no tool.
          * @return whether the given server is involved in this tool.
          */
-        boolean involves(String serverKey);
+        boolean involves(@Nullable String serverKey);
     }
 
     /**
@@ -235,7 +236,7 @@ final class McpToolSource implements ToolSource.Mcp {
     }
 
     @Override
-    public boolean involves(String serverKey) {
+    public boolean involves(@Nullable String serverKey) {
         return (serverKey != null) && serverKeys.contains(serverKey);
     }
 

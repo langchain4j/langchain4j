@@ -610,7 +610,8 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
         /**
          * Completes the round of {@code aiMessage} once the tools that were already started eagerly (on their
-         * CompleteToolCall) have ended, reporting them in request order. Any requested tool that was not started
+         * CompleteToolCall) have ended, reporting them in request order, with the requests of {@code aiMessage}, which
+         * the chat memory keeps. Any requested tool that was not started
          * eagerly (e.g. a provider emitted no matching CompleteToolCall) is started now, so the round is always
          * complete.
          * <p>
@@ -647,7 +648,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     calls.add(toolRequest);
                 }
             }
-            return startedRound.round().completeAsync(calls);
+            return startedRound.round().completeAsync(calls, toolRequests);
         }
 
         private void afterToolsExecuted(

@@ -8,6 +8,7 @@ import dev.langchain4j.observability.api.event.ToolOutputGuardrailExecutedEvent.
 import dev.langchain4j.spi.guardrail.ToolOutputGuardrailExecutorBuilderFactory;
 import java.util.List;
 import java.util.ServiceLoader;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The {@link GuardrailExecutor} for {@link ToolOutputGuardrail}s.
@@ -44,7 +45,7 @@ public non-sealed class ToolOutputGuardrailExecutor
     }
 
     @Override
-    protected ToolOutputGuardrailException createGuardrailException(String message, Throwable cause) {
+    protected ToolOutputGuardrailException createGuardrailException(String message, @Nullable Throwable cause) {
         return new ToolOutputGuardrailException(message, cause);
     }
 

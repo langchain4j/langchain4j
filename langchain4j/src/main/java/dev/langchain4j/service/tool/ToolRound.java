@@ -23,6 +23,7 @@ import dev.langchain4j.service.guardrail.GuardedToolExecution;
 import dev.langchain4j.service.guardrail.ToolGuardrailStage;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -37,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import dev.langchain4j.observability.api.event.ToolExecutedEvent;
 import dev.langchain4j.service.guardrail.ToolGuardrailService.ToolKey;
 import dev.langchain4j.service.guardrail.ToolGuardrailService;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -160,15 +162,18 @@ public final class ToolRound {
             Consumer<BeforeToolExecution> beforeToolExecution,
             Consumer<ToolExecution> afterToolExecution,
             Executor executor) {
-        CompletableFuture<GuardedToolExecution> execution;
-        try {
-            execution = CompletableFuture.supplyAsync(
-                    () -> executeTool(call, beforeToolExecution, afterToolExecution), executor);
-        } catch (RuntimeException rejected) {
-            errors.put(call, rejected);
-            execution = CompletableFuture.failedFuture(rejected);
-        }
-        return execution;
+        return failOnThrow(() -> {
+            ensureNotNull(call, "call");
+            try {
+                return CompletableFuture.supplyAsync(
+                        () -> executeTool(call, beforeToolExecution, afterToolExecution), executor);
+            } catch (VirtualMachineError e) {
+                throw e;
+            } catch (RuntimeException | Error rejected) {
+                errors.put(call, rejected);
+                throw rejected;
+            }
+        });
     }
 
     /**
@@ -359,14 +364,15 @@ public final class ToolRound {
         if (isCancelled()) {
             execution = CompletableFuture.failedFuture(new CancellationException());
         } else {
-            execution = binding(call.name())
+            // binding the tool on demand can fail too
+            execution = failOnThrow(() -> binding(call.name())
                     .map(binding -> failOnThrow(
                             binding.service(),
                             "executeGuardrailsAsync(ToolKey, ToolExecutionRequest, GuardrailRequestParams, Function)",
                             () -> binding.service()
                                     .executeGuardrailsAsync(
                                             binding.key(), call, guardrailRequestParams(), recordingTool)))
-                    .orElseGet(() -> recordingTool.apply(call).thenApply(result -> unguarded(call, result)));
+                    .orElseGet(() -> recordingTool.apply(call).thenApply(result -> unguarded(call, result))));
             var guarded = execution;
             execution = guarded.exceptionallyCompose(error -> argumentsErrorBeforeTool(call, error)
                     .map(argumentsException ->
@@ -511,6 +517,50 @@ public final class ToolRound {
         });
     }
 
+    /**
+     * As {@link #completeAsync(List)}, for calls started before the {@link AiMessage} was known (a streaming model
+     * announces each tool call before its final response), with requests that can differ from the ones of the
+     * {@link AiMessage}: a provider can give a call another id in its final response, or format its arguments
+     * differently. Each call is executed as it was started, and reported with the request of the {@link AiMessage} at
+     * its position, which the history keeps, with the arguments it was executed with when an input guardrail rewrote
+     * them.
+     *
+     * @param calls          the calls of the round, as they were started, in the order of the LLM
+     * @param aiMessageCalls the calls of the {@link AiMessage}, in the same order
+     */
+    public CompletableFuture<Outcome> completeAsync(
+            List<ToolExecutionRequest> calls, List<ToolExecutionRequest> aiMessageCalls) {
+        return failOnThrow(() -> {
+            if (calls.size() != aiMessageCalls.size()) {
+                throw new IllegalArgumentException("The round has %s calls, but the AI message has %s"
+                        .formatted(calls.size(), aiMessageCalls.size()));
+            }
+            return completeAsync(calls).thenApply(outcome -> reportedAs(outcome, calls, aiMessageCalls));
+        });
+    }
+
+    private static Outcome reportedAs(
+            Outcome outcome, List<ToolExecutionRequest> calls, List<ToolExecutionRequest> aiMessageCalls) {
+        var roundCalls = callsOf(outcome);
+        var reportedCalls = IntStream.range(0, roundCalls.size())
+                .mapToObj(i -> roundCalls
+                        .get(i)
+                        .withRequest(aiMessageCall(roundCalls.get(i).request(), calls.get(i), aiMessageCalls.get(i))))
+                .toList();
+        return new DefaultToolRoundOutcome(reportedCalls, outcome.firstError().orElse(null));
+    }
+
+    /**
+     * The call of the {@link AiMessage}, with the arguments the call was executed with if an input guardrail rewrote
+     * them.
+     */
+    private static ToolExecutionRequest aiMessageCall(
+            ToolExecutionRequest executed, ToolExecutionRequest started, ToolExecutionRequest aiMessageCall) {
+        return Objects.equals(executed.arguments(), started.arguments())
+                ? aiMessageCall
+                : aiMessageCall.toBuilder().arguments(executed.arguments()).build();
+    }
+
     private DefaultToolRoundOutcome settled(List<ToolExecutionRequest> calls) {
         // A failure recorded for a call that was also executed comes from after the execution (an
         // afterToolExecution callback that threw): the call failed, whatever its result.
@@ -595,7 +645,7 @@ public final class ToolRound {
         return Optional.ofNullable(executions.get(call))
                 .flatMap(GuardedToolExecution::failedStage)
                 .or(() -> Optional.ofNullable(errors.get(call))
-                        .filter(error -> binding(call.name()).isPresent())
+                        .filter(error -> isBound(call.name()))
                         .flatMap(ToolRound::fatalStage))
                 .map(ToolRound::compensationReason);
     }
@@ -639,7 +689,7 @@ public final class ToolRound {
                 .map(GuardedToolExecution::request)
                 .or(() -> Optional.ofNullable(startedRequests.get(call)))
                 .or(() -> Optional.ofNullable(failure != null ? failure : errors.get(call))
-                        .filter(error -> binding(call.name()).isPresent())
+                        .filter(error -> isBound(call.name()))
                         .flatMap(error -> rejectedRequest(call, error)))
                 .orElse(call);
     }
@@ -665,18 +715,34 @@ public final class ToolRound {
     }
 
     /**
+     * Whether the tool has a key to run its guardrails with: the one of the context, or the one it was bound with on
+     * demand. Unlike {@link #binding(String)}, it never binds the tool, so reporting a call whose binding failed does
+     * not bind it again.
+     */
+    private boolean isBound(String toolName) {
+        return (toolServiceContext != null)
+                && toolServiceContext.toolGuardrailService().isPresent()
+                && (toolServiceContext.toolGuardrailKeys().containsKey(toolName)
+                        || onDemandKeys.containsKey(toolName));
+    }
+
+    /**
      * Binds a tool of the context that has no key: with its specification and its executor, so its source is the one
      * of its executor ({@link AiServiceTool}), and its guardrails are the ones that apply to every tool, plus the
-     * ones its executor carries. {@code null} when the context has no executor for the tool.
+     * ones its executor carries. {@code null} when the context has no executor for the tool. A service that returns no
+     * key fails with an {@link IllegalStateException}.
      */
     private static ToolKey bindOnDemand(ToolServiceContext context, ToolGuardrailService service, String toolName) {
         return Optional.ofNullable(context.toolExecutors().get(toolName))
-                .map(executor -> service.bind(
-                        null,
-                        AiServiceTool.builder()
-                                .toolSpecification(specificationOf(context, toolName))
-                                .toolExecutor(executor)
-                                .build()))
+                .map(executor -> ToolService.ensureKey(
+                        service.bind(
+                                null,
+                                AiServiceTool.builder()
+                                        .toolSpecification(specificationOf(context, toolName))
+                                        .toolExecutor(executor)
+                                        .build()),
+                        service,
+                        toolName))
                 .orElse(null);
     }
 

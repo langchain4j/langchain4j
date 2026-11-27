@@ -55,6 +55,13 @@ record ToolRoundCall(
     }
 
     /**
+     * This call, reported with another request.
+     */
+    ToolRoundCall withRequest(ToolExecutionRequest request) {
+        return new ToolRoundCall(request, result, toolResult, guardrailFailure, execution);
+    }
+
+    /**
      * The result of the tool as it ran, or the result the LLM sees when the round has no record of it.
      */
     ToolExecutionResult ranResult() {

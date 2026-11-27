@@ -711,6 +711,11 @@ public class AgentBuilder<T, B extends AgentBuilder<T, ?>> {
 
     /**
      * Sets the configuration of the tool input guardrail executors of the agent. It applies to every tool.
+     * <p>
+     * It sets the arguments rewrite note: when an input guardrail changes the arguments of a tool call, the tool
+     * result that the LLM gets carries a note that says so, since the chat memory keeps the call as the LLM made it.
+     * {@link ToolInputGuardrailsConfig#isArgumentsRewriteNoteEnabled()} turns the note on or off (it is on by default),
+     * and {@link ToolInputGuardrailsConfig#argumentsRewriteNoteTemplate()} is its text.
      *
      * @param toolInputGuardrailsConfig the tool input guardrails configuration
      * @return {@code this}

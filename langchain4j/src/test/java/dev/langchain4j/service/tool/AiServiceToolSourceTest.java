@@ -93,6 +93,40 @@ class AiServiceToolSourceTest {
     }
 
     @Test
+    void a_copy_with_another_executor_gets_the_source_of_that_executor() throws Exception {
+        var method = forecast(Weather.class);
+        var local = AiServiceTool.builder()
+                .toolSpecification(ToolSpecifications.toolSpecificationFrom(method))
+                .toolExecutor(new DefaultToolExecutor(new Weather(), method))
+                .build();
+
+        var copy = local.toBuilder()
+                .toolExecutor((request, memoryId) -> "sunny")
+                .build();
+
+        assertThat(local.toolSource()).isEqualTo(ToolSource.local(method));
+        assertThat(copy.toolSource()).isEqualTo(ToolSource.programmatic());
+    }
+
+    @Test
+    void a_copy_keeps_an_explicit_source() throws Exception {
+        var method = forecast(Weather.class);
+        var tool = AiServiceTool.builder()
+                .toolSpecification(ToolSpecifications.toolSpecificationFrom(method))
+                .toolExecutor(new DefaultToolExecutor(new Weather(), method))
+                .toolSource(ToolSource.mcp("weather-server"))
+                .build();
+
+        var copy = tool.toBuilder()
+                .toolExecutor((request, memoryId) -> "sunny")
+                .build();
+
+        assertThat(copy.toolSource()).isEqualTo(ToolSource.mcp("weather-server"));
+        assertThat(copy).isNotEqualTo(tool);
+        assertThat(tool.toBuilder().build()).isEqualTo(tool);
+    }
+
+    @Test
     void a_tool_with_another_executor_is_programmatic() {
         var tool = AiServiceTool.builder()
                 .toolSpecification(ToolSpecification.builder().name("forecast").build())

@@ -7,12 +7,17 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.guardrail.ToolInputGuardrail;
+import dev.langchain4j.guardrail.ToolInputGuardrailRequest;
+import dev.langchain4j.guardrail.ToolInputGuardrailResult;
 import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.CompleteResponse;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
+import dev.langchain4j.observability.api.event.ToolExecutedEvent;
+import dev.langchain4j.observability.api.listener.ToolExecutedEventListener;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -127,6 +132,74 @@ class StreamingPublisherToolResultCorrelationTest {
         assertThat(results).hasSize(2);
         assertThat(results.get(0).text()).isEqualTo("Paris:1");
         assertThat(results.get(1).text()).isEqualTo("Rome:2");
+    }
+
+    @Test
+    void should_answer_a_tool_call_under_its_request_in_the_final_response() throws Exception {
+
+        List<ToolExecutionRequest> announced = List.of(request("streamed-id", "{\"city\": \"Paris\", \"days\": 1}"));
+        List<ToolExecutionRequest> reported = List.of(request("final-id", "{\"days\":1,\"city\":\"Paris\"}"));
+
+        Tools tools = new Tools();
+        List<ToolExecutedEvent> events = new CopyOnWriteArrayList<>();
+        ReformattingArgumentsModel model = new ReformattingArgumentsModel(announced, reported);
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(model)
+                .tools(tools)
+                .registerListener((ToolExecutedEventListener) events::add)
+                .build();
+
+        await(assistant.chat("Look up Paris"));
+
+        // the history holds the tool call of the final response, so its result must answer that call
+        assertThat(tools.calls).containsExactly("Paris");
+        assertThat(resultMessagesOfSecondRequest(model)).singleElement().satisfies(result -> {
+            assertThat(result.id()).isEqualTo("final-id");
+            assertThat(result.text()).isEqualTo("Paris:1");
+        });
+        assertThat(events).singleElement().extracting(ToolExecutedEvent::request).isEqualTo(reported.get(0));
+    }
+
+    @Test
+    void should_answer_a_tool_call_whose_arguments_a_guardrail_rewrote_under_its_request_in_the_final_response()
+            throws Exception {
+
+        List<ToolExecutionRequest> announced = List.of(request("streamed-id", "{\"city\": \"Paris\", \"days\": 1}"));
+        List<ToolExecutionRequest> reported = List.of(request("final-id", "{\"days\":1,\"city\":\"Paris\"}"));
+        ToolInputGuardrail toRome = new ToolInputGuardrail() {
+            @Override
+            public ToolInputGuardrailResult validate(ToolInputGuardrailRequest request) {
+                return successWith("{\"city\":\"Rome\",\"days\":1}");
+            }
+
+            @Override
+            public CompletableFuture<ToolInputGuardrailResult> validateAsync(ToolInputGuardrailRequest request) {
+                return CompletableFuture.completedFuture(validate(request));
+            }
+        };
+
+        Tools tools = new Tools();
+        List<ToolExecutedEvent> events = new CopyOnWriteArrayList<>();
+        ReformattingArgumentsModel model = new ReformattingArgumentsModel(announced, reported);
+        Assistant assistant = AiServices.builder(Assistant.class)
+                .streamingChatModel(model)
+                .tools(tools)
+                .toolInputGuardrails(toRome)
+                .registerListener((ToolExecutedEventListener) events::add)
+                .build();
+
+        await(assistant.chat("Look up Paris"));
+
+        assertThat(tools.calls).containsExactly("Rome");
+        assertThat(resultMessagesOfSecondRequest(model)).singleElement().satisfies(result -> {
+            assertThat(result.id()).isEqualTo("final-id");
+            assertThat(result.text()).endsWith("Rome:1");
+        });
+        assertThat(events)
+                .singleElement()
+                .extracting(ToolExecutedEvent::request)
+                .returns("final-id", ToolExecutionRequest::id)
+                .returns("{\"city\":\"Rome\",\"days\":1}", ToolExecutionRequest::arguments);
     }
 
     private static ToolExecutionRequest request(String id, String arguments) {

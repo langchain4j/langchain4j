@@ -17,6 +17,7 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The {@link GuardrailExecutor} for {@link ToolInputGuardrail}s.
@@ -208,7 +209,7 @@ public non-sealed class ToolInputGuardrailExecutor
     }
 
     @Override
-    protected ToolInputGuardrailException createGuardrailException(String message, Throwable cause) {
+    protected ToolInputGuardrailException createGuardrailException(String message, @Nullable Throwable cause) {
         return new ToolInputGuardrailException(message, cause);
     }
 
