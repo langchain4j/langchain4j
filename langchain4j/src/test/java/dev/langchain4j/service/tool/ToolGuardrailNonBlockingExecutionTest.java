@@ -18,6 +18,7 @@ import dev.langchain4j.guardrail.ToolOutputGuardrail;
 import dev.langchain4j.guardrail.ToolOutputGuardrailException;
 import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -38,6 +39,7 @@ import dev.langchain4j.test.mock.MockStreamingChatModel;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -65,6 +67,7 @@ class ToolGuardrailNonBlockingExecutionTest {
 
     private static final String ORIGINAL_ARGUMENTS = "{\"q\":\"a\"}";
     private static final String REWRITTEN_ARGUMENTS = "{\"q\":\"b\"}";
+    private static final String QUOTED_VALUE = "it's \"quoted\" \\ {q}";
     private static final String MALFORMED_ARGUMENTS = "{\"q\":";
     private static final Duration TIMEOUT = Duration.ofSeconds(10);
     private static final ToolSpecification SEARCH =
@@ -358,7 +361,8 @@ class ToolGuardrailNonBlockingExecutionTest {
 
     @ParameterizedTest
     @EnumSource(Mode.class)
-    void an_input_rewrite_is_what_the_tool_runs_with_and_what_everything_downstream_carries(Mode mode) {
+    void an_input_rewrite_is_what_the_tool_runs_with_and_what_the_events_report_but_memory_keeps_the_original_call(
+            Mode mode) {
         var run = run(mode, AiServiceTool.builder().toolInputGuardrails(rewriteInput()));
 
         assertThat(run.answer).isCompletedWithValue("done");
@@ -370,13 +374,23 @@ class ToolGuardrailNonBlockingExecutionTest {
         assertThat(run.toolEvents)
                 .singleElement()
                 .returns(REWRITTEN_ARGUMENTS, event -> event.request().arguments());
+        // chat memory, and so the next request, keep the tool call as the LLM made it
         assertThat(run.toolCallsInMemory())
                 .singleElement()
-                .returns(REWRITTEN_ARGUMENTS, ToolExecutionRequest::arguments);
+                .returns(ORIGINAL_ARGUMENTS, ToolExecutionRequest::arguments);
         assertThat(run.toolCallsOfSecondRequest())
                 .singleElement()
-                .returns(REWRITTEN_ARGUMENTS, ToolExecutionRequest::arguments);
-        assertThat(run.toolResultMessageOfSecondRequest().text()).isEqualTo("found " + REWRITTEN_ARGUMENTS);
+                .returns(ORIGINAL_ARGUMENTS, ToolExecutionRequest::arguments);
+        // so the LLM is told what ran, in the text of the result; the events keep the result of the tool
+        assertThat(run.toolResultMessageOfSecondRequest())
+                .returns(1, message -> message.contents().size())
+                .returns(
+                        "<tool_arguments_changed>The arguments of this call were changed before it ran: "
+                                + REWRITTEN_ARGUMENTS + "</tool_arguments_changed>\nfound " + REWRITTEN_ARGUMENTS,
+                        ToolExecutionResultMessage::text);
+        assertThat(run.toolEvents)
+                .singleElement()
+                .returns("found " + REWRITTEN_ARGUMENTS, ToolExecutedEvent::resultText);
     }
 
     @ParameterizedTest
@@ -434,6 +448,59 @@ class ToolGuardrailNonBlockingExecutionTest {
 
     @ParameterizedTest
     @EnumSource(Mode.class)
+    void a_result_made_before_the_tool_runs_skips_the_output_guardrails(Mode mode) {
+        ToolInputGuardrail parsing = input(request -> {
+            request.argumentsAsMap();
+            return ToolInputGuardrailResult.success();
+        });
+        var outputCalls = new AtomicInteger();
+        ToolOutputGuardrail counting = output(request -> {
+            outputCalls.incrementAndGet();
+            return ToolOutputGuardrailResult.success();
+        });
+
+        var run = run(
+                mode,
+                AiServiceTool.builder().toolInputGuardrails(parsing).toolOutputGuardrails(counting),
+                responsesCallingSearchWith(MALFORMED_ARGUMENTS),
+                services -> services.toolArgumentsErrorHandler(
+                        (error, context) -> ToolErrorHandlerResult.text("fix the arguments")));
+
+        assertThat(run.answer).isCompletedWithValue("done");
+        // the arguments error handler made the result before the tool ran: the output guardrails would parse the
+        // same broken arguments
+        assertThat(outputCalls).hasValue(0);
+        assertThat(run.toolResultMessageOfSecondRequest().text()).isEqualTo("fix the arguments");
+    }
+
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void the_result_for_a_tool_name_the_llm_made_up_skips_the_output_guardrails(Mode mode) {
+        var outputCalls = new AtomicInteger();
+        ToolOutputGuardrail counting = output(request -> {
+            outputCalls.incrementAndGet();
+            return ToolOutputGuardrailResult.success();
+        });
+        var unknownCall = ToolExecutionRequest.builder()
+                .id("1")
+                .name("unknown")
+                .arguments("{}")
+                .build();
+
+        var run = run(
+                mode,
+                AiServiceTool.builder(),
+                List.of(AiMessage.from(unknownCall), AiMessage.from("done")),
+                services -> services.hallucinatedToolNameStrategy(
+                                request -> ToolExecutionResultMessage.from(request, "no such tool"))
+                        .toolOutputGuardrails(counting));
+
+        assertThat(run.answer).isCompletedWithValue("done");
+        assertThat(outputCalls).hasValue(0);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Mode.class)
     void arguments_an_input_guardrail_cannot_parse_fail_the_invocation_as_the_arguments_error_handler_decides(
             Mode mode) {
         ToolInputGuardrail parsing = input(request -> {
@@ -454,6 +521,39 @@ class ToolGuardrailNonBlockingExecutionTest {
                 .hasAtLeastOneElementOfType(ArgumentsErrorHandled.class);
         assertThat(run.tool.receivedArguments).isEmpty();
         assertThat(run.errorHandlerCalls).hasValue(0);
+        assertThat(run.requests.get()).hasSize(1);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void a_map_rewrite_reaches_the_tool_with_its_special_characters_intact(Mode mode) {
+        ToolInputGuardrail rewrite =
+                input(request -> ToolInputGuardrailResult.successWithArguments(Map.of("q", QUOTED_VALUE)));
+
+        var run = run(mode, AiServiceTool.builder().toolInputGuardrails(rewrite));
+
+        assertThat(run.answer).isCompletedWithValue("done");
+        assertThat(run.tool.receivedArguments)
+                .singleElement()
+                .extracting(arguments -> Json.fromJson(arguments, Map.class))
+                .isEqualTo(Map.of("q", QUOTED_VALUE));
+    }
+
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void a_null_map_rewrite_ends_the_invocation_before_the_tool(Mode mode) {
+        ToolInputGuardrail redactsToNull = input(request -> ToolInputGuardrailResult.successWithArguments(null));
+
+        var run = run(
+                mode,
+                AiServiceTool.builder().toolInputGuardrails(redactsToNull),
+                responsesCallingSearch(),
+                services -> {});
+
+        assertThat(run.failure()).isInstanceOf(IllegalArgumentException.class);
+        assertThat(causes(run.answer.handle((ignored, error) -> error).join()))
+                .hasAtLeastOneElementOfType(ToolInputGuardrailException.class);
+        assertThat(run.tool.receivedArguments).isEmpty();
         assertThat(run.requests.get()).hasSize(1);
     }
 
@@ -608,8 +708,8 @@ class ToolGuardrailNonBlockingExecutionTest {
         assertThat(run.toolCallsInMemory())
                 .extracting(ToolExecutionRequest::id, ToolExecutionRequest::arguments)
                 .containsExactly(
-                        Tuple.tuple("1", REWRITTEN_ARGUMENTS),
-                        Tuple.tuple("2", REWRITTEN_ARGUMENTS));
+                        Tuple.tuple("1", ORIGINAL_ARGUMENTS),
+                        Tuple.tuple("2", ORIGINAL_ARGUMENTS));
     }
 
     // ---------- cancellation ----------

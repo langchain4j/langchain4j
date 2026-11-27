@@ -12,6 +12,7 @@ import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.spi.ServiceHelper.loadFactories;
 
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -85,6 +86,16 @@ public class DefaultToolExecutor implements ToolExecutor {
 
     public Method originalMethod() {
         return originalMethod;
+    }
+
+    /**
+     * The runtime class of the object the tool method is invoked on, which can be a subclass of the class that declares
+     * {@link #originalMethod()} (a proxy that subclasses it, for example), or a class that only implements its
+     * interfaces (a JDK dynamic proxy).
+     */
+    @Internal
+    public Class<?> targetClass() {
+        return object.getClass();
     }
 
     private record ResolvedMethod(Method originalMethod, Method methodToInvoke) {}

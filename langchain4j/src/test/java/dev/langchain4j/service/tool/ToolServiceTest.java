@@ -70,7 +70,7 @@ class ToolServiceTest {
         AssertionError error = new AssertionError("broken list of compensable tools");
         ToolRound.Outcome emptyRound = toolService
                 .startRound(ToolServiceContext.builder().build(), DUMMY_CONTEXT, null)
-                .settleAsync(List.of())
+                .completeAsync(List.of())
                 .join();
 
         CompletableFuture<Void> future = toolService.compensateCollectedRoundAsync(

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
@@ -23,6 +24,8 @@ class ToolGuardrailResultTest {
             .userMessageTemplate("t")
             .variables(Map.of())
             .build();
+    private static final ToolSpecification SPEC =
+            ToolSpecification.builder().name(EXEC.name()).build();
     private static final ImageContent IMAGE = ImageContent.from("http://example.com/a.png");
 
     private static final ToolInputGuardrail INPUT = request -> ToolInputGuardrailResult.success();
@@ -31,6 +34,7 @@ class ToolGuardrailResultTest {
     private static ToolOutputGuardrailRequest outputRequest(boolean isError, Content... contents) {
         return ToolOutputGuardrailRequest.builder()
                 .toolExecutionRequest(EXEC)
+                .toolSpecification(SPEC)
                 .requestParams(PARAMS)
                 .resultContents(List.of(contents))
                 .isError(isError)
@@ -64,6 +68,50 @@ class ToolGuardrailResultTest {
     @Test
     void input_success_with_null_is_plain_success() {
         assertThat(ToolInputGuardrailResult.successWith(null)).isSameAs(ToolInputGuardrailResult.success());
+    }
+
+    @Test
+    void input_success_with_arguments_serializes_the_map_to_a_json_object() {
+        var result = INPUT.successWithArguments(Map.of("q", "say \"hi\" \\ bye"));
+
+        assertThat(result)
+                .returns(GuardrailResult.Result.SUCCESS_WITH_RESULT, ToolInputGuardrailResult::result)
+                .returns(true, ToolInputGuardrailResult::hasRewrittenResult);
+        assertThat(ToolInputGuardrailRequest.builder()
+                        .toolExecutionRequest(EXEC.toBuilder()
+                                .arguments(result.successfulText())
+                                .build())
+                        .toolSpecification(SPEC)
+                        .requestParams(PARAMS)
+                        .build()
+                        .argumentsAsMap())
+                .containsExactly(Map.entry("q", "say \"hi\" \\ bye"));
+    }
+
+    @Test
+    void input_success_with_arguments_accepts_an_empty_map() {
+        assertThat(ToolInputGuardrailResult.successWithArguments(Map.of()).successfulText())
+                .isEqualTo("{}");
+    }
+
+    @Test
+    void input_success_with_arguments_rejects_a_null_map() {
+        assertThatThrownBy(() -> INPUT.successWithArguments(null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("rewrittenArguments");
+    }
+
+    @Test
+    void input_success_with_arguments_throws_for_a_value_without_a_json_representation() {
+        assertThatThrownBy(() -> ToolInputGuardrailResult.successWithArguments(Map.of("q", new Unserializable())))
+                .isInstanceOf(RuntimeException.class);
+    }
+
+    /** A value the JSON codec cannot write: reading its only property throws. */
+    public static class Unserializable {
+        public String getValue() {
+            throw new IllegalStateException("cannot be read");
+        }
     }
 
     @Test

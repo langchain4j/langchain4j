@@ -9,6 +9,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.guardrail.GuardrailException;
@@ -20,6 +21,8 @@ import dev.langchain4j.guardrail.ToolOutputGuardrail;
 import dev.langchain4j.guardrail.ToolOutputGuardrailException;
 import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
+import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
+import dev.langchain4j.internal.Json;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -33,6 +36,7 @@ import dev.langchain4j.observability.api.listener.ToolInputGuardrailExecutedList
 import dev.langchain4j.observability.api.listener.ToolOutputGuardrailExecutedListener;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.Result;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.guardrail.ToolGuardrailService;
@@ -237,6 +241,10 @@ class ToolGuardrailExecutionTest {
                     .build()));
             context.toolService.toolGuardrailService(ToolGuardrailService.builder(Assistant.class)
                     .inputGuardrails(lowercasing)
+                    // this test is about the results of equal calls, not about the note of the rewrite
+                    .inputGuardrailsConfig(ToolInputGuardrailsConfig.builder()
+                            .argumentsRewriteNoteEnabled(false)
+                            .build())
                     .build());
         }
 
@@ -364,7 +372,7 @@ class ToolGuardrailExecutionTest {
     // ---------- input guardrails ----------
 
     @Test
-    void an_input_rewrite_is_what_the_tool_runs_with_and_what_everything_downstream_carries() {
+    void an_input_rewrite_is_what_the_tool_runs_with_and_what_the_events_report_but_memory_keeps_the_original_call() {
         ToolInputGuardrail rewrite = request -> ToolInputGuardrailResult.successWith(REWRITTEN_ARGUMENTS);
         var beforeRequests = new ArrayList<ToolExecutionRequest>();
 
@@ -393,15 +401,15 @@ class ToolGuardrailExecutionTest {
                 .singleElement()
                 .extracting(event -> event.request().arguments())
                 .isEqualTo(REWRITTEN_ARGUMENTS);
-        // the tool call stored in chat memory matches what the tool ran with
+        // chat memory keeps the tool call as the LLM made it
         assertThat(run.toolCallsInMemory())
                 .singleElement()
                 .extracting(ToolExecutionRequest::arguments)
-                .isEqualTo(REWRITTEN_ARGUMENTS);
+                .isEqualTo(ORIGINAL_ARGUMENTS);
     }
 
     @Test
-    void without_chat_memory_the_next_request_carries_the_rewritten_tool_call() {
+    void without_chat_memory_the_next_request_carries_the_original_tool_call() {
         ToolInputGuardrail rewrite = request -> ToolInputGuardrailResult.successWith(REWRITTEN_ARGUMENTS);
         var model = modelCallingSearch();
 
@@ -420,7 +428,7 @@ class ToolGuardrailExecutionTest {
                 .map(AiMessage.class::cast)
                 .singleElement()
                 .extracting(message -> message.toolExecutionRequests().get(0).arguments())
-                .isEqualTo(REWRITTEN_ARGUMENTS);
+                .isEqualTo(ORIGINAL_ARGUMENTS);
     }
 
     @Test
@@ -521,7 +529,7 @@ class ToolGuardrailExecutionTest {
     }
 
     @Test
-    void an_input_rewrite_that_is_not_a_json_object_aborts_the_invocation_before_the_tool_and_the_memory() {
+    void an_input_rewrite_that_is_not_a_json_object_aborts_the_invocation_before_the_tool() {
         ToolInputGuardrail invalid = request -> ToolInputGuardrailResult.successWith("not json");
         var tool = new RecordingTool(false);
         var model = modelCallingSearch();
@@ -541,12 +549,39 @@ class ToolGuardrailExecutionTest {
                 .isInstanceOf(ToolInputGuardrailException.class)
                 .hasMessageContaining("not a JSON object");
         assertThat(tool.receivedArguments).isEmpty();
-        assertThat(memory.messages().stream()
-                        .filter(AiMessage.class::isInstance)
-                        .map(AiMessage.class::cast)
-                        .flatMap(message -> message.toolExecutionRequests().stream()))
-                .extracting(ToolExecutionRequest::arguments)
-                .doesNotContain("not json");
+    }
+
+    @Test
+    void a_map_rewrite_reaches_the_tool_with_its_special_characters_intact() {
+        var quoted = "it's \"quoted\" \\ {q}";
+        ToolInputGuardrail rewrite = request -> ToolInputGuardrailResult.successWithArguments(Map.of("q", quoted));
+
+        var run = run(AiServiceTool.builder().toolInputGuardrails(rewrite), false, services -> {});
+
+        assertThat(run.tool.receivedArguments)
+                .singleElement()
+                .extracting(arguments -> Json.fromJson(arguments, Map.class))
+                .isEqualTo(Map.of("q", quoted));
+    }
+
+    @Test
+    void a_null_map_rewrite_aborts_the_invocation_before_the_tool() {
+        ToolInputGuardrail redactsToNull = request -> ToolInputGuardrailResult.successWithArguments(null);
+        var tool = new RecordingTool(false);
+
+        var assistant = AiServices.builder(Assistant.class)
+                .chatModel(modelCallingSearch())
+                .tools(List.<AiServiceTool>of(AiServiceTool.builder()
+                        .toolSpecification(SEARCH)
+                        .toolExecutor(tool)
+                        .toolInputGuardrails(redactsToNull)
+                        .build()))
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("hello"))
+                .isInstanceOf(ToolInputGuardrailException.class)
+                .hasRootCauseInstanceOf(IllegalArgumentException.class);
+        assertThat(tool.receivedArguments).isEmpty();
     }
 
     @Test
@@ -926,7 +961,7 @@ class ToolGuardrailExecutionTest {
                 .extracting(message -> message.toolExecutionRequests().stream()
                         .map(ToolExecutionRequest::arguments)
                         .toList())
-                .isEqualTo(List.of(REWRITTEN_ARGUMENTS, REWRITTEN_ARGUMENTS, REWRITTEN_ARGUMENTS));
+                .isEqualTo(List.of(ORIGINAL_ARGUMENTS, ORIGINAL_ARGUMENTS, ORIGINAL_ARGUMENTS));
     }
 
     @Test
@@ -991,10 +1026,119 @@ class ToolGuardrailExecutionTest {
                 .returns(null, ToolExecution::resultObject);
     }
 
+    interface StringAssistant {
+
+        String chat(@UserMessage String message);
+    }
+
+    interface BookingAssistant {
+
+        Booking chat(@UserMessage String message);
+    }
+
+    record Booking(String id) {}
+
+    /** An immediate tool that returns a {@link Booking} object, and its text for the LLM. */
+    private static AiServiceTool.Builder immediateBookingTool() {
+        ToolExecutor booking = new ToolExecutor() {
+            @Override
+            public String execute(ToolExecutionRequest request, Object memoryId) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
+                return ToolExecutionResult.builder()
+                        .result(new Booking("42"))
+                        .resultText("booked 42")
+                        .build();
+            }
+        };
+        return AiServiceTool.builder()
+                .toolSpecification(SEARCH)
+                .toolExecutor(booking)
+                .returnBehavior(ReturnBehavior.IMMEDIATE);
+    }
+
+    private static <T> T immediateAssistant(Class<T> type, AiServiceTool tool) {
+        return AiServices.builder(type)
+                .chatModel(modelCallingSearch())
+                .tools(List.<AiServiceTool>of(tool))
+                .build();
+    }
+
+    @Test
+    void an_immediate_tool_without_a_rewrite_returns_the_object_of_the_tool() {
+        ToolOutputGuardrail accept = request -> ToolOutputGuardrailResult.success();
+
+        var answer = immediateAssistant(
+                        BookingAssistant.class,
+                        immediateBookingTool().toolOutputGuardrails(accept).build())
+                .chat("hello");
+
+        assertThat(answer).isEqualTo(new Booking("42"));
+    }
+
+    @Test
+    void a_string_method_gets_the_rewritten_text_of_an_immediate_tool() {
+        ToolOutputGuardrail rewrite = request -> ToolOutputGuardrailResult.successWith("booked <redacted>");
+
+        var answer = immediateAssistant(
+                        StringAssistant.class,
+                        immediateBookingTool().toolOutputGuardrails(rewrite).build())
+                .chat("hello");
+
+        assertThat(answer).isEqualTo("booked <redacted>");
+    }
+
+    @Test
+    void a_string_method_fails_when_an_immediate_tool_result_is_rewritten_without_text() {
+        ToolOutputGuardrail imageOnly = request ->
+                ToolOutputGuardrailResult.successWith(List.of(ImageContent.from("http://example.com/a.png")), false);
+        var assistant = immediateAssistant(
+                StringAssistant.class,
+                immediateBookingTool().toolOutputGuardrails(imageOnly).build());
+
+        assertThatThrownBy(() -> assistant.chat("hello"))
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("contents without text")
+                .hasMessageContaining(Result.class.getName());
+    }
+
+    @Test
+    void another_return_type_fails_when_an_immediate_tool_result_is_rewritten() {
+        ToolOutputGuardrail rewrite = request -> ToolOutputGuardrailResult.successWith("booked <redacted>");
+        var assistant = immediateAssistant(
+                BookingAssistant.class,
+                immediateBookingTool().toolOutputGuardrails(rewrite).build());
+
+        assertThatThrownBy(() -> assistant.chat("hello"))
+                .isInstanceOf(IllegalConfigurationException.class)
+                .hasMessageContaining("a tool output guardrail rewrote the result")
+                .hasMessageContaining("search")
+                .hasMessageContaining(Result.class.getName());
+    }
+
+    @Test
+    void a_result_method_gets_the_rewritten_text_and_no_object_of_an_immediate_tool() {
+        ToolOutputGuardrail rewrite = request -> ToolOutputGuardrailResult.successWith("booked <redacted>");
+
+        var result = immediateAssistant(
+                        Assistant.class,
+                        immediateBookingTool().toolOutputGuardrails(rewrite).build())
+                .chat("hello");
+
+        assertThat(result.toolExecutions())
+                .singleElement()
+                .returns("booked <redacted>", ToolExecution::result)
+                .returns(null, ToolExecution::resultObject)
+                .returns(true, ToolExecution::isResultRewritten);
+    }
+
     // ---------- tool search ----------
 
     @Test
-    void the_built_in_tool_search_tool_is_not_guarded() {
+    void the_built_in_tool_search_tool_is_guarded_by_the_global_guardrails() {
         var calls = new ArrayList<String>();
         ToolInputGuardrail global = request -> {
             calls.add(request.toolName());
@@ -1019,7 +1163,38 @@ class ToolGuardrailExecutionTest {
                 services -> services.toolSearchStrategy(strategy).toolInputGuardrails(global));
 
         assertThat(run.tool.receivedArguments).containsExactly(ORIGINAL_ARGUMENTS);
-        assertThat(calls).containsExactly("search");
+        // the output of the tool search tool carries tool descriptions, which can carry an injection
+        assertThat(calls).containsExactly(searchTool.name(), "search");
+    }
+
+    @Test
+    void a_global_output_guardrail_checks_the_output_of_the_built_in_tool_search_tool() {
+        var strategy = new SimpleToolSearchStrategy();
+        var searchTool =
+                strategy.getToolSearchTools(InvocationContext.builder().build()).get(0);
+        ToolOutputGuardrail sanitizing = request -> request.toolName().equals(searchTool.name())
+                ? ToolOutputGuardrailResult.successWith("sanitized tool list")
+                : ToolOutputGuardrailResult.success();
+        var model = MockChatModel.thatResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name(searchTool.name())
+                        .arguments("{\"terms\":[\"search\"]}")
+                        .build()),
+                AiMessage.from("done"));
+
+        run(
+                AiServiceTool.builder(),
+                false,
+                model,
+                services -> services.toolSearchStrategy(strategy).toolOutputGuardrails(sanitizing));
+
+        assertThat(model.requests().get(1).messages())
+                .filteredOn(ToolExecutionResultMessage.class::isInstance)
+                .map(ToolExecutionResultMessage.class::cast)
+                .singleElement()
+                .extracting(ToolExecutionResultMessage::text)
+                .isEqualTo("sanitized tool list");
     }
 
     /** Thrown by an arguments error handler, so a test can tell that the handler decided the failure. */

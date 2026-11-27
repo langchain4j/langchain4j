@@ -42,10 +42,12 @@ class DefaultToolGuardrailServiceTest {
             .build();
     private static final ToolInputGuardrailRequest INPUT_REQUEST = ToolInputGuardrailRequest.builder()
             .toolExecutionRequest(CALL)
+            .toolSpecification(ToolSpecification.builder().name("search").build())
             .requestParams(PARAMS)
             .build();
     private static final ToolOutputGuardrailRequest OUTPUT_REQUEST = ToolOutputGuardrailRequest.builder()
             .toolExecutionRequest(CALL)
+            .toolSpecification(ToolSpecification.builder().name("search").build())
             .requestParams(PARAMS)
             .resultContents(List.of(TextContent.from("found")))
             .isError(false)

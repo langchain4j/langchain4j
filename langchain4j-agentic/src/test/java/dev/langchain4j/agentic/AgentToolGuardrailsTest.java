@@ -22,8 +22,8 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.AiServiceContext;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.V;
+import dev.langchain4j.service.guardrail.ToolGuardrailService;
 import dev.langchain4j.service.guardrail.ToolOutputGuardrails;
-import dev.langchain4j.service.tool.ToolGuardrailBinding;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -90,12 +90,16 @@ class AgentToolGuardrailsTest {
         };
     }
 
-    private static ToolGuardrailBinding bindingOfLookup(AiServiceContext context) {
+    /** The lookup tool bound to the tool guardrail service of the agent. */
+    private record Binding(ToolGuardrailService service, ToolGuardrailService.ToolKey key) {}
+
+    private static Binding bindingOfLookup(AiServiceContext context) {
         var message = UserMessage.from("hi");
-        return context.toolService
-                .createContext(InvocationContext.builder().build(), message, List.of(message))
-                .toolGuardrailBindings()
-                .get("lookup");
+        var toolServiceContext =
+                context.toolService.createContext(InvocationContext.builder().build(), message, List.of(message));
+        return new Binding(
+                toolServiceContext.toolGuardrailService().orElseThrow(),
+                toolServiceContext.toolGuardrailKeys().get("lookup"));
     }
 
     private static GuardrailRequestParams requestParams() {
@@ -125,6 +129,8 @@ class AgentToolGuardrailsTest {
                         binding.key(),
                         ToolInputGuardrailRequest.builder()
                                 .toolExecutionRequest(lookupRequest())
+                                .toolSpecification(binding.key().toolSpecification())
+                                .toolSource(binding.key().toolSource())
                                 .requestParams(requestParams())
                                 .build());
         return List.copyOf(RAN);
@@ -141,6 +147,8 @@ class AgentToolGuardrailsTest {
                         binding.key(),
                         ToolOutputGuardrailRequest.builder()
                                 .toolExecutionRequest(lookupRequest())
+                                .toolSpecification(binding.key().toolSpecification())
+                                .toolSource(binding.key().toolSource())
                                 .requestParams(requestParams())
                                 .resultContents(List.of(TextContent.from("found")))
                                 .isError(false)

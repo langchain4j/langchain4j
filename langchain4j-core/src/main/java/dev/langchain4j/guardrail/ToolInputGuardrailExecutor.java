@@ -69,7 +69,7 @@ public non-sealed class ToolInputGuardrailExecutor
      * failure: it is thrown as is, so that the caller handles it like an arguments error of the tool.
      * <p>
      *     A guardrail that rewrites the arguments to something that is not a JSON object is a fatal failure: the
-     *     rewritten arguments would reach the tool and be stored in the chat memory, where model providers parse them.
+     *     rewritten arguments would reach the tool, which parses them as a JSON object.
      * </p>
      */
     @Override
@@ -136,7 +136,7 @@ public non-sealed class ToolInputGuardrailExecutor
 
     /**
      * Whether the text is one JSON object and nothing else: the JSON parser stops after the first value, so a rewrite
-     * like {@code {"a":1} {"b":2}} would otherwise pass, and be stored and sent to the LLM as it is.
+     * like {@code {"a":1} {"b":2}} would otherwise pass, and reach the tool as it is.
      */
     private static boolean endsAfterFirstObject(String text) {
         var trimmed = text.strip();

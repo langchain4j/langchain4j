@@ -12,6 +12,10 @@ import dev.langchain4j.observability.event.DefaultToolInputGuardrailExecutedEven
  *     It is distinct from {@link InputGuardrailExecutedEvent}: a listener for AI service input guardrails
  *     is not notified of tool input guardrails.
  * </p>
+ * <p>
+ *     Its request holds the arguments as they reached the guardrail, before its rewrite, so it can contain data the
+ *     guardrail redacts. A listener that exports events to an external system should drop or redact it.
+ * </p>
  *
  * @since 1.25.0
  */

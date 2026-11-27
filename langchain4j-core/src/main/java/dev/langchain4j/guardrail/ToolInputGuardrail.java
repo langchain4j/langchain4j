@@ -2,6 +2,7 @@ package dev.langchain4j.guardrail;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.guardrail.ToolInputGuardrailResult.Failure;
+import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -49,20 +50,47 @@ public interface ToolInputGuardrail extends Guardrail<ToolInputGuardrailRequest,
      * Produces a successful result with rewritten tool arguments, which replace the original ones for the
      * following guardrails and for the tool execution.
      * <p>
-     *     The rewritten call also replaces the tool call of the LLM in the chat memory, so it is sent to the LLM in
-     *     the following requests. Pass values that only the tool needs through {@code InvocationParameters}, not
-     *     through the arguments.
+     *     The chat memory keeps the tool call as the LLM made it: the rewrite changes what the tool runs with and what
+     *     the events report, not the history. The tool result that the LLM gets starts with a note that the arguments
+     *     were changed (see {@link dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig}). Pass values that only
+     *     the tool needs through {@code InvocationParameters}, not through the arguments.
      * </p>
      *
      * @param rewrittenArguments
      *            the new arguments of the tool, as a JSON object. {@code null} means no rewrite (a plain
      *            success). Anything else that is not a JSON object (malformed JSON, an array, a number) is a fatal
      *            failure of the guardrail: it aborts the invocation with a
-     *            {@link ToolInputGuardrailException}, before the tool runs and before the arguments are stored.
+     *            {@link ToolInputGuardrailException}, before the tool runs.
      * @return the result of a successful tool input guardrail validation carrying the rewritten arguments
      */
     default ToolInputGuardrailResult successWith(@Nullable String rewrittenArguments) {
         return ToolInputGuardrailResult.successWith(rewrittenArguments);
+    }
+
+    /**
+     * Produces a successful result with rewritten tool arguments, given as a map of argument names to values, which
+     * replace the original ones for the following guardrails and for the tool execution. The map is serialized to a
+     * JSON object with the same JSON codec that {@link ToolInputGuardrailRequest#argumentsAsMap()} parses the
+     * arguments with, so a guardrail can read the arguments as a map, change them and return the map, without
+     * escaping anything by hand:
+     * <pre>{@code
+     * var arguments = new HashMap<>(request.argumentsAsMap());
+     * arguments.put("query", sanitize((String) arguments.get("query")));
+     * return successWithArguments(arguments);
+     * }</pre>
+     * <p>
+     *     The chat memory keeps the tool call as the LLM made it, as with {@link #successWith(String)}. Unlike
+     *     {@link #successWith(String)}, a {@code null} map is rejected: a guardrail that redacts the arguments and
+     *     returns {@code null} by mistake must not let the original arguments through. A {@code null} map, or a value
+     *     that has no JSON representation, is a fatal failure of the guardrail: it aborts the invocation with a
+     *     {@link ToolInputGuardrailException}, before the tool runs.
+     * </p>
+     *
+     * @param rewrittenArguments the new arguments of the tool, by name; must not be {@code null}
+     * @return the result of a successful tool input guardrail validation carrying the rewritten arguments
+     */
+    default ToolInputGuardrailResult successWithArguments(Map<String, ?> rewrittenArguments) {
+        return ToolInputGuardrailResult.successWithArguments(rewrittenArguments);
     }
 
     /**

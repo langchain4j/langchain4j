@@ -9,34 +9,22 @@ import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.guardrail.ToolGuardrailService;
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
-import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.junit.jupiter.api.parallel.Isolated;
 
 /**
  * The deprecated {@link ToolService} methods that run a tool from its executors only: they apply the tool guardrails of
- * the tools registered on the service, and skip the ones of the other tools, saying so once.
- * <p>
- * These tests capture {@link System#err} (the default tinylog destination for WARN), so this class runs
- * {@link Isolated} and single-threaded.
+ * the tools registered on the service, and the guardrails that apply to every tool to the other tools (fail closed),
+ * whose own guardrails are not known there.
  */
-@Isolated
-@Execution(ExecutionMode.SAME_THREAD)
 @SuppressWarnings("deprecation")
 class ToolServiceDeprecatedExecutionTest {
 
     interface Assistant {}
 
-    private static final String WARNING = "without its tool guardrails";
     private static final InvocationContext CONTEXT = InvocationContext.builder().build();
     private static final Executor SAME_THREAD = Runnable::run;
 
@@ -96,95 +84,67 @@ class ToolServiceDeprecatedExecutionTest {
     }
 
     @Test
-    void execute_tool_applies_the_guardrails_of_a_registered_tool_without_warning() {
+    void execute_tool_applies_the_guardrails_of_a_registered_tool() {
         var toolService = toolService(null, registeredTool("guarded", REJECTING));
         var executors = Map.of("guarded", tool());
 
-        var log =
-                captureStdErr(() -> assertThat(toolService.executeTool(CONTEXT, executors, call("guarded"), null, null))
-                        .returns(true, ToolExecutionResult::isError)
-                        .returns("rejected", ToolExecutionResult::resultText));
-
-        assertThat(log).doesNotContain(WARNING);
+        assertThat(toolService.executeTool(CONTEXT, executors, call("guarded"), null, null))
+                .returns(true, ToolExecutionResult::isError)
+                .returns("rejected", ToolExecutionResult::resultText);
     }
 
     @Test
-    void start_tool_applies_the_guardrails_of_a_registered_tool_without_warning() {
+    void start_tool_applies_the_guardrails_of_a_registered_tool() {
         var toolService = toolService(REJECTING, registeredTool("guarded"));
         var executors = Map.of("guarded", tool());
 
-        var log = captureStdErr(() -> assertThat(toolService
+        assertThat(toolService
                         .startTool(call("guarded"), executors, CONTEXT, null, null, SAME_THREAD)
                         .join())
                 .returns(true, ToolExecutionResult::isError)
-                .returns("rejected", ToolExecutionResult::resultText));
-
-        assertThat(log).doesNotContain(WARNING);
+                .returns("rejected", ToolExecutionResult::resultText);
     }
 
     @Test
-    void execute_tool_skips_the_guardrails_of_a_tool_that_is_not_registered_and_warns_once() {
+    void execute_tool_applies_the_global_guardrails_to_a_tool_that_is_not_registered() {
         var toolService = toolService(REJECTING);
         // a tool that is not registered, like the tool of a ToolProvider
         var executors = Map.of("provided", tool());
 
-        var log = captureStdErr(() -> List.of(
-                toolService.executeTool(CONTEXT, executors, call("provided"), null, null),
-                toolService.executeTool(CONTEXT, executors, call("provided"), null, null)));
-
         assertThat(toolService.executeTool(CONTEXT, executors, call("provided"), null, null))
-                .returns(false, ToolExecutionResult::isError)
-                .returns("raw result", ToolExecutionResult::resultText);
-        assertThat(occurrences(log, WARNING)).isEqualTo(1);
-        assertThat(log).contains("WARN").contains("executeTool").contains("'provided'");
+                .returns(true, ToolExecutionResult::isError)
+                .returns("rejected", ToolExecutionResult::resultText);
     }
 
     @Test
-    void start_tool_skips_the_guardrails_of_a_tool_that_is_not_registered_and_warns() {
+    void start_tool_applies_the_global_guardrails_to_a_tool_that_is_not_registered() {
         var toolService = toolService(REJECTING);
         var executors = Map.of("provided", tool());
 
-        var log = captureStdErr(() -> assertThat(toolService
+        assertThat(toolService
                         .startTool(call("provided"), executors, CONTEXT, null, null, SAME_THREAD)
                         .join())
-                .returns("raw result", ToolExecutionResult::resultText));
-
-        assertThat(log).contains("WARN").contains("startTool").contains("'provided'");
+                .returns(true, ToolExecutionResult::isError)
+                .returns("rejected", ToolExecutionResult::resultText);
     }
 
     @Test
-    void no_warning_for_a_tool_without_guardrails() {
+    void a_tool_without_guardrails_runs_as_is() {
         var toolService = toolService(null, registeredTool("plain"));
         var executors = Map.of("plain", tool());
 
-        var log = captureStdErr(() -> toolService.executeTool(CONTEXT, executors, call("plain"), null, null));
-
-        assertThat(log).doesNotContain(WARNING);
+        assertThat(toolService.executeTool(CONTEXT, executors, call("plain"), null, null))
+                .returns(false, ToolExecutionResult::isError)
+                .returns("raw result", ToolExecutionResult::resultText);
     }
 
     @Test
-    void no_warning_without_a_tool_guardrail_service() {
+    void without_a_tool_guardrail_service_no_tool_guardrails_run() {
         var toolService = new ToolService();
         var executors = Map.of("plain", tool());
 
-        var log = captureStdErr(() -> toolService.executeTool(CONTEXT, executors, call("plain"), null, null));
-
-        assertThat(log).doesNotContain(WARNING);
-    }
-
-    private static int occurrences(String text, String part) {
-        return text.split(part, -1).length - 1;
-    }
-
-    private static String captureStdErr(Supplier<?> action) {
-        PrintStream originalErr = System.err;
-        ByteArrayOutputStream captured = new ByteArrayOutputStream();
-        System.setErr(new PrintStream(captured, true, StandardCharsets.UTF_8));
-        try {
-            action.get();
-        } finally {
-            System.setErr(originalErr);
-        }
-        return captured.toString(StandardCharsets.UTF_8);
+        assertThat(toolService.executeTool(CONTEXT, executors, call("plain"), null, null))
+                .returns(false, ToolExecutionResult::isError)
+                .returns("raw result", ToolExecutionResult::resultText);
     }
 }

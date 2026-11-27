@@ -108,7 +108,10 @@ public sealed interface ToolSource permits ToolSource.Local, ToolSource.Mcp, Too
     }
 
     /**
-     * Creates a source for a tool registered programmatically, without an explicit source.
+     * Creates a source for a tool registered programmatically, without an explicit source. LangChain4j AI Services
+     * use it for a tool registered without a source whose executor does not run a local method (a tool backed by
+     * their default executor of {@code @Tool} methods is {@linkplain #local(Method) local}, however it is
+     * registered).
      *
      * @return the source.
      */

@@ -305,7 +305,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                             .handle((ignored, ignoredError) -> null)
                             .thenCompose(ignored -> startedRound
                                     .round()
-                                    .settleAsync(
+                                    .completeAsync(
                                             new ArrayList<>(startedRound.tools().keySet())))
                             .whenComplete((outcome, error) -> compensateCanceledRound(outcome));
                 } else {
@@ -647,7 +647,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                     calls.add(toolRequest);
                 }
             }
-            return startedRound.round().completeAsync(aiMessage, calls, getMemory(), null);
+            return startedRound.round().completeAsync(calls);
         }
 
         private void afterToolsExecuted(

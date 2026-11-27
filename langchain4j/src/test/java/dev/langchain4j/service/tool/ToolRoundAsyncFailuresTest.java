@@ -2,10 +2,8 @@ package dev.langchain4j.service.tool;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.invocation.InvocationContext;
 import java.time.Duration;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -30,17 +28,8 @@ class ToolRoundAsyncFailuresTest {
     }
 
     @Test
-    void settle_async_fails_its_future_for_null_calls() {
-        assertThat(round().settleAsync(null))
-                .failsWithin(Duration.ofSeconds(5))
-                .withThrowableThat()
-                .havingRootCause()
-                .isInstanceOf(NullPointerException.class);
-    }
-
-    @Test
     void complete_async_fails_its_future_for_null_calls() {
-        assertThat(round().completeAsync(AiMessage.from("hi"), null, null, List.of()))
+        assertThat(round().completeAsync(null))
                 .failsWithin(Duration.ofSeconds(5))
                 .withThrowableThat()
                 .havingRootCause()

@@ -2,12 +2,8 @@
 
 **Type:** New Code (public API, `langchain4j` + `langchain4j-agentic`)
 
-> **Status (2026-11-17): reworked on top of 06a, uncommitted, awaiting review** (see PLAN.md → Task Outcomes). Earlier status (2026-11-16): implemented, then parked. The work is in `git stash`
-> (`stash@{0}`, message "task-06b: ..."), taken before task 06a so the 06a refactoring could be reviewed on its own.
-> Order: do task 06a first, then `git stash pop` and rework this task on top of it (see "Adjustments after the split"
-> at the end). Before popping, discard the four spotless import-order fixes in `langchain4j-core` that are in the
-> working tree (`git checkout -- langchain4j-core`), because the stash contains the same fixes. This task **depends on
-> task 06a**.
+> **Status:** reworked on top of 06a (2026-11-17), reviewed and committed; see PLAN.md → Task Outcomes. This task
+> **depends on task 06a**.
 >
 > **Before you start:** pull the latest from upstream `main` and check the in-flight PRs in PLAN.md →
 > "Upstream Dependencies" (Execution Step 2). Most relevant to this task: [#7088](https://github.com/langchain4j/langchain4j/pull/7088) (guardrail precedence Javadoc, which this task mirrors; it replaced our [#7109](https://github.com/langchain4j/langchain4j/pull/7109)).

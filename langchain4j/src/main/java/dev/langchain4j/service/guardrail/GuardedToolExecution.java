@@ -68,6 +68,19 @@ public sealed interface GuardedToolExecution permits DefaultGuardedToolExecution
     Optional<ToolGuardrailStage> failedStage();
 
     /**
+     * The text that the LLM gets for a text of the result of this call: the text as is, or, when an input guardrail
+     * changed the value of an argument of the LLM and the tool ran with it, the text with the arguments rewrite note of
+     * the
+     * {@link dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig} of the service (the chat memory keeps the
+     * call as the LLM made it, so the note tells the LLM what ran). Apply it to the text of every result message of
+     * the call that the LLM gets, also to the text that replaces the result when the call is rolled back.
+     *
+     * @param resultText The text of a result of this call. Must not be null.
+     * @return The text the LLM gets.
+     */
+    String resultTextForLlm(String resultText);
+
+    /**
      * Builds a {@link GuardedToolExecution}.
      *
      * @since 1.25.0
@@ -77,6 +90,8 @@ public sealed interface GuardedToolExecution permits DefaultGuardedToolExecution
         ToolExecutionRequest request;
         ToolExecutionResult result;
         ToolGuardrailStage failedStage;
+        String argumentsRewriteNoteTemplate;
+        String changedArguments;
 
         private Builder() {}
 
@@ -106,6 +121,21 @@ public sealed interface GuardedToolExecution permits DefaultGuardedToolExecution
          */
         public Builder failedStage(@Nullable ToolGuardrailStage failedStage) {
             this.failedStage = failedStage;
+            return this;
+        }
+
+        /**
+         * Sets the arguments rewrite note, when an input guardrail changed arguments of the LLM and the tool ran. Not
+         * set by default.
+         *
+         * @param template         The template of the note.
+         * @param changedArguments The arguments of the LLM whose values changed, with their new values, as a JSON
+         *                         object.
+         * @return This builder.
+         */
+        Builder argumentsRewriteNote(String template, String changedArguments) {
+            this.argumentsRewriteNoteTemplate = template;
+            this.changedArguments = changedArguments;
             return this;
         }
 

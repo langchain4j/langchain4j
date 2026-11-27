@@ -59,16 +59,15 @@ class ToolGuardrailReturnBehaviorTests extends BaseGuardrailTests {
     }
 
     @Test
-    void a_rewritten_immediate_tool_has_no_object_to_return_so_a_plain_return_type_gets_null() {
+    void a_rewritten_immediate_tool_returns_the_guarded_text_to_a_string_method() {
         // without guardrails, the AI service returns the object the @Tool method returned
         assertThat(plainAssistant(services -> {}).chat(TOPIC)).isEqualTo("secret");
 
-        // a rewrite drops that object, so the tool has none, like a programmatic tool, and the AI service returns null;
-        // Result<String> is the return type that gets the guarded contents
+        // a rewrite drops that object, which would bypass the rewrite, so a String method gets the guarded text
         assertThat(plainAssistant(services -> services.toolOutputGuardrails(
                                 output(request -> ToolOutputGuardrailResult.successWith("[removed]"))))
                         .chat(TOPIC))
-                .isNull();
+                .isEqualTo("[removed]");
     }
 
     @Test

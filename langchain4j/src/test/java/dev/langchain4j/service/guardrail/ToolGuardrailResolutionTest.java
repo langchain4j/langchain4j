@@ -26,12 +26,13 @@ import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
 import dev.langchain4j.service.tool.ToolExecutor;
-import dev.langchain4j.service.tool.ToolGuardrailBinding;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.service.tool.ToolProviderRequest;
 import dev.langchain4j.service.tool.ToolProviderResult;
 import dev.langchain4j.service.tool.ToolService;
 import dev.langchain4j.service.tool.ToolServiceContext;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -229,6 +230,172 @@ class ToolGuardrailResolutionTest {
         }
     }
 
+    // --- the override chain and the runtime class ------------------------------------------------
+
+    public interface SearchApi {
+        @Tool
+        String search(String query);
+    }
+
+    public static class GuardedSearchImplementation implements SearchApi {
+        @Override
+        @ToolInputGuardrails(InMethod.class)
+        public String search(String query) {
+            return "found";
+        }
+    }
+
+    public interface GuardedSearchApi {
+        @Tool
+        @ToolInputGuardrails(InMethod.class)
+        String search(String query);
+    }
+
+    public static class PlainSearchImplementation implements GuardedSearchApi {
+        @Override
+        public String search(String query) {
+            return "found";
+        }
+    }
+
+    public static class ParentTool {
+        @Tool
+        @ToolOutputGuardrails(OutMethod.class)
+        public String lookup() {
+            return "parent";
+        }
+    }
+
+    public static class ChildReplacesTheMethodGuardrails extends ParentTool {
+        @Override
+        @ToolOutputGuardrails(OutOfTool.class)
+        public String lookup() {
+            return "child";
+        }
+    }
+
+    public static class ChildInheritsTheMethodGuardrails extends ParentTool {
+        @Override
+        public String lookup() {
+            return "child";
+        }
+    }
+
+    @ToolInputGuardrails(InClass.class)
+    public static class ParentWithClassGuardrails {
+        @Tool
+        public String lookup() {
+            return "parent";
+        }
+    }
+
+    @ToolInputGuardrails({})
+    public static class ChildRemovesTheClassGuardrails extends ParentWithClassGuardrails {}
+
+    @ToolOutputGuardrails(OutClass.class)
+    public static class AnnotatedSubclassOfPlain extends Plain {}
+
+    public interface LookupApi {
+        String lookup();
+    }
+
+    @ToolOutputGuardrails(OutClass.class)
+    public static class LookupImplementation implements LookupApi {
+        @Tool
+        @Override
+        public String lookup() {
+            return "found";
+        }
+    }
+
+    public interface Finder<T> {
+        @Tool
+        String find(T query);
+    }
+
+    public static class StringFinder implements Finder<String> {
+        @Override
+        @ToolInputGuardrails(InMethod.class)
+        public String find(String query) {
+            return "found";
+        }
+    }
+
+    /** A tool registered through {@code tools(Map)}, as a framework does, running {@code method} on {@code target}. */
+    private static Setup mapTool(Object target, Method method) {
+        var setup = new Setup();
+        setup.toolService()
+                .tools(Map.of(
+                        ToolSpecification.builder().name("tool").build(),
+                        new DefaultToolExecutor(target, method, method)));
+        return setup;
+    }
+
+    @Test
+    void a_guardrail_on_the_implementation_applies_when_tool_is_on_the_interface() throws Exception {
+        var setup = mapTool(new GuardedSearchImplementation(), SearchApi.class.getMethod("search", String.class));
+
+        assertThat(setup.inputChain("tool")).containsExactly(InMethod.class);
+    }
+
+    @Test
+    void a_guardrail_on_the_interface_applies_to_an_implementation_without_one() throws Exception {
+        var setup = mapTool(
+                new PlainSearchImplementation(), PlainSearchImplementation.class.getMethod("search", String.class));
+
+        assertThat(setup.inputChain("tool")).containsExactly(InMethod.class);
+    }
+
+    @Test
+    void the_nearest_method_annotation_in_the_override_chain_wins() throws Exception {
+        var replacing = mapTool(new ChildReplacesTheMethodGuardrails(), ParentTool.class.getMethod("lookup"));
+        var inheriting = mapTool(new ChildInheritsTheMethodGuardrails(), ParentTool.class.getMethod("lookup"));
+
+        assertThat(replacing.outputChain("tool")).containsExactly(OutOfTool.class);
+        assertThat(inheriting.outputChain("tool")).containsExactly(OutMethod.class);
+    }
+
+    @Test
+    void an_empty_class_annotation_on_a_subclass_removes_the_guardrails_of_its_parent() throws Exception {
+        var setup =
+                mapTool(new ChildRemovesTheClassGuardrails(), ParentWithClassGuardrails.class.getMethod("lookup"));
+
+        assertThat(setup.inputChain("tool")).isEmpty();
+    }
+
+    @Test
+    void a_map_tool_gets_the_class_annotations_of_the_runtime_class_of_its_target() throws Exception {
+        var setup = mapTool(new AnnotatedSubclassOfPlain(), Plain.class.getDeclaredMethod("plain"));
+
+        assertThat(setup.outputChain("tool")).containsExactly(OutClass.class);
+    }
+
+    @Test
+    void a_jdk_proxy_target_gets_the_class_annotations_of_the_declaring_class_of_the_method() throws Exception {
+        var implementation = new LookupImplementation();
+        var proxy = (LookupApi) Proxy.newProxyInstance(
+                LookupApi.class.getClassLoader(),
+                new Class<?>[] {LookupApi.class},
+                (ignored, method, arguments) -> method.invoke(implementation, arguments));
+        var setup = new Setup();
+        setup.toolService()
+                .tools(Map.of(
+                        ToolSpecification.builder().name("tool").build(),
+                        new DefaultToolExecutor(
+                                proxy,
+                                LookupImplementation.class.getMethod("lookup"),
+                                LookupApi.class.getMethod("lookup"))));
+
+        assertThat(setup.outputChain("tool")).containsExactly(OutClass.class);
+    }
+
+    @Test
+    void a_guardrail_on_the_implementation_of_a_generic_interface_method_applies() throws Exception {
+        var setup = mapTool(new StringFinder(), Finder.class.getMethod("find", Object.class));
+
+        assertThat(setup.inputChain("tool")).containsExactly(InMethod.class);
+    }
+
     // --- helpers --------------------------------------------------------------------------------
 
     interface Assistant {}
@@ -268,8 +435,11 @@ class ToolGuardrailResolutionTest {
             return this.toolService.createContext(CONTEXT, USER_MESSAGE, List.of(USER_MESSAGE));
         }
 
-        ToolGuardrailBinding binding(String toolName) {
-            return context().toolGuardrailBindings().get(toolName);
+        Binding binding(String toolName) {
+            var context = context();
+            return new Binding(
+                    context.toolGuardrailService().orElseThrow(),
+                    context.toolGuardrailKeys().get(toolName));
         }
 
         Optional<ToolInputGuardrailExecutor> inputExecutor(String toolName) {
@@ -299,17 +469,32 @@ class ToolGuardrailResolutionTest {
         }
     }
 
+    /** A tool bound to the tool guardrail service of the context. */
+    private record Binding(ToolGuardrailService service, ToolGuardrailService.ToolKey key) {}
+
     private static Setup setupWith(Object... tools) {
         return new Setup().tools(tools);
     }
 
+    /** A request for the tool of the key, built from the key, as a framework does. */
+    private static ToolOutputGuardrailRequest outputRequest(ToolGuardrailService.ToolKey key, String result) {
+        return outputRequest(key.toolSpecification(), key.toolSource(), result);
+    }
+
     private static ToolOutputGuardrailRequest outputRequest(String toolName, String result) {
+        return outputRequest(ToolSpecification.builder().name(toolName).build(), ToolSource.programmatic(), result);
+    }
+
+    private static ToolOutputGuardrailRequest outputRequest(
+            ToolSpecification specification, ToolSource source, String result) {
         return ToolOutputGuardrailRequest.builder()
                 .toolExecutionRequest(ToolExecutionRequest.builder()
                         .id("1")
-                        .name(toolName)
+                        .name(specification.name())
                         .arguments("{}")
                         .build())
+                .toolSpecification(specification)
+                .toolSource(source)
                 .requestParams(GuardrailRequestParams.builder()
                         .userMessageTemplate("t")
                         .variables(Map.of())
@@ -332,7 +517,7 @@ class ToolGuardrailResolutionTest {
         assertThat(binding.service().hasInputGuardrails(binding.key())).isFalse();
         assertThat(binding.service().hasOutputGuardrails(binding.key())).isFalse();
         assertThat(binding.service()
-                        .executeOutputGuardrails(binding.key(), outputRequest("plain", "result"))
+                        .executeOutputGuardrails(binding.key(), outputRequest(binding.key(), "result"))
                         .isSuccess())
                 .isTrue();
     }
@@ -361,7 +546,7 @@ class ToolGuardrailResolutionTest {
         assertThat(toolService.toolGuardrailService()).isEmpty();
         assertThat(toolService
                         .createContext(CONTEXT, USER_MESSAGE, List.of(USER_MESSAGE))
-                        .toolGuardrailBindings())
+                        .toolGuardrailKeys())
                 .isEmpty();
     }
 
@@ -602,7 +787,7 @@ class ToolGuardrailResolutionTest {
     }
 
     @Test
-    void map_tools_backed_by_a_default_tool_executor_keep_their_method_annotations() throws Exception {
+    void map_tools_backed_by_a_default_tool_executor_keep_their_method_annotations_and_are_local() throws Exception {
         var method = MethodOnly.class.getDeclaredMethod("methodOnly");
         var setup = new Setup();
         setup.toolService()
@@ -612,7 +797,8 @@ class ToolGuardrailResolutionTest {
 
         assertThat(setup.outputChain("fromMap")).containsExactly(OutMethod.class);
         assertThat(setup.inputChain("fromMap")).containsExactly(InMethod.class);
-        assertThat(setup.binding("fromMap").key().toolSource()).isEqualTo(ToolSource.programmatic());
+        // a DefaultToolExecutor runs a local method, however the tool is registered
+        assertThat(setup.binding("fromMap").key().toolSource()).isEqualTo(ToolSource.local(method));
     }
 
     // --- executors ------------------------------------------------------------------------------
@@ -623,7 +809,7 @@ class ToolGuardrailResolutionTest {
         var binding = setup.binding("classOnly");
         var executor = setup.outputExecutor("classOnly").orElseThrow();
 
-        assertThat(setup.binding("classOnly")).isSameAs(binding);
+        assertThat(setup.binding("classOnly").key()).isSameAs(binding.key());
         assertThat(setup.outputExecutor("classOnly")).containsSame(executor);
     }
 
@@ -645,7 +831,7 @@ class ToolGuardrailResolutionTest {
         setup.guardrails().outputGuardrails(new OutGlobal());
         var binding = setup.binding("classOnly");
 
-        var result = binding.service().executeOutputGuardrails(binding.key(), outputRequest("classOnly", "result"));
+        var result = binding.service().executeOutputGuardrails(binding.key(), outputRequest(binding.key(), "result"));
 
         assertThat(SEEN_BY_CLASS_LEVEL.get()).isEqualTo("result[global]");
         assertThat(result.successfulText()).isEqualTo("result[global]");
@@ -657,10 +843,10 @@ class ToolGuardrailResolutionTest {
         setup.guardrails().outputGuardrails(new OutRejecting());
         var binding = setup.binding("plain");
 
-        assertThat(binding.service().executeOutputGuardrails(binding.key(), outputRequest("plain", "result")))
+        assertThat(binding.service().executeOutputGuardrails(binding.key(), outputRequest(binding.key(), "result")))
                 .extracting(ToolOutputGuardrailResult::isSuccess, ToolOutputGuardrailResult::failureMessage)
                 .containsExactly(false, "rejected");
-        assertThat(binding.service().executeOutputGuardrailsAsync(binding.key(), outputRequest("plain", "result")))
+        assertThat(binding.service().executeOutputGuardrailsAsync(binding.key(), outputRequest(binding.key(), "result")))
                 .succeedsWithin(Duration.ofSeconds(5))
                 .extracting(ToolOutputGuardrailResult::isSuccess)
                 .isEqualTo(false);

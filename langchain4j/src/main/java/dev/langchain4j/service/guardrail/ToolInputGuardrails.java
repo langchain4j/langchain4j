@@ -21,10 +21,13 @@ import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
  *     or on the class declaring tool methods. On a class, it applies to every tool method of that class.
  * </p>
  * <p>
- *     A class annotation is looked up on the class of the tool, then on its superclasses, then on its interfaces, and
- *     the first one found is used: an annotation on a subclass hides the one of its parents, it does not add to it.
- *     The class annotation is found through the {@link ClassMetadataProviderFactory}, and the method annotation is
- *     read from the tool method.
+ *     Within the class level and within the method level, the nearest declaration wins. A class annotation is looked
+ *     up on the class of the tool, then on its superclasses, then on its interfaces: an annotation on a subclass
+ *     replaces the one of its parents (and an annotation without guardrails removes them). A method annotation is
+ *     looked up on the tool method of that class, then on the methods it overrides in its superclasses, then in its
+ *     interfaces, whichever of them carries {@link Tool @Tool}, so an annotation on an implementation applies when
+ *     {@code @Tool} is on the interface, and the reverse. The class annotation is found through the
+ *     {@link ClassMetadataProviderFactory}, and the method annotation is read from the methods.
  * </p>
  * <p>
  *     A framework that runs its own tool loop, and has no {@code Method} for a tool, does not have these annotations
@@ -32,7 +35,7 @@ import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
  *     the tool with {@link ToolGuardrailService#bind(Class, AiServiceTool) bind(null, tool)}.
  * </p>
  * <p>
- *     Every tool guardrail that applies to a tool runs, as one chain, in this order:
+ *     The levels add up, as one chain, in this order:
  * </p>
  * <ol>
  *     <li>the guardrails set on the {@link AiServices} builder (they apply to every tool)</li>

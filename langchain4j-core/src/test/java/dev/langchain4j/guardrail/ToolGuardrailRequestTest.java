@@ -28,6 +28,8 @@ class ToolGuardrailRequestTest {
             .name("search")
             .arguments("{\"q\":\"a\"}")
             .build();
+    private static final ToolSpecification SPEC =
+            ToolSpecification.builder().name("search").build();
     private static final GuardrailRequestParams PARAMS = GuardrailRequestParams.builder()
             .userMessageTemplate("t")
             .variables(Map.of())
@@ -43,7 +45,10 @@ class ToolGuardrailRequestTest {
     }
 
     private static ToolOutputGuardrailRequest.Builder output() {
-        return ToolOutputGuardrailRequest.builder().toolExecutionRequest(EXEC).requestParams(PARAMS);
+        return ToolOutputGuardrailRequest.builder()
+                .toolExecutionRequest(EXEC)
+                .toolSpecification(SPEC)
+                .requestParams(PARAMS);
     }
 
     @Test
@@ -55,19 +60,31 @@ class ToolGuardrailRequestTest {
                 .hasMessageContaining("toolExecutionRequest");
         assertThatThrownBy(() -> ToolInputGuardrailRequest.builder()
                         .toolExecutionRequest(EXEC)
+                        .toolSpecification(SPEC)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("requestParams");
     }
 
     @Test
+    void input_requires_a_tool_specification() {
+        assertThatThrownBy(() -> ToolInputGuardrailRequest.builder()
+                        .toolExecutionRequest(EXEC)
+                        .requestParams(PARAMS)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("toolSpecification");
+    }
+
+    @Test
     void input_defaults_and_accessors() {
         ToolInputGuardrailRequest request = ToolInputGuardrailRequest.builder()
                 .toolExecutionRequest(EXEC)
+                .toolSpecification(SPEC)
                 .requestParams(PARAMS)
                 .build();
 
-        assertThat(request.toolSpecification()).isNull();
+        assertThat(request.toolSpecification()).isSameAs(SPEC);
         assertThat(request.toolSource()).isSameAs(ToolSource.programmatic());
         assertThat(request.toolName()).isEqualTo("search");
         assertThat(request.arguments()).isEqualTo("{\"q\":\"a\"}");
@@ -79,7 +96,7 @@ class ToolGuardrailRequestTest {
     @Test
     void input_memory_id_is_null_safe_and_reachable() {
         ToolInputGuardrailRequest.Builder builder =
-                ToolInputGuardrailRequest.builder().toolExecutionRequest(EXEC);
+                ToolInputGuardrailRequest.builder().toolExecutionRequest(EXEC).toolSpecification(SPEC);
 
         assertThat(builder.requestParams(paramsWithMemory(null)).build().memoryId())
                 .isNull();
@@ -112,6 +129,7 @@ class ToolGuardrailRequestTest {
     private static ToolInputGuardrailRequest inputWithArguments(String arguments) {
         return ToolInputGuardrailRequest.builder()
                 .toolExecutionRequest(EXEC.toBuilder().arguments(arguments).build())
+                .toolSpecification(SPEC)
                 .requestParams(PARAMS)
                 .build();
     }
@@ -214,6 +232,7 @@ class ToolGuardrailRequestTest {
     void input_to_builder_round_trip() {
         ToolInputGuardrailRequest request = ToolInputGuardrailRequest.builder()
                 .toolExecutionRequest(EXEC)
+                .toolSpecification(SPEC)
                 .toolSource(ToolSource.mcp("s1"))
                 .requestParams(PARAMS)
                 .build();
@@ -223,7 +242,7 @@ class ToolGuardrailRequestTest {
         assertThat(copy.toolExecutionRequest()).isEqualTo(EXEC);
         assertThat(copy.toolSource()).isEqualTo(request.toolSource());
         assertThat(copy.requestParams()).isSameAs(PARAMS);
-        assertThat(copy.toolSpecification()).isNull();
+        assertThat(copy.toolSpecification()).isSameAs(SPEC);
     }
 
     @Test
@@ -235,9 +254,20 @@ class ToolGuardrailRequestTest {
                 .hasMessageContaining("toolExecutionRequest");
         assertThatThrownBy(() -> ToolOutputGuardrailRequest.builder()
                         .toolExecutionRequest(EXEC)
+                        .toolSpecification(SPEC)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("requestParams");
+    }
+
+    @Test
+    void output_requires_a_tool_specification() {
+        assertThatThrownBy(() -> ToolOutputGuardrailRequest.builder()
+                        .toolExecutionRequest(EXEC)
+                        .requestParams(PARAMS)
+                        .build())
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("toolSpecification");
     }
 
     @Test
@@ -248,7 +278,7 @@ class ToolGuardrailRequestTest {
         assertThat(request.isError()).isFalse();
         assertThat(request.text()).isEmpty();
         assertThat(request.toolSource()).isSameAs(ToolSource.programmatic());
-        assertThat(request.toolSpecification()).isNull();
+        assertThat(request.toolSpecification()).isSameAs(SPEC);
         assertThat(request.toolName()).isEqualTo("search");
         assertThat(request.arguments()).isEqualTo("{\"q\":\"a\"}");
         assertThat(request.memoryId()).isNull();
@@ -321,6 +351,7 @@ class ToolGuardrailRequestTest {
     void with_text_rejects_null() {
         assertThatThrownBy(() -> ToolInputGuardrailRequest.builder()
                         .toolExecutionRequest(EXEC)
+                        .toolSpecification(SPEC)
                         .requestParams(PARAMS)
                         .build()
                         .withText(null))

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNoException;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.TextContent;
@@ -181,6 +182,8 @@ class DefaultAiServiceListenerRegistrarTests {
                     .request(ToolInputGuardrailRequest.builder()
                             .toolExecutionRequest(
                                     ToolExecutionRequest.builder().name("tool").build())
+                            .toolSpecification(
+                                    ToolSpecification.builder().name("tool").build())
                             .requestParams(TOOL_GUARDRAIL_REQUEST_PARAMS)
                             .build())
                     .result(ToolInputGuardrailResult.success())
@@ -194,6 +197,8 @@ class DefaultAiServiceListenerRegistrarTests {
                     .request(ToolOutputGuardrailRequest.builder()
                             .toolExecutionRequest(
                                     ToolExecutionRequest.builder().name("tool").build())
+                            .toolSpecification(
+                                    ToolSpecification.builder().name("tool").build())
                             .resultContents(List.of(TextContent.from("result")))
                             .requestParams(TOOL_GUARDRAIL_REQUEST_PARAMS)
                             .build())

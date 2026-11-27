@@ -61,7 +61,7 @@ public interface ChatMemory {
      * The default implementation delegates to {@link #set(Iterable) set(Iterable&lt;ChatMessage&gt;)}.
      * <p>
      * NOTE: AI Services call it to rewrite messages they already stored: the results of tools that were rolled back
-     * (compensation), and the tool calls whose arguments a tool input guardrail rewrote.
+     * (compensation).
      *
      * @param messages The {@link ChatMessage}s to set. Must not be {@code null} or empty.
      * @since 1.11.0
@@ -84,7 +84,7 @@ public interface ChatMemory {
      * memory compaction.
      * <p>
      * NOTE: AI Services call it to rewrite messages they already stored: the results of tools that were rolled back
-     * (compensation), and the tool calls whose arguments a tool input guardrail rewrote.
+     * (compensation).
      *
      * @param messages The {@link ChatMessage}s to set. Must not be {@code null} or empty.
      * @since 1.11.0

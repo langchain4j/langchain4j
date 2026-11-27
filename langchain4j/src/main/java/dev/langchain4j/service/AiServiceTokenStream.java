@@ -35,6 +35,7 @@ import dev.langchain4j.service.tool.ToolExecution;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolServiceContext;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -296,19 +297,27 @@ public class AiServiceTokenStream implements TokenStream {
 
     /**
      * The tool context of a run: a run started again has its own invocation context, which the parameters of its tool
-     * guardrails must carry too.
+     * guardrails must carry too. A context that carries no guardrail parameters (one a framework built) gets the
+     * common guardrail parameters of the invocation, so its tool guardrails see the same context as the AI service
+     * guardrails.
      */
     private ToolServiceContext toolServiceContext(InvocationContext runContext) {
-        return (toolServiceContext != null) && (runContext != invocationContext)
-                ? toolServiceContext
-                        .guardrailRequestParams()
-                        .map(params -> toolServiceContext.toBuilder()
-                                .guardrailRequestParams(params.toBuilder()
-                                        .invocationContext(runContext)
+        return Optional.ofNullable(toolServiceContext)
+                .filter(context -> !(context instanceof ToolServiceContext.Empty))
+                .map(context -> context.guardrailRequestParams()
+                        .map(params -> (runContext == invocationContext)
+                                ? context
+                                : context.toBuilder()
+                                        .guardrailRequestParams(params.toBuilder()
+                                                .invocationContext(runContext)
+                                                .build())
                                         .build())
-                                .build())
-                        .orElse(toolServiceContext)
-                : toolServiceContext;
+                        .or(() -> Optional.ofNullable(guardrailParams(runContext))
+                                .map(params -> context.toBuilder()
+                                        .guardrailRequestParams(params)
+                                        .build()))
+                        .orElse(context))
+                .orElse(toolServiceContext);
     }
 
     private GuardrailRequestParams guardrailParams(InvocationContext runContext) {

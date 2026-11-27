@@ -19,6 +19,9 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.guardrail.ToolOutputGuardrail;
+import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
+import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -903,6 +906,46 @@ class AiServiceStreamingPublisherTest {
             assertThat(e.reason()).isEqualTo(CompensationReason.TOOL_EXECUTION_FAILED);
             assertThat(e.compensationError()).isNull();
         });
+    }
+
+    @Test
+    void tool_compensated_event_in_the_stream_carries_the_result_the_llm_saw_after_the_tool_output_guardrails()
+            throws Exception {
+        CompensatingTools tools = new CompensatingTools();
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
+                AiMessage.builder()
+                        .toolExecutionRequests(List.of(toolRequest("1", "credit"), toolRequest("2", "withdraw")))
+                        .build(),
+                AiMessage.from("unreachable"));
+        ToolOutputGuardrail sanitizing = new ToolOutputGuardrail() {
+
+            @Override
+            public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
+                return request.toolName().equals("credit") ? successWith("credited <redacted>") : success();
+            }
+
+            @Override
+            public CompletableFuture<ToolOutputGuardrailResult> validateAsync(ToolOutputGuardrailRequest request) {
+                return CompletableFuture.completedFuture(validate(request));
+            }
+        };
+
+        EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                .streamingChatModel(model)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                .toolOutputGuardrails(sanitizing)
+                .build();
+
+        Collected<AiServiceStreamingEvent> collected = collect(assistant.chat("transfer"));
+
+        assertThat(tools.calls).contains("credit", "withdraw", "uncredit");
+        assertThat(collected.items)
+                .filteredOn(AiServiceStreamingEvent.ToolCompensatedEvent.class::isInstance)
+                .map(AiServiceStreamingEvent.ToolCompensatedEvent.class::cast)
+                .singleElement()
+                .extracting(event -> event.toolExecution().result())
+                .isEqualTo("credited <redacted>");
     }
 
     @Test

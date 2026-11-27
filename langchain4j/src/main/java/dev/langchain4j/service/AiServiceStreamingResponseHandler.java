@@ -440,7 +440,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 }
             }
 
-            ToolRound.Outcome round = toolRound.complete(aiMessage, calls, getMemory(), List.of());
+            ToolRound.Outcome round = toolRound.complete(calls);
             Map<ToolExecutionRequest, ToolExecutionResult> toolResults = round.results();
 
             ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
@@ -655,7 +655,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 CompletableFuture.allOf(
                                 drained.stream().map(StartedTool::execution).toArray(CompletableFuture<?>[]::new))
                         .handle((ignored, ignoredError) -> null)
-                        .thenCompose(ignored -> toolRound.settleAsync(calls))
+                        .thenCompose(ignored -> toolRound.completeAsync(calls))
                         .whenComplete((round, error) -> runRollback(
                                 () -> compensateOnCancellation(round, (round != null) ? round.requests() : null)));
             }

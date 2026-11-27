@@ -2,6 +2,7 @@ package dev.langchain4j.service.tool;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.observability.api.event.CompensationReason;
+import dev.langchain4j.service.guardrail.GuardedToolExecution;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -26,18 +27,21 @@ import java.util.Optional;
  *                         run or the round has no record of it
  * @param guardrailFailure why the call rolls the other tools back when a tool guardrail turned it into an error result,
  *                         or {@code null}
+ * @param execution        the execution of the call through its tool guardrails, or {@code null} when it has none
+ *                         (the call failed with an exception, or the round has no record of it)
  */
 record ToolRoundCall(
         ToolExecutionRequest request,
         ToolExecutionResult result,
         ToolExecutionResult toolResult,
-        CompensationReason guardrailFailure) {
+        CompensationReason guardrailFailure,
+        GuardedToolExecution execution) {
 
     /**
      * A call whose result is the result of its tool, because no tool guardrail applied to it.
      */
     static ToolRoundCall unguarded(ToolExecutionRequest request, ToolExecutionResult result) {
-        return new ToolRoundCall(request, result, null, null);
+        return new ToolRoundCall(request, result, null, null, null);
     }
 
     /**
@@ -55,6 +59,24 @@ record ToolRoundCall(
      */
     ToolExecutionResult ranResult() {
         return Optional.ofNullable(toolResult).orElse(result);
+    }
+
+    /**
+     * The text that the LLM gets for a text of the result of the call (see
+     * {@link GuardedToolExecution#resultTextForLlm(String)}).
+     */
+    String resultTextForLlm(String resultText) {
+        return Optional.ofNullable(execution)
+                .map(guarded -> guarded.resultTextForLlm(resultText))
+                .orElse(resultText);
+    }
+
+    /**
+     * Whether a tool output guardrail replaced the result of the tool, which then no longer carries the object the
+     * tool returned.
+     */
+    boolean isResultRewritten() {
+        return (toolResult != null) && (result != toolResult);
     }
 
     /**

@@ -4,9 +4,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+import dev.langchain4j.internal.Json;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -78,6 +80,27 @@ public final class ToolInputGuardrailResult implements GuardrailResult<ToolInput
      */
     public static ToolInputGuardrailResult successWith(@Nullable String rewrittenArguments) {
         return (rewrittenArguments == null) ? success() : new ToolInputGuardrailResult(rewrittenArguments);
+    }
+
+    /**
+     * Produces a successful result with rewritten tool arguments, given as a map of argument names to values. The map
+     * is serialized to a JSON object right away, with the same JSON codec that
+     * {@link ToolInputGuardrailRequest#argumentsAsMap()} parses the arguments with, so quotes and other special
+     * characters in the values need no escaping.
+     * <p>
+     *     Unlike {@link #successWith(String)}, a {@code null} map is rejected: a guardrail that redacts the arguments
+     *     and returns {@code null} by mistake must not let the original arguments through.
+     * </p>
+     *
+     * @param rewrittenArguments the new arguments of the tool, by name; must not be {@code null}
+     * @return a successful result carrying the rewritten arguments
+     * @throws IllegalArgumentException if {@code rewrittenArguments} is {@code null}
+     * @throws RuntimeException if a value has no JSON representation; thrown from a guardrail, it is a fatal failure
+     *         of the guardrail, before the tool runs
+     */
+    public static ToolInputGuardrailResult successWithArguments(Map<String, ?> rewrittenArguments) {
+        ensureNotNull(rewrittenArguments, "rewrittenArguments");
+        return new ToolInputGuardrailResult(Json.toJson(rewrittenArguments));
     }
 
     @Override

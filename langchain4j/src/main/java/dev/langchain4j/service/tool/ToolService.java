@@ -24,6 +24,7 @@ import dev.langchain4j.agent.tool.ToolSource;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
@@ -54,6 +55,7 @@ import dev.langchain4j.service.AiServiceStreamingEvent;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.guardrail.GuardedToolExecution;
 import dev.langchain4j.service.guardrail.ToolGuardrailService;
+import dev.langchain4j.service.guardrail.ToolGuardrailService.ToolKey;
 import dev.langchain4j.service.tool.search.ToolSearchService;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
 import java.lang.reflect.InvocationTargetException;
@@ -71,6 +73,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CancellationException;
@@ -79,11 +82,12 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.BiFunction;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
+import java.util.stream.IntStream;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -128,9 +132,8 @@ public class ToolService {
     private final Map<String, ToolExecutor> toolExecutors = new HashMap<>();
     private final Map<String, ReturnBehavior> returnBehaviors = new HashMap<>();
     private final Map<String, GuardedTool> guardedTools = new HashMap<>();
-    private final Map<String, ToolGuardrailBinding> toolGuardrailBindings = new HashMap<>();
+    private final Map<String, ToolKey> toolGuardrailKeys = new HashMap<>();
     private ToolGuardrailService toolGuardrailService;
-    private final AtomicBoolean skippedToolGuardrailsReported = new AtomicBoolean();
     private final Map<String, BiFunction<ToolExecution, InvocationContext, CompletableFuture<Void>>>
             compensatingExecutors = new HashMap<>();
     private IllegalConfigurationException compensatingToolMisconfiguration;
@@ -143,6 +146,8 @@ public class ToolService {
     private Function<ToolExecutionRequest, ToolExecutionResultMessage> toolHallucinationStrategy =
             HallucinatedToolNameStrategy.THROW_EXCEPTION;
     private ToolSearchService toolSearchService;
+    // the tools whose result without text could not carry the note of a rewrite, warned about once per tool
+    private final Set<String> toolsWithoutTextForTheNote = ConcurrentHashMap.newKeySet();
 
     private Consumer<BeforeToolExecution> beforeToolExecution = null;
     private Consumer<ToolExecution> afterToolExecution = null;
@@ -213,7 +218,7 @@ public class ToolService {
      */
     public void toolGuardrailService(ToolGuardrailService toolGuardrailService) {
         this.toolGuardrailService = toolGuardrailService;
-        this.toolGuardrailBindings.clear();
+        this.toolGuardrailKeys.clear();
         this.guardedTools.values().forEach(this::bindGuardedTool);
     }
 
@@ -233,17 +238,17 @@ public class ToolService {
     }
 
     private void bindGuardedTool(GuardedTool guardedTool) {
-        bindTool(this.toolGuardrailService, guardedTool.toolClass(), guardedTool.tool(), this.toolGuardrailBindings);
+        bindTool(this.toolGuardrailService, guardedTool.toolClass(), guardedTool.tool(), this.toolGuardrailKeys);
     }
 
     private static void bindTool(
             ToolGuardrailService toolGuardrailService,
             Class<?> toolClass,
             AiServiceTool tool,
-            Map<String, ToolGuardrailBinding> bindings) {
+            Map<String, ToolKey> keys) {
         Optional.ofNullable(toolGuardrailService)
-                .map(service -> ToolGuardrailBinding.bind(service, toolClass, tool))
-                .ifPresent(binding -> bindings.put(tool.name(), binding));
+                .map(service -> service.bind(toolClass, tool))
+                .ifPresent(key -> keys.put(tool.name(), key));
     }
 
     /**
@@ -668,7 +673,7 @@ public class ToolService {
                     .availableTools(this.toolSpecifications)
                     .toolExecutors(this.toolExecutors)
                     .returnBehaviors(this.returnBehaviors)
-                    .toolGuardrailBindings(this.toolGuardrailBindings)
+                    .toolGuardrailKeys(this.toolGuardrailKeys)
                     .toolGuardrailService(this.toolGuardrailService)
                     .build();
         }
@@ -676,7 +681,7 @@ public class ToolService {
         List<ToolSpecification> toolSpecifications = new ArrayList<>(this.toolSpecifications);
         Map<String, ToolExecutor> toolExecutors = new HashMap<>(this.toolExecutors);
         Map<String, ReturnBehavior> returnBehaviors = new HashMap<>(this.returnBehaviors);
-        Map<String, ToolGuardrailBinding> toolGuardrailBindings = new HashMap<>(this.toolGuardrailBindings);
+        Map<String, ToolKey> toolGuardrailKeys = new HashMap<>(this.toolGuardrailKeys);
         List<ToolProvider> dynamicToolProviders = new ArrayList<>();
 
         ToolProviderRequest toolProviderRequest = ToolProviderRequest.builder()
@@ -694,7 +699,7 @@ public class ToolService {
                 addTools(toolProviderResult.aiServiceTools(), toolExecutors, toolSpecifications, returnBehaviors);
                 toolProviderResult
                         .aiServiceTools()
-                        .forEach(tool -> bindTool(this.toolGuardrailService, null, tool, toolGuardrailBindings));
+                        .forEach(tool -> bindTool(this.toolGuardrailService, null, tool, toolGuardrailKeys));
             }
         });
 
@@ -703,7 +708,7 @@ public class ToolService {
                 .availableTools(toolSpecifications)
                 .toolExecutors(toolExecutors)
                 .returnBehaviors(returnBehaviors)
-                .toolGuardrailBindings(toolGuardrailBindings)
+                .toolGuardrailKeys(toolGuardrailKeys)
                 .toolGuardrailService(this.toolGuardrailService)
                 .dynamicToolProviders(dynamicToolProviders)
                 .build();
@@ -793,7 +798,6 @@ public class ToolService {
                     messages,
                     invocationContext,
                     context.eventListenerRegistrar);
-            messages = round.messages();
 
             List<ToolRoundCall> calls = ToolRound.callsOf(round);
             ToolResultsOutcome outcome =
@@ -1024,9 +1028,14 @@ public class ToolService {
 
                         List<ToolExecutionRequest> calls = aiMessage.toolExecutionRequests();
                         ToolRound round = startTools(calls, toolServiceContext);
-                        return round.completeAsync(aiMessage, calls, chatMemory, accumulator)
+                        return round.completeAsync(calls)
                                 .thenCompose(outcome -> afterToolsExecuted(
-                                        parameters, toolServiceContext, aggregateTokenUsage, roundTripsLeft, outcome));
+                                        parameters,
+                                        toolServiceContext,
+                                        aggregateTokenUsage,
+                                        roundTripsLeft,
+                                        accumulator,
+                                        outcome));
                     })
                     .toCompletableFuture();
         }
@@ -1055,9 +1064,9 @@ public class ToolService {
                 ToolServiceContext toolServiceContext,
                 TokenUsage aggregateTokenUsage,
                 int roundTripsLeft,
+                List<ChatMessage> accumulator,
                 ToolRound.Outcome round) {
 
-            List<ChatMessage> accumulator = round.messages();
             List<ToolRoundCall> calls = ToolRound.callsOf(round);
             Throwable firstError = round.firstError().orElse(null);
 
@@ -1266,12 +1275,13 @@ public class ToolService {
         for (ToolRoundCall call : calls) {
             ToolExecutionRequest request = call.request();
             ToolExecutionResult result = call.result();
-            resultMessages.add(toResultMessage(request, result));
+            resultMessages.add(toResultMessage(call));
 
             ToolExecution toolExecution = ToolExecution.builder()
                     .request(request)
                     .result(result)
                     .invocationContext(invocationContext)
+                    .resultRewritten(call.isResultRewritten())
                     .build();
             toolExecutions.add(toolExecution);
 
@@ -1805,7 +1815,8 @@ public class ToolService {
             AiServiceListenerRegistrar listenerRegistrar,
             @Nullable Consumer<AiServiceStreamingEvent.ToolCompensatedEvent> streamEventEmitter) {
         for (RolledBackTool tool : rolledBack) {
-            ToolExecution toolExecution = tool.compensable().toolExecution();
+            // the result the LLM saw before the rollback replaced it, like the ToolExecutedEvent of the call
+            ToolExecution toolExecution = tool.compensable().guardedExecution();
             if (listenerRegistrar != null) {
                 listenerRegistrar.fireEvent(ToolCompensatedEvent.builder()
                         .invocationContext(invocationContext)
@@ -2082,9 +2093,9 @@ public class ToolService {
     /**
      * The tool result message of each call, in the order of the calls.
      */
-    private static List<ToolExecutionResultMessage> resultMessages(List<ToolRoundCall> calls) {
+    private List<ToolExecutionResultMessage> resultMessages(List<ToolRoundCall> calls) {
         return calls.stream()
-                .map(call -> toResultMessage(call.request(), call.result()))
+                .map(this::toResultMessage)
                 .toList();
     }
 
@@ -2123,15 +2134,21 @@ public class ToolService {
             ToolRoundCall call = calls.get(i);
             ToolExecutionRequest request = call.request();
             ToolExecutionResult result = call.result();
-            // a tool is compensable if it ran successfully, whatever its output guardrails made of the result, and its
-            // compensating action gets the result it ran with
+            // a tool is compensable if it ran successfully, whatever its output guardrails made of the result: its
+            // compensating action gets the result it ran with, and its compensation events the result the LLM saw
             if (call.hasRunSuccessfully() && compensatingExecutors.containsKey(request.name())) {
                 ToolExecution toolExecution = ToolExecution.builder()
                         .request(request)
                         .result(call.ranResult())
                         .invocationContext(invocationContext)
                         .build();
-                compensableExecutions.add(new CompensableToolExecution(toolExecution, resultMessages.get(i)));
+                ToolExecution guardedExecution = ToolExecution.builder()
+                        .request(request)
+                        .result(result)
+                        .invocationContext(invocationContext)
+                        .build();
+                compensableExecutions.add(new CompensableToolExecution(
+                        toolExecution, guardedExecution, resultMessages.get(i), call::resultTextForLlm));
             }
             // the step fails if the LLM sees an error result
             if (result.isError() && (failedStep == null)) {
@@ -2338,7 +2355,8 @@ public class ToolService {
                 : "Tool '" + toolName + "' was executed successfully. It had to be rolled back because " + cause
                         + ", but the rollback failed, so its effects may still be in place";
         return original.toBuilder()
-                .contents(List.of(TextContent.from(text)))
+                .contents(List.of(
+                        TextContent.from(rolledBack.compensable().resultTextForLlm().apply(text))))
                 .isError(true)
                 .build();
     }
@@ -2349,10 +2367,27 @@ public class ToolService {
      */
     private record RolledBackTool(CompensableToolExecution compensable, @Nullable Throwable compensationError) {}
 
-    // Public only so the streaming publisher (a different package) can hold the compensable-execution accumulator
-    // and pass it back to compensateOnCancellationAsync(...); not part of the user-facing API.
+    /**
+     * A compensable tool that ran: the execution its compensating action gets, with the result of the tool as it ran
+     * (before its output guardrails, which may have redacted what the undo needs), and the execution its compensation
+     * events carry, with the result the LLM saw (after the output guardrails, as in the {@link ToolExecutedEvent}).
+     * Without tool guardrails, both carry the same result.
+     * <p>
+     * Public only so the streaming publisher (a different package) can hold the compensable-execution accumulator and
+     * pass it back to compensateOnCancellationAsync(...); not part of the user-facing API.
+     *
+     * @param toolExecution    the execution for the compensating action
+     * @param guardedExecution the execution for the compensation events
+     * @param resultMessage    the result message of the call in the history, which the rollback replaces
+     * @param resultTextForLlm the text the LLM gets for a text of the result of the call, applied to the text that
+     *                         replaces the result (see {@link GuardedToolExecution#resultTextForLlm(String)})
+     */
     @Internal
-    public record CompensableToolExecution(ToolExecution toolExecution, ToolExecutionResultMessage resultMessage) {}
+    public record CompensableToolExecution(
+            ToolExecution toolExecution,
+            ToolExecution guardedExecution,
+            ToolExecutionResultMessage resultMessage,
+            UnaryOperator<String> resultTextForLlm) {}
 
     /**
      * Runs the compensating actions in reverse order, composed into a single future. Each action runs after the
@@ -2444,8 +2479,8 @@ public class ToolService {
         List<ToolSpecification> newAvailableTools = new ArrayList<>(toolServiceContext.availableTools());
         Map<String, ToolExecutor> newToolExecutors = new HashMap<>(toolServiceContext.toolExecutors());
         Map<String, ReturnBehavior> newReturnBehaviors = new HashMap<>(toolServiceContext.returnBehaviors());
-        Map<String, ToolGuardrailBinding> newToolGuardrailBindings =
-                new HashMap<>(toolServiceContext.toolGuardrailBindings());
+        Map<String, ToolKey> newToolGuardrailKeys =
+                new HashMap<>(toolServiceContext.toolGuardrailKeys());
         boolean changed = false;
 
         for (ToolProvider dynamicProvider : dynamicProviders) {
@@ -2461,7 +2496,7 @@ public class ToolService {
                                 toolServiceContext.toolGuardrailService().orElse(null),
                                 null,
                                 tool,
-                                newToolGuardrailBindings);
+                                newToolGuardrailKeys);
                         changed = true;
                     }
                 }
@@ -2477,7 +2512,7 @@ public class ToolService {
                 .availableTools(newAvailableTools)
                 .toolExecutors(newToolExecutors)
                 .returnBehaviors(newReturnBehaviors)
-                .toolGuardrailBindings(newToolGuardrailBindings)
+                .toolGuardrailKeys(newToolGuardrailKeys)
                 .build();
     }
 
@@ -2557,7 +2592,7 @@ public class ToolService {
             round.failBeforeRethrow(toolRequests, error, compensableExecutions, chatMemory, messages);
             throwUnchecked(error);
         });
-        return round.complete(aiMessage, chatMemory, messages);
+        return round.complete(toolRequests);
     }
 
     /**
@@ -2613,10 +2648,11 @@ public class ToolService {
      * concurrent tools overlap each other and the tail of the model stream.
      *
      * <p>
-     * It applies the tool guardrails of the tools registered on this service only. A tool that is not registered, such
-     * as a tool of a {@link ToolProvider}, runs <b>without</b> tool guardrails, and a warning is logged the first time
-     * such a tool has tool guardrails. The tool guardrails get no listener registrar, so their events are not
-     * delivered. When the {@code executor} rejects the tool, the returned future fails with the rejection.
+     * It applies the tool guardrails of the tools registered on this service. A tool that is not registered, such as a
+     * tool of a {@link ToolProvider}, gets the tool guardrails that apply to every tool (and the ones on its method,
+     * for a {@link DefaultToolExecutor}), but not the ones set on its {@link AiServiceTool}, which are not known here.
+     * The tool guardrails get no listener registrar, so their events are not delivered. When the {@code executor}
+     * rejects the tool, the returned future fails with the rejection.
      *
      * @since 1.20.0
      * @deprecated It cannot apply the tool guardrails of every tool. Use {@link #startRound(ToolServiceContext,
@@ -2632,7 +2668,6 @@ public class ToolService {
             Consumer<ToolExecution> externalAfterToolExecution,
             Executor executor) {
         return failOnThrow(() -> {
-            warnIfToolGuardrailsAreSkipped(toolRequest, toolExecutors, "startTool");
             return startTool(
                     registeredToolsRound(toolExecutors, invocationContext),
                     toolRequest,
@@ -2763,6 +2798,9 @@ public class ToolService {
      * Non-blocking counterpart of
      * {@link #internalExecuteTool(InvocationContext, Map, ToolRound, ToolExecutionRequest, Consumer, Consumer)}. The
      * {@code afterToolExecution} callback gets the call as the input guardrails left it, and the guarded result.
+     * <p>
+     * A call that has not started when the invocation is canceled (it may have waited in the queue of the executor)
+     * does not start: it gets neither callback, and the round fails it with a {@link CancellationException}.
      */
     private CompletableFuture<ToolExecutionResult> internalExecuteToolAsync(
             InvocationContext invocationContext,
@@ -2772,7 +2810,9 @@ public class ToolService {
             Consumer<BeforeToolExecution> beforeToolExecution,
             Consumer<ToolExecution> afterToolExecution,
             Executor executor) {
-        if (beforeToolExecution != null) {
+        // checked before the callbacks: once the invocation is canceled, nothing of a call that has not started runs
+        boolean isCanceledBeforeStart = round.isCancelled();
+        if ((beforeToolExecution != null) && !isCanceledBeforeStart) {
             beforeToolExecution.accept(BeforeToolExecution.builder()
                     .request(toolRequest)
                     .invocationContext(invocationContext)
@@ -2782,7 +2822,10 @@ public class ToolService {
         LocalDateTime startTime = LocalDateTime.now();
 
         ToolExecutor toolExecutor = toolExecutors.get(toolRequest.name());
-        CompletableFuture<ToolExecutionResult> futureToolResult = (toolExecutor == null)
+        CompletableFuture<ToolExecutionResult> futureToolResult = isCanceledBeforeStart
+                // the round records the failure of the call (ToolRound#startTool), which starts nothing
+                ? CompletableFuture.failedFuture(new CancellationException())
+                : (toolExecutor == null)
                 // a hallucinated tool name: there is no tool to guard
                 ? round.recordAsync(
                         toolRequest,
@@ -2804,7 +2847,7 @@ public class ToolService {
                                 asyncExecutionErrorHandler()),
                         executor);
 
-        if (afterToolExecution != null) {
+        if ((afterToolExecution != null) && !isCanceledBeforeStart) {
             futureToolResult = futureToolResult.handle((toolResult, error) -> {
                 // Emit the "after" notification for every terminated execution - success OR failure - so an
                 // observer always sees a completed execution balancing the "before" one. A tool that threw (e.g.
@@ -2957,8 +3000,8 @@ public class ToolService {
     }
 
     /**
-     * A call of a round that fails with an exception: the request it was executed with, and its result if it returned,
-     * or its exception if it threw.
+     * A call of a round that fails with an exception: the request it was executed with, its result if it returned, and
+     * its exception if it threw, before or after it was executed. The exception wins.
      */
     private record FailedRoundCall(ToolExecutionRequest request, ToolExecutionResult result, Throwable error) {}
 
@@ -3005,15 +3048,17 @@ public class ToolService {
         if (listenerRegistrar != null) {
             try {
                 for (FailedRoundCall call : calls) {
-                    if (call.result() != null) {
+                    // A call with both a result and an error failed after it was executed (an afterToolExecution
+                    // callback that threw): it ended as a failure, as ToolRound reports it and rolls it back.
+                    if (call.error() != null) {
+                        fireFailedToolExecutedEvent(invocationContext, call.request(), call.error(), listenerRegistrar);
+                    } else if (call.result() != null) {
                         listenerRegistrar.fireEvent(ToolExecutedEvent.builder()
                                 .invocationContext(invocationContext)
                                 .request(call.request())
                                 .resultContents(call.result().resultContents())
                                 .isError(call.result().isError())
                                 .build());
-                    } else if (call.error() != null) {
-                        fireFailedToolExecutedEvent(invocationContext, call.request(), call.error(), listenerRegistrar);
                     }
                 }
             } catch (RuntimeException listenerError) {
@@ -3027,10 +3072,10 @@ public class ToolService {
     /**
      * Executes a tool, blocking.
      * <p>
-     * It applies the tool guardrails of the tools registered on this service only. A tool that is not registered, such
-     * as a tool of a {@link ToolProvider}, runs <b>without</b> tool guardrails, and a warning is logged the first time
-     * such a tool has tool guardrails. The tool guardrails get no listener registrar, so their events are not
-     * delivered.
+     * It applies the tool guardrails of the tools registered on this service. A tool that is not registered, such as a
+     * tool of a {@link ToolProvider}, gets the tool guardrails that apply to every tool (and the ones on its method,
+     * for a {@link DefaultToolExecutor}), but not the ones set on its {@link AiServiceTool}, which are not known here.
+     * The tool guardrails get no listener registrar, so their events are not delivered.
      *
      * @deprecated It cannot apply the tool guardrails of every tool. Use {@link #startRound(ToolServiceContext,
      *             InvocationContext, AiServiceListenerRegistrar)} and {@link ToolRound#executeTool(ToolExecutionRequest,
@@ -3043,7 +3088,6 @@ public class ToolService {
             ToolExecutionRequest toolRequest,
             Consumer<BeforeToolExecution> externalBeforeToolExecution,
             Consumer<ToolExecution> externalAfterToolExecution) {
-        warnIfToolGuardrailsAreSkipped(toolRequest, toolExecutors, "executeTool");
         return executeTool(
                         registeredToolsRound(toolExecutors, invocationContext),
                         invocationContext,
@@ -3056,58 +3100,16 @@ public class ToolService {
 
     /**
      * A round for the deprecated methods that only have the executors: it applies the tool guardrails of the tools
-     * registered on this service, whose bindings are known.
+     * registered on this service, whose keys are known, and binds the other tools on demand.
      */
     private ToolRound registeredToolsRound(
             Map<String, ToolExecutor> toolExecutors, InvocationContext invocationContext) {
         var context = ToolServiceContext.builder()
                 .toolExecutors(toolExecutors)
-                .toolGuardrailBindings(this.toolGuardrailBindings)
+                .toolGuardrailKeys(this.toolGuardrailKeys)
                 .toolGuardrailService(this.toolGuardrailService)
                 .build();
         return ToolRound.start(this, context, invocationContext, null, null);
-    }
-
-    /**
-     * Logs a warning, once per {@code ToolService}, when a deprecated method runs a tool that is not registered on
-     * this service (so its guardrails are not known) and that has tool guardrails.
-     */
-    private void warnIfToolGuardrailsAreSkipped(
-            ToolExecutionRequest toolRequest, Map<String, ToolExecutor> toolExecutors, String method) {
-        if (!skippedToolGuardrailsReported.get()
-                && skipsToolGuardrails(toolRequest.name(), toolExecutors)
-                && skippedToolGuardrailsReported.compareAndSet(false, true)) {
-            log.warn(
-                    "ToolService.{}(..) ran tool '{}' without its tool guardrails, because the tool is not registered "
-                            + "on the ToolService (for example, a tool of a ToolProvider). This method is deprecated: "
-                            + "use ToolService.startRound(..) and the methods of the ToolRound it returns, which apply "
-                            + "them",
-                    method,
-                    toolRequest.name());
-        }
-    }
-
-    /**
-     * Whether a tool that is not registered on this service (a tool of a {@link ToolProvider}, for example) would have
-     * tool guardrails: the global ones, since its own are not known here.
-     */
-    private boolean skipsToolGuardrails(String toolName, Map<String, ToolExecutor> toolExecutors) {
-        return !this.toolGuardrailBindings.containsKey(toolName)
-                && Optional.ofNullable(this.toolGuardrailService)
-                        .flatMap(service -> Optional.ofNullable(toolExecutors)
-                                .map(executors -> executors.get(toolName))
-                                .map(executor -> ToolGuardrailBinding.bind(
-                                        service,
-                                        null,
-                                        AiServiceTool.builder()
-                                                .toolSpecification(ToolSpecification.builder()
-                                                        .name(toolName)
-                                                        .build())
-                                                .toolExecutor(executor)
-                                                .build())))
-                        .map(binding -> binding.service().hasInputGuardrails(binding.key())
-                                || binding.service().hasOutputGuardrails(binding.key()))
-                        .orElse(false);
     }
 
     /**
@@ -3241,6 +3243,47 @@ public class ToolService {
                 .isError(result.isError())
                 .attributes(result.attributes())
                 .build();
+    }
+
+    /**
+     * The tool result message the LLM gets for a call of a round: its result, with the text the tool guardrails give
+     * the LLM for it (see {@link GuardedToolExecution#resultTextForLlm(String)}).
+     */
+    ToolExecutionResultMessage toResultMessage(ToolRoundCall call) {
+        var message = toResultMessage(call.request(), call.result());
+        return message.toBuilder()
+                .contents(withTextForLlm(message.contents(), call.request().name(), call::resultTextForLlm))
+                .build();
+    }
+
+    /**
+     * The contents, with {@code textForLlm} applied to the first text content. A note goes into the text, not into a
+     * content of its own: some providers (the OpenAI Chat Completions API) reject a tool result with more than one
+     * content. Contents without text are kept as they are: when the tool guardrails had a text for the LLM (the note
+     * that an input guardrail changed the arguments), the LLM is not told, which is logged at WARN once per tool.
+     */
+    private List<Content> withTextForLlm(List<Content> contents, String toolName, UnaryOperator<String> textForLlm) {
+        var firstText = IntStream.range(0, contents.size())
+                .filter(i -> contents.get(i) instanceof TextContent)
+                .findFirst();
+        // the tool guardrails have a text for the LLM when they change even an empty text
+        if (firstText.isEmpty()
+                && !textForLlm.apply("").isEmpty()
+                && toolsWithoutTextForTheNote.add(toolName)) {
+            log.warn(
+                    "The result of tool '{}' has no text, so the LLM is not told that an input guardrail changed the "
+                            + "arguments the tool ran with (the chat memory keeps the arguments of the LLM)",
+                    toolName);
+        }
+        return firstText
+                .stream()
+                .mapToObj(index -> {
+                    var updated = new ArrayList<>(contents);
+                    updated.set(index, TextContent.from(textForLlm.apply(((TextContent) contents.get(index)).text())));
+                    return List.copyOf(updated);
+                })
+                .findFirst()
+                .orElse(contents);
     }
 
     private static Throwable getCause(Exception e) {

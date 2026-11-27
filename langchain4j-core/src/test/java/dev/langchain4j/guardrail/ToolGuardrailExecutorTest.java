@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
 import dev.langchain4j.data.message.TextContent;
@@ -36,6 +37,8 @@ class ToolGuardrailExecutorTest {
             .name("search")
             .arguments("{\"q\":\"a\"}")
             .build();
+    private static final ToolSpecification SPEC =
+            ToolSpecification.builder().name(EXEC.name()).build();
     private static final ImageContent IMAGE = ImageContent.from("http://example.com/a.png");
 
     private final AiServiceListenerRegistrar registrar = AiServiceListenerRegistrar.newInstance();
@@ -52,6 +55,7 @@ class ToolGuardrailExecutorTest {
     private ToolInputGuardrailRequest inputRequest() {
         return ToolInputGuardrailRequest.builder()
                 .toolExecutionRequest(EXEC)
+                .toolSpecification(SPEC)
                 .requestParams(params())
                 .build();
     }
@@ -59,6 +63,7 @@ class ToolGuardrailExecutorTest {
     private ToolInputGuardrailRequest malformedInputRequest() {
         return ToolInputGuardrailRequest.builder()
                 .toolExecutionRequest(EXEC.toBuilder().arguments("{not json").build())
+                .toolSpecification(SPEC)
                 .requestParams(params())
                 .build();
     }
@@ -66,6 +71,7 @@ class ToolGuardrailExecutorTest {
     private ToolOutputGuardrailRequest outputRequest(boolean isError, Content... contents) {
         return ToolOutputGuardrailRequest.builder()
                 .toolExecutionRequest(EXEC)
+                .toolSpecification(SPEC)
                 .requestParams(params())
                 .resultContents(List.of(contents))
                 .isError(isError)
@@ -166,6 +172,45 @@ class ToolGuardrailExecutorTest {
         assertThat(seen).containsExactly("{\"q\":\"b\"}");
         assertThat(result.hasRewrittenResult()).isTrue();
         assertThat(result.successfulText()).isEqualTo("{\"q\":\"b\"}");
+    }
+
+    @Test
+    void input_rewrite_with_arguments_chains_to_the_next_guardrail() {
+        var seen = new ArrayList<Map<String, Object>>();
+        ToolInputGuardrail first = r -> ToolInputGuardrailResult.successWithArguments(Map.of("q", "it's \"quoted\""));
+        ToolInputGuardrail second = r -> {
+            seen.add(r.argumentsAsMap());
+            return ToolInputGuardrailResult.success();
+        };
+
+        var result = input(first, second).execute(inputRequest());
+
+        assertThat(seen).containsExactly(Map.of("q", "it's \"quoted\""));
+        assertThat(result.hasRewrittenResult()).isTrue();
+    }
+
+    @Test
+    void input_rewrite_with_a_null_map_is_fatal_and_short_circuits() {
+        var calls = new AtomicInteger();
+        ToolInputGuardrail redactsToNull = r -> ToolInputGuardrailResult.successWithArguments(null);
+        ToolInputGuardrail never = r -> {
+            calls.incrementAndGet();
+            return ToolInputGuardrailResult.success();
+        };
+
+        assertThatThrownBy(() -> input(redactsToNull, never).execute(inputRequest()))
+                .isExactlyInstanceOf(ToolInputGuardrailException.class)
+                .hasCauseInstanceOf(IllegalArgumentException.class);
+        assertThat(calls).hasValue(0);
+    }
+
+    @Test
+    void input_rewrite_with_a_value_without_a_json_representation_is_fatal() {
+        ToolInputGuardrail unserializable =
+                r -> ToolInputGuardrailResult.successWithArguments(Map.of("q", new ToolGuardrailResultTest.Unserializable()));
+
+        assertThatThrownBy(() -> input(unserializable).execute(inputRequest()))
+                .isExactlyInstanceOf(ToolInputGuardrailException.class);
     }
 
     @Test

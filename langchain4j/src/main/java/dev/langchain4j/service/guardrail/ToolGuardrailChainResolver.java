@@ -25,6 +25,10 @@ import java.util.stream.Stream;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import dev.langchain4j.service.tool.ToolProvider;
+import java.util.Arrays;
+import java.util.stream.IntStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Resolves the tool guardrail chains of the tools of an AI service: what {@link GuardrailServiceBuilder} does at build
@@ -32,8 +36,9 @@ import dev.langchain4j.service.tool.ToolProvider;
  * for why). It is created by {@link ToolGuardrailServiceBuilder#build()} and is immutable.
  * <p>
  *     The chain of a tool is, in this order: the global guardrails (given to the builder), the guardrails of the
- *     {@link ToolInputGuardrails} / {@link ToolOutputGuardrails} annotation of the class of the tool, those of the
- *     annotation of the tool method, then the {@link AiServiceTool} guardrails.
+ *     nearest {@link ToolInputGuardrails} / {@link ToolOutputGuardrails} annotation of the class hierarchy of the tool,
+ *     those of the nearest annotation of the tool method in its override chain, then the {@link AiServiceTool}
+ *     guardrails.
  * </p>
  * <p>
  *     Duplicates are removed from a chain, keeping the first occurrence (so the global position wins). A guardrail
@@ -48,6 +53,8 @@ import dev.langchain4j.service.tool.ToolProvider;
  * </p>
  */
 final class ToolGuardrailChainResolver {
+
+    private static final Logger log = LoggerFactory.getLogger(ToolGuardrailChainResolver.class);
 
     private final List<GuardrailEntry<ToolInputGuardrail>> globalInputGuardrails;
     private final List<GuardrailEntry<ToolOutputGuardrail>> globalOutputGuardrails;
@@ -85,21 +92,31 @@ final class ToolGuardrailChainResolver {
     }
 
     /**
+     * The configuration of the input guardrails, the default one when none was given.
+     */
+    ToolInputGuardrailsConfig inputConfig() {
+        return Optional.ofNullable(this.inputConfig)
+                .orElseGet(() -> ToolInputGuardrailsConfig.builder().build());
+    }
+
+    /**
      * Resolves the chains of the tool, and returns the key that holds their executors.
      *
      * @param owner     the service the tool is bound to
-     * @param toolClass the class whose annotations apply to the tool. {@code null} means the declaring class of the
-     *                  tool method, if the tool has one.
+     * @param toolClass the class whose annotations apply to the tool. {@code null} means the runtime class of the
+     *                  object of its {@link DefaultToolExecutor}, if the tool has one (see {@link #annotatedClass}).
      * @param tool      the tool
      */
     DefaultToolKey resolve(DefaultToolGuardrailService owner, Class<?> toolClass, AiServiceTool tool) {
         ensureNotNull(tool, "tool");
-        var method = (tool.toolExecutor() instanceof DefaultToolExecutor defaultToolExecutor)
-                ? defaultToolExecutor.originalMethod()
-                : null;
+        var defaultToolExecutor = Optional.of(tool.toolExecutor())
+                .filter(DefaultToolExecutor.class::isInstance)
+                .map(DefaultToolExecutor.class::cast);
+        var method = defaultToolExecutor.map(DefaultToolExecutor::originalMethod).orElse(null);
 
-        var annotatedClass = Optional.<Class<?>>ofNullable(toolClass)
-                .or(() -> Optional.ofNullable(method).map(Method::getDeclaringClass))
+        Class<?> annotatedClass = Optional.<Class<?>>ofNullable(toolClass)
+                .or(() -> defaultToolExecutor.<Class<?>>map(DefaultToolExecutor::targetClass))
+                .<Class<?>>map(clazz -> (method != null) ? annotatedClass(clazz, method) : clazz)
                 .orElse(null);
 
         var ownInputGuardrails = ownGuardrails(
@@ -164,7 +181,19 @@ final class ToolGuardrailChainResolver {
     }
 
     /**
-     * The annotations of the tool: the one of its class, then the one of its method.
+     * The class whose hierarchy holds the annotations of a tool method: the class of the object the method is invoked
+     * on when it is the declaring class of the method or a subclass of it (a proxy that subclasses the class of the
+     * application, such as a CGLIB proxy, reaches the annotations of that class through its hierarchy). Otherwise
+     * (a JDK dynamic proxy, which only implements the interfaces) the declaring class of the method, or the
+     * annotations of the class of the application would be lost.
+     */
+    private static Class<?> annotatedClass(Class<?> runtimeClass, Method method) {
+        return method.getDeclaringClass().isAssignableFrom(runtimeClass) ? runtimeClass : method.getDeclaringClass();
+    }
+
+    /**
+     * The annotations of the tool: the nearest one of its class hierarchy, then the nearest one of its method in the
+     * override chain. The two levels add up; within a level, the nearest declaration wins.
      *
      * @param toolClass the class of the tool, {@code null} if it has none
      * @param method    the method of the tool, {@code null} if it has none
@@ -174,7 +203,13 @@ final class ToolGuardrailChainResolver {
                         Optional.ofNullable(toolClass)
                                 .flatMap(clazz -> findClassAnnotation(clazz, annotationType))
                                 .stream(),
-                        Optional.ofNullable(method).flatMap(m -> findMethodAnnotation(m, annotationType)).stream())
+                        Optional.ofNullable(method)
+                                .flatMap(toolMethod -> findMethodAnnotation(
+                                        Optional.<Class<?>>ofNullable(toolClass)
+                                                .orElseGet(toolMethod::getDeclaringClass),
+                                        toolMethod,
+                                        annotationType))
+                                .stream())
                 .toList();
     }
 
@@ -211,24 +246,89 @@ final class ToolGuardrailChainResolver {
 
     /**
      * Finds the annotation on the class, then on its superclasses, then on its interfaces, through the
-     * {@link ClassMetadataProviderFactory}: the first one found wins, so an annotation on a subclass hides the one of
-     * its parents. The answer of the factory is final: a class it returns no annotation for has none.
+     * {@link ClassMetadataProviderFactory}: the nearest one wins, so an annotation on a subclass replaces the one of its
+     * parents (and an annotation with no guardrails removes them). The answer of the factory is final: a class it
+     * returns no annotation for has none.
      */
     private <A extends Annotation> Optional<A> findClassAnnotation(Class<?> clazz, Class<A> annotationType) {
-        return hierarchy(clazz)
-                .map(c -> this.classMetadataProviderFactory.getAnnotation(c, annotationType))
-                .flatMap(Optional::stream)
-                .findFirst();
+        return nearest(
+                hierarchy(clazz)
+                        .flatMap(c -> this.classMetadataProviderFactory.getAnnotation(c, annotationType).stream()
+                                .map(annotation -> new Declared<>(c.getName(), annotation)))
+                        .toList(),
+                clazz.getName(),
+                annotationType);
     }
 
     /**
-     * Finds the annotation of a tool method on the {@link Method} itself.
+     * Finds the annotation of a tool method in its override chain, by reflection: on the method of {@code clazz} (the
+     * class the tool runs on) that has the signature of the tool method, then on the methods it overrides in the
+     * superclasses, then in the interfaces, whichever of them carries {@code @Tool}. The nearest one wins, so an
+     * annotation on an implementation applies when {@code @Tool} is on an interface, and the reverse.
      */
-    private static <A extends Annotation> Optional<A> findMethodAnnotation(Method method, Class<A> annotationType) {
+    private static <A extends Annotation> Optional<A> findMethodAnnotation(
+            Class<?> clazz, Method method, Class<A> annotationType) {
         // Read by reflection for now: the ClassMetadataProviderFactory identifies methods by its own keys, and has no
         // way yet to find the key of a Method. Going through the factory for methods too comes with that.
-        return Optional.ofNullable(method.getAnnotation(annotationType));
+        return nearest(
+                hierarchy(clazz)
+                        .flatMap(c -> sameMethodIn(c, method).stream())
+                        .flatMap(m -> Optional.ofNullable(m.getAnnotation(annotationType)).stream()
+                                .map(annotation -> new Declared<>(
+                                        "%s#%s".formatted(m.getDeclaringClass().getName(), m.getName()), annotation)))
+                        .toList(),
+                "%s#%s".formatted(clazz.getName(), method.getName()),
+                annotationType);
     }
+
+    /**
+     * The method of {@code clazz} that is {@code method} or overrides it, or that it overrides: the same name and
+     * parameter types, or, for a method of a generic type, parameter types that are assignable either way (the
+     * parameters of a generic interface method are erased). Bridge methods are skipped.
+     */
+    private static Optional<Method> sameMethodIn(Class<?> clazz, Method method) {
+        var candidates = Stream.of(clazz.getDeclaredMethods())
+                .filter(not(Method::isBridge))
+                .filter(candidate -> candidate.getName().equals(method.getName()))
+                .filter(candidate -> candidate.getParameterCount() == method.getParameterCount())
+                .toList();
+        return candidates.stream()
+                .filter(candidate -> Arrays.equals(candidate.getParameterTypes(), method.getParameterTypes()))
+                .findFirst()
+                .or(() -> candidates.stream()
+                        .filter(candidate -> hasAssignableParameters(candidate, method))
+                        .findFirst());
+    }
+
+    private static boolean hasAssignableParameters(Method candidate, Method method) {
+        var candidateTypes = candidate.getParameterTypes();
+        var methodTypes = method.getParameterTypes();
+        return IntStream.range(0, methodTypes.length)
+                .allMatch(i -> candidateTypes[i].isAssignableFrom(methodTypes[i])
+                        || methodTypes[i].isAssignableFrom(candidateTypes[i]));
+    }
+
+    /**
+     * The nearest of the declarations of an annotation, found nearest first. When a nearer one hides others, this is
+     * logged at DEBUG, since the guardrails of the hidden ones do not run.
+     */
+    private static <A extends Annotation> Optional<A> nearest(
+            List<Declared<A>> declarations, String site, Class<A> annotationType) {
+        if ((declarations.size() > 1) && log.isDebugEnabled()) {
+            log.debug(
+                    "@{} of {} applies to {}, and hides the one(s) of {}",
+                    annotationType.getSimpleName(),
+                    declarations.get(0).site(),
+                    site,
+                    declarations.stream().skip(1).map(Declared::site).toList());
+        }
+        return declarations.stream().findFirst().map(Declared::annotation);
+    }
+
+    /**
+     * An annotation and where it is declared (a class, or a method), for the log.
+     */
+    private record Declared<A extends Annotation>(String site, A annotation) {}
 
     private static Stream<Class<?>> hierarchy(Class<?> clazz) {
         var classes = new ArrayList<Class<?>>();

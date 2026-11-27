@@ -64,8 +64,43 @@ A small, self-contained PR that adds `ClassMetadataProviderFactory#resolveMethod
 
 ## Done When
 
-- [ ] A separate PR from `upstream/main` adds `resolveMethodKey` and uses it on the blocking and async paths, with the
+**Status (2026-11-20):** PR open ([#7214](https://github.com/langchain4j/langchain4j/pull/7214)), awaiting @dliubarskyi's review.
+Open: his sign-off on the design choices (`Method` parameter, `Optional` return, empty default), and any review
+changes. Spotless is waived for #7214 as for #7202 (user, 2026-11-20): not run, CI spotless job expected red.
+
+- [x] A separate PR from `upstream/main` adds `resolveMethodKey` and uses it on the blocking and async paths, with the
       string-keys integration module and the unit tests.
 - [ ] The parameter type and the default of `resolveMethodKey` are settled with the reviewer.
-- [ ] Revapi passes; root `./mvnw -Pspotless validate` passes.
-- [ ] The user reviewed the changes and approved the PR text before it is opened.
+- [ ] Revapi passes; root `./mvnw -Pspotless validate` passes. (Revapi passes; spotless waived by the user.)
+- [x] The user reviewed the changes and approved the PR text before it is opened.
+
+## Outcome (2026-11-20; implemented, UNCOMMITTED, awaiting the user's review)
+
+- **Where:** branch `resolve-method-key` off `upstream/main` (`a30ea36b4`), in a separate worktree, so the tool
+  guardrails branch stays checked out.
+- **SPI (proposal for the reviewer):** `Optional<MethodKey> resolveMethodKey(Method method)`, default `Optional.empty()`
+  (the `Method` is used as the key); `ReflectionBasedClassMetadataProviderFactory` returns `Optional.of(method)`.
+  `Method` because every caller passes a `Method` (`DefaultAiServices`; streaming via
+  `AiServiceTokenStreamParameters#methodKey`); a framework's own keys are used as is, without the resolver. Quarkus is
+  that case (keys are `AiServiceMethodCreateInfo`, passed by its own invocation path), so it never reaches the
+  resolver; the PR text links the call sites (user, 2026-11-20).
+  `Optional` matches the `getAnnotation` methods of the same SPI.
+- **AI service side:** `AbstractGuardrailService` delegates to a new package-private `KeyedGuardrailExecutors` (map mode
+  plus resolver: key as is first, then, for a `Method` only, the resolver once per method, cached). Protected
+  3-arg constructor unchanged (no resolver); new package-private 4-arg constructor used by `DefaultGuardrailService`,
+  which `GuardrailServiceBuilder` builds with `factory::resolveMethodKey`. Test helpers kept. The own `has*` caches are
+  gone. Async lookups go through `failOnThrow` (a synchronous throw becomes a failed future).
+- **Tests:** `ClassMetadataProviderFactoryTest` (core), `ReflectionBasedClassMetadataProviderFactoryTests#methodIsItsOwnKey`,
+  `KeyedGuardrailExecutorsTest` (13), `MethodKeyResolutionTest` (6, incl. the protected constructor), string-keys module
+  `StringKeyedGuardrailsTests` (6, incl. a new `TokenStream` case).
+- **Results:** core 2038, `langchain4j` 2315 unit tests, 0 failures (`-DskipITs`); string-keys 6, Spring class metadata 2,
+  `integration-tests-guardrails` 116, all green; revapi against 1.24.0 clean for both modules. Spotless not run.
+- **Docs:** `guardrails.md` extension-points row of `ClassMetadataProviderFactory` (the `.mdx` exists only on #7202).
+- **Not done here:** item 4 (method side of the tool guardrail annotations) cannot be done from `upstream/main`, which has
+  no tool guardrails: it goes into #7202 after this PR merges (item 7). Item 5: no deprecation.
+- **Opened (2026-11-20, after the user's review):** commit `ac7fbea29` on `resolve-method-key`, pushed to the fork;
+  PR [#7214](https://github.com/langchain4j/langchain4j/pull/7214). User agreed on decisions 2 (`Optional`) and 3
+  (empty default). Item 4 is now issue [#7215](https://github.com/langchain4j/langchain4j/issues/7215) (depends on
+  #7202 and #7214; open question: reflection fallback or nothing when there is no key). #7202's body was updated for
+  the rework (Edit note) and points to both; review-ready comment posted to @dliubarskyi (issuecomment-7043968768).
+  Spotless not run, so #7214's spotless job may be red too.

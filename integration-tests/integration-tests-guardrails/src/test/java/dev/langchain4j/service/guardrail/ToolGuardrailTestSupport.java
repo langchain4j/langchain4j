@@ -58,6 +58,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -287,6 +288,14 @@ final class ToolGuardrailTestSupport {
                     .filter(message -> message.toolName().equals(toolName))
                     .findFirst()
                     .orElseThrow();
+        }
+
+        /**
+         * The text of the tool result the LLM got in its second request, for the given tool, without the note that an
+         * input guardrail changed the arguments (the tests of the note check it as a whole).
+         */
+        String toolResultTextOfSecondRequest(String toolName) {
+            return withoutRewriteNote(toolResultMessageOfSecondRequest(toolName).text());
         }
 
         /** All the tool result messages the LLM got in its second request, in the order of the request. */
@@ -545,8 +554,8 @@ final class ToolGuardrailTestSupport {
 
     /** A rewrite of the arguments that appends {@code suffix} to the query, so a chain of rewrites shows its order. */
     static ToolInputGuardrailResult appendToQuery(ToolInputGuardrailRequest request, String suffix) {
-        return ToolInputGuardrailResult.successWith(
-                "{\"q\":\"%s%s\"}".formatted(request.argumentsAsMap().get("q"), suffix));
+        return ToolInputGuardrailResult.successWithArguments(
+                Map.of("q", "%s%s".formatted(request.argumentsAsMap().get("q"), suffix)));
     }
 
     /** A rewrite of the result text that appends {@code suffix}, so a chain of rewrites shows its order. */
@@ -574,5 +583,13 @@ final class ToolGuardrailTestSupport {
 
     static List<Content> texts(String... texts) {
         return Arrays.stream(texts).<Content>map(TextContent::from).toList();
+    }
+
+    private static final Pattern REWRITE_NOTE =
+            Pattern.compile("^<tool_arguments_changed>.*?</tool_arguments_changed>\\n", Pattern.DOTALL);
+
+    /** The text of a tool result without the note that an input guardrail changed the arguments, if it has one. */
+    static String withoutRewriteNote(String text) {
+        return REWRITE_NOTE.matcher(text).replaceFirst("");
     }
 }

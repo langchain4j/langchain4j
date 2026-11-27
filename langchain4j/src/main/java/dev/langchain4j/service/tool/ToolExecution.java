@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import dev.langchain4j.Experimental;
+import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.TextContent;
@@ -23,6 +24,7 @@ public class ToolExecution {
     private final LocalDateTime startTime;
     private final LocalDateTime finishTime;
     private final InvocationContext invocationContext;
+    private final boolean isResultRewritten;
 
     private ToolExecution(Builder builder) {
         this.request = ensureNotNull(builder.request, "request");
@@ -30,6 +32,7 @@ public class ToolExecution {
         this.startTime = builder.startTime;
         this.finishTime = builder.finishTime;
         this.invocationContext = ensureNotNull(builder.invocationContext, "invocationContext");
+        this.isResultRewritten = builder.isResultRewritten;
     }
 
     /**
@@ -127,6 +130,16 @@ public class ToolExecution {
         return invocationContext;
     }
 
+    /**
+     * Whether a tool output guardrail rewrote the result of the tool, so {@link #resultObject()} no longer holds the
+     * object the tool returned (it is dropped, since it does not match what the LLM sees), even when the tool returned
+     * one.
+     */
+    @Internal
+    public boolean isResultRewritten() {
+        return isResultRewritten;
+    }
+
     @Override
     public boolean equals(final Object object) {
         if (this == object) return true;
@@ -164,6 +177,7 @@ public class ToolExecution {
         private LocalDateTime startTime;
         private LocalDateTime finishTime;
         private InvocationContext invocationContext;
+        private boolean isResultRewritten;
 
         private Builder() {
         }
@@ -190,6 +204,11 @@ public class ToolExecution {
 
         public Builder invocationContext(InvocationContext invocationContext) {
             this.invocationContext = invocationContext;
+            return this;
+        }
+
+        Builder resultRewritten(boolean isResultRewritten) {
+            this.isResultRewritten = isResultRewritten;
             return this;
         }
 

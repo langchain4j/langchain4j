@@ -128,7 +128,7 @@ class ToolGuardrailPrecedenceTests extends BaseGuardrailTests {
         assertThat(run.answerText()).isEqualTo("done");
         // each level appended its letter, so the order is builder, class, method
         assertThat(tool.receivedArguments).containsExactly("{\"q\":\"aGCM\"}");
-        assertThat(run.toolResultMessageOfSecondRequest("search").text()).isEqualTo("found {\"q\":\"aGCM\"}|G|C|M");
+        assertThat(run.toolResultTextOfSecondRequest("search")).isEqualTo("found {\"q\":\"aGCM\"}|G|C|M");
         assertThat(inputGuardrailClasses(run.inputGuardrailEvents))
                 .containsExactly(GlobalInput.class, ClassInput.class, MethodInput.class);
         assertThat(outputGuardrailClasses(run.outputGuardrailEvents))
@@ -147,7 +147,7 @@ class ToolGuardrailPrecedenceTests extends BaseGuardrailTests {
                         .toolOutputGuardrails(output(request -> appendToText(request, "|G"))));
 
         assertThat(tool.receivedArguments).containsExactly("{\"q\":\"aGCM\"}");
-        assertThat(run.toolResultMessageOfSecondRequest("search").text()).isEqualTo("found {\"q\":\"aGCM\"}|G|C|M");
+        assertThat(run.toolResultTextOfSecondRequest("search")).isEqualTo("found {\"q\":\"aGCM\"}|G|C|M");
     }
 
     @ParameterizedTest
@@ -166,7 +166,7 @@ class ToolGuardrailPrecedenceTests extends BaseGuardrailTests {
         });
 
         assertThat(tool.receivedArguments).containsExactly("{\"q\":\"aGT\"}");
-        assertThat(run.toolResultMessageOfSecondRequest("search").text()).isEqualTo("found {\"q\":\"aGT\"}|G|T");
+        assertThat(run.toolResultTextOfSecondRequest("search")).isEqualTo("found {\"q\":\"aGT\"}|G|T");
     }
 
     @Test
@@ -180,7 +180,7 @@ class ToolGuardrailPrecedenceTests extends BaseGuardrailTests {
                         services.tools(new GuardedTools(tool)).toolInputGuardrailClasses(List.of(GlobalInput.class)));
 
         assertThat(tool.receivedArguments).containsExactly("{\"q\":\"aGCM\"}");
-        assertThat(run.toolResultMessageOfSecondRequest("search").text()).isEqualTo("found {\"q\":\"aGCM\"}|C|M");
+        assertThat(run.toolResultTextOfSecondRequest("search")).isEqualTo("found {\"q\":\"aGCM\"}|C|M");
     }
 
     // ---------- an empty global list means no global guardrails ----------
@@ -197,7 +197,7 @@ class ToolGuardrailPrecedenceTests extends BaseGuardrailTests {
                         .toolOutputGuardrails(List.of()));
 
         assertThat(tool.receivedArguments).containsExactly("{\"q\":\"aCM\"}");
-        assertThat(run.toolResultMessageOfSecondRequest("search").text()).isEqualTo("found {\"q\":\"aCM\"}|C|M");
+        assertThat(run.toolResultTextOfSecondRequest("search")).isEqualTo("found {\"q\":\"aCM\"}|C|M");
     }
 
     // ---------- the same class at several levels runs once ----------
@@ -215,7 +215,7 @@ class ToolGuardrailPrecedenceTests extends BaseGuardrailTests {
         // ClassInput and ClassOutput are named by the builder and by the class annotation, and keep their first
         // position
         assertThat(tool.receivedArguments).containsExactly("{\"q\":\"aCM\"}");
-        assertThat(run.toolResultMessageOfSecondRequest("search").text()).isEqualTo("found {\"q\":\"aCM\"}|C|M");
+        assertThat(run.toolResultTextOfSecondRequest("search")).isEqualTo("found {\"q\":\"aCM\"}|C|M");
     }
 
     // ---------- a guardrail of the tool combined with a global or class guardrail ----------
@@ -279,7 +279,7 @@ class ToolGuardrailPrecedenceTests extends BaseGuardrailTests {
         assertThat(run.answerText()).isEqualTo("done");
         // the global check blocks the page even though the tool has a guardrail of its own...
         assertThat(run.toolResultMessageOfSecondRequest("search").isError()).isTrue();
-        assertThat(run.toolResultMessageOfSecondRequest("search").text())
+        assertThat(run.toolResultTextOfSecondRequest("search"))
                 .isEqualTo("The page was blocked. Do not fetch it again.");
         assertThat(run.everythingTheLlmReceived()).doesNotContain("evil.example");
         // ...and that guardrail ran too: neither replaced the other
@@ -327,7 +327,7 @@ class ToolGuardrailPrecedenceTests extends BaseGuardrailTests {
         var run =
                 run(Mode.SYNC, services -> services.tools(new InjectionCheckedFetcher(SearchTool.returning(longPage))));
 
-        assertThat(run.toolResultMessageOfSecondRequest("search").text()).isEqualTo("The page is too long.");
+        assertThat(run.toolResultTextOfSecondRequest("search")).isEqualTo("The page is too long.");
         assertThat(run.everythingTheLlmReceived()).doesNotContain(longPage);
     }
 
@@ -338,7 +338,7 @@ class ToolGuardrailPrecedenceTests extends BaseGuardrailTests {
         var run =
                 run(Mode.SYNC, services -> services.tools(new InjectionCheckedFetcher(SearchTool.returning(injected))));
 
-        assertThat(run.toolResultMessageOfSecondRequest("search").text())
+        assertThat(run.toolResultTextOfSecondRequest("search"))
                 .isEqualTo("The page was blocked. Do not fetch it again.");
         assertThat(run.everythingTheLlmReceived()).doesNotContain(injected);
         assertThat(outputGuardrailClasses(run.outputGuardrailEvents))

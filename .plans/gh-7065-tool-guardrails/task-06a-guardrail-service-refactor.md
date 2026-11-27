@@ -6,8 +6,7 @@
 > the shape and format of the refactoring first, and on its own, before any tool-specific code exists. Review this task
 > in isolation: its diff must not mention tools at all.
 >
-> **Before you start:** run the upstream sync from PLAN.md → Execution Step 2. The task 06b work is parked in a
-> `git stash` (see task 06b → Status), so the working tree starts without it.
+> **Before you start:** run the upstream sync from PLAN.md → Execution Step 2.
 
 ## Goal
 

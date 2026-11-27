@@ -315,6 +315,40 @@ class ToolGuardrailCompensationTest {
 
     @ParameterizedTest
     @EnumSource(Mode.class)
+    void a_sanitized_tool_that_is_rolled_back_reports_the_sanitized_result_and_its_action_gets_the_raw_one(Mode mode) {
+        var run = run(
+                mode,
+                modelCalling("credit", "withdraw"),
+                services -> services.toolOutputGuardrails(
+                        onOutputOf("credit", request -> OUTPUT.successWith("credited <redacted>"))));
+
+        assertThat(run.bank.log).containsExactlyInAnyOrder("credit", "withdraw", "uncredit");
+        // the compensating action gets the result the tool ran with: the undo may need what the guardrail redacted
+        assertThat(run.bank.compensatedResults).containsExactly(Map.entry("credit", "credited"));
+        // the event carries what the LLM saw before the rollback, like the ToolExecutedEvent
+        assertThat(run.compensatedEvents)
+                .singleElement()
+                .returns("credit", event -> event.request().name())
+                .returns("credited <redacted>", ToolCompensatedEvent::resultText);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void a_tool_whose_output_guardrail_failed_reports_the_error_result_and_its_action_gets_the_raw_one(Mode mode) {
+        var run = run(
+                mode,
+                modelCalling("credit", "debit"),
+                services -> services.toolOutputGuardrails(onOutputOf("debit", request -> OUTPUT.failure("blocked"))));
+
+        assertThat(run.bank.compensatedResults).containsEntry("debit", "debited");
+        assertThat(run.compensatedEvents)
+                .filteredOn(event -> event.request().name().equals("debit"))
+                .singleElement()
+                .returns("blocked", ToolCompensatedEvent::resultText);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Mode.class)
     void the_final_result_decides_so_a_chain_that_flips_back_to_a_success_is_not_a_failed_step(Mode mode) {
         var run = run(
                 mode,

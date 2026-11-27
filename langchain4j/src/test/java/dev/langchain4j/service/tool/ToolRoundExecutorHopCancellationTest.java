@@ -76,7 +76,8 @@ class ToolRoundExecutorHopCancellationTest {
                 .toolInputGuardrails(guardrail)
                 .build();
         var context = ToolServiceContext.builder()
-                .toolGuardrailBindings(Map.of("search", ToolGuardrailBinding.bind(service, null, tool)))
+                .toolGuardrailService(service)
+                .toolGuardrailKeys(Map.of("search", service.bind(null, tool)))
                 .build();
         return new ToolService().startRound(context, InvocationContext.builder().build(), null, cancellation);
     }

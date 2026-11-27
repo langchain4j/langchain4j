@@ -119,7 +119,9 @@ class ToolGuardrailToolRoundTests extends BaseGuardrailTests {
         var messages = run.toolResultMessagesOfSecondRequest();
         assertThat(messages).extracting(ToolExecutionResultMessage::toolName).containsExactlyElementsOf(TOOLS);
         assertThat(messages)
-                .extracting(ToolExecutionResultMessage::text, ToolExecutionResultMessage::isError)
+                .extracting(
+                        message -> ToolGuardrailTestSupport.withoutRewriteNote(message.text()),
+                        ToolExecutionResultMessage::isError)
                 .containsExactly(
                         tuple("found " + ORIGINAL_ARGUMENTS, false),
                         tuple("found " + REWRITTEN_ARGUMENTS, false),
@@ -185,7 +187,7 @@ class ToolGuardrailToolRoundTests extends BaseGuardrailTests {
     }
 
     @Test
-    void the_built_in_tool_search_tool_is_not_guarded_but_the_tools_it_finds_are() {
+    void the_built_in_tool_search_tool_and_the_tools_it_finds_are_guarded() {
         var toolNames = new CopyOnWriteArrayList<String>();
         var strategy = new SimpleToolSearchStrategy();
         var searchToolName = strategy.getToolSearchTools(
@@ -208,7 +210,7 @@ class ToolGuardrailToolRoundTests extends BaseGuardrailTests {
 
         assertThat(run.answerText()).isEqualTo("done");
         assertThat(tool.receivedArguments).containsExactly(ORIGINAL_ARGUMENTS);
-        // the guardrail saw the real tool only, never the search tool
-        assertThat(toolNames).containsExactly("search");
+        // the output of the search tool carries tool descriptions, so it is guarded too
+        assertThat(toolNames).containsExactly(searchToolName, "search");
     }
 }

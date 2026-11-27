@@ -4,6 +4,7 @@ import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellat
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static java.util.function.Predicate.not;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -35,9 +36,14 @@ import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.guardrail.Guardrail;
 import dev.langchain4j.guardrail.GuardrailRequest;
 import dev.langchain4j.guardrail.InputGuardrailRequest;
+import dev.langchain4j.internal.Json;
+import dev.langchain4j.internal.ToolArgumentsParser;
 import dev.langchain4j.service.tool.ToolProvider;
 import dev.langchain4j.spi.classloading.ClassInstanceFactory;
 import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -53,8 +59,8 @@ import org.jspecify.annotations.Nullable;
  *     from it.
  * </p>
  * <p>
- *     <strong>Which guardrails run.</strong> Every tool guardrail that applies to a tool runs, as one chain, in this
- *     order, separately for input and output:
+ *     <strong>Which guardrails run.</strong> The levels add up, as one chain, in this order, separately for input and
+ *     output (within the class level and within the method level, the nearest declaration wins):
  * </p>
  * <ol>
  *     <li>the guardrails given to the builder (set on the {@code AiServices} builder; they apply to every tool)</li>
@@ -141,21 +147,35 @@ public interface ToolGuardrailService {
     ToolKey bind(@Nullable Class<?> toolClass, AiServiceTool tool);
 
     /**
+     * The configuration of the input guardrails of the tools, which also sets the arguments rewrite note of
+     * {@link GuardedToolExecution#resultTextForLlm(String)}.
+     *
+     * @return The configuration, the default one if none was given.
+     */
+    default ToolInputGuardrailsConfig toolInputGuardrailsConfig() {
+        return ToolInputGuardrailsConfig.builder().build();
+    }
+
+    /**
      * Executes the input guardrails of the tool.
      *
      * @param key     The key {@link #bind(Class, AiServiceTool)} returned for the tool. Must not be null.
-     * @param request The request to validate. Must not be null.
+     * @param request The request to validate. Must not be null, and must carry the tool name, the specification and
+     *                the source of the key.
      * @return The result, a success if the tool has no input guardrails. A non-fatal failure is returned, not thrown.
      * @throws ToolInputGuardrailException for a fatal failure
+     * @throws IllegalArgumentException if the key was not returned by this service, or the request does not carry the
+     *                                  tool name, the specification and the source of the key
      */
     ToolInputGuardrailResult executeInputGuardrails(ToolKey key, ToolInputGuardrailRequest request);
 
     /**
      * Non-blocking counterpart of {@link #executeInputGuardrails(ToolKey, ToolInputGuardrailRequest)}: nothing is
-     * thrown, a fatal failure or an invalid key fails the returned future.
+     * thrown, a fatal failure, an invalid key or a request that does not match the key fails the returned future.
      *
      * @param key     The key {@link #bind(Class, AiServiceTool)} returned for the tool. Must not be null.
-     * @param request The request to validate. Must not be null.
+     * @param request The request to validate. Must not be null, and must carry the tool name, the specification and
+     *                the source of the key.
      * @return A future of the result.
      */
     CompletableFuture<ToolInputGuardrailResult> executeInputGuardrailsAsync(
@@ -165,18 +185,22 @@ public interface ToolGuardrailService {
      * Executes the output guardrails of the tool.
      *
      * @param key     The key {@link #bind(Class, AiServiceTool)} returned for the tool. Must not be null.
-     * @param request The request to validate. Must not be null.
+     * @param request The request to validate. Must not be null, and must carry the tool name, the specification and
+     *                the source of the key.
      * @return The result, a success if the tool has no output guardrails. A non-fatal failure is returned, not thrown.
      * @throws ToolOutputGuardrailException for a fatal failure
+     * @throws IllegalArgumentException if the key was not returned by this service, or the request does not carry the
+     *                                  tool name, the specification and the source of the key
      */
     ToolOutputGuardrailResult executeOutputGuardrails(ToolKey key, ToolOutputGuardrailRequest request);
 
     /**
      * Non-blocking counterpart of {@link #executeOutputGuardrails(ToolKey, ToolOutputGuardrailRequest)}: nothing is
-     * thrown, a fatal failure or an invalid key fails the returned future.
+     * thrown, a fatal failure, an invalid key or a request that does not match the key fails the returned future.
      *
      * @param key     The key {@link #bind(Class, AiServiceTool)} returned for the tool. Must not be null.
-     * @param request The request to validate. Must not be null.
+     * @param request The request to validate. Must not be null, and must carry the tool name, the specification and
+     *                the source of the key.
      * @return A future of the result.
      */
     CompletableFuture<ToolOutputGuardrailResult> executeOutputGuardrailsAsync(
@@ -276,7 +300,8 @@ public interface ToolGuardrailService {
         var effectiveRequest = effectiveRequest(inputResult, request);
 
         return inputResult.isSuccess()
-                ? executeToolAndOutputGuardrails(key, effectiveRequest, requestParams, tool)
+                ? withArgumentsRewriteNote(
+                        executeToolAndOutputGuardrails(key, effectiveRequest, requestParams, tool), request)
                 : guardedExecution(
                         effectiveRequest,
                         errorResult(inputResult.failureMessage()),
@@ -386,10 +411,12 @@ public interface ToolGuardrailService {
                                             "apply(ToolExecutionRequest)")
                                     .thenCompose(toolResult -> applyOutputGuardrailsAsync(
                                                     result, inFlight, key, effectiveRequest, toolResult, requestParams)
-                                            .thenApply(guardedResult -> guardedExecution(
-                                                    effectiveRequest,
-                                                    guardedResult,
-                                                    failedOutputStage(toolResult, guardedResult))))
+                                            .thenApply(guardedResult -> withArgumentsRewriteNote(
+                                                    guardedExecution(
+                                                            effectiveRequest,
+                                                            guardedResult,
+                                                            failedOutputStage(toolResult, guardedResult)),
+                                                    request)))
                             : CompletableFuture.completedFuture(guardedExecution(
                                     effectiveRequest,
                                     errorResult(inputResult.failureMessage()),
@@ -536,6 +563,55 @@ public interface ToolGuardrailService {
         }
 
         return toolResult;
+    }
+
+    /**
+     * The execution of a call whose tool ran, with the arguments rewrite note when an input guardrail changed the
+     * value of an argument of the LLM and the note is enabled: the chat memory keeps the call as the LLM made it, so
+     * the note tells the LLM what ran.
+     *
+     * @param call the call of the LLM
+     */
+    private GuardedToolExecution withArgumentsRewriteNote(GuardedToolExecution execution, ToolExecutionRequest call) {
+        var config = toolInputGuardrailsConfig();
+        return Optional.of(config)
+                .filter(ToolInputGuardrailsConfig::isArgumentsRewriteNoteEnabled)
+                .flatMap(enabled -> changedArguments(call, execution.request()))
+                .map(changedArguments -> GuardedToolExecution.builder()
+                        .request(execution.request())
+                        .result(execution.result())
+                        .failedStage(execution.failedStage().orElse(null))
+                        .argumentsRewriteNote(config.argumentsRewriteNoteTemplate(), changedArguments)
+                        .build())
+                .orElse(execution);
+    }
+
+    /**
+     * The top-level arguments of the LLM whose values the tool ran with changed, with their new values (a removed one
+     * as {@code null}), as a JSON object, or empty when no value changed. The values are compared parsed, so a rewrite
+     * that only changes the spacing or the order of the keys changes nothing. An argument that a guardrail added is
+     * left out: it may be a value the LLM must not see (a tenant or a user id, a token). When the arguments of the LLM
+     * cannot be parsed, all the arguments the tool ran with are the changed ones.
+     *
+     * @param call     the call of the LLM
+     * @param executed the call as the tool ran with it
+     */
+    private static Optional<String> changedArguments(ToolExecutionRequest call, ToolExecutionRequest executed) {
+        var executedArguments = ToolArgumentsParser.argumentsAsMap(executed.arguments());
+        Map<String, Object> changed;
+        try {
+            var modelArguments = ToolArgumentsParser.argumentsAsMap(call.arguments());
+            changed = modelArguments.entrySet().stream()
+                    .filter(argument -> !executedArguments.containsKey(argument.getKey())
+                            || !Objects.equals(argument.getValue(), executedArguments.get(argument.getKey())))
+                    .collect(
+                            LinkedHashMap::new,
+                            (map, argument) -> map.put(argument.getKey(), executedArguments.get(argument.getKey())),
+                            Map::putAll);
+        } catch (ToolArgumentsException unparseable) {
+            changed = executedArguments;
+        }
+        return Optional.of(changed).filter(not(Map::isEmpty)).map(Json::toJson);
     }
 
     private static GuardedToolExecution guardedExecution(ToolExecutionRequest request, ToolExecutionResult result) {

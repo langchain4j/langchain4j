@@ -79,5 +79,4 @@ commit or push without approval) the single tool guardrails PR.
 ## Post-PR step: comment on quarkus-langchain4j#3162 (user approved 2026-11-18)
 
 Once the PR is open, post the `resolveMethodKey` item on [quarkiverse/quarkus-langchain4j#3162](https://github.com/quarkiverse/quarkus-langchain4j/issues/3162),
-linking the PR. Draft: `~/.hermes/cache/scratch/issue-3162-comment.md` (fill in the PR link first). Show the user the final text before posting if
-anything changed. Do not post before the PR exists.
+linking the PR. Show the user the final text before posting if anything changed. Do not post before the PR exists.

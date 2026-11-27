@@ -127,7 +127,10 @@ class ToolInputGuardrailTests extends BaseGuardrailTests {
 
         assertThat(run.answerText()).isEqualTo("done");
         assertThat(tool.receivedArguments).containsExactly(REWRITTEN_ARGUMENTS);
-        assertThat(run.toolResultMessageOfSecondRequest("search").text()).isEqualTo("found " + REWRITTEN_ARGUMENTS);
+        // the memory keeps the call of the LLM, so the result tells the LLM what ran
+        assertThat(run.toolResultMessageOfSecondRequest("search").text())
+                .isEqualTo("<tool_arguments_changed>The arguments of this call were changed before it ran: "
+                        + REWRITTEN_ARGUMENTS + "</tool_arguments_changed>\nfound " + REWRITTEN_ARGUMENTS);
         // beforeToolExecution runs before the guardrails, so it sees the original
         assertThat(beforeRequests)
                 .singleElement()
@@ -162,7 +165,7 @@ class ToolInputGuardrailTests extends BaseGuardrailTests {
 
     @ParameterizedTest
     @EnumSource(Mode.class)
-    void the_tool_call_in_chat_memory_carries_the_rewritten_arguments(Mode mode) {
+    void the_tool_call_in_chat_memory_keeps_the_arguments_of_the_llm(Mode mode) {
         var run = run(mode, services -> {
             ToolKind.LIST.register(services, SearchTool.echoing());
             services.toolInputGuardrails(input(request -> ToolInputGuardrailResult.successWith(REWRITTEN_ARGUMENTS)));
@@ -175,7 +178,7 @@ class ToolInputGuardrailTests extends BaseGuardrailTests {
                 .filteredOn(AiMessage::hasToolExecutionRequests)
                 .singleElement()
                 .extracting(message -> message.toolExecutionRequests().get(0).arguments())
-                .isEqualTo(REWRITTEN_ARGUMENTS);
+                .isEqualTo(ORIGINAL_ARGUMENTS);
     }
 
     // ---------- fatal failure ----------

@@ -3,6 +3,8 @@ package dev.langchain4j.service.guardrail;
 import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
+import dev.langchain4j.agent.tool.ToolSource;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.guardrail.GuardrailExecutor;
 import dev.langchain4j.guardrail.GuardrailRequest;
 import dev.langchain4j.guardrail.GuardrailResult;
@@ -10,6 +12,7 @@ import dev.langchain4j.guardrail.ToolInputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolInputGuardrailResult;
 import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
+import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
 import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.ToolProvider;
 import java.util.Optional;
@@ -55,31 +58,38 @@ final class DefaultToolGuardrailService implements ToolGuardrailService {
     }
 
     @Override
+    public ToolInputGuardrailsConfig toolInputGuardrailsConfig() {
+        return this.chainResolver.inputConfig();
+    }
+
+    @Override
     public ToolKey bind(@Nullable Class<?> toolClass, AiServiceTool tool) {
         return this.chainResolver.resolve(this, toolClass, tool);
     }
 
     @Override
     public ToolInputGuardrailResult executeInputGuardrails(ToolKey key, ToolInputGuardrailRequest request) {
-        return execute(ownKey(key).inputExecutor(), request, ToolInputGuardrailResult.success());
+        return execute(matchingKey(key, request).inputExecutor(), request, ToolInputGuardrailResult.success());
     }
 
     @Override
     public CompletableFuture<ToolInputGuardrailResult> executeInputGuardrailsAsync(
             ToolKey key, ToolInputGuardrailRequest request) {
-        return failOnThrow(() -> executeAsync(ownKey(key).inputExecutor(), request, ToolInputGuardrailResult.success()));
+        return failOnThrow(() ->
+                executeAsync(matchingKey(key, request).inputExecutor(), request, ToolInputGuardrailResult.success()));
     }
 
     @Override
     public ToolOutputGuardrailResult executeOutputGuardrails(ToolKey key, ToolOutputGuardrailRequest request) {
-        return execute(ownKey(key).outputExecutor(), request, ToolOutputGuardrailResult.success());
+        return execute(matchingKey(key, request).outputExecutor(), request, ToolOutputGuardrailResult.success());
     }
 
     @Override
     public CompletableFuture<ToolOutputGuardrailResult> executeOutputGuardrailsAsync(
             ToolKey key, ToolOutputGuardrailRequest request) {
         return failOnThrow(
-                () -> executeAsync(ownKey(key).outputExecutor(), request, ToolOutputGuardrailResult.success()));
+                () -> executeAsync(
+                        matchingKey(key, request).outputExecutor(), request, ToolOutputGuardrailResult.success()));
     }
 
     @Override
@@ -108,6 +118,42 @@ final class DefaultToolGuardrailService implements ToolGuardrailService {
 
     private static boolean hasGuardrails(Optional<? extends GuardrailExecutor<?, ?, ?, ?, ?>> executor) {
         return executor.map(it -> !it.guardrails().isEmpty()).orElse(false);
+    }
+
+    /**
+     * The key as a {@link DefaultToolKey} bound by this instance, for a request about the tool of the key: the request
+     * must carry the tool name, specification and source of the key. Otherwise the guardrails would run with what
+     * another tool is, or a tool would be reported as less trusted than it is (a request without a source is
+     * {@linkplain ToolSource#programmatic() programmatic}).
+     */
+    private DefaultToolKey matchingKey(ToolKey key, ToolInputGuardrailRequest request) {
+        var ownKey = ownKey(key);
+        ensureNotNull(request, "request");
+        ensureMatches(ownKey, request.toolName(), request.toolSpecification(), request.toolSource());
+        return ownKey;
+    }
+
+    private DefaultToolKey matchingKey(ToolKey key, ToolOutputGuardrailRequest request) {
+        var ownKey = ownKey(key);
+        ensureNotNull(request, "request");
+        ensureMatches(ownKey, request.toolName(), request.toolSpecification(), request.toolSource());
+        return ownKey;
+    }
+
+    private static void ensureMatches(
+            ToolKey key, String toolName, ToolSpecification toolSpecification, ToolSource toolSource) {
+        if (!key.toolName().equals(toolName)) {
+            throw new IllegalArgumentException(
+                    "The request is for the tool '%s', but the key is for the tool '%s'".formatted(toolName, key.toolName()));
+        }
+        if (!key.toolSpecification().equals(toolSpecification)) {
+            throw new IllegalArgumentException(
+                    "The request for the tool '%s' does not carry the tool specification of its key".formatted(toolName));
+        }
+        if (!key.toolSource().equals(toolSource)) {
+            throw new IllegalArgumentException("The request for the tool '%s' has the source %s, but its key has %s"
+                    .formatted(toolName, toolSource, key.toolSource()));
+        }
     }
 
     /**

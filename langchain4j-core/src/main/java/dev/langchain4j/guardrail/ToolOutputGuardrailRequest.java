@@ -26,7 +26,7 @@ import org.jspecify.annotations.Nullable;
 public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOutputGuardrailRequest> {
 
     private final ToolExecutionRequest toolExecutionRequest;
-    private final @Nullable ToolSpecification toolSpecification;
+    private final ToolSpecification toolSpecification;
     private final ToolSource toolSource;
     private final GuardrailRequestParams requestParams;
     private final List<Content> resultContents;
@@ -34,7 +34,7 @@ public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOu
 
     private ToolOutputGuardrailRequest(Builder builder) {
         this.toolExecutionRequest = ensureNotNull(builder.toolExecutionRequest, "toolExecutionRequest");
-        this.toolSpecification = builder.toolSpecification;
+        this.toolSpecification = ensureNotNull(builder.toolSpecification, "toolSpecification");
         this.toolSource = getOrDefault(builder.toolSource, ToolSource.programmatic());
         this.requestParams = ensureNotNull(builder.requestParams, "requestParams");
         this.resultContents = getOrDefault(builder.resultContents, List.of()).stream()
@@ -52,9 +52,9 @@ public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOu
     }
 
     /**
-     * @return the specification of the executed tool; may be null when it is not known
+     * @return the specification of the executed tool, never {@code null}
      */
-    public @Nullable ToolSpecification toolSpecification() {
+    public ToolSpecification toolSpecification() {
         return toolSpecification;
     }
 
@@ -235,12 +235,12 @@ public final class ToolOutputGuardrailRequest implements GuardrailRequest<ToolOu
         }
 
         /**
-         * Sets the specification of the tool, if known.
+         * Sets the specification of the tool. Required.
          *
          * @param toolSpecification the tool specification
          * @return this builder
          */
-        public Builder toolSpecification(@Nullable ToolSpecification toolSpecification) {
+        public Builder toolSpecification(ToolSpecification toolSpecification) {
             this.toolSpecification = toolSpecification;
             return this;
         }

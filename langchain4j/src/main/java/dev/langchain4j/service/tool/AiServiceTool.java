@@ -12,6 +12,7 @@ import dev.langchain4j.guardrail.ToolInputGuardrail;
 import dev.langchain4j.guardrail.ToolOutputGuardrail;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import dev.langchain4j.service.AiServices;
 import org.jspecify.annotations.Nullable;
 
@@ -38,7 +39,7 @@ public class AiServiceTool {
         this.toolSpecification = ensureNotNull(builder.toolSpecification, "toolSpecification");
         this.toolExecutor = ensureNotNull(builder.toolExecutor, "toolExecutor");
         this.returnBehavior = getOrDefault(builder.returnBehavior, ReturnBehavior.TO_LLM);
-        this.toolSource = getOrDefault(builder.toolSource, ToolSource.programmatic());
+        this.toolSource = Optional.ofNullable(builder.toolSource).orElseGet(() -> defaultToolSource(builder.toolExecutor));
         this.toolInputGuardrails = copy(builder.toolInputGuardrails);
         this.toolOutputGuardrails = copy(builder.toolOutputGuardrails);
     }
@@ -63,8 +64,23 @@ public class AiServiceTool {
     }
 
     /**
+     * The source of a tool registered without one: a tool backed by a {@link DefaultToolExecutor} runs a local
+     * method, whatever the way it was registered (a framework can register a proxied {@code @Tool} bean through
+     * {@code tools(Map)}), so it is {@link ToolSource#local(java.lang.reflect.Method) local}, with the original method
+     * of the executor, which is declared by the class of the application, not by a proxy. Any other tool is
+     * {@link ToolSource#programmatic() programmatic}.
+     */
+    private static ToolSource defaultToolSource(ToolExecutor toolExecutor) {
+        return (toolExecutor instanceof DefaultToolExecutor defaultToolExecutor)
+                ? ToolSource.local(defaultToolExecutor.originalMethod())
+                : ToolSource.programmatic();
+    }
+
+    /**
      * Returns where this tool comes from. It is trusted information, set by the framework or by the application,
-     * and exposed to tool guardrails. Defaults to {@link ToolSource#programmatic()}.
+     * and exposed to tool guardrails. Without an explicit source, a tool backed by a {@link DefaultToolExecutor} is
+     * {@link ToolSource#local(java.lang.reflect.Method) local} (the original method of the executor), and any other
+     * tool is {@link ToolSource#programmatic() programmatic}.
      *
      * @return where this tool comes from
      * @since 1.25.0
@@ -180,9 +196,11 @@ public class AiServiceTool {
 
         /**
          * Sets where this tool comes from. It is exposed to tool guardrails as trusted information, so it must be set
-         * by the application, never derived from remote data. Defaults to {@link ToolSource#programmatic()}.
+         * by the application, never derived from remote data. When it is not set, a tool backed by a
+         * {@link DefaultToolExecutor} is {@link ToolSource#local(java.lang.reflect.Method) local} (the original method
+         * of the executor), and any other tool is {@link ToolSource#programmatic() programmatic}.
          *
-         * @param toolSource where this tool comes from; {@code null} means {@link ToolSource#programmatic()}
+         * @param toolSource where this tool comes from; {@code null} means the default above
          * @return this builder
          * @since 1.25.0
          */

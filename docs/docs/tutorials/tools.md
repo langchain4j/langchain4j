@@ -1560,9 +1560,10 @@ chat method calls may or may not succeed when there are immediate tool calls bas
 
 The tool execution result in these rules is the Java object that a `@Tool` method returned
 (`ToolExecution.resultObject()`), not the text the LLM would see. A programmatic `ToolExecutor` or an MCP tool usually
-has no such object, so its result counts as `null`. The same goes for a result that a
-[tool output guardrail](/tutorials/tool-guardrails#tool-output-guardrails) rewrote: the rewrite drops the object, so
-the AI Service returns `null`. Return a `Result` to get the text or contents of such a result.
+has no such object, so its result counts as `null`. A
+[tool output guardrail](/tutorials/tool-guardrails#tool-output-guardrails) that rewrote the result drops the object:
+a `String` method then gets the text of the rewritten result, and any other return type fails with an
+`IllegalConfigurationException`. Return a `Result` to get the text or contents of such a result.
 
 #### Immediate-return rule with multiple tool calls in a single response
 
@@ -2164,6 +2165,11 @@ the tool calls that already ran are undone, even though only the answer was stop
 Tool calls that are already running are allowed to finish (for a `TokenStream`, all the tool calls of a response
 that is already being processed), and then every successful tool call that has a
 compensating action is undone. So the rollback can still be running after the cancellation has returned.
+With a `CompletableFuture` or a `Flow.Publisher`, a tool call that has not started yet when you cancel (for example,
+one that is still waiting for a thread of the tool executor) does not start at all: its tool does not run,
+`beforeToolExecution` and `afterToolExecution` are not called, and it fires no `ToolExecutedEvent` or
+`ToolCompensatedEvent`, since there is nothing to undo. A `TokenStream` still runs such a call, and undoes it if it
+has a compensating action.
 For a `TokenStream`, the rollback runs on the thread that calls `cancel()` when no tool call is running
 and no response is being processed, so `cancel()` then returns only after the compensating actions have run.
 When tool calls are still running, it runs on the thread that finishes the last of them.
@@ -2192,6 +2198,11 @@ Assistant assistant = AiServices.builder(Assistant.class)
 
 Without `.compensateOnToolErrors(true)`, nothing is rolled back, even if `@CompensateFor` annotations are
 present: tool errors are handled by the error handlers as usual, and a cancellation only stops the call.
+
+A `beforeToolExecution` or `afterToolExecution` callback that throws fails the invocation like a tool that throws, in
+every mode of the AI Service. When `afterToolExecution` throws, its tool has already run, so that call ended as a
+failure: its `ToolExecutedEvent` is an error with the message of the callback's exception, and the tool is rolled back
+together with the other compensable tools that ran.
 
 #### Compensation and tool guardrails
 

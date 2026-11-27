@@ -29,8 +29,12 @@ import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
+import java.util.stream.Stream;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * The public contract of {@link ToolGuardrailService#executeGuardrails}: what a framework gets when it runs a tool call
@@ -638,10 +642,14 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
         var tool = new Tool(toolResult(false));
         var inputRequest = ToolInputGuardrailRequest.builder()
                 .toolExecutionRequest(CALL)
+                .toolSpecification(SPECIFICATION)
+                .toolSource(SOURCE)
                 .requestParams(PARAMS)
                 .build();
         var outputRequest = ToolOutputGuardrailRequest.builder()
                 .toolExecutionRequest(CALL)
+                .toolSpecification(SPECIFICATION)
+                .toolSource(SOURCE)
                 .requestParams(PARAMS)
                 .resultContents(List.of(TextContent.from("found")))
                 .isError(false)
@@ -933,6 +941,103 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
         assertThat(executeAsync(List.of(), List.of(), async(new Tool(toolResult(false)))))
                 .succeedsWithin(Duration.ofSeconds(5))
                 .returns(Optional.empty(), GuardedToolExecution::failedStage);
+    }
+
+    // ---------- the request must be about the tool of the key ----------
+
+    private static ToolGuardrailService.ToolKey keyWithPassingGuardrails(ToolGuardrailService service) {
+        return service.bind(
+                null,
+                AiServiceTool.builder()
+                        .toolSpecification(SPECIFICATION)
+                        .toolSource(SOURCE)
+                        .toolExecutor((request, memoryId) -> "unused")
+                        .toolInputGuardrails(INPUT_PASS_ASYNC)
+                        .toolOutputGuardrails(new ToolOutputGuardrail() {
+                            @Override
+                            public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
+                                return success();
+                            }
+
+                            @Override
+                            public CompletableFuture<ToolOutputGuardrailResult> validateAsync(
+                                    ToolOutputGuardrailRequest request) {
+                                return CompletableFuture.completedFuture(success());
+                            }
+                        })
+                        .build());
+    }
+
+    private static ToolInputGuardrailRequest inputRequest(String name, ToolSpecification spec, ToolSource source) {
+        return ToolInputGuardrailRequest.builder()
+                .toolExecutionRequest(CALL.toBuilder().name(name).build())
+                .toolSpecification(spec)
+                .toolSource(source)
+                .requestParams(PARAMS)
+                .build();
+    }
+
+    private static ToolOutputGuardrailRequest outputRequest(String name, ToolSpecification spec, ToolSource source) {
+        return ToolOutputGuardrailRequest.builder()
+                .toolExecutionRequest(CALL.toBuilder().name(name).build())
+                .toolSpecification(spec)
+                .toolSource(source)
+                .requestParams(PARAMS)
+                .resultContents(List.of(TextContent.from("found")))
+                .isError(false)
+                .build();
+    }
+
+    static Stream<Arguments> requestsThatDisagreeWithTheKey() {
+        var otherSpecification = ToolSpecification.builder()
+                .name("search")
+                .description("another specification of the tool")
+                .build();
+        return Stream.of(
+                Arguments.of(
+                        "name",
+                        "fetch",
+                        ToolSpecification.builder().name("fetch").build(),
+                        SOURCE,
+                        "the key is for the tool 'search'"),
+                Arguments.of("specification", "search", otherSpecification, SOURCE, "tool specification of its key"),
+                Arguments.of("source", "search", SPECIFICATION, ToolSource.programmatic(), "its key has"));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("requestsThatDisagreeWithTheKey")
+    void a_request_that_disagrees_with_the_key_fails_every_entry_point(
+            String disagreement, String name, ToolSpecification spec, ToolSource source, String message) {
+        var service = ToolGuardrailService.builder(Assistant.class).build();
+        var key = keyWithPassingGuardrails(service);
+        var inputRequest = inputRequest(name, spec, source);
+        var outputRequest = outputRequest(name, spec, source);
+
+        assertThatThrownBy(() -> service.executeInputGuardrails(key, inputRequest))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining(message);
+        assertThatThrownBy(() -> service.executeOutputGuardrails(key, outputRequest))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining(message);
+        assertFailsWithIllegalArgument(service.executeInputGuardrailsAsync(key, inputRequest), message);
+        assertFailsWithIllegalArgument(service.executeOutputGuardrailsAsync(key, outputRequest), message);
+    }
+
+    @Test
+    void a_request_built_from_the_key_runs_at_every_entry_point() {
+        var service = ToolGuardrailService.builder(Assistant.class).build();
+        var key = keyWithPassingGuardrails(service);
+        var inputRequest = inputRequest(key.toolName(), key.toolSpecification(), key.toolSource());
+        var outputRequest = outputRequest(key.toolName(), key.toolSpecification(), key.toolSource());
+
+        assertThat(service.executeInputGuardrails(key, inputRequest).isSuccess()).isTrue();
+        assertThat(service.executeOutputGuardrails(key, outputRequest).isSuccess()).isTrue();
+        assertThat(service.executeInputGuardrailsAsync(key, inputRequest))
+                .succeedsWithin(Duration.ofSeconds(5))
+                .returns(true, ToolInputGuardrailResult::isSuccess);
+        assertThat(service.executeOutputGuardrailsAsync(key, outputRequest))
+                .succeedsWithin(Duration.ofSeconds(5))
+                .returns(true, ToolOutputGuardrailResult::isSuccess);
     }
 
     private static void assertFailsWithIllegalArgument(CompletableFuture<?> future, String parameter) {

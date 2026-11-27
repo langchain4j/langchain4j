@@ -21,13 +21,13 @@ import org.jspecify.annotations.Nullable;
 public final class ToolInputGuardrailRequest implements GuardrailRequest<ToolInputGuardrailRequest> {
 
     private final ToolExecutionRequest toolExecutionRequest;
-    private final @Nullable ToolSpecification toolSpecification;
+    private final ToolSpecification toolSpecification;
     private final ToolSource toolSource;
     private final GuardrailRequestParams requestParams;
 
     private ToolInputGuardrailRequest(Builder builder) {
         this.toolExecutionRequest = ensureNotNull(builder.toolExecutionRequest, "toolExecutionRequest");
-        this.toolSpecification = builder.toolSpecification;
+        this.toolSpecification = ensureNotNull(builder.toolSpecification, "toolSpecification");
         this.toolSource = getOrDefault(builder.toolSource, ToolSource.programmatic());
         this.requestParams = ensureNotNull(builder.requestParams, "requestParams");
     }
@@ -40,9 +40,9 @@ public final class ToolInputGuardrailRequest implements GuardrailRequest<ToolInp
     }
 
     /**
-     * @return the specification of the tool being executed; may be null when it is not known
+     * @return the specification of the tool being executed, never {@code null}
      */
-    public @Nullable ToolSpecification toolSpecification() {
+    public ToolSpecification toolSpecification() {
         return toolSpecification;
     }
 
@@ -181,12 +181,12 @@ public final class ToolInputGuardrailRequest implements GuardrailRequest<ToolInp
         }
 
         /**
-         * Sets the specification of the tool, if known.
+         * Sets the specification of the tool. Required.
          *
          * @param toolSpecification the tool specification
          * @return this builder
          */
-        public Builder toolSpecification(@Nullable ToolSpecification toolSpecification) {
+        public Builder toolSpecification(ToolSpecification toolSpecification) {
             this.toolSpecification = toolSpecification;
             return this;
         }
