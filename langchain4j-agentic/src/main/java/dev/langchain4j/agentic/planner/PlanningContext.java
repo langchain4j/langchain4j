@@ -10,7 +10,6 @@ import dev.langchain4j.agentic.scope.AgentInvocation;
 import dev.langchain4j.agentic.scope.AgenticScope;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.decision.response.DecisionResponse;
-import dev.langchain4j.model.output.TokenUsage;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -68,7 +67,7 @@ public record PlanningContext(
      */
     public void reportChatModelResponse(@Nullable ChatResponse chatResponse) {
         if (chatResponse != null) {
-            reportModelResponse(chatResponse.tokenUsage(), chatResponse.modelName(), chatResponse, null);
+            reportModelResponse(new PlannerModelResponse(agenticScope, plannerAgent, chatResponse));
         }
     }
 
@@ -81,20 +80,13 @@ public record PlanningContext(
      */
     public void reportDecisionModelResponse(@Nullable DecisionResponse decisionResponse) {
         if (decisionResponse != null) {
-            reportModelResponse(decisionResponse.tokenUsage(), decisionResponse.modelName(), null, decisionResponse);
+            reportModelResponse(new PlannerModelResponse(agenticScope, plannerAgent, decisionResponse));
         }
     }
 
-    private void reportModelResponse(
-            @Nullable TokenUsage tokenUsage,
-            @Nullable String modelName,
-            @Nullable ChatResponse chatResponse,
-            @Nullable DecisionResponse decisionResponse) {
+    private void reportModelResponse(PlannerModelResponse plannerModelResponse) {
         if (plannerAgent instanceof InternalAgent agent) {
-            onPlannerModelResponse(
-                    agent.listener(),
-                    new PlannerModelResponse(
-                            agenticScope, plannerAgent, tokenUsage, modelName, chatResponse, decisionResponse));
+            onPlannerModelResponse(agent.listener(), plannerModelResponse);
         }
     }
 }

@@ -1,5 +1,7 @@
 package dev.langchain4j.agentic.observability;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.agentic.planner.AgentInstance;
 import dev.langchain4j.agentic.planner.PlanningContext;
 import dev.langchain4j.agentic.scope.AgenticScope;
@@ -48,16 +50,43 @@ public final class PlannerModelResponse {
     }
 
     /**
+     * Creates the notification of the response of a chat model, with the token usage and the model name of that
+     * response.
+     *
      * @param agenticScope the scope of the agentic system running the planner
      * @param agent the agent whose planner called the model
-     * @param tokenUsage the token usage of this model call, or {@code null} if the provider didn't report it
-     * @param modelName the name of the model that answered this call, or {@code null} if the provider didn't report it
-     * @param chatResponse the response of the chat model called by the planner, or {@code null} if it called a
-     *                     decision model
-     * @param decisionResponse the response of the decision model called by the planner, with its answers and their
-     *                         probabilities, or {@code null} if it called a chat model
+     * @param chatResponse the response of the chat model called by the planner
      */
-    public PlannerModelResponse(
+    public PlannerModelResponse(AgenticScope agenticScope, AgentInstance agent, ChatResponse chatResponse) {
+        this(
+                agenticScope,
+                agent,
+                ensureNotNull(chatResponse, "chatResponse").tokenUsage(),
+                chatResponse.modelName(),
+                chatResponse,
+                null);
+    }
+
+    /**
+     * Creates the notification of the response of a decision model, with the token usage and the model name of that
+     * response.
+     *
+     * @param agenticScope the scope of the agentic system running the planner
+     * @param agent the agent whose planner called the model
+     * @param decisionResponse the response of the decision model called by the planner, with its answers and their
+     *                         probabilities
+     */
+    public PlannerModelResponse(AgenticScope agenticScope, AgentInstance agent, DecisionResponse decisionResponse) {
+        this(
+                agenticScope,
+                agent,
+                ensureNotNull(decisionResponse, "decisionResponse").tokenUsage(),
+                decisionResponse.modelName(),
+                null,
+                decisionResponse);
+    }
+
+    private PlannerModelResponse(
             AgenticScope agenticScope,
             AgentInstance agent,
             @Nullable TokenUsage tokenUsage,

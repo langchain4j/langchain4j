@@ -216,6 +216,16 @@ class PlannerTokenUsageTest {
     }
 
     @Test
+    void notification_cannot_be_created_from_a_null_response() {
+        assertThatThrownBy(() -> new PlannerModelResponse(null, null, (ChatResponse) null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("chatResponse cannot be null");
+        assertThatThrownBy(() -> new PlannerModelResponse(null, null, (DecisionResponse) null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("decisionResponse cannot be null");
+    }
+
+    @Test
     void planner_reporting_no_response_notifies_nothing() {
         List<PlannerModelResponse> responses = new CopyOnWriteArrayList<>();
         Planner planner = new Planner() {
