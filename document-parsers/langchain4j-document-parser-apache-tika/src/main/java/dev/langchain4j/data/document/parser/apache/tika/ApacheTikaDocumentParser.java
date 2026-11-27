@@ -81,7 +81,7 @@ public class ApacheTikaDocumentParser implements DocumentParser {
      * To extract all the text, use {@link Builder#maxCharacters(Integer)} with {@code -1}:
      * {@code ApacheTikaDocumentParser.builder().maxCharacters(-1).build()}.
      */
-    @Deprecated(since = "1.25.0")
+    @Deprecated(since = "1.24.1")
     public static final Supplier<ContentHandler> DEFAULT_CONTENT_HANDLER_SUPPLIER =
             () -> new BodyContentHandler(NO_WRITE_LIMIT);
 
