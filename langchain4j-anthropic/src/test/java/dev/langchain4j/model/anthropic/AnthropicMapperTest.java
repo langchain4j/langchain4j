@@ -542,6 +542,67 @@ class AnthropicMapperTest {
     }
 
     @Test
+    void should_join_adjacent_text_blocks_without_separator() {
+        // given: Claude splits a sentence into several text blocks around its citations
+        List<AnthropicContent> contents = List.of(
+                text("According to the document, "),
+                text("the grass is green"),
+                text(" and "),
+                text("the sky is blue"),
+                text("."));
+
+        // when
+        AiMessage aiMessage = toAiMessage(contents, false, false);
+
+        // then
+        assertThat(aiMessage.text()).isEqualTo("According to the document, the grass is green and the sky is blue.");
+    }
+
+    @Test
+    void should_keep_the_line_breaks_that_are_part_of_the_text_blocks() {
+        // given: a line break that Claude wants is part of the text (example from the citations docs)
+        List<AnthropicContent> contents =
+                List.of(text("grass_color: "), text("green"), text("\nsky_color: "), text("blue"));
+
+        // when
+        AiMessage aiMessage = toAiMessage(contents, false, false);
+
+        // then
+        assertThat(aiMessage.text()).isEqualTo("grass_color: green\nsky_color: blue");
+    }
+
+    @Test
+    void should_separate_text_blocks_that_are_separated_by_another_block() {
+        // given
+        List<AnthropicContent> contents = List.of(
+                text("I'll search for that."),
+                AnthropicContent.builder()
+                        .type("server_tool_use")
+                        .id("srvtoolu_123")
+                        .name("web_search")
+                        .input(Map.of("query", "Claude Shannon"))
+                        .build(),
+                AnthropicContent.builder()
+                        .type("web_search_tool_result")
+                        .toolUseId("srvtoolu_123")
+                        .content(List.of())
+                        .build(),
+                text("Claude Shannon was born in 1916"),
+                text(" in Petoskey, Michigan."));
+
+        // when
+        AiMessage aiMessage = toAiMessage(contents, false, false);
+
+        // then
+        assertThat(aiMessage.text())
+                .isEqualTo("I'll search for that.\nClaude Shannon was born in 1916 in Petoskey, Michigan.");
+    }
+
+    private static AnthropicContent text(String text) {
+        return AnthropicContent.builder().type("text").text(text).build();
+    }
+
+    @Test
     void should_extract_server_tool_results_when_enabled() {
         // given
         AnthropicContent textContent = AnthropicContent.builder()
