@@ -1024,7 +1024,7 @@ Response<List<Embedding>> embeddings = embeddingModel.embedAll(List.of(TextSegme
 
 This implements the `ChatModelListener` using the [Micrometer Observation API](https://docs.micrometer.io/micrometer/reference/observation.html) allowing transparent generation of Metrics and Traces. 
 
-This is implemnted in the  `langchain4j-observation` module.
+This is implemented in the  `langchain4j-observation` module.
 
 ### Produced telemetry
 

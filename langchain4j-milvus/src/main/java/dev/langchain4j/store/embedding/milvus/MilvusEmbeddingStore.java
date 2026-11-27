@@ -321,7 +321,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
      *     <li>Deleted entities can still be retrieved immediately after the deletion if the consistency level is set lower than {@code Strong}</li>
      *     <li>Entities deleted beyond the pre-specified span of time for Time Travel cannot be retrieved again.</li>
      *     <li>Frequent deletion operations will impact the system performance.</li>
-     *     <li>Before deleting entities by comlpex boolean expressions, make sure the collection has been loaded.</li>
+     *     <li>Before deleting entities by complex boolean expressions, make sure the collection has been loaded.</li>
      *     <li>Deleting entities by complex boolean expressions is not an atomic operation. Therefore, if it fails halfway through, some data may still be deleted.</li>
      *     <li>Deleting entities by complex boolean expressions is supported only when the consistency is set to Bounded. For details, <a href="https://milvus.io/docs/v2.3.x/consistency.md#Consistency-levels">see Consistency</a></li>
      * </ul>
@@ -347,7 +347,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
      *     <li>Deleted entities can still be retrieved immediately after the deletion if the consistency level is set lower than {@code Strong}</li>
      *     <li>Entities deleted beyond the pre-specified span of time for Time Travel cannot be retrieved again.</li>
      *     <li>Frequent deletion operations will impact the system performance.</li>
-     *     <li>Before deleting entities by comlpex boolean expressions, make sure the collection has been loaded.</li>
+     *     <li>Before deleting entities by complex boolean expressions, make sure the collection has been loaded.</li>
      *     <li>Deleting entities by complex boolean expressions is not an atomic operation. Therefore, if it fails halfway through, some data may still be deleted.</li>
      *     <li>Deleting entities by complex boolean expressions is supported only when the consistency is set to Bounded. For details, <a href="https://milvus.io/docs/v2.3.x/consistency.md#Consistency-levels">see Consistency</a></li>
      * </ul>
@@ -373,7 +373,7 @@ public class MilvusEmbeddingStore implements EmbeddingStore<TextSegment> {
      *     <li>Deleted entities can still be retrieved immediately after the deletion if the consistency level is set lower than {@code Strong}</li>
      *     <li>Entities deleted beyond the pre-specified span of time for Time Travel cannot be retrieved again.</li>
      *     <li>Frequent deletion operations will impact the system performance.</li>
-     *     <li>Before deleting entities by comlpex boolean expressions, make sure the collection has been loaded.</li>
+     *     <li>Before deleting entities by complex boolean expressions, make sure the collection has been loaded.</li>
      *     <li>Deleting entities by complex boolean expressions is not an atomic operation. Therefore, if it fails halfway through, some data may still be deleted.</li>
      *     <li>Deleting entities by complex boolean expressions is supported only when the consistency is set to Bounded. For details, <a href="https://milvus.io/docs/v2.3.x/consistency.md#Consistency-levels">see Consistency</a></li>
      * </ul>

@@ -1,7 +1,7 @@
 package dev.langchain4j.model.workersai;
 
 /**
- * Enum for Workers AI Omage Model Name.
+ * Enum for Workers AI Image Model Name.
  */
 public enum WorkersAiImageModelName {
 
