@@ -30,6 +30,16 @@
           "justification": "Core langchain4j batch type intentionally exposed by the BatchChatModel API implemented by MistralAiBatchChatModel"
         },
         {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.data.document.Document",
+          "justification": "Core langchain4j document type intentionally returned by MistralAiOcrModel and by the DocumentParser API implemented by MistralAiOcrDocumentParser"
+        },
+        {
+          "code": "java.class.externalClassExposedInAPI",
+          "new": "missing-class dev.langchain4j.data.document.DocumentParser",
+          "justification": "Core langchain4j document type intentionally implemented by MistralAiOcrDocumentParser"
+        },
+        {
           "code": "java.method.returnTypeChanged",
           "old": "method dev.langchain4j.model.chat.request.ChatRequestParameters dev.langchain4j.model.mistralai.MistralAiChatModel::defaultRequestParameters()",
           "new": "method dev.langchain4j.model.mistralai.MistralAiChatRequestParameters dev.langchain4j.model.mistralai.MistralAiChatModel::defaultRequestParameters()",
