@@ -52,6 +52,7 @@ public class MessageWindowChatMemory implements ChatMemory {
     private final Function<Object, Integer> maxMessagesProvider;
     private final ChatMemoryStore store;
     private final boolean alwaysKeepSystemMessageFirst;
+    private final Object lock = new Object();
 
     private MessageWindowChatMemory(Builder builder) {
         this.id = ensureNotNull(builder.id, "id");
@@ -68,9 +69,11 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public void add(ChatMessage message) {
-        List<ChatMessage> messages = messages();
-        if (appendMessage(messages, message)) {
-            store.updateMessages(id, messages);
+        synchronized (lock) {
+            List<ChatMessage> messages = messages();
+            if (appendMessage(messages, message)) {
+                store.updateMessages(id, messages);
+            }
         }
     }
 
@@ -132,11 +135,13 @@ public class MessageWindowChatMemory implements ChatMemory {
     }
 
     private void set(List<ChatMessage> messages) {
-        Integer maxMessages = this.maxMessagesProvider.apply(this.id);
-        ensureGreaterThanZero(maxMessages, "maxMessages");
-        messages = new ArrayList<>(messages);
-        ensureCapacity(messages, maxMessages);
-        store.updateMessages(id, messages);
+        synchronized (lock) {
+            Integer maxMessages = this.maxMessagesProvider.apply(this.id);
+            ensureGreaterThanZero(maxMessages, "maxMessages");
+            messages = new ArrayList<>(messages);
+            ensureCapacity(messages, maxMessages);
+            store.updateMessages(id, messages);
+        }
     }
 
     @Override
@@ -152,7 +157,9 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public List<ChatMessage> messages() {
-        return windowed(store.getMessages(id));
+        synchronized (lock) {
+            return windowed(store.getMessages(id));
+        }
     }
 
     @Override
@@ -198,7 +205,9 @@ public class MessageWindowChatMemory implements ChatMemory {
 
     @Override
     public void clear() {
-        store.deleteMessages(id);
+        synchronized (lock) {
+            store.deleteMessages(id);
+        }
     }
 
     public static Builder builder() {
