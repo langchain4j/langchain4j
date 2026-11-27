@@ -8,9 +8,11 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
+import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.exception.JsonException;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
+import dev.langchain4j.internal.DefaultExecutorProvider;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.mcp.client.logging.DefaultMcpLogMessageHandler;
 import dev.langchain4j.mcp.client.logging.McpLogMessageHandler;
@@ -50,6 +52,8 @@ import dev.langchain4j.mcp.protocol.McpSubscriptionsListenParams;
 import dev.langchain4j.mcp.protocol.McpSubscriptionsListenRequest;
 import dev.langchain4j.mcp.protocol.McpUnsubscribeResourceRequest;
 import dev.langchain4j.service.tool.ToolExecutionResult;
+import dev.langchain4j.spi.CapturedContext;
+import dev.langchain4j.spi.ExecutorProvider;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -60,11 +64,14 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -81,6 +88,7 @@ public class DefaultMcpClient implements McpClient {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultMcpClient.class);
     private static final int DEFAULT_MULTI_ROUND_TRIP_MAX_RETRIES = 3;
+    private static final int JSON_RPC_METHOD_NOT_FOUND = -32601;
 
     /**
      * The first MCP protocol version that conveys version, identity and capabilities as
@@ -146,6 +154,10 @@ public class DefaultMcpClient implements McpClient {
     private final Map<Long, CompletableFuture<String>> activeSubscriptions = new ConcurrentHashMap<>();
     private final Map<Long, CompletableFuture<Map<String, Object>>> pendingSubscriptionAcks = new ConcurrentHashMap<>();
     private volatile CompletableFuture<String> listChangeSubscriptionFuture;
+    private final AtomicLong listChangeSubscribeGeneration = new AtomicLong();
+    private final AtomicInteger listChangeRetryAttempt = new AtomicInteger();
+    private final Executor listChangeResubscribeExecutor;
+    private volatile CapturedContext listChangeSubscribeContext = CapturedContext.NONE;
 
     public DefaultMcpClient(Builder builder) {
         transport = ensureNotNull(builder.transport, "transport");
@@ -166,6 +178,8 @@ public class DefaultMcpClient implements McpClient {
             progressHandler = builder.progressHandler;
             pingTimeout = getOrDefault(builder.pingTimeout, Duration.ofSeconds(10));
             reconnectInterval = getOrDefault(builder.reconnectInterval, Duration.ofSeconds(5));
+            listChangeResubscribeExecutor =
+                    getOrDefault(builder.listChangeResubscribeExecutor, DefaultExecutorProvider::getDefaultExecutor);
             autoHealthCheck = getOrDefault(builder.autoHealthCheck, Boolean.TRUE);
             autoHealthCheckInterval = getOrDefault(builder.autoHealthCheckInterval, Duration.ofSeconds(30));
             listeners = List.copyOf(builder.listeners);
@@ -200,15 +214,18 @@ public class DefaultMcpClient implements McpClient {
                     },
                     () -> {
                         toolListRefs.set(null);
+                        onListChangeSubscriptionLive();
                         notifyListeners(l -> l.onNotificationToolsListChanged());
                     },
                     () -> {
                         resourceRefs.set(null);
                         resourceTemplateRefs.set(null);
+                        onListChangeSubscriptionLive();
                         notifyListeners(l -> l.onNotificationResourcesListChanged());
                     },
                     () -> {
                         promptRefs.set(null);
+                        onListChangeSubscriptionLive();
                         notifyListeners(l -> l.onNotificationPromptsListChanged());
                     },
                     uri -> {
@@ -538,7 +555,47 @@ public class DefaultMcpClient implements McpClient {
         return modernProtocol;
     }
 
+    /**
+     * Starts {@code subscriptions/listen} for tool, prompt and resource list changes.
+     *
+     * <p>Called from {@link #initialize()} with {@code retry == false}, including after a
+     * transport failure or session restart: any previous listen is cancelled with
+     * {@code cancel(true)} and a new one is started. A retry ({@code retry == true}) of an
+     * already-open listen on this same transport and notification set is dropped as a
+     * duplicate. That early return is not a general-purpose guard: it must not swallow
+     * {@code initialize()} or a later transport restart.
+     *
+     * <p>A failed listen is retried with backoff, except for non-retryable errors such
+     * as HTTP 401/403 or JSON-RPC {@code Method not found} ({@code -32601}). Delayed
+     * retries run on the executor configured with
+     * {@link Builder#listChangeResubscribeExecutor(Executor)} with the
+     * {@link CapturedContext} taken when {@code initialize()} started the listen, so a
+     * host {@link ExecutorProvider} and a headers or meta supplier that read the
+     * caller's identity or tracing span see that context again. Request-scoped tokens
+     * may still have expired by then; a client-level token or a supplier that refreshes
+     * credentials does not have that problem.
+     */
     private void startListChangeSubscriptions() {
+        startListChangeSubscriptions(false);
+    }
+
+    private void startListChangeSubscriptions(boolean retry) {
+        if (closed) {
+            return;
+        }
+        if (!retry) {
+            rememberListChangeSubscribeContext();
+        }
+        CompletableFuture<String> existing = listChangeSubscriptionFuture;
+        // Same transport, same notification set, listen still open: drop a duplicate retry.
+        // initialize() passes retry == false and supersedes with cancel(true) instead.
+        if (retry && existing != null && !existing.isDone()) {
+            return;
+        }
+        listChangeSubscribeGeneration.incrementAndGet();
+        if (existing != null) {
+            existing.cancel(true);
+        }
         McpSubscriptionsListenParams.Notifications notifications = new McpSubscriptionsListenParams.Notifications();
         if (subscribeToToolListChanges) {
             notifications.setToolsListChanged(true);
@@ -558,17 +615,146 @@ public class DefaultMcpClient implements McpClient {
         applyMeta(request, context);
         CompletableFuture<String> future = executeViaTransport(context);
         listChangeSubscriptionFuture = future;
+        long generation = listChangeSubscribeGeneration.get();
         future.whenComplete((result, error) -> {
             pendingOperations.remove(operationId);
-            if (closed) {
+            if (closed || generation != listChangeSubscribeGeneration.get()) {
                 return;
             }
-            if (error != null) {
-                log.warn("List-change subscription failed", error);
-            } else if (result != null && result.contains("\"error\"")) {
-                log.warn("List-change subscription rejected by server: {}", errorMessageOf(result));
+            Throwable unwrapped = error == null ? null : unwrapCompletionException(error);
+            if (unwrapped instanceof CancellationException) {
+                return;
             }
+            boolean rejected = result != null && result.contains("\"error\"");
+            boolean streamEnded = error == null && (result == null || result.isBlank());
+            if (error == null && !rejected && !streamEnded) {
+                return;
+            }
+            if (isNonRetryableListChangeFailure(unwrapped, rejected ? result : null)) {
+                logNonRetryableListChangeFailure(unwrapped, rejected ? errorMessageOf(result) : null);
+                return;
+            }
+            logListChangeSubscriptionFailure(error, rejected ? errorMessageOf(result) : null, streamEnded);
+            scheduleListChangeResubscribe(generation);
         });
+    }
+
+    /**
+     * Keeps the context of the thread that starts a listen, typically
+     * {@link #initialize()}. A later {@code initialize()} after a transport
+     * restart often runs on a transport thread with no request context, so a
+     * missing capture must not wipe a previously stored one.
+     */
+    private void rememberListChangeSubscribeContext() {
+        CapturedContext captured = DefaultExecutorProvider.captureContext();
+        if (captured != null) {
+            listChangeSubscribeContext = captured;
+        }
+    }
+
+    /**
+     * A live list-change notification is the success signal for {@code subscriptions/listen}:
+     * the listen future stays pending for the life of the stream, so a pending future after
+     * {@code sendRequest} is not a successful handshake. Reset backoff only here.
+     */
+    private void onListChangeSubscriptionLive() {
+        if (listChangeRetryAttempt.getAndSet(0) > 0) {
+            log.info("Re-subscribed to list-change notifications");
+        }
+    }
+
+    private void logListChangeSubscriptionFailure(Throwable error, String rejectedMessage, boolean streamEnded) {
+        boolean firstFailure = listChangeRetryAttempt.get() == 0;
+        if (error != null) {
+            if (firstFailure) {
+                log.warn("List-change subscription failed", error);
+            } else {
+                log.debug("List-change subscription failed; will retry", error);
+            }
+        } else if (rejectedMessage != null) {
+            if (firstFailure) {
+                log.warn("List-change subscription rejected by server: {}", rejectedMessage);
+            } else {
+                log.debug("List-change subscription rejected by server: {}; will retry", rejectedMessage);
+            }
+        } else if (streamEnded) {
+            if (firstFailure) {
+                log.warn("List-change subscription ended; will re-subscribe");
+            } else {
+                log.debug("List-change subscription ended; will retry");
+            }
+        }
+    }
+
+    private void scheduleListChangeResubscribe(long generation) {
+        if (closed || generation != listChangeSubscribeGeneration.get()) {
+            return;
+        }
+        int attempt = listChangeRetryAttempt.incrementAndGet();
+        long baseMs = Math.max(reconnectInterval.toMillis(), 1L);
+        long capped = Math.min(
+                baseMs * (1L << Math.min(attempt - 1, 6)),
+                Duration.ofSeconds(30).toMillis());
+        long jitter = ThreadLocalRandom.current().nextLong(capped + 1);
+        long delay = capped / 2 + jitter / 2;
+        log.debug("Re-subscribing to list-change notifications in {} ms (attempt {})", delay, attempt);
+        CapturedContext context = getOrDefault(listChangeSubscribeContext, CapturedContext.NONE);
+        Executor delayedExecutor =
+                CompletableFuture.delayedExecutor(delay, TimeUnit.MILLISECONDS, listChangeResubscribeExecutor);
+        delayedExecutor.execute(context.wrap(() -> {
+            if (closed || generation != listChangeSubscribeGeneration.get()) {
+                return;
+            }
+            try {
+                startListChangeSubscriptions(true);
+            } catch (RuntimeException e) {
+                if (isNonRetryableListChangeFailure(e, null)) {
+                    log.warn(
+                            "Failed to re-subscribe to list-change notifications with a non-retryable error; will not retry",
+                            e);
+                    return;
+                }
+                log.warn("Failed to re-subscribe to list-change notifications", e);
+                scheduleListChangeResubscribe(generation);
+            }
+        }));
+    }
+
+    private static boolean isNonRetryableListChangeFailure(Throwable error, String rejectedResponse) {
+        int httpStatus = httpStatusOf(error);
+        if (httpStatus == 401 || httpStatus == 403) {
+            return true;
+        }
+        Integer jsonRpcCode = jsonRpcErrorCodeOf(error, rejectedResponse);
+        return jsonRpcCode != null && jsonRpcCode == JSON_RPC_METHOD_NOT_FOUND;
+    }
+
+    private static int httpStatusOf(Throwable error) {
+        for (Throwable t = error; t != null; t = t.getCause()) {
+            if (t instanceof HttpException http) {
+                return http.statusCode();
+            }
+        }
+        return -1;
+    }
+
+    private static Integer jsonRpcErrorCodeOf(Throwable error, String rejectedResponse) {
+        for (Throwable t = error; t != null; t = t.getCause()) {
+            if (t instanceof McpException mcp) {
+                return mcp.errorCode();
+            }
+        }
+        return errorCodeOf(rejectedResponse);
+    }
+
+    private static void logNonRetryableListChangeFailure(Throwable error, String rejectedMessage) {
+        if (error != null) {
+            log.warn("List-change subscription failed with a non-retryable error; will not re-subscribe", error);
+        } else {
+            log.warn(
+                    "List-change subscription rejected with a non-retryable error; will not re-subscribe: {}",
+                    rejectedMessage);
+        }
     }
 
     private static McpServerDiscoverResponse.Result multiRoundTripResult(String response) {
@@ -1636,9 +1822,24 @@ public class DefaultMcpClient implements McpClient {
     }
 
     private static String errorMessageOf(String response) {
-        McpErrorResponse.Error error =
-                McpJson.deserialize(response, McpErrorResponse.class).getError();
+        McpErrorResponse.Error error = errorOf(response);
         return error == null ? "" : error.getMessage();
+    }
+
+    private static Integer errorCodeOf(String response) {
+        McpErrorResponse.Error error = errorOf(response);
+        return error == null ? null : error.getCode();
+    }
+
+    private static McpErrorResponse.Error errorOf(String response) {
+        if (response == null || response.isBlank()) {
+            return null;
+        }
+        try {
+            return McpJson.deserialize(response, McpErrorResponse.class).getError();
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     @Override
@@ -1654,6 +1855,7 @@ public class DefaultMcpClient implements McpClient {
     /** Releases what the client holds besides the transport, and marks it closed. */
     private void releaseResources() {
         closed = true;
+        listChangeSubscribeGeneration.incrementAndGet();
         // Cancel list-change subscription
         CompletableFuture<String> listChangeFuture = listChangeSubscriptionFuture;
         if (listChangeFuture != null) {
@@ -1832,6 +2034,7 @@ public class DefaultMcpClient implements McpClient {
         private Duration promptsTimeout;
         private McpLogMessageHandler logHandler;
         private Duration reconnectInterval;
+        private Executor listChangeResubscribeExecutor;
         private Boolean autoHealthCheck;
         private Duration autoHealthCheckInterval;
         private List<McpRoot> roots;
@@ -2005,6 +2208,28 @@ public class DefaultMcpClient implements McpClient {
          */
         public Builder reconnectInterval(Duration reconnectInterval) {
             this.reconnectInterval = reconnectInterval;
+            return this;
+        }
+
+        /**
+         * Executor used to run delayed {@code subscriptions/listen} re-subscribes.
+         * The client does not shut this executor down.
+         *
+         * <p>If unset, {@link DefaultExecutorProvider#getDefaultExecutor()} is used, so a
+         * host-registered {@link ExecutorProvider} is honored. The context of the thread
+         * that starts the listen (typically {@code initialize()}) is captured with
+         * {@link DefaultExecutorProvider#captureContext()} and restored when the
+         * re-subscribe runs, which is the same seam
+         * {@code StreamableHttpMcpTransport} uses for the subsidiary channel. A
+         * {@code McpHeadersSupplier} or {@code McpMetaSupplier} that reads the caller's
+         * security identity or tracing span therefore sees that context again.
+         *
+         * <p>This does not refresh a request-scoped token that has already expired by
+         * the time of the retry. A client-level token, or a supplier that can obtain a
+         * fresh credential, does not have that limitation.
+         */
+        public Builder listChangeResubscribeExecutor(Executor listChangeResubscribeExecutor) {
+            this.listChangeResubscribeExecutor = listChangeResubscribeExecutor;
             return this;
         }
 

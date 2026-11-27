@@ -146,7 +146,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
         }
         Builder builder = configured.copy();
         for (McpTransportCustomizer customizer : customizers) {
-            LOG.debug("Calling {} for a new Streamable HTTP MCP transport", customizer.getClass().getName());
+            LOG.debug(
+                    "Calling {} for a new Streamable HTTP MCP transport",
+                    customizer.getClass().getName());
             customizer.customize(builder);
         }
         return builder;
@@ -191,11 +193,13 @@ public class StreamableHttpMcpTransport implements McpTransport {
         List<String> jdkOnlyOptions = jdkOnlyOptions(builder);
         if (!jdkOnlyOptions.isEmpty()) {
             throw new IllegalArgumentException(String.join(", ", jdkOnlyOptions)
-                    + " can be used only with the JDK HTTP client, but " + clientBuilder.getClass().getName()
+                    + " can be used only with the JDK HTTP client, but "
+                    + clientBuilder.getClass().getName()
                     + " is used; configure it on the HTTP client and pass it with httpClientBuilder(...) instead");
         }
         clientBuilder.connectTimeout(timeout);
-        clientBuilder.readTimeout(Duration.ZERO); // MCP responses and notification streams can stay idle for a long time
+        clientBuilder.readTimeout(
+                Duration.ZERO); // MCP responses and notification streams can stay idle for a long time
         return ensureNotNull(clientBuilder.build(), "httpClientBuilder.build()");
     }
 
@@ -328,6 +332,34 @@ public class StreamableHttpMcpTransport implements McpTransport {
     @Override
     public void onFailure(Runnable actionOnFailure) {
         this.onFailureCallback = actionOnFailure;
+    }
+
+    private void notifyFailure() {
+        Runnable callback = onFailureCallback;
+        if (callback == null || closed.get()) {
+            return;
+        }
+        executor.execute(() -> {
+            if (closed.get()) {
+                return;
+            }
+            try {
+                callback.run();
+            } catch (RuntimeException e) {
+                LOG.warn("MCP transport failure callback failed", e);
+            }
+        });
+    }
+
+    private static boolean isConnectionFailure(Throwable error) {
+        Throwable current = error;
+        while (current != null) {
+            if (current instanceof IOException) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     /**
@@ -884,6 +916,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
                 }
             } else {
                 future.completeExceptionally(error);
+                if (sseResponse || isConnectionFailure(error)) {
+                    notifyFailure();
+                }
             }
         }
 
@@ -914,6 +949,9 @@ public class StreamableHttpMcpTransport implements McpTransport {
                 future.completeExceptionally(new IllegalStateException("HTTP stream completed without a response"));
             } else if (sseResponse) {
                 trafficLog.debug("SSE channel closed");
+                if (future != null && !future.isDone()) {
+                    future.complete(null);
+                }
             } else {
                 String responseBody = body.toString();
                 if (logResponses) {
