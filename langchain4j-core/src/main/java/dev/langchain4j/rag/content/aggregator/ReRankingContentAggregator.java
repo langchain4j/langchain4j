@@ -4,11 +4,13 @@ import static dev.langchain4j.internal.CompletableFutureUtils.failOnThrow;
 import static dev.langchain4j.internal.CompletableFutureUtils.propagateCancellation;
 import static dev.langchain4j.internal.Exceptions.illegalArgument;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.ValidationUtils.ensureGreaterThanZeroIfNotNull;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 import static dev.langchain4j.rag.content.ContentMetadata.RERANKED_SCORE;
 import static java.util.Collections.emptyList;
 
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
 import dev.langchain4j.model.scoring.response.ScoringResponse;
@@ -16,6 +18,7 @@ import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.content.ContentMetadata;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.rag.query.transformer.ExpandingQueryTransformer;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,6 +49,10 @@ import java.util.stream.Collectors;
  * - {@link #minScore}: the minimum score for {@link Content}s to be returned.
  * {@link Content}s scoring below this threshold (as determined by the {@link ScoringModel})
  * are excluded from the results.
+ * <br>
+ * - {@link #maxTokens}: the maximum total number of tokens in the returned {@link Content}s,
+ * as counted by a {@link TokenCountEstimator}. {@link Content}s are kept in the re-ranked order
+ * while their total fits. The first {@link Content} that does not fit, and all after it, are excluded.
  *
  * @see DefaultContentAggregator
  */
@@ -67,6 +74,8 @@ public class ReRankingContentAggregator implements ContentAggregator {
     private final Function<Map<Query, Collection<List<Content>>>, Query> querySelector;
     private final Double minScore;
     private final Integer maxResults;
+    private final Integer maxTokens;
+    private final TokenCountEstimator tokenCountEstimator;
 
     public ReRankingContentAggregator(ScoringModel scoringModel) {
         this(scoringModel, DEFAULT_QUERY_SELECTOR, null);
@@ -84,10 +93,29 @@ public class ReRankingContentAggregator implements ContentAggregator {
             Function<Map<Query, Collection<List<Content>>>, Query> querySelector,
             Double minScore,
             Integer maxResults) {
+        this(scoringModel, querySelector, minScore, maxResults, null, null);
+    }
+
+    /**
+     * @param maxTokens           the maximum total number of tokens in the returned {@link Content}s,
+     *                            or {@code null} for no limit
+     * @param tokenCountEstimator counts the tokens in the text of each {@link Content};
+     *                            required when {@code maxTokens} is set
+     * @since 1.25.0
+     */
+    public ReRankingContentAggregator(
+            ScoringModel scoringModel,
+            Function<Map<Query, Collection<List<Content>>>, Query> querySelector,
+            Double minScore,
+            Integer maxResults,
+            Integer maxTokens,
+            TokenCountEstimator tokenCountEstimator) {
         this.scoringModel = ensureNotNull(scoringModel, "scoringModel");
         this.querySelector = getOrDefault(querySelector, DEFAULT_QUERY_SELECTOR);
         this.minScore = minScore;
         this.maxResults = getOrDefault(maxResults, Integer.MAX_VALUE);
+        this.maxTokens = ensureGreaterThanZeroIfNotNull(maxTokens, "maxTokens");
+        this.tokenCountEstimator = maxTokens == null ? null : ensureNotNull(tokenCountEstimator, "tokenCountEstimator");
     }
 
     public static ReRankingContentAggregatorBuilder builder() {
@@ -140,9 +168,8 @@ public class ReRankingContentAggregator implements ContentAggregator {
 
             // Re-rank all the fused contents against the query selected by the query selector.
             // Only the scoring call is genuine I/O; the fusion above is CPU-bound and stays synchronous.
-            List<TextSegment> segments = fusedContents.stream()
-                    .map(Content::textSegment)
-                    .collect(Collectors.toList());
+            List<TextSegment> segments =
+                    fusedContents.stream().map(Content::textSegment).collect(Collectors.toList());
 
             ScoringRequest scoringRequest = ScoringRequest.builder()
                     .documents(segments.stream().map(TextSegment::text).collect(Collectors.toList()))
@@ -152,7 +179,8 @@ public class ReRankingContentAggregator implements ContentAggregator {
                     scoringModel, "scoreAsync(ScoringRequest)", () -> scoringModel.scoreAsync(scoringRequest));
             CompletableFuture<List<Content>> result =
                     scoreFuture.thenApply(response -> toReRankedContents(fusedContents, response.scores()));
-            // Link the caller-facing derived stage back to the raw scoring call so cancellation reaches the in-flight I/O.
+            // Link the caller-facing derived stage back to the raw scoring call so cancellation reaches the in-flight
+            // I/O.
             propagateCancellation(result, scoreFuture);
             return result;
         });
@@ -183,12 +211,33 @@ public class ReRankingContentAggregator implements ContentAggregator {
             contentToScore.put(contents.get(i), scores.get(i));
         }
 
-        return contentToScore.entrySet().stream()
+        List<Content> reRankedContents = contentToScore.entrySet().stream()
                 .filter(entry -> minScore == null || entry.getValue() >= minScore)
                 .sorted(Map.Entry.<Content, Double>comparingByValue().reversed())
                 .map(entry -> withReRankedScore(entry.getKey(), entry.getValue()))
                 .limit(maxResults)
                 .collect(Collectors.toList());
+
+        return maxTokens == null ? reRankedContents : fitIntoTokenBudget(reRankedContents);
+    }
+
+    /**
+     * Keeps {@link Content}s in the given order while their total token count fits into {@link #maxTokens}.
+     * Stops at the first {@link Content} that does not fit, so a less relevant {@link Content}
+     * is never returned in place of a more relevant one.
+     */
+    private List<Content> fitIntoTokenBudget(List<Content> contents) {
+        List<Content> fitting = new ArrayList<>();
+        int usedTokens = 0;
+        for (Content content : contents) {
+            usedTokens += tokenCountEstimator.estimateTokenCountInText(
+                    content.textSegment().text());
+            if (usedTokens > maxTokens) {
+                break;
+            }
+            fitting.add(content);
+        }
+        return fitting;
     }
 
     private static Content withReRankedScore(Content content, Double score) {
@@ -202,6 +251,8 @@ public class ReRankingContentAggregator implements ContentAggregator {
         private Function<Map<Query, Collection<List<Content>>>, Query> querySelector;
         private Double minScore;
         private Integer maxResults;
+        private Integer maxTokens;
+        private TokenCountEstimator tokenCountEstimator;
 
         ReRankingContentAggregatorBuilder() {}
 
@@ -226,9 +277,34 @@ public class ReRankingContentAggregator implements ContentAggregator {
             return this;
         }
 
+        /**
+         * Sets a token budget for the returned {@link Content}s.
+         * <p>
+         * After re-ranking and filtering by {@code minScore} and {@code maxResults}, {@link Content}s are kept
+         * in order, most relevant first, while the total number of tokens in their text fits into {@code maxTokens}.
+         * The first {@link Content} that does not fit, and all less relevant ones, are excluded.
+         * If the most relevant {@link Content} alone does not fit, no {@link Content}s are returned.
+         *
+         * @param maxTokens           the maximum total number of tokens; {@code null} means no limit
+         * @param tokenCountEstimator counts the tokens in the text of each {@link Content};
+         *                            required when {@code maxTokens} is set
+         * @return builder
+         * @since 1.25.0
+         */
+        public ReRankingContentAggregatorBuilder maxTokens(Integer maxTokens, TokenCountEstimator tokenCountEstimator) {
+            this.maxTokens = maxTokens;
+            this.tokenCountEstimator = tokenCountEstimator;
+            return this;
+        }
+
         public ReRankingContentAggregator build() {
             return new ReRankingContentAggregator(
-                    this.scoringModel, this.querySelector, this.minScore, this.maxResults);
+                    this.scoringModel,
+                    this.querySelector,
+                    this.minScore,
+                    this.maxResults,
+                    this.maxTokens,
+                    this.tokenCountEstimator);
         }
     }
 }

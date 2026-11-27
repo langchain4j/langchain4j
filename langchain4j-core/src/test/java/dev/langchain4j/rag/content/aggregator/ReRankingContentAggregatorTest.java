@@ -1,6 +1,5 @@
 package dev.langchain4j.rag.content.aggregator;
 
-import dev.langchain4j.exception.AsyncNotSupportedException;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
@@ -16,6 +15,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.exception.AsyncNotSupportedException;
+import dev.langchain4j.model.ExampleTestTokenCountEstimator;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.scoring.ScoringModel;
 import dev.langchain4j.model.scoring.request.ScoringRequest;
@@ -388,7 +389,8 @@ class ReRankingContentAggregatorTest {
 
         ScoringModel scoringModel = mock(ScoringModel.class);
         when(scoringModel.scoreAsync(any(ScoringRequest.class)))
-                .thenReturn(completedFuture(ScoringResponse.builder().scores(asList(0.5, 0.7)).build()));
+                .thenReturn(completedFuture(
+                        ScoringResponse.builder().scores(asList(0.5, 0.7)).build()));
         ContentAggregator aggregator = new ReRankingContentAggregator(scoringModel);
 
         // when
@@ -432,6 +434,172 @@ class ReRankingContentAggregatorTest {
                 .cause()
                 .isExactlyInstanceOf(AsyncNotSupportedException.class)
                 .hasMessageContaining("doScoreAsync");
+    }
+
+    // ExampleTestTokenCountEstimator counts one token per word
+    private static final Content THREE_TOKENS = Content.from("three words here");
+    private static final Content TWO_TOKENS = Content.from("two words");
+    private static final Content SIX_TOKENS = Content.from("this content has exactly six words");
+    private static final Content ONE_TOKEN = Content.from("single");
+
+    @Test
+    void should_keep_re_ranked_contents_while_they_fit_into_maxTokens() {
+
+        // given
+        Query query = Query.from("query");
+        ContentAggregator aggregator = ReRankingContentAggregator.builder()
+                .scoringModel(scoringModelRankingContentsOfDifferentSizes(query))
+                .maxTokens(6, new ExampleTestTokenCountEstimator())
+                .build();
+
+        // when
+        List<Content> aggregated = aggregator.aggregate(contentsOfDifferentSizes(query));
+
+        // then
+        // 3 + 2 = 5 tokens fit. The 6-token content does not fit, so it stops there:
+        // the less relevant 1-token content is not returned, even though it would fit.
+        assertReRankedContentOrder(aggregated, THREE_TOKENS, TWO_TOKENS);
+        assertReRankedContentScore(aggregated, 0.9, 0.8);
+    }
+
+    @Test
+    void should_return_all_re_ranked_contents_when_they_fit_exactly_into_maxTokens() {
+
+        // given
+        Query query = Query.from("query");
+        ContentAggregator aggregator = ReRankingContentAggregator.builder()
+                .scoringModel(scoringModelRankingContentsOfDifferentSizes(query))
+                .maxTokens(3 + 2 + 6 + 1, new ExampleTestTokenCountEstimator())
+                .build();
+
+        // when
+        List<Content> aggregated = aggregator.aggregate(contentsOfDifferentSizes(query));
+
+        // then
+        assertReRankedContentOrder(aggregated, THREE_TOKENS, TWO_TOKENS, SIX_TOKENS, ONE_TOKEN);
+    }
+
+    @Test
+    void should_not_limit_tokens_when_maxTokens_is_null() {
+
+        // given
+        Query query = Query.from("query");
+        ContentAggregator aggregator = ReRankingContentAggregator.builder()
+                .scoringModel(scoringModelRankingContentsOfDifferentSizes(query))
+                .maxTokens(null, null)
+                .build();
+
+        // when
+        List<Content> aggregated = aggregator.aggregate(contentsOfDifferentSizes(query));
+
+        // then
+        assertReRankedContentOrder(aggregated, THREE_TOKENS, TWO_TOKENS, SIX_TOKENS, ONE_TOKEN);
+    }
+
+    @Test
+    void should_return_no_contents_when_the_most_relevant_one_does_not_fit_into_maxTokens() {
+
+        // given
+        Query query = Query.from("query");
+        ContentAggregator aggregator = ReRankingContentAggregator.builder()
+                .scoringModel(scoringModelRankingContentsOfDifferentSizes(query))
+                .maxTokens(2, new ExampleTestTokenCountEstimator())
+                .build();
+
+        // when
+        List<Content> aggregated = aggregator.aggregate(contentsOfDifferentSizes(query));
+
+        // then
+        assertThat(aggregated).isEmpty();
+    }
+
+    @Test
+    void should_apply_maxResults_and_maxTokens_whichever_is_reached_first() {
+
+        // given
+        Query query = Query.from("query");
+        ContentAggregator maxResultsReachedFirst = ReRankingContentAggregator.builder()
+                .scoringModel(scoringModelRankingContentsOfDifferentSizes(query))
+                .maxResults(1)
+                .maxTokens(100, new ExampleTestTokenCountEstimator())
+                .build();
+        ContentAggregator maxTokensReachedFirst = ReRankingContentAggregator.builder()
+                .scoringModel(scoringModelRankingContentsOfDifferentSizes(query))
+                .maxResults(3)
+                .maxTokens(5, new ExampleTestTokenCountEstimator())
+                .build();
+
+        // when
+        List<Content> limitedByMaxResults = maxResultsReachedFirst.aggregate(contentsOfDifferentSizes(query));
+        List<Content> limitedByMaxTokens = maxTokensReachedFirst.aggregate(contentsOfDifferentSizes(query));
+
+        // then
+        assertReRankedContentOrder(limitedByMaxResults, THREE_TOKENS);
+        assertReRankedContentOrder(limitedByMaxTokens, THREE_TOKENS, TWO_TOKENS);
+    }
+
+    @Test
+    void aggregateAsync_should_keep_re_ranked_contents_while_they_fit_into_maxTokens() throws Exception {
+
+        // given
+        Query query = Query.from("query");
+        ContentAggregator aggregator = ReRankingContentAggregator.builder()
+                .scoringModel(scoringModelRankingContentsOfDifferentSizes(query))
+                .maxTokens(6, new ExampleTestTokenCountEstimator())
+                .build();
+
+        // when
+        List<Content> aggregated =
+                aggregator.aggregateAsync(contentsOfDifferentSizes(query)).get(5, SECONDS);
+
+        // then
+        assertReRankedContentOrder(aggregated, THREE_TOKENS, TWO_TOKENS);
+        assertReRankedContentScore(aggregated, 0.9, 0.8);
+    }
+
+    @Test
+    void should_fail_when_maxTokens_is_not_positive_or_tokenCountEstimator_is_missing() {
+
+        ScoringModel scoringModel = mock(ScoringModel.class);
+
+        assertThatThrownBy(() -> ReRankingContentAggregator.builder()
+                        .scoringModel(scoringModel)
+                        .maxTokens(0, new ExampleTestTokenCountEstimator())
+                        .build())
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("maxTokens");
+
+        assertThatThrownBy(() -> ReRankingContentAggregator.builder()
+                        .scoringModel(scoringModel)
+                        .maxTokens(10, null)
+                        .build())
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("tokenCountEstimator");
+    }
+
+    private static Map<Query, Collection<List<Content>>> contentsOfDifferentSizes(Query query) {
+        return singletonMap(query, singletonList(asList(SIX_TOKENS, THREE_TOKENS, ONE_TOKEN, TWO_TOKENS)));
+    }
+
+    /**
+     * Re-ranks the {@link #contentsOfDifferentSizes(Query)} as:
+     * THREE_TOKENS (0.9), TWO_TOKENS (0.8), SIX_TOKENS (0.7), ONE_TOKEN (0.6).
+     */
+    private static ScoringModel scoringModelRankingContentsOfDifferentSizes(Query query) {
+        List<Double> scores = asList(0.7, 0.9, 0.6, 0.8);
+        ScoringModel scoringModel = mock(ScoringModel.class);
+        when(scoringModel.scoreAll(
+                        asList(
+                                SIX_TOKENS.textSegment(),
+                                THREE_TOKENS.textSegment(),
+                                ONE_TOKEN.textSegment(),
+                                TWO_TOKENS.textSegment()),
+                        query.text()))
+                .thenReturn(Response.from(scores));
+        when(scoringModel.scoreAsync(any(ScoringRequest.class)))
+                .thenReturn(
+                        completedFuture(ScoringResponse.builder().scores(scores).build()));
+        return scoringModel;
     }
 
     private void assertReRankedContentOrder(List<Content> actual, Content... expectedContents) {

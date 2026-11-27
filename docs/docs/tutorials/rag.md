@@ -1064,6 +1064,23 @@ ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
 
 The default is unchanged (no input type is sent). The `EmbeddingModel` must support the `input_type` parameter.
 
+To limit the total size of the retrieved `Content`s in tokens, set `maxTokens` with a `TokenCountEstimator`:
+
+```java
+ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+    .embeddingStore(embeddingStore)
+    .embeddingModel(embeddingModel)
+    .maxResults(10)
+    .maxTokens(500, new OpenAiTokenCountEstimator("gpt-4o-mini"))
+     // maxTokens can also be specified dynamically depending on the query
+    .dynamicMaxTokens(query -> 500, new OpenAiTokenCountEstimator("gpt-4o-mini"))
+    .build();
+```
+
+`Content`s are kept in order of relevance while the total number of tokens in their text fits into `maxTokens`.
+The first `Content` that does not fit, and all less relevant ones, are left out.
+The budget applies to the `Content`s found in the store, so raise `maxResults` (3 by default) for it to take effect.
+
 #### Web Search Content Retriever
 `WebSearchContentRetriever` retrieves relevant `Content` from the web using a `WebSearchEngine`.
 
@@ -1157,6 +1174,20 @@ The calls of a scoring model can be observed with [listeners](/tutorials/observa
 The complete list of supported scoring (re-ranking) models can be found
 [here](https://docs.langchain4j.dev/category/scoring-reranking-models).
 Please see [`ReRankingContentAggregator` Javadoc](https://javadoc.io/doc/dev.langchain4j/langchain4j-core/latest/dev/langchain4j/rag/content/aggregator/ReRankingContentAggregator.html) for more details.
+
+To limit the total size of the re-ranked `Content`s in tokens, set `maxTokens` with a `TokenCountEstimator`:
+
+```java
+ContentAggregator contentAggregator = ReRankingContentAggregator.builder()
+    .scoringModel(scoringModel)
+    .minScore(0.8)
+    .maxTokens(500, new OpenAiTokenCountEstimator("gpt-4o-mini"))
+    .build();
+```
+
+After re-ranking and filtering by `minScore` and `maxResults`, `Content`s are kept in the re-ranked order
+while the total number of tokens in their text fits into `maxTokens`.
+The first `Content` that does not fit, and all less relevant ones, are left out.
 
 ### Content Injector
 

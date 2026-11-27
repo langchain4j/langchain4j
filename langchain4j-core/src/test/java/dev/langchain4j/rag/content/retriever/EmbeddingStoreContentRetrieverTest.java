@@ -2,6 +2,8 @@ package dev.langchain4j.rag.content.retriever;
 
 import static dev.langchain4j.store.embedding.filter.MetadataFilterBuilder.metadataKey;
 import static java.util.Arrays.asList;
+import static java.util.concurrent.CompletableFuture.completedFuture;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -14,21 +16,23 @@ import static org.mockito.Mockito.when;
 
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.model.ExampleTestTokenCountEstimator;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.request.EmbeddingInputType;
 import dev.langchain4j.model.embedding.request.EmbeddingRequest;
 import dev.langchain4j.model.embedding.response.EmbeddingResponse;
 import dev.langchain4j.model.output.Response;
-import java.util.List;
-import org.mockito.ArgumentCaptor;
+import dev.langchain4j.rag.content.Content;
 import dev.langchain4j.rag.query.Query;
 import dev.langchain4j.store.embedding.EmbeddingMatch;
 import dev.langchain4j.store.embedding.EmbeddingSearchRequest;
 import dev.langchain4j.store.embedding.EmbeddingSearchResult;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.filter.Filter;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class EmbeddingStoreContentRetrieverTest {
 
@@ -420,5 +424,164 @@ class EmbeddingStoreContentRetrieverTest {
                         .embeddingStore(EMBEDDING_STORE)
                         .build())
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void should_keep_contents_in_order_of_relevance_while_they_fit_into_maxTokens() {
+
+        // given
+        when(EMBEDDING_STORE.search(any())).thenReturn(contentsOfDifferentSizes());
+
+        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(EMBEDDING_STORE)
+                .embeddingModel(EMBEDDING_MODEL)
+                .maxResults(10)
+                .maxTokens(6, new ExampleTestTokenCountEstimator())
+                .build();
+
+        // when
+        List<Content> contents = contentRetriever.retrieve(QUERY);
+
+        // then
+        // 3 + 2 = 5 tokens fit. The 6-token content does not fit, so it stops there:
+        // the less relevant 1-token content is not returned, even though it would fit.
+        assertThat(texts(contents)).containsExactly("three words here", "two words");
+        verify(EMBEDDING_STORE)
+                .search(EmbeddingSearchRequest.builder()
+                        .query(QUERY.text())
+                        .queryEmbedding(EMBEDDING)
+                        .maxResults(10)
+                        .minScore(DEFAULT_MIN_SCORE)
+                        .build());
+    }
+
+    @Test
+    void should_not_limit_tokens_when_maxTokens_is_null() {
+
+        // given
+        when(EMBEDDING_STORE.search(any())).thenReturn(contentsOfDifferentSizes());
+
+        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(EMBEDDING_STORE)
+                .embeddingModel(EMBEDDING_MODEL)
+                .maxTokens(null, null)
+                .build();
+
+        // when
+        List<Content> contents = contentRetriever.retrieve(QUERY);
+
+        // then
+        assertThat(texts(contents))
+                .containsExactly("three words here", "two words", "this content has exactly six words", "single");
+    }
+
+    @Test
+    void should_return_no_contents_when_the_most_relevant_one_does_not_fit_into_maxTokens() {
+
+        // given
+        when(EMBEDDING_STORE.search(any())).thenReturn(contentsOfDifferentSizes());
+
+        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(EMBEDDING_STORE)
+                .embeddingModel(EMBEDDING_MODEL)
+                .maxTokens(2, new ExampleTestTokenCountEstimator())
+                .build();
+
+        // when
+        List<Content> contents = contentRetriever.retrieve(QUERY);
+
+        // then
+        assertThat(contents).isEmpty();
+    }
+
+    @Test
+    void should_retrieve_with_custom_dynamicMaxTokens_builder() {
+
+        // given
+        when(EMBEDDING_STORE.search(any())).thenReturn(contentsOfDifferentSizes());
+
+        Query shortAnswerQuery = Query.from("short answer, please");
+
+        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(EMBEDDING_STORE)
+                .embeddingModel(EMBEDDING_MODEL)
+                .dynamicMaxTokens(
+                        (query) -> query.equals(shortAnswerQuery) ? 3 : null, new ExampleTestTokenCountEstimator())
+                .build();
+
+        // when
+        List<Content> limited = contentRetriever.retrieve(shortAnswerQuery);
+        List<Content> unlimited = contentRetriever.retrieve(QUERY);
+
+        // then
+        assertThat(texts(limited)).containsExactly("three words here");
+        assertThat(texts(unlimited))
+                .containsExactly("three words here", "two words", "this content has exactly six words", "single");
+    }
+
+    @Test
+    void retrieveAsync_should_keep_contents_in_order_of_relevance_while_they_fit_into_maxTokens() throws Exception {
+
+        // given
+        when(EMBEDDING_MODEL.embedAsync(any(EmbeddingRequest.class)))
+                .thenReturn(completedFuture(EmbeddingResponse.builder()
+                        .embeddings(List.of(EMBEDDING))
+                        .build()));
+        when(EMBEDDING_STORE.searchAsync(any())).thenReturn(completedFuture(contentsOfDifferentSizes()));
+
+        ContentRetriever contentRetriever = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(EMBEDDING_STORE)
+                .embeddingModel(EMBEDDING_MODEL)
+                .maxResults(10)
+                .maxTokens(6, new ExampleTestTokenCountEstimator())
+                .build();
+
+        // when
+        List<Content> contents = contentRetriever.retrieveAsync(QUERY).get(5, SECONDS);
+
+        // then
+        assertThat(texts(contents)).containsExactly("three words here", "two words");
+    }
+
+    @Test
+    void should_fail_when_maxTokens_is_not_positive_or_tokenCountEstimator_is_missing() {
+
+        assertThatThrownBy(() ->
+                        EmbeddingStoreContentRetriever.builder().maxTokens(0, new ExampleTestTokenCountEstimator()))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("maxTokens");
+
+        assertThatThrownBy(() -> EmbeddingStoreContentRetriever.builder()
+                        .embeddingStore(EMBEDDING_STORE)
+                        .embeddingModel(EMBEDDING_MODEL)
+                        .maxTokens(10, null)
+                        .build())
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("tokenCountEstimator");
+
+        ContentRetriever withNonPositiveDynamicMaxTokens = EmbeddingStoreContentRetriever.builder()
+                .embeddingStore(EMBEDDING_STORE)
+                .embeddingModel(EMBEDDING_MODEL)
+                .dynamicMaxTokens((query) -> 0, new ExampleTestTokenCountEstimator())
+                .build();
+        assertThatThrownBy(() -> withNonPositiveDynamicMaxTokens.retrieve(QUERY))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("maxTokens");
+    }
+
+    /**
+     * Matches ordered from the most to the least relevant, as an {@link EmbeddingStore} returns them.
+     * {@link ExampleTestTokenCountEstimator} counts one token per word, so they have 3, 2, 6 and 1 tokens.
+     */
+    private static EmbeddingSearchResult<TextSegment> contentsOfDifferentSizes() {
+        return new EmbeddingSearchResult<>(asList(
+                new EmbeddingMatch<>(0.9, "id 1", null, TextSegment.from("three words here")),
+                new EmbeddingMatch<>(0.8, "id 2", null, TextSegment.from("two words")),
+                new EmbeddingMatch<>(0.7, "id 3", null, TextSegment.from("this content has exactly six words")),
+                new EmbeddingMatch<>(0.6, "id 4", null, TextSegment.from("single"))));
+    }
+
+    private static List<String> texts(List<Content> contents) {
+        return contents.stream().map(content -> content.textSegment().text()).toList();
     }
 }
