@@ -26,6 +26,7 @@ class LocalWeaviateEmbeddingStoreRemoveIT extends EmbeddingStoreWithRemovalIT {
             .scheme("http")
             .host(weaviate.getHost())
             .port(weaviate.getFirstMappedPort())
+            .grpcPort(weaviate.getMappedPort(50051))
             .objectClass("Test" + randomUUID().replace("-", ""))
             .metadataKeys(Arrays.asList("id", "type"))
             .build();
