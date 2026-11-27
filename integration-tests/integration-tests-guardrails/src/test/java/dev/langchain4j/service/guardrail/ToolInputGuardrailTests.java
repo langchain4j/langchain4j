@@ -6,6 +6,7 @@ import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.input;
 import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.inputFailure;
 import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.inputFatal;
 import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.run;
+import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.searchCall;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
@@ -20,6 +21,7 @@ import dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.SearchTool;
 import dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.ToolKind;
 import dev.langchain4j.service.tool.ToolExecution;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -165,20 +167,31 @@ class ToolInputGuardrailTests extends BaseGuardrailTests {
 
     @ParameterizedTest
     @EnumSource(Mode.class)
-    void the_tool_call_in_chat_memory_keeps_the_arguments_of_the_llm(Mode mode) {
-        var run = run(mode, services -> {
-            ToolKind.LIST.register(services, SearchTool.echoing());
+    void the_chat_memory_and_the_next_request_keep_the_whole_tool_call_message_of_the_llm(Mode mode) {
+        // a provider that signs its thinking rejects a next request in which this message was changed
+        var signedToolCall = AiMessage.builder()
+                .text("Let me search.")
+                .thinking("The user asks about cats, so I search for them.")
+                .toolExecutionRequests(List.of(searchCall()))
+                .attributes(Map.of("thinking_signature", "c2lnbmVkIHRoaW5raW5n"))
+                .build();
+        var tool = SearchTool.echoing();
+
+        var run = run(mode, List.of(signedToolCall, AiMessage.from("done")), services -> {
+            ToolKind.LIST.register(services, tool);
             services.toolInputGuardrails(input(request -> ToolInputGuardrailResult.successWith(REWRITTEN_ARGUMENTS)));
         });
 
         assertThat(run.answerText()).isEqualTo("done");
+        assertThat(tool.receivedArguments).containsExactly(REWRITTEN_ARGUMENTS);
+        assertThat(run.modelRequests().get(1).messages())
+                .filteredOn(AiMessage.class::isInstance)
+                .containsExactly(signedToolCall);
         assertThat(run.memory.messages())
                 .filteredOn(AiMessage.class::isInstance)
                 .map(AiMessage.class::cast)
                 .filteredOn(AiMessage::hasToolExecutionRequests)
-                .singleElement()
-                .extracting(message -> message.toolExecutionRequests().get(0).arguments())
-                .isEqualTo(ORIGINAL_ARGUMENTS);
+                .containsExactly(signedToolCall);
     }
 
     // ---------- fatal failure ----------

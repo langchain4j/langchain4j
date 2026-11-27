@@ -26,6 +26,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -79,14 +80,43 @@ class ToolCancellationBeforeStartTest {
         }
     }
 
-    private ThreadPoolExecutor executor;
+    /** An executor with a single thread, which tells when it is given its next task. */
+    private static final class SingleThreadExecutor extends ThreadPoolExecutor {
+
+        private volatile @Nullable CompletableFuture<Void> nextTask;
+
+        SingleThreadExecutor() {
+            super(1, 1, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        }
+
+        /** A future completed once the next task is given to this executor. */
+        CompletableFuture<Void> nextTask() {
+            var next = new CompletableFuture<Void>();
+            nextTask = next;
+            return next;
+        }
+
+        @Override
+        public void execute(Runnable task) {
+            super.execute(task);
+            var next = nextTask;
+            if (next != null) {
+                nextTask = null;
+                next.complete(null);
+            }
+        }
+    }
+
+    private SingleThreadExecutor executor;
     private final List<ToolExecutedEvent> executedEvents = new CopyOnWriteArrayList<>();
     private final List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
+    // completed by the compensation listener, so a test can wait for the last thing a rollback does
+    private final CompletableFuture<ToolCompensatedEvent> firstCompensatedEvent = new CompletableFuture<>();
     private final List<String> callbacks = new CopyOnWriteArrayList<>();
 
     @BeforeEach
     void createExecutor() {
-        executor = new ThreadPoolExecutor(1, 1, 0, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<>());
+        executor = new SingleThreadExecutor();
     }
 
     @AfterEach
@@ -154,7 +184,10 @@ class ToolCancellationBeforeStartTest {
                 .beforeToolExecution(before -> callbacks.add("before " + before.request().name()))
                 .afterToolExecution(after -> callbacks.add("after " + after.request().name()))
                 .registerListener((ToolExecutedEventListener) executedEvents::add)
-                .registerListener((ToolCompensatedEventListener) compensatedEvents::add);
+                .registerListener((ToolCompensatedEventListener) event -> {
+                    compensatedEvents.add(event);
+                    firstCompensatedEvent.complete(event);
+                });
     }
 
     @ParameterizedTest
@@ -165,10 +198,14 @@ class ToolCancellationBeforeStartTest {
         var blocker = new CountDownLatch(1);
         // the only thread of the executor waits, so the call of the tool stays in the queue
         executor.execute(() -> awaitQuietly(blocker));
+        var toolCallQueued = executor.nextTask();
         BooleanSupplier[] modelCalled = new BooleanSupplier[1];
 
         Runnable cancel = start(mode, bank, modelCalled);
-        awaitUntil(() -> modelCalled[0].getAsBoolean() && !executor.getQueue().isEmpty());
+        assertThat(toolCallQueued).succeedsWithin(TIMEOUT);
+        // the task is the call of the tool: the model asked for it, and it is the only task waiting
+        assertThat(modelCalled[0].getAsBoolean()).isTrue();
+        assertThat(executor.getQueue()).hasSize(1);
         cancel.run();
         blocker.countDown();
         drainExecutor();
@@ -192,7 +229,8 @@ class ToolCancellationBeforeStartTest {
         cancel.run();
         bank.release.countDown();
         drainExecutor();
-        awaitUntil(() -> bank.log.contains("uncredit"));
+        // the event is fired once the compensating action has run
+        assertThat(firstCompensatedEvent).succeedsWithin(TIMEOUT);
 
         assertThat(bank.log).containsExactly("credit", "uncredit");
         assertThat(callbacks).containsExactly("before credit", "after credit");
@@ -213,14 +251,6 @@ class ToolCancellationBeforeStartTest {
             latch.await(TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-        }
-    }
-
-    private static void awaitUntil(BooleanSupplier condition) throws InterruptedException {
-        long deadline = System.nanoTime() + TIMEOUT.toNanos();
-        while (!condition.getAsBoolean()) {
-            assertThat(System.nanoTime()).as("condition met in time").isLessThan(deadline);
-            Thread.sleep(5);
         }
     }
 }

@@ -26,7 +26,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.stream.Stream;
@@ -715,10 +718,11 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
         var tool = new Tool(toolResult(false));
 
         var execution = service.executeGuardrailsAsync(key, CALL, PARAMS, async(tool));
-        // registered after the service's own continuation, so it runs first: the input stage has ended, and the tool
-        // stage has not started yet
-        service.inputStage.whenComplete((ignored, error) -> execution.cancel(true));
         service.inputStage.complete(ToolInputGuardrailResult.success());
+        // the input stage has ended, and the continuation of the service that starts the tool waits at the gate
+        assertThat(service.inputStage.heldContinuations()).isOne();
+        execution.cancel(true);
+        service.inputStage.releaseContinuations();
 
         assertThat(execution).isCancelled();
         assertThat(tool.requests).isEmpty();
@@ -739,16 +743,42 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
                 return CompletableFuture.completedFuture(validate(request));
             }
         };
-        var toolFuture = new CompletableFuture<ToolExecutionResult>();
+        var toolFuture = new GatedStage<ToolExecutionResult>();
 
         var execution = executeAsync(List.of(), List.of(output), request -> toolFuture);
-        // registered after the service's own continuation, so it runs first: the tool has ended, and the output
-        // stage has not started yet
-        toolFuture.whenComplete((ignored, error) -> execution.cancel(true));
         toolFuture.complete(toolResult(false));
+        // the tool has ended, and the continuation of the service that starts the output guardrails waits at the gate
+        assertThat(toolFuture.heldContinuations()).isOne();
+        execution.cancel(true);
+        toolFuture.releaseContinuations();
 
         assertThat(execution).isCancelled();
         assertThat(outputCalls).isEmpty();
+    }
+
+    /**
+     * A stage whose continuation by {@code thenCompose}, the way the service goes on to its next stage, waits until
+     * the test releases it, so that the test can act after this stage ended and before the next one starts.
+     */
+    private static final class GatedStage<T> extends CompletableFuture<T> {
+
+        private final Queue<Runnable> heldContinuations = new ConcurrentLinkedQueue<>();
+
+        @Override
+        public <U> CompletableFuture<U> thenCompose(Function<? super T, ? extends CompletionStage<U>> next) {
+            return thenComposeAsync(next, heldContinuations::add);
+        }
+
+        int heldContinuations() {
+            return heldContinuations.size();
+        }
+
+        void releaseContinuations() {
+            Runnable continuation;
+            while ((continuation = heldContinuations.poll()) != null) {
+                continuation.run();
+            }
+        }
     }
 
     /**
@@ -757,7 +787,7 @@ class ToolGuardrailServiceExecuteGuardrailsTest {
      */
     private static final class ControlledInputService implements ToolGuardrailService {
 
-        final CompletableFuture<ToolInputGuardrailResult> inputStage = new CompletableFuture<>();
+        final GatedStage<ToolInputGuardrailResult> inputStage = new GatedStage<>();
         private final ToolGuardrailService delegate =
                 ToolGuardrailService.builder(Assistant.class).build();
 

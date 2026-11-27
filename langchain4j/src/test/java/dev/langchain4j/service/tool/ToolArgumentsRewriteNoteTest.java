@@ -7,10 +7,14 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.Content;
 import dev.langchain4j.data.message.ImageContent;
+import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.guardrail.ToolInputGuardrail;
 import dev.langchain4j.guardrail.ToolInputGuardrailResult;
+import dev.langchain4j.guardrail.ToolOutputGuardrail;
+import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
 import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -20,6 +24,7 @@ import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.test.mock.MockChatModel;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 
@@ -36,6 +41,7 @@ class ToolArgumentsRewriteNoteTest {
 
     // the result factories are default methods of the interface, which lambdas cannot call
     private static final ToolInputGuardrail INPUT = request -> null;
+    private static final ToolOutputGuardrail OUTPUT = request -> null;
 
     private static final ToolInputGuardrail CAPPING =
             request -> ToolInputGuardrailResult.successWithArguments(Map.of("amount", 1000));
@@ -235,6 +241,85 @@ class ToolArgumentsRewriteNoteTest {
         assertThat(run.resultMessageOfSecondRequest().contents())
                 .singleElement()
                 .isInstanceOf(ImageContent.class);
+    }
+
+    @Test
+    void the_note_also_precedes_the_message_of_an_output_guardrail_that_rejects_the_result() {
+        ToolOutputGuardrail rejecting = request -> OUTPUT.failure("The transfer is on hold, tell the user.");
+
+        var run = run(transferDone(), services -> services.toolInputGuardrails(CAPPING)
+                .toolOutputGuardrails(rejecting));
+
+        assertThat(run.resultMessageOfSecondRequest())
+                .returns(true, ToolExecutionResultMessage::isError)
+                .returns(
+                        NOTE.formatted(CAPPED, "The transfer is on hold, tell the user."),
+                        ToolExecutionResultMessage::text);
+        // the note is only in what the LLM gets
+        assertThat(run.result().toolExecutions())
+                .singleElement()
+                .returns(true, ToolExecution::hasFailed)
+                .returns("The transfer is on hold, tell the user.", ToolExecution::result);
+    }
+
+    @Test
+    void the_output_guardrails_get_the_result_without_the_note_and_the_llm_gets_the_note_before_their_rewrite() {
+        var textsSeenByTheOutputGuardrail = new CopyOnWriteArrayList<String>();
+        ToolOutputGuardrail redacting = request -> {
+            textsSeenByTheOutputGuardrail.add(request.text());
+            return ToolOutputGuardrailResult.successWith("Transfer done (reference redacted)");
+        };
+
+        var run = run(transferDone(), services -> services.toolInputGuardrails(CAPPING)
+                .toolOutputGuardrails(redacting));
+
+        assertThat(textsSeenByTheOutputGuardrail).containsExactly("Transfer done");
+        assertThat(run.resultMessageOfSecondRequest())
+                .returns(false, ToolExecutionResultMessage::isError)
+                .returns(
+                        NOTE.formatted(CAPPED, "Transfer done (reference redacted)"),
+                        ToolExecutionResultMessage::text);
+        assertThat(run.result().toolExecutions())
+                .singleElement()
+                .returns("Transfer done (reference redacted)", ToolExecution::result);
+    }
+
+    private static ToolExecutor returning(List<Content> contents) {
+        return new ToolExecutor() {
+            @Override
+            public String execute(ToolExecutionRequest request, Object memoryId) {
+                throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public ToolExecutionResult executeWithContext(ToolExecutionRequest request, InvocationContext context) {
+                return ToolExecutionResult.builder().resultContents(contents).build();
+            }
+        };
+    }
+
+    @Test
+    void the_note_goes_into_the_first_text_of_a_result_that_starts_with_an_image() {
+        var receipt = ImageContent.from("http://example.com/receipt.png");
+
+        var run = run(
+                returning(List.of(receipt, TextContent.from("Transfer done"))),
+                services -> services.toolInputGuardrails(CAPPING));
+
+        assertThat(run.resultMessageOfSecondRequest().contents())
+                .containsExactly(receipt, TextContent.from(NOTE.formatted(CAPPED, "Transfer done")));
+    }
+
+    @Test
+    void the_note_goes_into_the_first_text_only_of_a_result_with_several_texts() {
+        var run = run(
+                returning(List.of(TextContent.from("Transfer done"), TextContent.from("Balance: 9000"))),
+                services -> services.toolInputGuardrails(CAPPING));
+
+        assertThat(run.resultMessageOfSecondRequest().contents())
+                .containsExactly(
+                        TextContent.from(NOTE.formatted(CAPPED, "Transfer done")),
+                        TextContent.from("Balance: 9000"));
     }
 
     @Test

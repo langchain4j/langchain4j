@@ -1,11 +1,14 @@
 package dev.langchain4j.service.guardrail;
 
 import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.MEMORY_ID;
+import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.REWRITTEN_ARGUMENTS;
 import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.TEMPLATE;
+import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.TIMEOUT;
 import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.TOPIC;
 import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.input;
 import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.output;
 import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.run;
+import static dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.searchCall;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
@@ -21,6 +24,14 @@ import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
 import dev.langchain4j.observability.api.event.AiServiceEvent;
 import dev.langchain4j.observability.api.event.ToolInputGuardrailExecutedEvent;
 import dev.langchain4j.observability.api.event.ToolOutputGuardrailExecutedEvent;
+import dev.langchain4j.memory.chat.MessageWindowChatMemory;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
+import dev.langchain4j.service.AiServiceStreamingEvent;
+import dev.langchain4j.service.AiServiceStreamingEvent.FinalResponseEvent;
+import dev.langchain4j.service.AiServices;
+import dev.langchain4j.service.MemoryId;
+import dev.langchain4j.service.Result;
 import dev.langchain4j.service.UserMessage;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.BlockingToolInputGuardrail;
@@ -28,10 +39,14 @@ import dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.Mode;
 import dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.SearchTool;
 import dev.langchain4j.service.guardrail.ToolGuardrailTestSupport.ToolKind;
 import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -132,6 +147,130 @@ class ToolGuardrailContextTests extends BaseGuardrailTests {
                                     .filteredOn(ToolOutputGuardrailExecutedEvent.class::isInstance)
                                     .hasSize(1);
                         }));
+    }
+
+    // ---------- token usage ----------
+
+    private static final TokenUsage TOOL_CALL_USAGE = new TokenUsage(10, 1);
+    private static final TokenUsage ANSWER_USAGE = new TokenUsage(100, 20);
+
+    interface FutureResultAssistant {
+
+        @UserMessage(TEMPLATE)
+        CompletableFuture<Result<String>> chat(@MemoryId String memoryId, @V("topic") String topic);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Mode.class)
+    void the_token_usage_of_an_invocation_with_a_guarded_tool_call_is_the_sum_of_its_model_responses(Mode mode) {
+        var tool = SearchTool.echoing();
+        Consumer<AiServices<?>> guardedTool = services -> {
+            ToolKind.LIST.register(services, tool);
+            services.toolInputGuardrails(input(request -> ToolInputGuardrailResult.successWith(REWRITTEN_ARGUMENTS)))
+                    .toolOutputGuardrails(output(request -> ToolOutputGuardrailResult.successWith("redacted")));
+        };
+
+        var response = finalResponseOf(mode, guardedTool);
+
+        assertThat(tool.receivedArguments).containsExactly(REWRITTEN_ARGUMENTS);
+        assertThat(response.aiMessage().text()).isEqualTo("done");
+        assertThat(response.tokenUsage()).isEqualTo(new TokenUsage(110, 21, 131));
+    }
+
+    /**
+     * Invokes an AI service in the given mode against a model that calls {@code search} and then answers
+     * {@code done}, each response with its own token usage, and returns the final response the mode gives: the
+     * {@code Result} of the blocking and the {@code CompletableFuture} modes, the completion response of the
+     * {@code TokenStream}, and the {@code FinalResponseEvent} of the reactive mode.
+     */
+    private static ChatResponse finalResponseOf(Mode mode, Consumer<AiServices<?>> configuration) {
+        var toolCall = ChatResponse.builder()
+                .aiMessage(AiMessage.from(searchCall()))
+                .tokenUsage(TOOL_CALL_USAGE)
+                .build();
+        var answer = ChatResponse.builder()
+                .aiMessage(AiMessage.from("done"))
+                .tokenUsage(ANSWER_USAGE)
+                .build();
+        var finalResponse = new CompletableFuture<ChatResponse>();
+        // the methods have a @MemoryId, which needs a chat memory provider
+        Consumer<AiServices<?>> configure = services -> configuration.accept(
+                services.chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(20)));
+
+        switch (mode) {
+            case SYNC -> {
+                var services = AiServices.builder(ToolGuardrailTestSupport.SyncAssistant.class)
+                        .chatModel(MockChatModel.thatResponds(toolCall).thenResponds(answer));
+                configure.accept(services);
+                finalResponse.complete(asResponse(services.build().chat(MEMORY_ID, TOPIC)));
+            }
+            case COMPLETABLE_FUTURE -> {
+                var services = AiServices.builder(FutureResultAssistant.class)
+                        .chatModel(MockChatModel.thatResponds(toolCall).thenResponds(answer));
+                configure.accept(services);
+                services.build()
+                        .chat(MEMORY_ID, TOPIC)
+                        .thenApply(ToolGuardrailContextTests::asResponse)
+                        .whenComplete((response, error) -> {
+                            if (error != null) {
+                                finalResponse.completeExceptionally(error);
+                            } else {
+                                finalResponse.complete(response);
+                            }
+                        });
+            }
+            case TOKEN_STREAM -> {
+                var services = AiServices.builder(ToolGuardrailTestSupport.StreamingAssistant.class)
+                        .streamingChatModel(
+                                MockStreamingChatModel.thatResponds(toolCall).thenResponds(answer));
+                configure.accept(services);
+                services.build()
+                        .chat(MEMORY_ID, TOPIC)
+                        .onPartialResponse(ignored -> {})
+                        .onCompleteResponse(finalResponse::complete)
+                        .onError(finalResponse::completeExceptionally)
+                        .start();
+            }
+            case REACTIVE -> {
+                var services = AiServices.builder(ToolGuardrailTestSupport.ReactiveAssistant.class)
+                        .streamingChatModel(
+                                MockStreamingChatModel.thatResponds(toolCall).thenResponds(answer));
+                configure.accept(services);
+                services.build().chat(MEMORY_ID, TOPIC).subscribe(new Flow.Subscriber<>() {
+                    @Override
+                    public void onSubscribe(Flow.Subscription subscription) {
+                        subscription.request(Long.MAX_VALUE);
+                    }
+
+                    @Override
+                    public void onNext(AiServiceStreamingEvent event) {
+                        if (event instanceof FinalResponseEvent finalResponseEvent) {
+                            finalResponse.complete(finalResponseEvent.chatResponse());
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable error) {
+                        finalResponse.completeExceptionally(error);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        finalResponse.completeExceptionally(new AssertionError("completed without a final response"));
+                    }
+                });
+            }
+        }
+
+        assertThat(finalResponse).succeedsWithin(TIMEOUT);
+        return finalResponse.join();
+    }
+
+    private static ChatResponse asResponse(Result<String> result) {
+        return ChatResponse.builder()
+                .aiMessage(AiMessage.from(result.content()))
+                .tokenUsage(result.tokenUsage())
+                .build();
     }
 
     @Test

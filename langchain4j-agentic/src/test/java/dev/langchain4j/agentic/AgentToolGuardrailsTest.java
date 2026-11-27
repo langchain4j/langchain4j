@@ -3,17 +3,22 @@ package dev.langchain4j.agentic;
 import static dev.langchain4j.test.mock.MockChatModel.thatResponds;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.P;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agentic.agent.AgentBuilder;
 import dev.langchain4j.agentic.scope.DefaultAgenticScope;
+import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.TextContent;
+import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.ToolInputGuardrail;
 import dev.langchain4j.guardrail.ToolInputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolInputGuardrailResult;
 import dev.langchain4j.guardrail.ToolOutputGuardrail;
+import dev.langchain4j.guardrail.ToolOutputGuardrailExecutor;
+import dev.langchain4j.guardrail.ToolOutputGuardrailExecutor.ToolOutputGuardrailExecutorBuilder;
 import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
 import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
 import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
@@ -24,6 +29,8 @@ import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.V;
 import dev.langchain4j.service.guardrail.ToolGuardrailService;
 import dev.langchain4j.service.guardrail.ToolOutputGuardrails;
+import dev.langchain4j.spi.guardrail.ToolOutputGuardrailExecutorBuilderFactory;
+import dev.langchain4j.test.mock.MockChatModel;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -182,17 +189,82 @@ class AgentToolGuardrailsTest {
         assertThat(outputChainOf(aiServiceContext)).containsExactly(GlobalOutput.class, AnnotatedOutput.class);
     }
 
+    static class TransferTools {
+
+        final List<Integer> amounts = new CopyOnWriteArrayList<>();
+
+        @Tool
+        String transfer(@P(name = "amount") int amount) {
+            amounts.add(amount);
+            return "Transfer done";
+        }
+    }
+
     @Test
-    void tool_guardrail_configs_set_on_the_agent_builder_are_accepted() {
+    void the_tool_input_guardrails_config_set_on_the_agent_builder_applies_to_the_results_the_llm_gets() {
+        var model = MockChatModel.thatResponds(
+                AiMessage.from(ToolExecutionRequest.builder()
+                        .id("1")
+                        .name("transfer")
+                        .arguments("{\"amount\":10000}")
+                        .build()),
+                AiMessage.from("done"));
+        var tools = new TransferTools();
+        ToolInputGuardrail capping = request -> ToolInputGuardrailResult.successWithArguments(Map.of("amount", 1000));
+        Assistant assistant = AgenticServices.agentBuilder(Assistant.class)
+                .chatModel(model)
+                .tools(tools)
+                .toolInputGuardrails(capping)
+                // without this config, the LLM would get a note that the arguments were changed
+                .toolInputGuardrailsConfig(ToolInputGuardrailsConfig.builder()
+                        .argumentsRewriteNoteEnabled(false)
+                        .build())
+                .build();
+
+        assertThat(assistant.answer("send 10000")).isEqualTo("done");
+
+        assertThat(tools.amounts).containsExactly(1000);
+        assertThat(model.requests().get(1).messages())
+                .filteredOn(ToolExecutionResultMessage.class::isInstance)
+                .map(ToolExecutionResultMessage.class::cast)
+                .singleElement()
+                .returns("Transfer done", ToolExecutionResultMessage::text);
+    }
+
+    @Test
+    void the_tool_output_guardrails_config_set_on_the_agent_builder_reaches_the_output_guardrail_executors() {
         var context = new AtomicReference<AiServiceContext>();
-        var builder = capturing(context)
-                .toolInputGuardrailsConfig(ToolInputGuardrailsConfig.builder().build())
-                .toolOutputGuardrailsConfig(ToolOutputGuardrailsConfig.builder().build())
-                .toolInputGuardrails(new GlobalInput());
+        var config = ToolOutputGuardrailsConfig.builder().build();
+        var builder =
+                capturing(context).toolOutputGuardrailsConfig(config).toolOutputGuardrails(new GlobalOutput());
 
         var aiServiceContext = buildKeepingContext(builder, context);
 
-        assertThat(inputChainOf(aiServiceContext)).containsExactly(GlobalInput.class);
+        assertThat(outputChainOf(aiServiceContext)).containsExactly(GlobalOutput.class, AnnotatedOutput.class);
+        assertThat(RecordingToolOutputGuardrailExecutorBuilderFactory.CONFIGS)
+                .as("the configs the output guardrail executors were built with")
+                .anyMatch(builtWith -> builtWith == config);
+    }
+
+    /**
+     * Registered in {@code META-INF/services}, so every tool output guardrail executor of this module's tests is built
+     * by the default builder, which records the config it was given.
+     */
+    public static class RecordingToolOutputGuardrailExecutorBuilderFactory
+            implements ToolOutputGuardrailExecutorBuilderFactory {
+
+        static final List<ToolOutputGuardrailsConfig> CONFIGS = new CopyOnWriteArrayList<>();
+
+        @Override
+        public ToolOutputGuardrailExecutorBuilder getBuilder() {
+            return new ToolOutputGuardrailExecutorBuilder() {
+                @Override
+                public ToolOutputGuardrailExecutor build() {
+                    CONFIGS.add(config());
+                    return super.build();
+                }
+            };
+        }
     }
 
     @Test
