@@ -73,6 +73,7 @@ public class DefaultMcpRegistryClient implements McpRegistryClient {
     }
 
     @Override
+    @SuppressWarnings("removal")
     public McpGetServerResponse getServerDetails(String serverName) {
         Objects.requireNonNull(serverName, "serverName cannot be null");
         HttpRequest httpRequest = HttpRequest.builder()

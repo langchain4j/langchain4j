@@ -58,6 +58,7 @@ import org.bson.conversions.Bson;
  * for backwards compatibility and will be removed in a future release.
  */
 @Deprecated(forRemoval = true)
+@SuppressWarnings("removal")
 public class AzureCosmosDbMongoVCoreEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     private final MongoCollection<AzureCosmosDbMongoVCoreDocument> collection;

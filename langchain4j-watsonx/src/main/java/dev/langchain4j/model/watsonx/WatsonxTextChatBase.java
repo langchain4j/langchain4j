@@ -58,6 +58,7 @@ abstract class WatsonxTextChatBase<R extends BaseChatRequest> extends WatsonxCha
      * @param target the parameters builder to fill
      * @param builder the model builder holding the values set by the caller
      */
+    @SuppressWarnings("removal")
     protected static void applyTextChatParameters(WatsonxChatRequestParameters.Builder target, Builder<?> builder) {
 
         var watsonxParameters = builder.defaultRequestParameters instanceof WatsonxChatRequestParameters parameters

@@ -24,12 +24,11 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as an embedding store.
+ * Supports storing {@link Metadata} and filtering by it using {@link Filter}
+ * (provided inside {@link EmbeddingSearchRequest}).
  *
  * @see ElasticsearchConfigurationScript for the exact brute force implementation (slower - 100% accurate)
  * @see ElasticsearchConfigurationKnn for the knn search implementation (faster - approximative)
- * <br>
- * Supports storing {@link Metadata} and filtering by it using {@link Filter}
- * (provided inside {@link EmbeddingSearchRequest}).
  */
 public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingStore
         implements EmbeddingStore<TextSegment> {
@@ -85,6 +84,7 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
         this(configuration, serverUrl, apiKey, userName, password, indexName, (Refresh) null);
     }
 
+    @SuppressWarnings("removal")
     private ElasticsearchEmbeddingStore(
             ElasticsearchConfiguration configuration,
             String serverUrl,
@@ -120,11 +120,13 @@ public class ElasticsearchEmbeddingStore extends AbstractElasticsearchEmbeddingS
      * @deprecated by {@link ElasticsearchEmbeddingStore#ElasticsearchEmbeddingStore(ElasticsearchConfiguration, ElasticsearchClient, String)}
      */
     @Deprecated(forRemoval = true)
+    @SuppressWarnings("removal")
     public ElasticsearchEmbeddingStore(
             ElasticsearchConfiguration configuration, RestClient restClient, String indexName) {
         this.initialize(configuration, restClient, indexName);
     }
 
+    @SuppressWarnings("removal")
     private ElasticsearchEmbeddingStore(
             ElasticsearchConfiguration configuration, RestClient restClient, String indexName, Refresh refresh) {
         this.initialize(configuration, restClient, indexName, refresh);

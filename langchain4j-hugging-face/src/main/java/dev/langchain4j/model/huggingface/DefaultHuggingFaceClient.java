@@ -21,6 +21,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Objects;
 
+@SuppressWarnings("removal")
 class DefaultHuggingFaceClient implements HuggingFaceClient {
 
     private static final String BASE_URL = "https://router.huggingface.co/hf-inference/";

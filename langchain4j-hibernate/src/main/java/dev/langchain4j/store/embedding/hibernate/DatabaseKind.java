@@ -27,7 +27,6 @@ import jakarta.persistence.Index;
  * <li>ORACLE: The Oracle database
  * <li>HANA: The SAP HANA database
  * </ul>
- * <p>
  */
 public interface DatabaseKind {
 

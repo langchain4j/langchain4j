@@ -21,6 +21,7 @@ import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
 
 @EnabledIfEnvironmentVariable(named = "AZURE_COSMOS_ENDPOINT", matches = ".+")
+@SuppressWarnings("removal")
 public class AzureCosmosDBMongoVCoreEmbeddingStoreIT extends EmbeddingStoreIT {
 
     private static MongoClient client;

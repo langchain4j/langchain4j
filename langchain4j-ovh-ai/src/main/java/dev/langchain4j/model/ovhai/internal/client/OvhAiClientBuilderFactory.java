@@ -6,6 +6,6 @@ import java.util.function.Supplier;
  * @deprecated Do not use anymore, use {@code langchain4j-open-ai} module instead
  */
 @Deprecated(forRemoval = true, since = "1.14.0")
-@SuppressWarnings("rawtypes")
+@SuppressWarnings({"rawtypes", "removal"})
 public interface OvhAiClientBuilderFactory extends Supplier<OvhAiClient.Builder> {
 }

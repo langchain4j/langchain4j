@@ -41,7 +41,7 @@ class DoclingDocumentParserTest {
 
     @Test
     void shouldThrowWhenInputStreamIsNull() {
-        DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
+        DoclingDocumentParser parser = DoclingDocumentParser.builder().doclingClient(mockApi).build();
 
         assertThatThrownBy(() -> parser.parse(null))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -50,18 +50,20 @@ class DoclingDocumentParserTest {
 
     @Test
     void shouldThrowWhenInputStreamIsEmpty() {
-        DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
+        DoclingDocumentParser parser = DoclingDocumentParser.builder().doclingClient(mockApi).build();
 
         assertThatThrownBy(() -> parser.parse(new ByteArrayInputStream(new byte[0])))
                 .isInstanceOf(BlankDocumentException.class);
     }
 
     @Test
+    @SuppressWarnings("removal")
     void shouldThrowWhenApiInstanceIsNull() {
         assertThatThrownBy(() -> new DoclingDocumentParser(null)).isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
+    @SuppressWarnings("removal")
     void shouldReturnDocumentWithParsedText() {
         mockResponseWithMarkdown("# Parsed Content");
 
@@ -76,7 +78,7 @@ class DoclingDocumentParserTest {
         byte[] content = "document content".getBytes();
         mockResponseWithMarkdown("Parsed text");
 
-        DoclingDocumentParser parser = new DoclingDocumentParser(mockApi);
+        DoclingDocumentParser parser = DoclingDocumentParser.builder().doclingClient(mockApi).build();
         Document document = parser.parse(new ByteArrayInputStream(content));
 
         assertThat(document.metadata().getString("document_size_bytes")).isEqualTo(String.valueOf(content.length));
@@ -85,14 +87,15 @@ class DoclingDocumentParserTest {
     @Test
     void shouldHandleEmptyDocumentWhenApiReturnsEmptyContent() {
         mockResponseWithMarkdown("");
+        DoclingDocumentParser parser = DoclingDocumentParser.builder().doclingClient(mockApi).build();
 
-        assertThatThrownBy(() -> new DoclingDocumentParser(mockApi).parse(new ByteArrayInputStream("data".getBytes())))
+        assertThatThrownBy(() -> parser.parse(new ByteArrayInputStream("data".getBytes())))
                 .isInstanceOf(BlankDocumentException.class);
     }
 
     @Test
     void shouldImplementDocumentParserInterface() {
-        assertThat(new DoclingDocumentParser(mockApi)).isInstanceOf(DocumentParser.class);
+        assertThat(DoclingDocumentParser.builder().doclingClient(mockApi).build()).isInstanceOf(DocumentParser.class);
     }
 
     @Test

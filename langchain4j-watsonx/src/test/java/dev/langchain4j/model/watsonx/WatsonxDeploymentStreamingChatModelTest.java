@@ -94,6 +94,7 @@ public class WatsonxDeploymentStreamingChatModelTest {
     }
 
     @Test
+    @SuppressWarnings("removal")
     void should_create_a_watsonx_chat_model_from_a_deployment_service() {
 
         var streamingChatModel = assertDoesNotThrow(() -> WatsonxDeploymentStreamingChatModel.builder()

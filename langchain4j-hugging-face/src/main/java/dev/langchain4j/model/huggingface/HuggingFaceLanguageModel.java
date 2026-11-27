@@ -26,6 +26,7 @@ import java.time.Duration;
  * </pre>
  */
 @Deprecated(forRemoval = true, since = "1.7.0-beta13")
+@SuppressWarnings("removal")
 public class HuggingFaceLanguageModel implements LanguageModel {
 
     private final HuggingFaceClient client;

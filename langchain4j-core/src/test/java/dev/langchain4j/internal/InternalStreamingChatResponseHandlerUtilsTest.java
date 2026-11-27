@@ -54,6 +54,7 @@ class InternalStreamingChatResponseHandlerUtilsTest {
     }
 
     @Test
+    @SuppressWarnings("removal")
     void onPartialResponse_deprecated_shouldCallHandler_whenNotEmpty() {
         String response = "partial";
         InternalStreamingChatResponseHandlerUtils.onPartialResponse(handler, response);
@@ -62,6 +63,7 @@ class InternalStreamingChatResponseHandlerUtilsTest {
     }
 
     @Test
+    @SuppressWarnings("removal")
     void onPartialResponse_deprecated_shouldDoNothing_whenNullOrEmpty() {
         InternalStreamingChatResponseHandlerUtils.onPartialResponse(handler, null);
         InternalStreamingChatResponseHandlerUtils.onPartialResponse(handler, "");

@@ -8,6 +8,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.EmbeddingStoreAddAllContract;
 
+@SuppressWarnings("removal")
 class AzureCosmosDbMongoVCoreEmbeddingStoreContractTest implements EmbeddingStoreAddAllContract {
 
     @Override

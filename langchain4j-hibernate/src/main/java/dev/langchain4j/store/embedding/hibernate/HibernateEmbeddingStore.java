@@ -1577,6 +1577,7 @@ public class HibernateEmbeddingStore<E> implements EmbeddingStore<TextSegment> {
             return this;
         }
 
+        @SuppressWarnings("removal")
         public HibernateEmbeddingStore<E> build() {
             final String embeddingAttributeName;
             final String embeddedTextAttributeName;
