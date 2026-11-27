@@ -183,6 +183,11 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
             }
 
             for (TextSegment segment : subSegments) {
+                if (estimateSize(segment.text()) > maxSegmentSize) {
+                    throw new IllegalStateException(String.format(
+                            "The subSplitter %s returned a segment exceeding the maximum size of %s",
+                            subSplitter.getClass().getSimpleName(), maxSegmentSize));
+                }
                 segments.add(createSegment(segment.text(), document, index.getAndIncrement()));
             }
 

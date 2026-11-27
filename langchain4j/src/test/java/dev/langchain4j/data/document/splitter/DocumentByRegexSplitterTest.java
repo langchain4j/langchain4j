@@ -13,6 +13,7 @@ import static dev.langchain4j.data.document.Metadata.metadata;
 import static dev.langchain4j.data.segment.TextSegment.textSegment;
 import static java.lang.String.format;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class DocumentByRegexSplitterTest {
 
@@ -79,5 +80,15 @@ class DocumentByRegexSplitterTest {
                 textSegment("This is a third", metadata("index", "4").put("document", "0")),
                 textSegment("line.", metadata("index", "5").put("document", "0"))
         );
+    }
+
+    @Test
+    void should_reject_sub_splitter_segments_exceeding_parent_limit() {
+        DocumentSplitter subSplitter = new DocumentByCharacterSplitter(8, 0);
+        DocumentSplitter splitter = new DocumentByRegexSplitter("[|]", "|", 4, 0, subSplitter);
+
+        assertThatThrownBy(() -> splitter.split(Document.from("a|abcdefgh|b")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("exceeding the maximum size of 4");
     }
 }
