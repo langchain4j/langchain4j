@@ -42,6 +42,11 @@ class ToolErrorHandlingNoticeTest {
         CompletableFuture<String> chat(String userMessage);
     }
 
+    interface GenericAssistant<T> {
+
+        T chat(String userMessage);
+    }
+
     static class Tools {
 
         @Tool("Returns the weather in the given city")
@@ -137,6 +142,26 @@ class ToolErrorHandlingNoticeTest {
 
         assertThat(unconfirmedDefaults(withTools(PartiallyAsyncAssistant.class)))
                 .containsExactly(TOOL_ARGUMENTS_ERROR, TOOL_EXECUTION_ERROR);
+    }
+
+    @Test
+    void should_use_the_return_type_set_on_the_context() {
+
+        AiServiceContext context = withTools(GenericAssistant.class);
+        context.returnType = String.class;
+
+        assertThat(unconfirmedDefaults(context))
+                .as("the method returns a type variable, the effective return type is the one set on the context")
+                .containsExactly(TOOL_ARGUMENTS_ERROR, TOOL_EXECUTION_ERROR);
+    }
+
+    @Test
+    void should_not_warn_when_the_return_type_set_on_the_context_is_asynchronous() {
+
+        AiServiceContext context = withTools(GenericAssistant.class);
+        context.returnType = CompletableFuture.class;
+
+        assertThat(unconfirmedDefaults(context)).isEmpty();
     }
 
     private static List<ToolErrorHandlingNotice.Default> unconfirmedDefaults(AiServiceContext context) {
