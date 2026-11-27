@@ -16,6 +16,7 @@ import dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.spi.guardrail.OutputGuardrailExecutorBuilderFactory;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.concurrent.CompletableFuture;
@@ -153,8 +154,8 @@ public non-sealed class OutputGuardrailExecutor
 
             if (!result.isRetry()) {
                 return removeViolatingMessageIfRequestedAsync(result, request)
-                        .thenCompose(ignored -> CompletableFuture.<OutputGuardrailResult>failedFuture(
-                                new OutputGuardrailException(
+                        .thenCompose(ignored ->
+                                CompletableFuture.<OutputGuardrailResult>failedFuture(new OutputGuardrailException(
                                         result.toString(), result.getFirstFailureException(), result)));
             }
 
@@ -187,8 +188,8 @@ public non-sealed class OutputGuardrailExecutor
                     .collect(Collectors.joining(System.lineSeparator()));
 
             return removeViolatingMessageIfRequestedAsync(result, request)
-                    .thenCompose(ignored -> CompletableFuture.<OutputGuardrailResult>failedFuture(
-                            new OutputGuardrailException(
+                    .thenCompose(ignored ->
+                            CompletableFuture.<OutputGuardrailResult>failedFuture(new OutputGuardrailException(
                                     MAX_RETRIES_MESSAGE_TEMPLATE.formatted(failureMessages), null, result)));
         });
     }
@@ -208,18 +209,19 @@ public non-sealed class OutputGuardrailExecutor
             return CompletableFuture.completedFuture(null);
         }
         var invocationContext = invocationContextOf(request);
-        return CurrentInvocation.callWith(invocationContext, memory::messagesAsync).thenCompose(current -> {
-            var messages = new ArrayList<>(current);
-            var it = messages.listIterator(messages.size());
-            while (it.hasPrevious()) {
-                ChatMessage msg = it.previous();
-                if (msg instanceof AiMessage) {
-                    it.remove();
-                    break;
-                }
-            }
-            return CurrentInvocation.callWith(invocationContext, () -> memory.setAsync(messages));
-        });
+        return CurrentInvocation.callWith(invocationContext, memory::messagesAsync)
+                .thenCompose(current -> {
+                    var messages = new ArrayList<>(current);
+                    var it = messages.listIterator(messages.size());
+                    while (it.hasPrevious()) {
+                        ChatMessage msg = it.previous();
+                        if (msg instanceof AiMessage) {
+                            it.remove();
+                            break;
+                        }
+                    }
+                    return CurrentInvocation.callWith(invocationContext, () -> memory.setAsync(messages));
+                });
     }
 
     private void removeViolatingMessageIfRequested(OutputGuardrailResult result, OutputGuardrailRequest request) {
@@ -259,7 +261,7 @@ public non-sealed class OutputGuardrailExecutor
             String originalText = originalRequest.responseFromLLM().aiMessage().text();
             String validatedText =
                     validatedRequest.responseFromLLM().aiMessage().text();
-            if (!originalText.equals(validatedText)) {
+            if (!Objects.equals(originalText, validatedText)) {
                 // The text validated by the output guardrail is different form the original one because of a
                 // successful reprompt, so we need to create a new success result with the new text
                 return successWith(
