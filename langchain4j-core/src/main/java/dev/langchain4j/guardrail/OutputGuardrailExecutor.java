@@ -1,6 +1,5 @@
 package dev.langchain4j.guardrail;
 
-import static dev.langchain4j.guardrail.OutputGuardrailResult.successWith;
 import static dev.langchain4j.internal.Exceptions.unwrapCompletionException;
 import static dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent.OutputGuardrailExecutedEventBuilder;
 
@@ -12,6 +11,8 @@ import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
 import dev.langchain4j.internal.CancellationChain;
 import dev.langchain4j.internal.CurrentInvocation;
 import dev.langchain4j.memory.ChatMemory;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.event.OutputGuardrailExecutedEvent;
 import dev.langchain4j.spi.guardrail.OutputGuardrailExecutorBuilderFactory;
 import java.util.ArrayList;
@@ -59,6 +60,7 @@ public non-sealed class OutputGuardrailExecutor
     public OutputGuardrailResult execute(OutputGuardrailRequest request) {
         OutputGuardrailResult result = null;
         var accumulatedRequest = request;
+        TokenUsage repromptTokenUsage = null;
         var attempt = 0;
         var maxAttempts = config().maxRetries();
 
@@ -69,7 +71,8 @@ public non-sealed class OutputGuardrailExecutor
         }
 
         while (attempt < maxAttempts) {
-            result = rewriteResult(request, accumulatedRequest, executeGuardrails(accumulatedRequest));
+            result = rewriteResult(
+                    request, accumulatedRequest, repromptTokenUsage, executeGuardrails(accumulatedRequest));
 
             if (result.isSuccess()) {
                 return result;
@@ -89,6 +92,8 @@ public non-sealed class OutputGuardrailExecutor
                 result.getReprompt().map(UserMessage::from).ifPresent(chatMessages::add);
 
                 var exchange = accumulatedRequest.chatExecutor().exchange(chatMessages);
+                repromptTokenUsage =
+                        TokenUsage.sum(repromptTokenUsage, exchange.response().tokenUsage());
                 accumulatedRequest = OutputGuardrailRequest.builder()
                         .responseFromLLM(exchange.response())
                         .chatExecutor(accumulatedRequest.chatExecutor())
@@ -127,7 +132,7 @@ public non-sealed class OutputGuardrailExecutor
 
         CompletableFuture<OutputGuardrailResult> result = new CompletableFuture<>();
         CancellationChain chain = new CancellationChain(result);
-        attemptAsync(request, request, 0, maxAttempts, chain).whenComplete((attemptResult, error) -> {
+        attemptAsync(request, request, null, 0, maxAttempts, chain).whenComplete((attemptResult, error) -> {
             if (error != null) {
                 result.completeExceptionally(unwrapCompletionException(error));
             } else {
@@ -140,12 +145,13 @@ public non-sealed class OutputGuardrailExecutor
     private CompletableFuture<OutputGuardrailResult> attemptAsync(
             OutputGuardrailRequest request,
             OutputGuardrailRequest accumulatedRequest,
+            TokenUsage repromptTokenUsage,
             int attempt,
             int maxAttempts,
             CancellationChain chain) {
 
         return executeGuardrailsAsync(accumulatedRequest, chain).thenCompose(rawResult -> {
-            var result = rewriteResult(request, accumulatedRequest, rawResult);
+            var result = rewriteResult(request, accumulatedRequest, repromptTokenUsage, rawResult);
 
             if (result.isSuccess()) {
                 return CompletableFuture.completedFuture(result);
@@ -177,7 +183,10 @@ public non-sealed class OutputGuardrailExecutor
                                         .requestParams(accumulatedRequest.requestParams())
                                         .chatRequest(exchange.request())
                                         .build();
-                                return attemptAsync(request, nextRequest, nextAttempt, maxAttempts, chain);
+                                var nextRepromptTokenUsage = TokenUsage.sum(
+                                        repromptTokenUsage, exchange.response().tokenUsage());
+                                return attemptAsync(
+                                        request, nextRequest, nextRepromptTokenUsage, nextAttempt, maxAttempts, chain);
                             });
                 });
             }
@@ -251,23 +260,27 @@ public non-sealed class OutputGuardrailExecutor
         messages.forEach(memory::add);
     }
 
+    /**
+     * After a successful retry or reprompt, the result is about the response of the last model call, not about the
+     * response of the original request: the caller gets the message (with its thinking and attributes), id, model
+     * name and finish reason of the response that the guardrails validated, with the token usage of all model calls,
+     * including the rejected ones.
+     */
     private OutputGuardrailResult rewriteResult(
             OutputGuardrailRequest originalRequest,
             OutputGuardrailRequest validatedRequest,
+            TokenUsage repromptTokenUsage,
             OutputGuardrailResult result) {
-        if (result.isSuccess() && !result.hasRewrittenResult()) {
-            String originalText = originalRequest.responseFromLLM().aiMessage().text();
-            String validatedText =
-                    validatedRequest.responseFromLLM().aiMessage().text();
-            if (!originalText.equals(validatedText)) {
-                // The text validated by the output guardrail is different form the original one because of a
-                // successful reprompt, so we need to create a new success result with the new text
-                return successWith(
-                        originalRequest.responseFromLLM().aiMessage().withText(validatedText),
-                        result.successfulResult());
-            }
+        if (!result.isSuccess() || validatedRequest == originalRequest) {
+            return result;
         }
-        return result;
+        ChatResponse validatedResponse = validatedRequest.responseFromLLM();
+        return result.withValidatedResponse(validatedResponse.toBuilder()
+                .metadata(validatedResponse.metadata().toBuilder()
+                        .tokenUsage(
+                                TokenUsage.sum(originalRequest.responseFromLLM().tokenUsage(), repromptTokenUsage))
+                        .build())
+                .build());
     }
 
     /**
