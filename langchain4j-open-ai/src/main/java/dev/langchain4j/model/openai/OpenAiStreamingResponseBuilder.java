@@ -46,6 +46,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class OpenAiStreamingResponseBuilder {
 
     private final StringBuffer contentBuilder = new StringBuffer();
+    private final StringBuffer refusalBuilder = new StringBuffer();
     private final StringBuffer reasoningContentBuilder;
 
     private final StringBuffer toolNameBuilder = new StringBuffer(); // legacy
@@ -165,6 +166,11 @@ public class OpenAiStreamingResponseBuilder {
             this.contentBuilder.append(content);
         }
 
+        String refusal = delta.refusal();
+        if (!isNullOrEmpty(refusal)) {
+            this.refusalBuilder.append(refusal);
+        }
+
         String reasoningContent = delta.reasoningContent();
         if (returnThinking && !isNullOrEmpty(reasoningContent)) {
             this.reasoningContentBuilder.append(reasoningContent);
@@ -263,6 +269,14 @@ public class OpenAiStreamingResponseBuilder {
     public String errorMessage() {
         String providerError = providerErrorMessage.get();
         return providerError == null ? null : "Chat completion failed: " + providerError;
+    }
+
+    /**
+     * Returns the refusal text accumulated from the streamed chunks (see the {@code refusal} field on the message
+     * delta), or {@code null} if the model did not refuse.
+     */
+    public String refusal() {
+        return refusalBuilder.isEmpty() ? null : refusalBuilder.toString();
     }
 
     public ChatResponse build() {

@@ -7,6 +7,7 @@ import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils
 import static dev.langchain4j.internal.InternalStreamingChatResponseHandlerUtils.withLoggingExceptions;
 import static dev.langchain4j.internal.Utils.copy;
 import static dev.langchain4j.internal.Utils.getOrDefault;
+import static dev.langchain4j.internal.Utils.isNotNullOrBlank;
 import static dev.langchain4j.model.ModelProvider.OPEN_AI;
 import static dev.langchain4j.model.openai.internal.ChatCompletionEventDispatcher.handle;
 import static dev.langchain4j.model.openai.internal.OpenAiUtils.DEFAULT_OPENAI_URL;
@@ -20,6 +21,7 @@ import static java.util.Arrays.asList;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.http.client.HttpClientBuilder;
 import dev.langchain4j.internal.ExceptionMapper;
@@ -171,6 +173,16 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
                         withLoggingExceptions(() -> handler.onError(new InternalServerException(errorMessage)));
                         return;
                     }
+
+                    // checked explicitly here, since an exception thrown from this callback may be swallowed
+                    // by the SSE machinery instead of reaching onError; consistent with the non-streaming API,
+                    // which throws ContentFilteredException when the model refuses
+                    String refusal = openAiResponseBuilder.refusal();
+                    if (isNotNullOrBlank(refusal)) {
+                        withLoggingExceptions(() -> handler.onError(new ContentFilteredException(refusal)));
+                        return;
+                    }
+
                     if (toolCallBuilder.hasRequests()) {
                         onCompleteToolCall(trackingHandler, toolCallBuilder.buildAndReset());
                     }
@@ -187,13 +199,14 @@ public class OpenAiStreamingChatModel implements StreamingChatModel {
 
     @Override
     public Publisher<ChatModelStreamingEvent> doChat(ChatRequest chatRequest) {
-        return failPublisherOnThrow(client, "chatCompletionPublisher(ChatCompletionRequest, ChatCompletionOptions)", () -> {
-            OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
-            validate(parameters);
-            ChatCompletionRequest openAiRequest = createOpenAiRequest(chatRequest, parameters);
-            ChatCompletionOptions options = new ChatCompletionOptions(returnThinking, accumulateToolCallId);
-            return client.chatCompletionPublisher(openAiRequest, options);
-        });
+        return failPublisherOnThrow(
+                client, "chatCompletionPublisher(ChatCompletionRequest, ChatCompletionOptions)", () -> {
+                    OpenAiChatRequestParameters parameters = (OpenAiChatRequestParameters) chatRequest.parameters();
+                    validate(parameters);
+                    ChatCompletionRequest openAiRequest = createOpenAiRequest(chatRequest, parameters);
+                    ChatCompletionOptions options = new ChatCompletionOptions(returnThinking, accumulateToolCallId);
+                    return client.chatCompletionPublisher(openAiRequest, options);
+                });
     }
 
     private ChatCompletionRequest createOpenAiRequest(ChatRequest request, OpenAiChatRequestParameters parameters) {

@@ -312,6 +312,61 @@ class OpenAiStreamingResponseBuilderTest {
         assertThat(metadata.logProbs()).isNull();
     }
 
+    @Test
+    void should_accumulate_refusal_across_streaming_chunks() {
+        // Given: the model refuses and OpenAI streams the refusal text over several chunks,
+        // like it does for regular content: https://github.com/langchain4j/langchain4j/issues/5813
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+        builder.append(chatCompletionResponseWithRefusal("I'm sorry, "));
+        builder.append(chatCompletionResponseWithRefusal("I cannot help with that request."));
+
+        // When: the accumulated refusal is exposed
+        String refusal = builder.refusal();
+
+        // Then: the refusal chunks are accumulated in order; build() still returns a (non-error) response
+        assertThat(refusal).isEqualTo("I'm sorry, I cannot help with that request.");
+        ChatResponse chatResponse = builder.build();
+        assertThat(chatResponse.aiMessage().text()).isNull();
+    }
+
+    @Test
+    void should_keep_refusal_null_when_no_refusal_was_streamed() {
+        // Given: a regular stream without a refusal
+        OpenAiStreamingResponseBuilder builder = new OpenAiStreamingResponseBuilder();
+        builder.append(chatCompletionResponseWithRefusal(null));
+        builder.append(chatCompletionResponseWithContent("Hello"));
+
+        // When
+        String refusal = builder.refusal();
+        ChatResponse chatResponse = builder.build();
+
+        // Then: refusal stays null (backward compatible)
+        assertThat(refusal).isNull();
+        assertThat(chatResponse.aiMessage().text()).isEqualTo("Hello");
+    }
+
+    private static ChatCompletionResponse chatCompletionResponseWithRefusal(String refusal) {
+        return ChatCompletionResponse.builder()
+                .id("resp_1")
+                .model("gpt-4o")
+                .choices(List.of(ChatCompletionChoice.builder()
+                        .index(0)
+                        .delta(Delta.builder().refusal(refusal).build())
+                        .build()))
+                .build();
+    }
+
+    private static ChatCompletionResponse chatCompletionResponseWithContent(String content) {
+        return ChatCompletionResponse.builder()
+                .id("resp_1")
+                .model("gpt-4o")
+                .choices(List.of(ChatCompletionChoice.builder()
+                        .index(0)
+                        .delta(Delta.builder().content(content).build())
+                        .build()))
+                .build();
+    }
+
     private static ChatCompletionResponse chatCompletionResponseWithLogProb(
             dev.langchain4j.model.openai.internal.chat.LogProb logProb) {
         return ChatCompletionResponse.builder()
