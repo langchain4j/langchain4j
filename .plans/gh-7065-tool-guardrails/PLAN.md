@@ -372,7 +372,7 @@ Tests and docs:
   fixing it in a separate PR (see Open Items); a fatal tool guardrail would otherwise make it reachable with default
   settings.
 
-### Conventions (from the user's `~/dotfiles/agents/AGENTS.md`, plus repo practice)
+### Conventions
 
 - US English everywhere (code, Javadoc, docs, commits, PR text).
 - AssertJ only; chain fluent assertions. Prefer `var`; parenthesize compound boolean/ternary operands that contain

@@ -396,6 +396,16 @@ may carry [indirect prompt injection](https://genai.owasp.org/llmrisk/llm01-prom
 there is no need to wrap the `ToolExecutor` of MCP tools to validate them. A `toolWrapper` set on the `McpToolProvider`
 builder runs inside the guardrails: the input guardrails run before it, and the output guardrails after it.
 
+Tool guardrails check the tool calls and their results. They do not check the tool names, descriptions and parameter
+schemas that an MCP server sends, which also reach the LLM. To vet those, use the `filter(..)` (see
+[MCP Tool Provider](#mcp-tool-provider)) or the `toolSpecificationMapper(..)` (see
+[MCP Tool Specification Mapping](#mcp-tool-specification-mapping)) of the `McpToolProvider` builder.
+
+:::caution
+In a Quarkus application, the tool guardrails described here are not applied yet: the Quarkus LangChain4j extension
+has its own tool guardrails (see [Tool Guardrails](/tutorials/tool-guardrails)).
+:::
+
 Set the guardrails on the `AiServices` builder. They apply to every tool, so they tell the tools apart by the
 [`ToolSource`](/tutorials/tool-guardrails#telling-the-tools-apart-toolsource) of the request. For an MCP tool, the
 `McpToolProvider` sets it to a `ToolSource.Mcp` whose `serverKeys()` holds the `key` of the `McpClient` of the tool.
@@ -434,7 +444,10 @@ public class UntrustedContentOutputGuardrail implements ToolOutputGuardrail {
 ```
 
 `serverKeys()` holds only the keys that are known: a client without a key adds none. So a trust decision must check
-that there is at least one key and that **all** of them are trusted.
+that there is at least one key and that **all** of them are trusted. The key is the only thing that tells the servers
+apart, and LangChain4j does not check that the keys of different clients differ: give each server its own key, chosen
+by your application (never taken from the server or from user input). A client of an untrusted server that has the
+key of a trusted one is trusted too.
 
 Give each client a key, and set the guardrail on the AI Service:
 

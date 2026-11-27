@@ -1235,8 +1235,10 @@ AiServiceTool tool = AiServiceTool.builder()
         .build();
 ```
 
-The [`ToolSource`](/tutorials/tool-guardrails#telling-the-tools-apart-toolsource) of a programmatic tool is
-`ToolSource.programmatic()` by default, the same for all of them, so a global guardrail tells programmatic tools
+When no source is set, the [`ToolSource`](/tutorials/tool-guardrails#telling-the-tools-apart-toolsource) of a
+programmatic tool depends on its executor. A tool whose executor is a `DefaultToolExecutor` gets
+`ToolSource.local(...)`, with the tool method of your class (the `originalMethod()` of the executor). Any other
+programmatic tool gets `ToolSource.programmatic()`, the same for all of them, so a global guardrail tells such tools
 apart by `toolName()`. A `ToolSource` can only be `ToolSource.local(...)`, `ToolSource.mcp(...)` or
 `ToolSource.programmatic()`: when a programmatic tool runs a local method or calls an MCP server, you can set the
 matching source with `toolSource(...)` on the `AiServiceTool` builder.
@@ -1489,6 +1491,12 @@ The effectiveness of this feature depends heavily on the chosen model.
 
 :::note
 Tool search is currently marked as experimental and may evolve in future releases.
+:::
+
+:::note
+[Tool guardrails](/tutorials/tool-guardrails#why-tool-guardrails) check the calls and the results of the tool search
+tool, like those of any other tool. They do not check the specifications of the tools it finds, which are added to the
+tools the LLM sees.
 :::
 
 ### Returning immediately the result of a tool execution request

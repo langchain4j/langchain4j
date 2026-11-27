@@ -951,7 +951,7 @@ A failing tool also starts the compensation, as soon as it fails: whether its er
 
 Tools without a `@CompensateFor` annotation are simply skipped during compensation.
 
-A rolled-back failure reaches every compensable tool of the hierarchy that ran before it, including the tools that **other agents** ran earlier, not only the ones of the failing agent. A [tool guardrail](/tutorials/tool-guardrails#compensation) that rejects a call or turns a tool result into an error result is a failure like a tool that throws: the tools are rolled back with the reasons `TOOL_INPUT_GUARDRAIL_FAILED` and `TOOL_OUTPUT_GUARDRAIL_FAILED`, and the tool whose output was rejected is compensated with its original result. A guardrail rewrite that keeps `isError == false` rolls nothing back.
+A rolled-back failure reaches every compensable tool of the hierarchy that ran before it, including the tools that **other agents** ran earlier, not only the ones of the failing agent. A [tool guardrail](/tutorials/tool-guardrails#compensation) that rejects a call or turns a tool result into an error result is a failure like a tool that throws. The tools of the failing agent are rolled back with the reason `TOOL_INPUT_GUARDRAIL_FAILED` or `TOOL_OUTPUT_GUARDRAIL_FAILED` in their `ToolCompensatedEvent`, and the tool whose output was rejected is compensated with its original result. The tools that other agents ran earlier are rolled back like for any other failure of the hierarchy: their compensating actions run, without a reason and without a `ToolCompensatedEvent`. A guardrail rewrite that keeps `isError == false` rolls nothing back.
 
 Compensating actions are defined on tool classes using `@CompensateFor`, the same annotation used for per-agent tool compensation:
 
@@ -990,6 +990,14 @@ CreativeWriter creativeWriter = AgenticServices.agentBuilder(CreativeWriter.clas
         .toolOutputGuardrails(new InjectionOutputGuardrail())
         .build();
 ```
+
+Tool guardrails only run for the tools that an AI agent calls for its LLM. An
+[MCP tool agent](#mcp-based-tool-agents) calls its MCP tool directly, so no tool guardrail checks what it returns: to
+check that, add an [input guardrail](/tutorials/guardrails#input-guardrails) (`inputGuardrails(...)`) to the AI agent
+that reads its output.
+
+In a Quarkus application, the tool guardrail methods of the agent builder are not applied yet: the Quarkus LangChain4j
+extension has its own tool guardrails (see [Tool Guardrails](/tutorials/tool-guardrails)).
 
 ## Observability
 

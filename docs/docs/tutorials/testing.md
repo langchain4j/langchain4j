@@ -636,3 +636,5 @@ add a [`ChatModelListener`](/tutorials/observability#chat-model-observability) t
 `langchain4j-test` also has assertions for [guardrails](/tutorials/guardrails): see
 [Unit Testing Input Guardrails](/tutorials/guardrails#unit-testing-input-guardrails) and
 [Unit Testing Output Guardrails](/tutorials/guardrails#unit-testing-output-guardrails).
+For [tool guardrails](/tutorials/tool-guardrails), see
+[Unit Testing Tool Guardrails](/tutorials/tool-guardrails#unit-testing-tool-guardrails).
