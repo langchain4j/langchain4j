@@ -1,5 +1,6 @@
 package dev.langchain4j.model.bedrock;
 
+import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNotNullOrEmpty;
 import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.bedrock.AbstractBedrockChatModel.THINKING_SIGNATURE_KEY;
@@ -120,14 +121,17 @@ final class BedrockBatchConverseMapper {
             throw new UnsupportedFeatureException("Tool calling is not supported by Bedrock batch inference");
         }
         List<Map<String, Object>> blocks = new ArrayList<>();
-        if (sendThinking && aiMessage.thinking() != null) {
-            Map<String, Object> reasoningText = new LinkedHashMap<>();
-            reasoningText.put("text", aiMessage.thinking());
+        if (sendThinking) {
             String signature = aiMessage.attribute(THINKING_SIGNATURE_KEY, String.class);
-            if (signature != null) {
-                reasoningText.put("signature", signature);
+            if (aiMessage.thinking() != null || isNotNullOrEmpty(signature)) {
+                Map<String, Object> reasoningText = new LinkedHashMap<>();
+                // "text" is required by the API, so an empty string is sent when the model returned no text
+                reasoningText.put("text", getOrDefault(aiMessage.thinking(), ""));
+                if (signature != null) {
+                    reasoningText.put("signature", signature);
+                }
+                blocks.add(Map.of("reasoningContent", Map.of("reasoningText", reasoningText)));
             }
-            blocks.add(Map.of("reasoningContent", Map.of("reasoningText", reasoningText)));
         }
         if (aiMessage.text() != null) {
             blocks.add(Map.of("text", aiMessage.text()));

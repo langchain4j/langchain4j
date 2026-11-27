@@ -56,10 +56,13 @@ class BedrockBatchConverseMapperTest {
     void should_escape_line_breaks_and_keep_non_ascii_text_in_a_record() {
         String text = "line 1\nline 2\r\nünïcødé 🚀";
         String line = BedrockBatchConverseMapper.toJsonLine(Map.of(
-                "modelInput", modelInput(ChatRequest.builder().messages(UserMessage.from(text)).build())));
+                "modelInput",
+                modelInput(
+                        ChatRequest.builder().messages(UserMessage.from(text)).build())));
 
         assertThat(line).doesNotContain("\n").doesNotContain("\r");
-        assertThat(line).isEqualTo(BedrockBatchConverseMapper.toJsonLine(BedrockBatchConverseMapper.fromJsonLine(line)));
+        assertThat(line)
+                .isEqualTo(BedrockBatchConverseMapper.toJsonLine(BedrockBatchConverseMapper.fromJsonLine(line)));
         assertThat(line).contains("ünïcødé 🚀");
     }
 
@@ -268,7 +271,43 @@ class BedrockBatchConverseMapperTest {
                 (List<Map<String, Object>>) modelInput(request).get("messages");
         List<Map<String, Object>> content =
                 (List<Map<String, Object>>) messages.get(1).get("content");
-        assertThat(content.get(0)).isEqualTo(Map.of("reasoningContent", Map.of("reasoningText", Map.of("text", "hmm"))));
+        assertThat(content.get(0))
+                .isEqualTo(Map.of("reasoningContent", Map.of("reasoningText", Map.of("text", "hmm"))));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void should_send_thinking_that_has_only_a_signature_with_an_empty_text() {
+        ChatRequest request = ChatRequest.builder()
+                .messages(
+                        UserMessage.from("q"),
+                        AiMessage.builder()
+                                .text("a")
+                                .attributes(Map.of("thinking_signature", "sig"))
+                                .build(),
+                        UserMessage.from("again"))
+                .build();
+
+        List<Map<String, Object>> messages =
+                (List<Map<String, Object>>) modelInput(request).get("messages");
+        List<Map<String, Object>> content =
+                (List<Map<String, Object>>) messages.get(1).get("content");
+        // "text" is required by the API, so it is sent as "" rather than left out
+        assertThat(content.get(0))
+                .isEqualTo(Map.of("reasoningContent", Map.of("reasoningText", Map.of("text", "", "signature", "sig"))));
+        assertThat(content.get(1)).isEqualTo(Map.of("text", "a"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void should_not_send_thinking_when_there_is_neither_text_nor_signature() {
+        ChatRequest request = ChatRequest.builder()
+                .messages(UserMessage.from("q"), AiMessage.from("a"), UserMessage.from("again"))
+                .build();
+
+        List<Map<String, Object>> messages =
+                (List<Map<String, Object>>) modelInput(request).get("messages");
+        assertThat(messages.get(1).get("content")).isEqualTo(List.of(Map.of("text", "a")));
     }
 
     @Test

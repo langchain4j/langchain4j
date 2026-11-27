@@ -302,8 +302,11 @@ The following parameters also control thinking behaviour:
 - `returnThinking`: controls whether to return thinking (if available) inside `AiMessage.thinking()`
 and whether to invoke `StreamingChatResponseHandler.onPartialThinking()` and `TokenStream.onPartialThinking()`
 callbacks when using `BedrockStreamingChatModel`.
-Disabled by default. If enabled, tinking signatures will also be stored and returned inside the `AiMessage.attributes()`.
+Disabled by default. If enabled, thinking signatures will also be stored and returned inside the `AiMessage.attributes()`.
+Please note that `AiMessage.thinking()` stays empty when the model returns no reasoning text,
+which is the default for recent Claude models with adaptive reasoning; the signature is still stored in that case.
 - `sendThinking`: controls whether to send thinking and signatures stored in `AiMessage` to the LLM in follow-up requests.
+A reasoning block that carries only a signature is sent back with an empty text.
 Enabled by default.
 
 ## Prompt Caching
