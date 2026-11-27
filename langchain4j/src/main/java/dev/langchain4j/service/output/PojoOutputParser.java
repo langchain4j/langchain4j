@@ -49,14 +49,15 @@ class PojoOutputParser<T> implements OutputParser<T> {
         try {
             if (isPolymorphic(type)) {
                 return extractAndParseJson(text, json -> {
-                    @SuppressWarnings("unchecked")
-                    Map<String, Object> map = Json.fromJson(json, Map.class);
-                    if (map != null && map.size() == 1 && map.containsKey("value")) {
-                        return Json.fromJson(Json.toJson(map.get("value")), type);
-                    } else {
-                        return Json.fromJson(json, type);
-                    }
-                }).value();
+                            @SuppressWarnings("unchecked")
+                            Map<String, Object> map = Json.fromJson(json, Map.class);
+                            if (map != null && map.size() == 1 && map.containsKey("value")) {
+                                return Json.fromJson(Json.toJson(map.get("value")), type);
+                            } else {
+                                return Json.fromJson(json, type);
+                            }
+                        })
+                        .value();
             } else {
                 return extractAndParseJson(text, type).value();
             }
@@ -95,6 +96,18 @@ class PojoOutputParser<T> implements OutputParser<T> {
         String jsonStructure = jsonStructure(type, new HashSet<>());
         validateJsonStructure(jsonStructure, type);
         return "\nYou must answer strictly in the following JSON format: " + jsonStructure;
+    }
+
+    /**
+     * Describes {@code T} as an item of a JSON array, the same way as a {@code List<T>} field is described,
+     * e.g. {@code Person: {"name": (type: string)}}.
+     */
+    String arrayItemDescription() {
+        Set<Class<?>> visited = new HashSet<>();
+        visited.add(type);
+        String jsonStructure = jsonStructure(type, visited);
+        validateJsonStructure(jsonStructure, type);
+        return simpleTypeName(type) + ": " + jsonStructure;
     }
 
     private static String jsonStructure(Class<?> type, Set<Class<?>> visited) {
