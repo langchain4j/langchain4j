@@ -26,8 +26,8 @@ import dev.langchain4j.spi.classloading.ClassMetadataProviderFactory;
  *     up on the class of the tool, then on its superclasses, then on its interfaces: an annotation on a subclass
  *     replaces the one of its parents (and an annotation without guardrails removes them). A method annotation is
  *     looked up on the tool method of that class, then on the methods it overrides in its superclasses, then in its
- *     interfaces, whichever of them carries {@link Tool @Tool}, so an annotation on an implementation applies when
- *     {@code @Tool} is on the interface, and the reverse. The class annotation is found through the
+ *     interfaces ({@link Tool @Tool} can be on any of them, and an overload is not part of the chain), so an
+ *     annotation on an implementation applies when {@code @Tool} is on the interface, and the reverse. The class annotation is found through the
  *     {@link ClassMetadataProviderFactory}, and the method annotation is read from the methods.
  * </p>
  * <p>

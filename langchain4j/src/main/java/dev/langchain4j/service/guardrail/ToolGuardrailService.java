@@ -595,26 +595,49 @@ public interface ToolGuardrailService {
      * that only changes the spacing or the order of the keys changes nothing. An argument that a guardrail added is
      * left out: it may be a value the LLM must not see (a tenant or a user id, a token). When the arguments of the LLM
      * cannot be parsed, all the arguments the tool ran with are the changed ones.
+     * <p>
+     *     A call that no input guardrail rewrote is not parsed at all: its arguments may be malformed JSON, which the
+     *     tool and its error handling deal with.
+     * </p>
      *
      * @param call     the call of the LLM
      * @param executed the call as the tool ran with it
      */
     private static Optional<String> changedArguments(ToolExecutionRequest call, ToolExecutionRequest executed) {
-        var executedArguments = ToolArgumentsParser.argumentsAsMap(executed.arguments());
-        Map<String, Object> changed;
+        return Optional.of(executed)
+                .filter(request -> !Objects.equals(request.arguments(), call.arguments()))
+                // a rewrite is a JSON object (an input guardrail that rewrites to anything else fails), so it parses
+                .map(request -> ToolArgumentsParser.argumentsAsMap(request.arguments()))
+                .map(executedArguments -> modelArguments(call)
+                        .map(modelArguments -> changedArguments(modelArguments, executedArguments))
+                        .orElse(executedArguments))
+                .filter(not(Map::isEmpty))
+                .map(Json::toJson);
+    }
+
+    private static Map<String, Object> changedArguments(
+            Map<String, Object> modelArguments, Map<String, Object> executedArguments) {
+        return modelArguments.entrySet().stream()
+                .filter(argument -> !executedArguments.containsKey(argument.getKey())
+                        || !Objects.equals(argument.getValue(), executedArguments.get(argument.getKey())))
+                .collect(
+                        LinkedHashMap::new,
+                        (map, argument) -> map.put(argument.getKey(), executedArguments.get(argument.getKey())),
+                        Map::putAll);
+    }
+
+    /**
+     * The arguments of the LLM, parsed, or empty when they cannot be parsed. The parser throws what the JSON codec
+     * throws, not only a {@link ToolArgumentsException}.
+     */
+    private static Optional<Map<String, Object>> modelArguments(ToolExecutionRequest call) {
+        Optional<Map<String, Object>> arguments;
         try {
-            var modelArguments = ToolArgumentsParser.argumentsAsMap(call.arguments());
-            changed = modelArguments.entrySet().stream()
-                    .filter(argument -> !executedArguments.containsKey(argument.getKey())
-                            || !Objects.equals(argument.getValue(), executedArguments.get(argument.getKey())))
-                    .collect(
-                            LinkedHashMap::new,
-                            (map, argument) -> map.put(argument.getKey(), executedArguments.get(argument.getKey())),
-                            Map::putAll);
-        } catch (ToolArgumentsException unparseable) {
-            changed = executedArguments;
+            arguments = Optional.of(ToolArgumentsParser.argumentsAsMap(call.arguments()));
+        } catch (RuntimeException unparseable) {
+            arguments = Optional.empty();
         }
-        return Optional.of(changed).filter(not(Map::isEmpty)).map(Json::toJson);
+        return arguments;
     }
 
     private static GuardedToolExecution guardedExecution(ToolExecutionRequest request, ToolExecutionResult result) {

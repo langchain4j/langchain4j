@@ -356,6 +356,33 @@ class ToolGuardrailResolutionTest {
         }
     }
 
+    public interface GuardedFinder<T> {
+        @Tool
+        @ToolInputGuardrails(InMethod.class)
+        String find(T query);
+    }
+
+    public static class PlainStringFinder implements GuardedFinder<String> {
+        @Override
+        public String find(String query) {
+            return "found";
+        }
+    }
+
+    public static class SearchWithAGuardedOverload {
+        @ToolInputGuardrails(InMethod.class)
+        public String search(Object query) {
+            return "overload";
+        }
+    }
+
+    public static class SearchToolNextToAnOverload extends SearchWithAGuardedOverload {
+        @Tool
+        public String search(String query) {
+            return "found";
+        }
+    }
+
     /** A tool registered through {@code tools(Map)}, as a framework does, running {@code method} on {@code target}. */
     private static Setup mapTool(Object target, Method method) {
         var setup = new Setup();
@@ -422,6 +449,21 @@ class ToolGuardrailResolutionTest {
                                 LookupApi.class.getMethod("lookup"))));
 
         assertThat(setup.outputChain("tool")).containsExactly(OutClass.class);
+    }
+
+    @Test
+    void a_guardrail_on_a_generic_interface_method_applies_to_its_implementation() throws Exception {
+        var setup = mapTool(new PlainStringFinder(), PlainStringFinder.class.getMethod("find", String.class));
+
+        assertThat(setup.inputChain("tool")).containsExactly(InMethod.class);
+    }
+
+    @Test
+    void an_overload_in_a_superclass_is_not_part_of_the_override_chain() throws Exception {
+        var setup = mapTool(
+                new SearchToolNextToAnOverload(), SearchToolNextToAnOverload.class.getMethod("search", String.class));
+
+        assertThat(setup.inputChain("tool")).isEmpty();
     }
 
     @Test

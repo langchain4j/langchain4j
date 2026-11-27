@@ -197,6 +197,30 @@ class ToolArgumentsRewriteNoteTest {
     }
 
     @Test
+    void when_the_arguments_of_the_llm_cannot_be_parsed_the_note_shows_all_the_arguments_the_tool_ran_with() {
+        var model = MockChatModel.thatResponds(
+                AiMessage.from(transferCall().toBuilder().arguments("{\"amount\":").build()), AiMessage.from("done"));
+
+        AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(List.<AiServiceTool>of(AiServiceTool.builder()
+                        .toolSpecification(TRANSFER)
+                        .toolExecutor(transferDone())
+                        .build()))
+                // repairs the arguments without parsing them
+                .toolInputGuardrails(CAPPING)
+                .build()
+                .chat("send 10000");
+
+        assertThat(model.requests().get(1).messages())
+                .filteredOn(ToolExecutionResultMessage.class::isInstance)
+                .map(ToolExecutionResultMessage.class::cast)
+                .singleElement()
+                .extracting(ToolExecutionResultMessage::text)
+                .isEqualTo(NOTE.formatted(CAPPED, "Transfer done"));
+    }
+
+    @Test
     void the_note_can_be_turned_off() {
         var run = run(transferDone(), services -> services.toolInputGuardrails(CAPPING)
                 .toolInputGuardrailsConfig(ToolInputGuardrailsConfig.builder()

@@ -269,9 +269,10 @@ final class ToolGuardrailChainResolver {
 
     /**
      * Finds the annotation of a tool method in its override chain, by reflection: on the method of {@code clazz} (the
-     * class the tool runs on) that has the signature of the tool method, then on the methods it overrides in the
-     * superclasses, then in the interfaces, whichever of them carries {@code @Tool}. The nearest one wins, so an
-     * annotation on an implementation applies when {@code @Tool} is on an interface, and the reverse.
+     * class the tool runs on) that is the tool method or overrides it, then on the methods it overrides in the
+     * superclasses, then in the interfaces. {@code @Tool} can be on any method of the chain. The nearest annotation
+     * wins, so an annotation on an implementation applies when {@code @Tool} is on an interface, and the reverse.
+     * An overload with the same name is not part of the chain.
      */
     private static <A extends Annotation> Optional<A> findMethodAnnotation(
             Class<?> clazz, Method method, Class<A> annotationType) {
@@ -289,9 +290,10 @@ final class ToolGuardrailChainResolver {
     }
 
     /**
-     * The method of {@code clazz} that is {@code method} or overrides it, or that it overrides: the same name and
-     * parameter types, or, for a method of a generic type, parameter types that are assignable either way (the
-     * parameters of a generic interface method are erased). Bridge methods are skipped.
+     * The method of {@code clazz} that is {@code method}, overrides it, or is overridden by it: the same name and
+     * parameter types, or, for a method of a generic type (whose parameters are erased), an override that the compiler
+     * bridged (see {@link #overridesThroughABridge}). An overload is not part of the override chain. When more than one
+     * method of the class could be the generic override, none is taken. Bridge methods themselves are skipped.
      */
     private static Optional<Method> sameMethodIn(Class<?> clazz, Method method) {
         var candidates = Stream.of(clazz.getDeclaredMethods())
@@ -302,9 +304,27 @@ final class ToolGuardrailChainResolver {
         return candidates.stream()
                 .filter(candidate -> Arrays.equals(candidate.getParameterTypes(), method.getParameterTypes()))
                 .findFirst()
-                .or(() -> candidates.stream()
-                        .filter(candidate -> hasAssignableParameters(candidate, method))
-                        .findFirst());
+                .or(() -> Optional.of(candidates.stream()
+                                .filter(candidate -> overridesThroughABridge(candidate, method))
+                                .toList())
+                        .filter(overrides -> overrides.size() == 1)
+                        .map(overrides -> overrides.get(0)));
+    }
+
+    /**
+     * Whether two methods with the same name and different parameter types override each other through generics: one
+     * is declared by a subtype of the declaring type of the other, their parameter types are assignable, and the
+     * subtype declares the bridge method that the compiler adds for such an override, with the erased parameter types
+     * of the overridden method. An overload has no such bridge.
+     */
+    private static boolean overridesThroughABridge(Method first, Method second) {
+        var firstClass = first.getDeclaringClass();
+        var secondClass = second.getDeclaringClass();
+        var isFirstTheOverride = (firstClass != secondClass) && secondClass.isAssignableFrom(firstClass);
+        var isSecondTheOverride = (firstClass != secondClass) && firstClass.isAssignableFrom(secondClass);
+        return hasAssignableParameters(first, second)
+                && ((isFirstTheOverride && declaresBridge(firstClass, second))
+                        || (isSecondTheOverride && declaresBridge(secondClass, first)));
     }
 
     private static boolean hasAssignableParameters(Method candidate, Method method) {
@@ -313,6 +333,16 @@ final class ToolGuardrailChainResolver {
         return IntStream.range(0, methodTypes.length)
                 .allMatch(i -> candidateTypes[i].isAssignableFrom(methodTypes[i])
                         || methodTypes[i].isAssignableFrom(candidateTypes[i]));
+    }
+
+    /**
+     * Whether {@code clazz} declares a bridge method with the name and the parameter types of {@code overridden}.
+     */
+    private static boolean declaresBridge(Class<?> clazz, Method overridden) {
+        return Stream.of(clazz.getDeclaredMethods())
+                .filter(Method::isBridge)
+                .anyMatch(bridge -> bridge.getName().equals(overridden.getName())
+                        && Arrays.equals(bridge.getParameterTypes(), overridden.getParameterTypes()));
     }
 
     /**

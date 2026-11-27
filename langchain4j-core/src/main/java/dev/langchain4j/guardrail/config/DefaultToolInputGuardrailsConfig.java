@@ -5,6 +5,7 @@ import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The default implementation of {@link ToolInputGuardrailsConfig} for this library if no other libraries provide their own implementations.
@@ -16,7 +17,7 @@ final class DefaultToolInputGuardrailsConfig implements ToolInputGuardrailsConfi
 
     DefaultToolInputGuardrailsConfig(Builder builder) {
         ensureNotNull(builder, "builder");
-        this.isArgumentsRewriteNoteEnabled = builder.isArgumentsRewriteNoteEnabled;
+        this.isArgumentsRewriteNoteEnabled = getOrDefault(builder.isArgumentsRewriteNoteEnabled, true);
         this.argumentsRewriteNoteTemplate =
                 getOrDefault(builder.argumentsRewriteNoteTemplate, DEFAULT_ARGUMENTS_REWRITE_NOTE_TEMPLATE);
     }
@@ -64,8 +65,8 @@ final class DefaultToolInputGuardrailsConfig implements ToolInputGuardrailsConfi
      */
     static class Builder implements ToolInputGuardrailsConfigBuilder {
 
-        private boolean isArgumentsRewriteNoteEnabled = true;
-        private String argumentsRewriteNoteTemplate;
+        private @Nullable Boolean isArgumentsRewriteNoteEnabled;
+        private @Nullable String argumentsRewriteNoteTemplate;
 
         @Override
         public Builder argumentsRewriteNoteEnabled(boolean isEnabled) {

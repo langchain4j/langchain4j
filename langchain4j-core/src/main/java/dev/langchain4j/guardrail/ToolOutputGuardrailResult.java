@@ -257,7 +257,8 @@ public final class ToolOutputGuardrailResult implements GuardrailResult<ToolOutp
 
     /**
      * Represents a tool output guardrail failure.
-     * Its message is sent to the LLM verbatim as the content of an error tool result, unless the failure is fatal.
+     * Its message is sent to the LLM verbatim as the content of an error tool result, unless the failure is fatal. When
+     * an input guardrail changed the arguments of the call, the note that says so comes before the message.
      *
      * @since 1.25.0
      */

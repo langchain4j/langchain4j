@@ -6,6 +6,7 @@ import dev.langchain4j.service.guardrail.GuardedToolExecution;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /**
  * One call of a tool-calling round, at its position in the order of the LLM: the request it was executed with, the
@@ -33,9 +34,9 @@ import java.util.Optional;
 record ToolRoundCall(
         ToolExecutionRequest request,
         ToolExecutionResult result,
-        ToolExecutionResult toolResult,
-        CompensationReason guardrailFailure,
-        GuardedToolExecution execution) {
+        @Nullable ToolExecutionResult toolResult,
+        @Nullable CompensationReason guardrailFailure,
+        @Nullable GuardedToolExecution execution) {
 
     /**
      * A call whose result is the result of its tool, because no tool guardrail applied to it.

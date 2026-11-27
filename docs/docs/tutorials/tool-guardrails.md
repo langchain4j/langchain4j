@@ -173,8 +173,10 @@ Transfer done
   without text (only an image, for example) gets no note, and a WARN message is logged once per tool, since the LLM is
   then not told.
 - It is added after the output guardrails, so they check the result of the tool, not the note. An error result of the
-  tool gets it too, and so does the text that replaces the result when the call is rolled back. A call that a
-  guardrail rejected gets the message of the guardrail, verbatim, without a note: nothing ran.
+  tool gets it too, and so does the text that replaces the result when the call is rolled back. The `failure(..)`
+  message of an output guardrail gets it in front of it as well, since the changed arguments may be why the result
+  was rejected. Only a call that an input guardrail rejected gets the message of the guardrail without a note: nothing
+  ran.
 - The events, `toolExecutions()`, `afterToolExecution` and the return value of an
   [immediate](/tutorials/tools#returning-immediately-the-result-of-a-tool-execution-request) tool get the result
   without the note.
@@ -368,7 +370,9 @@ may be all that the LLM gets: write it so that it reads as a rejection and says 
 
 - The text of the error result is the failure message of the guardrail, **verbatim**. LangChain4j adds no prefix and
   no wrapper text, so the message is entirely under your control. If several guardrails of the chain fail, their
-  messages are joined with a newline, in the order of the chain.
+  messages are joined with a newline, in the order of the chain. The one exception: when an input guardrail changed
+  the arguments and the tool ran, the [note](#what-the-llm-is-told-about-a-rewrite) that says so comes before the
+  message of an output guardrail.
 - A failing input guardrail means the tool is **not executed**.
 - A failing output guardrail means the tool **was executed**, and its real result is replaced.
 - Like AI service guardrails, **a chain keeps running after a non-fatal failure**, and failures are aggregated.
@@ -591,7 +595,8 @@ Within the class level and within the method level, the **nearest** declaration 
   example) reaches the annotations of your class. A JDK dynamic proxy, which only implements the interfaces, uses the
   class that declares the tool method.
 - **Method level:** the annotation of the tool method of that class, else of the method it overrides in a superclass,
-  else in an interface, whichever of them carries `@Tool`.
+  else in an interface. `@Tool` can be on any of them. An overload with the same name in a superclass is not part of
+  the chain.
 
 So a subclass replaces the guardrails of its parent, and an annotation without guardrails removes them. When a nearer
 annotation hides one further up, a DEBUG message is logged.
@@ -718,7 +723,8 @@ result the LLM ends up with**, not on which guardrail method was called, so guar
 | A guardrail returns **fatal**                                                                                             | Like a thrown tool error | Like a tool error that ends the call, with the rules of the input and output rows above: the compensable tools are rolled back, then the invocation fails. See the note below. | `TOOL_INPUT_GUARDRAIL_FAILED` or `TOOL_OUTPUT_GUARDRAIL_FAILED` |
 
 - The LLM sees the message of the rejecting guardrail for the rejected tool **verbatim**, not the "rolled back"
-  text. The other tools that were rolled back get the usual rolled-back text.
+  text (after an input rewrite, with the [note](#what-the-llm-is-told-about-a-rewrite) in front of it). The other
+  tools that were rolled back get the usual rolled-back text.
 - **How far a failure reaches:** every compensable tool of the **whole invocation** is rolled back, not only the
   ones of the current tool-calling round. With
   [cross-agent compensation](/tutorials/agents#cross-agent-compensation) it also includes the compensable tools
@@ -810,8 +816,10 @@ the **rewritten** request. They also carry the **guarded** result, the one the L
 
 - `ToolExecutedEvent` carries the guarded result.
 - `ToolCompensatedEvent` (and the `ToolCompensatedEvent` of a `Flow.Publisher` stream) carries the guarded result
-  the LLM saw before the rollback replaced it, also for a tool whose result a guardrail sanitized and that was rolled
-  back later, and the error result for a tool whose own output guardrail turned it into an error.
+  from before the rollback replaced it, also for a tool whose result a guardrail sanitized and that was rolled back
+  later, and the error result for a tool whose own output guardrail turned it into an error.
+- None of these events contains the [note](#what-the-llm-is-told-about-a-rewrite) that the LLM gets with the result
+  after an input rewrite.
 - The [compensating action](#compensation) itself gets the result that the tool actually returned, **before** its
   output guardrails, since a guardrail may redact what the undo needs (a booking id, for example). The raw result is
   also in the `ToolOutputGuardrailExecutedEvent`.
@@ -982,7 +990,8 @@ The tool guardrails were originally developed in the
 [Quarkus LangChain4j extension](https://docs.quarkiverse.io/quarkus-langchain4j/dev/tool-guardrails.html). The
 ones in LangChain4j differ in these points:
 
-- The failure message is sent to the LLM **verbatim**, with no framework prefix.
+- The failure message is sent to the LLM **verbatim**, with no framework prefix (after an input rewrite, the
+  [note](#what-the-llm-is-told-about-a-rewrite) comes before the message of an output guardrail).
 - Output guardrails also run on **error results**, for example when the tool throws and the error is sent to the LLM
   (see [Output guardrails also see error results](#output-guardrails-also-see-error-results)). The Quarkus extension
   skips its output guardrails when the tool throws.

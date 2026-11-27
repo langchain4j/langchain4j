@@ -7,6 +7,7 @@ import java.util.Optional;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.ToolInputGuardrailException;
 import dev.langchain4j.guardrail.ToolOutputGuardrailException;
+import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
 import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 
@@ -71,7 +72,7 @@ public sealed interface GuardedToolExecution permits DefaultGuardedToolExecution
      * The text that the LLM gets for a text of the result of this call: the text as is, or, when an input guardrail
      * changed the value of an argument of the LLM and the tool ran with it, the text with the arguments rewrite note of
      * the
-     * {@link dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig} of the service (the chat memory keeps the
+     * {@link ToolInputGuardrailsConfig} of the service (the chat memory keeps the
      * call as the LLM made it, so the note tells the LLM what ran). Apply it to the text of every result message of
      * the call that the LLM gets, also to the text that replaces the result when the call is rolled back.
      *

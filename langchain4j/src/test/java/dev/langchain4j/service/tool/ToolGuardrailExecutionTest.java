@@ -552,6 +552,34 @@ class ToolGuardrailExecutionTest {
     }
 
     @Test
+    void malformed_arguments_that_no_input_guardrail_parses_reach_the_tool_as_before() {
+        ToolOutputGuardrail passing = request -> ToolOutputGuardrailResult.success();
+        var malformed = "{\"q\":";
+        var tool = new RecordingTool(false);
+        var model = MockChatModel.thatResponds(
+                AiMessage.from(searchCall("1").toBuilder().arguments(malformed).build()), AiMessage.from("done"));
+
+        var result = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(List.<AiServiceTool>of(AiServiceTool.builder()
+                        .toolSpecification(SEARCH)
+                        .toolExecutor(tool)
+                        .toolOutputGuardrails(passing)
+                        .build()))
+                .build()
+                .chat("hello");
+
+        assertThat(result.content()).isEqualTo("done");
+        assertThat(tool.receivedArguments).containsExactly(malformed);
+        assertThat(model.requests().get(1).messages())
+                .filteredOn(ToolExecutionResultMessage.class::isInstance)
+                .map(ToolExecutionResultMessage.class::cast)
+                .singleElement()
+                .extracting(ToolExecutionResultMessage::text)
+                .isEqualTo("found " + malformed);
+    }
+
+    @Test
     void a_map_rewrite_reaches_the_tool_with_its_special_characters_intact() {
         var quoted = "it's \"quoted\" \\ {q}";
         ToolInputGuardrail rewrite = request -> ToolInputGuardrailResult.successWithArguments(Map.of("q", quoted));

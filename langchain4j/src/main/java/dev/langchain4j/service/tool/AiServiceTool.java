@@ -10,6 +10,7 @@ import dev.langchain4j.agent.tool.ToolSource;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.guardrail.ToolInputGuardrail;
 import dev.langchain4j.guardrail.ToolOutputGuardrail;
+import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -70,7 +71,7 @@ public class AiServiceTool {
     /**
      * The source of a tool registered without one: a tool backed by a {@link DefaultToolExecutor} runs a local
      * method, whatever the way it was registered (a framework can register a proxied {@code @Tool} bean through
-     * {@code tools(Map)}), so it is {@link ToolSource#local(java.lang.reflect.Method) local}, with the original method
+     * {@code tools(Map)}), so it is {@link ToolSource#local(Method) local}, with the original method
      * of the executor, which is declared by the class of the application, not by a proxy. Any other tool is
      * {@link ToolSource#programmatic() programmatic}.
      */
@@ -83,7 +84,7 @@ public class AiServiceTool {
     /**
      * Returns where this tool comes from. It is trusted information, set by the framework or by the application,
      * and exposed to tool guardrails. Without an explicit source, a tool backed by a {@link DefaultToolExecutor} is
-     * {@link ToolSource#local(java.lang.reflect.Method) local} (the original method of the executor), and any other
+     * {@link ToolSource#local(Method) local} (the original method of the executor), and any other
      * tool is {@link ToolSource#programmatic() programmatic}.
      *
      * @return where this tool comes from
@@ -201,7 +202,7 @@ public class AiServiceTool {
         /**
          * Sets where this tool comes from. It is exposed to tool guardrails as trusted information, so it must be set
          * by the application, never derived from remote data. When it is not set, a tool backed by a
-         * {@link DefaultToolExecutor} is {@link ToolSource#local(java.lang.reflect.Method) local} (the original method
+         * {@link DefaultToolExecutor} is {@link ToolSource#local(Method) local} (the original method
          * of the executor), and any other tool is {@link ToolSource#programmatic() programmatic}.
          *
          * @param toolSource where this tool comes from; {@code null} means the default above

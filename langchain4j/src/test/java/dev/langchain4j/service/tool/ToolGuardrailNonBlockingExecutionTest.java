@@ -448,6 +448,22 @@ class ToolGuardrailNonBlockingExecutionTest {
 
     @ParameterizedTest
     @EnumSource(Mode.class)
+    void malformed_arguments_that_no_input_guardrail_parses_reach_the_tool_as_before(Mode mode) {
+        ToolOutputGuardrail passing = output(request -> ToolOutputGuardrailResult.success());
+
+        var run = run(
+                mode,
+                AiServiceTool.builder().toolOutputGuardrails(passing),
+                responsesCallingSearchWith(MALFORMED_ARGUMENTS),
+                services -> {});
+
+        assertThat(run.answer).isCompletedWithValue("done");
+        assertThat(run.tool.receivedArguments).containsExactly(MALFORMED_ARGUMENTS);
+        assertThat(run.toolResultMessageOfSecondRequest().text()).isEqualTo("found " + MALFORMED_ARGUMENTS);
+    }
+
+    @ParameterizedTest
+    @EnumSource(Mode.class)
     void a_result_made_before_the_tool_runs_skips_the_output_guardrails(Mode mode) {
         ToolInputGuardrail parsing = input(request -> {
             request.argumentsAsMap();

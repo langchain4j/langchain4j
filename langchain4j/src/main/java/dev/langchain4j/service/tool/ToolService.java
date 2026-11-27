@@ -1833,7 +1833,7 @@ public class ToolService {
             AiServiceListenerRegistrar listenerRegistrar,
             @Nullable Consumer<AiServiceStreamingEvent.ToolCompensatedEvent> streamEventEmitter) {
         for (RolledBackTool tool : rolledBack) {
-            // the result the LLM saw before the rollback replaced it, like the ToolExecutedEvent of the call
+            // the guarded result from before the rollback replaced it, like the ToolExecutedEvent of the call
             ToolExecution toolExecution = tool.compensable().guardedExecution();
             if (listenerRegistrar != null) {
                 listenerRegistrar.fireEvent(ToolCompensatedEvent.builder()
@@ -2153,7 +2153,7 @@ public class ToolService {
             ToolExecutionRequest request = call.request();
             ToolExecutionResult result = call.result();
             // a tool is compensable if it ran successfully, whatever its output guardrails made of the result: its
-            // compensating action gets the result it ran with, and its compensation events the result the LLM saw
+            // compensating action gets the result it ran with, and its compensation events the guarded result
             if (call.hasRunSuccessfully() && compensatingExecutors.containsKey(request.name())) {
                 ToolExecution toolExecution = ToolExecution.builder()
                         .request(request)
@@ -2200,7 +2200,7 @@ public class ToolService {
      * results of this round are not in the chat memory yet. A call is matched by position: the request it was executed
      * with, by identity, at the first position not matched yet, so that two calls with equal requests keep their own
      * results. A result that is already an error, the message of the tool guardrail that rejected the result of a tool
-     * that ran, is what the LLM sees, verbatim, instead of the rolled-back text.
+     * that ran, is kept as it is (with the note after an input rewrite) instead of the rolled-back text.
      */
     private List<RolledBackTool> rewriteCurrentResults(
             List<ToolRoundCall> calls,
@@ -2301,8 +2301,8 @@ public class ToolService {
      * newest first, each one below the result matched for the tool after it, so that each tool gets its own result. A
      * result that is not found (for example because the chat memory evicted or changed it) is left as it is, and this
      * is logged at DEBUG level. A result that is already an error, the message of the tool guardrail that rejected the
-     * result of a tool that ran, is what the LLM sees, verbatim, instead of the rolled-back text, so it is not looked
-     * for.
+     * result of a tool that ran, is kept as it is (with the note after an input rewrite) instead of the rolled-back
+     * text, so it is not looked for.
      */
     private void replaceCompensatedMessages(
             List<ChatMessage> memoryMessages,
@@ -2388,7 +2388,8 @@ public class ToolService {
     /**
      * A compensable tool that ran: the execution its compensating action gets, with the result of the tool as it ran
      * (before its output guardrails, which may have redacted what the undo needs), and the execution its compensation
-     * events carry, with the result the LLM saw (after the output guardrails, as in the {@link ToolExecutedEvent}).
+     * events carry, with the guarded result (after the output guardrails, as in the {@link ToolExecutedEvent}, and
+     * without the note of an input rewrite).
      * Without tool guardrails, both carry the same result.
      * <p>
      * Public only so the streaming publisher (a different package) can hold the compensable-execution accumulator and

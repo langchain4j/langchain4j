@@ -234,9 +234,9 @@ public interface AiServiceStreamingEvent {
 
     /**
      * Signals that the compensating action of a successfully-executed tool has run to roll the tool back - because
-     * another tool failed. It carries the {@link ToolExecution} that was rolled back (its request and the result the
-     * LLM saw before the rollback, after the tool guardrails, as in the {@code ToolExecutedEvent} of the call) and the
-     * {@link CompensationReason}. It is also emitted when the compensating action failed:
+     * another tool failed. It carries the {@link ToolExecution} that was rolled back (its request and its result from
+     * before the rollback, after the tool guardrails and without the note of an input rewrite, as in the
+     * {@code ToolExecutedEvent} of the call) and the {@link CompensationReason}. It is also emitted when the compensating action failed:
      * then {@link #compensationError()} returns its error, and the effects of the tool may still be in place.
      * <p>
      * Note: this event is <b>not</b> emitted on cancellation. Cancelling the subscription also cancels the stream,

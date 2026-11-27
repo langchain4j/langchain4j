@@ -3,6 +3,7 @@ package dev.langchain4j.guardrail;
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.message.Content;
 import dev.langchain4j.guardrail.ToolOutputGuardrailResult.Failure;
+import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -81,7 +82,9 @@ public interface ToolOutputGuardrail extends Guardrail<ToolOutputGuardrailReques
 
     /**
      * Produces a non-fatal failure. The tool result is replaced by an error tool result, and the message is sent to the LLM
-     * <strong>verbatim</strong> as the content of an error tool result, so it is fully under your control.
+     * <strong>verbatim</strong> as the content of an error tool result, so it is fully under your control. The one
+     * addition: when an input guardrail changed the arguments of the call, the note that says so comes before the
+     * message (see {@link ToolInputGuardrailsConfig}), since the changed arguments may be why the result was rejected.
      * <p>
      *     Do not quote the checked content in the message: that would send it to the LLM anyway.
      * </p>

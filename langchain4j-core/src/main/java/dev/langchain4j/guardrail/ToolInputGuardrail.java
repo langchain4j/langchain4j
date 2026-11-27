@@ -2,6 +2,7 @@ package dev.langchain4j.guardrail;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.guardrail.ToolInputGuardrailResult.Failure;
+import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
@@ -52,7 +53,7 @@ public interface ToolInputGuardrail extends Guardrail<ToolInputGuardrailRequest,
      * <p>
      *     The chat memory keeps the tool call as the LLM made it: the rewrite changes what the tool runs with and what
      *     the events report, not the history. The tool result that the LLM gets starts with a note that the arguments
-     *     were changed (see {@link dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig}). Pass values that only
+     *     were changed (see {@link ToolInputGuardrailsConfig}). Pass values that only
      *     the tool needs through {@code InvocationParameters}, not through the arguments.
      * </p>
      *

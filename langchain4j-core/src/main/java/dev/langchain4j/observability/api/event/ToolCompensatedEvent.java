@@ -13,12 +13,12 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Invoked after the compensating action of a successfully-executed tool has run to roll the tool back - for example
- * because another tool failed, or because the invocation was cancelled. It carries the tool that was rolled back, the
- * result the LLM saw for it before the rollback replaced it, and the {@link CompensationReason}. Like the
- * {@link ToolExecutedEvent} of the call, it carries the request and the result after the tool guardrails: an input
- * guardrail may have rewritten the request, and an output guardrail the result (without tool guardrails, it is the
- * result of the tool). The compensating action itself gets the result of the tool as it ran. It is invoked also when
- * the compensating action
+ * because another tool failed, or because the invocation was cancelled. It carries the tool that was rolled back, its
+ * result before the rollback replaced it, and the {@link CompensationReason}. Like the {@link ToolExecutedEvent} of
+ * the call, it carries the request and the result after the tool guardrails: an input guardrail may have rewritten the
+ * request, and an output guardrail the result (without tool guardrails, it is the result of the tool). The note that
+ * an input guardrail changed the arguments, which the LLM also gets with the result, is not part of it. The
+ * compensating action itself gets the result of the tool as it ran. It is invoked also when the compensating action
  * failed: then {@link #compensationError()} returns its error, and the effects of the tool may still be in place.
  * Like {@link ToolExecutedEvent}, it can be invoked multiple times within a single AI Service invocation.
  *
@@ -33,8 +33,8 @@ public interface ToolCompensatedEvent extends AiServiceEvent {
     ToolExecutionRequest request();
 
     /**
-     * Returns the result the LLM saw for the compensated tool before the rollback, after the tool output guardrails,
-     * as a plain text string.
+     * Returns the result of the compensated tool before the rollback, after the tool output guardrails, as a plain text
+     * string.
      *
      * @return the text of the single {@link TextContent} element.
      * @throws IllegalStateException if the result contains non-text or multiple content elements.
@@ -43,8 +43,8 @@ public interface ToolCompensatedEvent extends AiServiceEvent {
     String resultText();
 
     /**
-     * Returns the contents of the result the LLM saw for the compensated tool before the rollback, after the tool
-     * output guardrails.
+     * Returns the contents of the result of the compensated tool before the rollback, after the tool output
+     * guardrails.
      *
      * @return the list of {@link Content} elements, never {@code null}.
      * @since 1.20.0
