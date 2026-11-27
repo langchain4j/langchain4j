@@ -54,10 +54,11 @@ class ColumnsMetadataHandler implements MetadataHandler {
     @Override
     public void createMetadataIndexes(Statement statement, String table) {
         String indexTypeSql = indexType == null ? "" : "USING " + indexType;
+        String cleanTableName = table.substring(table.lastIndexOf('.') + 1);
         this.indexes.stream().map(String::trim)
                 .forEach(index -> {
                     String indexSql = String.format("create index if not exists %s_%s on %s %s ( %s )",
-                            table, index, table, indexTypeSql, index);
+                            cleanTableName, index, table, indexTypeSql, index);
                     try {
                         statement.executeUpdate(indexSql);
                     } catch (SQLException e) {
