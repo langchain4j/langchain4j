@@ -8,6 +8,7 @@ import dev.langchain4j.data.document.DocumentSource
 import dev.langchain4j.data.document.parser.TextDocumentParser
 import dev.langchain4j.data.document.source.FileSystemSource
 import dev.langchain4j.kotlin.data.document.loadAsync
+import io.kotest.matchers.collections.shouldBeEmpty
 import io.kotest.matchers.collections.shouldContainExactly
 import io.kotest.matchers.collections.shouldContainExactlyInAnyOrder
 import io.kotest.matchers.collections.shouldHaveSize
@@ -16,6 +17,7 @@ import io.kotest.matchers.string.shouldContain
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import java.nio.file.FileSystems
 import java.nio.file.Path
 import java.nio.file.Paths
 
@@ -74,4 +76,71 @@ internal class AsyncDocumentLoaderTest {
                         "test-file-4.banana"
                     )
         }
+
+    @Test
+    fun `Should match a non-recursive glob against paths relative to the traversed directory`() =
+        runTest {
+            val documents =
+                loadDocuments(
+                    recursive = false,
+                    documentParser = parser,
+                    directoryPaths = listOf(testDirectory),
+                    pathMatcher = globMatcher("glob:*.txt")
+                )
+
+            documents.map { it.metadata().getString("file_name") } shouldContainExactly listOf("file1.txt")
+        }
+
+    @Test
+    fun `Should return no documents when the glob matches nothing`() =
+        runTest {
+            val documents =
+                loadDocuments(
+                    recursive = false,
+                    documentParser = parser,
+                    directoryPaths = listOf(testDirectory),
+                    pathMatcher = globMatcher("glob:*.pdf")
+                )
+
+            documents.shouldBeEmpty()
+        }
+
+    @Test
+    fun `Should keep matching a recursive double-star glob without a separator`() =
+        runTest {
+            val documents =
+                loadDocuments(
+                    recursive = true,
+                    documentParser = parser,
+                    directoryPaths = listOf(testDirectory),
+                    pathMatcher = globMatcher("glob:**.banana")
+                )
+
+            documents.map { it.metadata().getString("file_name") } shouldContainExactlyInAnyOrder
+                    listOf(
+                        "test-file-3.banana",
+                        "test-file-4.banana"
+                    )
+        }
+
+    @Test
+    fun `Should not match top-level files with a recursive glob requiring a separator`() =
+        runTest {
+            val documents =
+                loadDocuments(
+                    recursive = true,
+                    documentParser = parser,
+                    directoryPaths = listOf(testDirectory),
+                    pathMatcher = globMatcher("glob:**/*.txt")
+                )
+
+            // "file1.txt" sits at the root, so its relative path has no separator and does not match
+            documents.map { it.metadata().getString("file_name") } shouldContainExactly listOf("file2.txt")
+        }
+
+    private fun globMatcher(pattern: String) = FileSystems.getDefault().getPathMatcher(pattern)
+
+    private companion object {
+        private val testDirectory = Path.of("./src/test/resources/asyncDocumentLoaderTest")
+    }
 }
