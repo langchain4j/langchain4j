@@ -3,10 +3,14 @@ package dev.langchain4j.store.embedding.filter.builder.sql;
 import static dev.langchain4j.internal.Utils.getOrDefault;
 import static dev.langchain4j.internal.Utils.isNullOrBlank;
 import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+import static dev.langchain4j.model.output.FinishReason.CONTENT_FILTER;
+import static dev.langchain4j.model.output.FinishReason.LENGTH;
 
 import dev.langchain4j.Experimental;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.segment.TextSegment;
+import dev.langchain4j.exception.ContentFilteredException;
+import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.model.chat.ChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.input.Prompt;
@@ -79,6 +83,9 @@ import org.slf4j.LoggerFactory;
  * In case SQL parsing fails (e.g., the generated SQL is invalid or contains text in addition to the SQL statement),
  * {@code LanguageModelSqlFilterBuilder} will first try to extract the valid SQL from the input string.
  * If parsing fails again, it will return {@code null}, meaning no filtering will be applied during the search.
+ * <br>
+ * It also returns {@code null} when the language model answers with no text. If the answer is empty because it was
+ * cut off by the output token limit or blocked by a content filter, an exception is thrown instead.
  * <br>
  * The same happens when {@link SqlFilterParser} rejects the SQL, for example because it is over the limits
  * for very large, deeply nested or slow to parse filters (see {@link SqlFilterParser#builder()}).
@@ -166,6 +173,19 @@ public class LanguageModelSqlFilterBuilder {
         ChatResponse response = chatModel.chat(prompt.toUserMessage());
 
         String generatedSql = response.aiMessage().text();
+        if (isNullOrBlank(generatedSql)) {
+            if (response.finishReason() == LENGTH) {
+                throw new LangChain4jException(
+                        "The model returned no SQL because its answer was cut off by the "
+                                + "output token limit (finish reason: LENGTH). Give the chat model a higher output token limit.");
+            }
+            if (response.finishReason() == CONTENT_FILTER) {
+                throw new ContentFilteredException("The model returned no SQL because its answer was blocked by "
+                        + "a content filter (finish reason: CONTENT_FILTER).");
+            }
+            log.trace("No SQL was generated, no filter is applied");
+            return null;
+        }
 
         String cleanedSql = clean(generatedSql);
         log.trace("Cleaned SQL: '{}'", cleanedSql);
