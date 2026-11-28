@@ -50,6 +50,7 @@ import dev.langchain4j.model.anthropic.AnthropicServerToolResult;
 import dev.langchain4j.model.anthropic.AnthropicTokenUsage;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicBatch;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicBatchResult;
+import dev.langchain4j.model.anthropic.internal.api.AnthropicContent;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCountTokensRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateBatchRequest;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicCreateMessageRequest;
@@ -63,16 +64,17 @@ import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingData;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicStreamingException;
 import dev.langchain4j.model.anthropic.internal.api.AnthropicUsage;
 import dev.langchain4j.model.anthropic.internal.api.MessageTokenCountResponse;
+import dev.langchain4j.model.anthropic.internal.mapper.AnthropicMapper;
+import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.chat.response.CompleteToolCall;
 import dev.langchain4j.model.chat.response.PartialToolCall;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
-import dev.langchain4j.model.chat.response.ChatModelStreamingEvent;
 import dev.langchain4j.model.chat.response.StreamingHandle;
-import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
-import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
 import dev.langchain4j.model.output.FinishReason;
+import dev.langchain4j.reactive.streaming.HttpStreamingChatPublisher;
+import dev.langchain4j.reactive.streaming.TubeBackedStreamingChatResponseHandler;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -80,6 +82,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -266,7 +270,8 @@ public class DefaultAnthropicClient extends AnthropicClient {
      * without ever parking a thread.
      */
     @Override
-    public CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(AnthropicCreateMessageRequest request) {
+    public CompletableFuture<ParsedAndRawResponse> createMessageWithRawResponseAsync(
+            AnthropicCreateMessageRequest request) {
         HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
         return httpClient.executeAsync(httpRequest).thenApply(rawResponse -> {
             AnthropicCreateMessageResponse parsedResponse =
@@ -337,6 +342,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
             final StringBuffer thinkingBuilder = new StringBuffer();
             final List<String> thinkingSignatures = synchronizedList(new ArrayList<>());
             final List<String> redactedThinkings = synchronizedList(new ArrayList<>());
+            final SortedMap<Integer, AnthropicContent> continuationBlocks = new TreeMap<>();
 
             final ConcurrentHashMap<Integer, String> contentBlockTypes = new ConcurrentHashMap<>();
 
@@ -472,6 +478,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
                 String blockType = data.contentBlock.type;
                 contentBlockTypes.put(data.index, blockType);
+                if (options.returnThinking()) continuationBlocks.put(data.index, data.contentBlock);
 
                 if (CONTENT_BLOCK_TEXT.equals(blockType)) {
                     String text = data.contentBlock.text;
@@ -519,6 +526,15 @@ public class DefaultAnthropicClient extends AnthropicClient {
                 }
 
                 String blockType = contentBlockTypes.get(data.index);
+                var retained = continuationBlocks.get(data.index);
+                if (retained != null) {
+                    if (data.delta.text != null) retained.text = getOrDefault(retained.text, "") + data.delta.text;
+                    if (data.delta.thinking != null)
+                        retained.thinking = getOrDefault(retained.thinking, "") + data.delta.thinking;
+                    if (data.delta.signature != null)
+                        retained.signature = getOrDefault(retained.signature, "") + data.delta.signature;
+                    if (data.delta.data != null) retained.data = getOrDefault(retained.data, "") + data.delta.data;
+                }
 
                 if (CONTENT_BLOCK_TEXT.equals(blockType)) {
                     String text = data.delta.text;
@@ -571,6 +587,10 @@ public class DefaultAnthropicClient extends AnthropicClient {
                     ToolCallBuilder toolCallBuilder = toolCallBuilders.remove(data.index);
                     CompleteToolCall completeToolCall = toolCallBuilder.buildAndReset();
                     completedToolExecutionRequests.add(completeToolCall.toolExecutionRequest());
+                    var retained = continuationBlocks.get(data.index);
+                    if (retained != null)
+                        retained.input =
+                                fromJson(completeToolCall.toolExecutionRequest().arguments(), Map.class);
 
                     if (completeToolCall.toolExecutionRequest().arguments().equals("{}")) {
                         PartialToolCall partialToolRequest = PartialToolCall.builder()
@@ -613,6 +633,11 @@ public class DefaultAnthropicClient extends AnthropicClient {
                         thinkings.stream().filter(content -> !content.isEmpty()).collect(joining("\n"));
 
                 Map<String, Object> attributes = new HashMap<>();
+                if (options.returnThinking()) {
+                    var continuation =
+                            AnthropicMapper.continuationContent(new ArrayList<>(continuationBlocks.values()));
+                    if (continuation != null) attributes.put(AnthropicMapper.CONTINUATION_CONTENT_KEY, continuation);
+                }
                 String thinkingSignature = thinkingSignatures.stream()
                         .filter(content -> !content.isEmpty())
                         .collect(joining("\n"));
@@ -704,9 +729,7 @@ public class DefaultAnthropicClient extends AnthropicClient {
 
         HttpRequest httpRequest = toHttpRequest(toJson(request), "messages");
         return HttpStreamingChatPublisher.create(
-                bufferSize,
-                () -> httpClient.stream(httpRequest, new DefaultServerSentEventParser()),
-                tube -> {
+                bufferSize, () -> httpClient.stream(httpRequest, new DefaultServerSentEventParser()), tube -> {
                     ServerSentEventListener eventListener =
                             buildStreamingEventListener(new TubeBackedStreamingChatResponseHandler(tube), options);
                     return new HttpStreamingChatPublisher.Sink() {
