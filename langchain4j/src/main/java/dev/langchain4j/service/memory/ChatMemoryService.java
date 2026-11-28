@@ -111,6 +111,11 @@ public class ChatMemoryService {
         }
 
         @Override
+        public void addAll(Iterable<ChatMessage> messages) {
+            run(() -> delegate.addAll(messages));
+        }
+
+        @Override
         public void set(ChatMessage... messages) {
             run(() -> delegate.set(messages));
         }

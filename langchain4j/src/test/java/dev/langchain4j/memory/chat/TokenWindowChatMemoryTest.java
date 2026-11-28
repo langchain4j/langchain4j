@@ -21,6 +21,9 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -29,8 +32,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
-import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import java.time.Duration;
 
 class TokenWindowChatMemoryTest implements WithAssertions {
 
@@ -617,8 +618,7 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
     @Test
     void should_work_even_if_the_first_message_exceeds_max_tokens() {
-        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(
-                2, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(2, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
 
         chatMemory.add(userMessageWithTokens(25));
         chatMemory.add(aiMessageWithTokens(10));
@@ -629,8 +629,7 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
     @Test
     void should_not_fail_even_with_just_system_message() {
-        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(
-                2, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(2, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
         chatMemory.add(systemMessageWithTokens(10));
     }
 
@@ -899,7 +898,10 @@ class TokenWindowChatMemoryTest implements WithAssertions {
                 .chatMemoryStore(store)
                 .build();
 
-        assertThat(chatMemory.messagesAsync()).failsWithin(Duration.ofSeconds(5)).withThrowableThat().withCause(failure);
+        assertThat(chatMemory.messagesAsync())
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .withCause(failure);
         assertThat(chatMemory.addAsync(List.of(userMessage("hi"))))
                 .failsWithin(Duration.ofSeconds(5))
                 .withThrowableThat()
@@ -950,7 +952,111 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         boolean interruptFlagRestored = Thread.interrupted(); // also clears the flag for the next tests
 
         assertThat(interruptFlagRestored).isTrue();
-        assertThat(future).failsWithin(Duration.ofSeconds(5)).withThrowableThat().withCause(interrupted);
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .withCause(interrupted);
+    }
+
+    @Test
+    void should_not_store_a_tool_result_whose_tool_call_is_not_in_the_window() {
+
+        ChatMemoryStore store = new InMemoryChatMemoryStore();
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(1000, TOKEN_COUNT_ESTIMATOR)
+                .chatMemoryStore(store)
+                .build();
+
+        UserMessage userMessage = UserMessage.from("How much is 2+2?");
+        chatMemory.add(userMessage);
+
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("calculator")
+                .arguments("{ \"a\": 2, \"b\": 2 }")
+                .build();
+        chatMemory.add(ToolExecutionResultMessage.from(request, "4"));
+
+        // the AiMessage that declared the call is not there, so the result answers nothing
+        assertThat(chatMemory.messages()).containsExactly(userMessage);
+        assertThat(store.getMessages("default")).containsExactly(userMessage);
+    }
+
+    @Test
+    void should_apply_the_window_once_for_a_batch_so_that_a_tool_round_is_not_cut_in_the_middle() {
+
+        // 10 tokens per message, so a window of 25 tokens holds two messages
+        TokenCountEstimator estimator = new TokenCountEstimator() {
+
+            @Override
+            public int estimateTokenCountInText(String text) {
+                return 10;
+            }
+
+            @Override
+            public int estimateTokenCountInMessage(ChatMessage message) {
+                return 10;
+            }
+
+            @Override
+            public int estimateTokenCountInMessages(Iterable<ChatMessage> messages) {
+                int tokens = 0;
+                for (ChatMessage ignored : messages) {
+                    tokens += 10;
+                }
+                return tokens;
+            }
+        };
+
+        ChatMemoryStore store = new InMemoryChatMemoryStore();
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .maxTokens(25, estimator)
+                .chatMemoryStore(store)
+                .build();
+
+        ToolExecutionRequest first = ToolExecutionRequest.builder()
+                .id("1")
+                .name("first")
+                .arguments("{}")
+                .build();
+        ToolExecutionRequest second = ToolExecutionRequest.builder()
+                .id("2")
+                .name("second")
+                .arguments("{}")
+                .build();
+        ToolExecutionRequest third = ToolExecutionRequest.builder()
+                .id("3")
+                .name("third")
+                .arguments("{}")
+                .build();
+
+        chatMemory.add(UserMessage.from("run three commands"));
+        chatMemory.add(AiMessage.from(List.of(first, second, third)));
+        chatMemory.addAll(List.of(
+                ToolExecutionResultMessage.from(first, "out-1"),
+                ToolExecutionResultMessage.from(second, "out-2"),
+                ToolExecutionResultMessage.from(third, "out-3")));
+
+        assertThatNoToolResultIsLeftWithoutItsAiMessage(chatMemory.messages());
+        assertThatNoToolResultIsLeftWithoutItsAiMessage(store.getMessages("default"));
+    }
+
+    private void assertThatNoToolResultIsLeftWithoutItsAiMessage(List<ChatMessage> messages) {
+
+        List<String> declaredIds = new ArrayList<>();
+        for (ChatMessage message : messages) {
+            if (message instanceof AiMessage aiMessage) {
+                aiMessage.toolExecutionRequests().forEach(request -> declaredIds.add(request.id()));
+            }
+        }
+
+        for (ChatMessage message : messages) {
+            if (message instanceof ToolExecutionResultMessage result) {
+                assertThat(declaredIds)
+                        .as("tool result %s answers a tool call that is not in the window: %s", result.id(), messages)
+                        .contains(result.id());
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")

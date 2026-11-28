@@ -73,7 +73,16 @@ public class TokenWindowChatMemory implements ChatMemory {
     @Override
     public void add(ChatMessage message) {
         List<ChatMessage> messages = messages();
-        if (appendMessage(messages, message)) {
+        if (append(messages, message)) {
+            applyWindow(messages);
+            store.updateMessages(id, messages);
+        }
+    }
+
+    @Override
+    public void addAll(Iterable<ChatMessage> messagesToAdd) {
+        List<ChatMessage> messages = messages();
+        if (appendAll(messages, messagesToAdd)) {
             store.updateMessages(id, messages);
         }
     }
@@ -82,11 +91,7 @@ public class TokenWindowChatMemory implements ChatMemory {
     public CompletableFuture<Void> addAsync(List<ChatMessage> messagesToAdd) {
         return storedMessagesAsync().thenCompose(stored -> {
             List<ChatMessage> messages = windowed(stored);
-            boolean changed = false;
-            for (ChatMessage message : messagesToAdd) {
-                changed |= appendMessage(messages, message);
-            }
-            if (changed) {
+            if (appendAll(messages, messagesToAdd)) {
                 return updateStoredMessagesAsync(messages);
             }
             return CompletableFuture.completedFuture(null);
@@ -94,12 +99,43 @@ public class TokenWindowChatMemory implements ChatMemory {
     }
 
     /**
-     * Appends {@code message} to {@code messages} applying the sliding-window and {@link SystemMessage} rules.
+     * Appends every message to {@code messages}, and applies the sliding window once, after all of them.
+     * <p>
+     * Evicting after each message would cut the window in the middle of a tool turn: the {@link AiMessage} that
+     * carries the tool calls can be evicted while only some of the results of the round have been appended, and the
+     * results appended afterwards are left without it. Some providers reject a history with a
+     * {@link ToolExecutionResultMessage} whose {@code AiMessage} is not there.
      *
-     * @return {@code true} if the messages were modified and should be persisted, {@code false} if the message was
+     * @return {@code true} if the messages were modified and should be persisted, {@code false} if every message was
      *         ignored (a {@code SystemMessage} identical to the existing one).
      */
-    private boolean appendMessage(List<ChatMessage> messages, ChatMessage message) {
+    private boolean appendAll(List<ChatMessage> messages, Iterable<ChatMessage> messagesToAdd) {
+        boolean changed = false;
+        for (ChatMessage message : messagesToAdd) {
+            changed |= append(messages, message);
+        }
+        if (changed) {
+            applyWindow(messages);
+        }
+        return changed;
+    }
+
+    /**
+     * Appends {@code message} to {@code messages} applying the {@link SystemMessage} rules.
+     * <p>
+     * A {@link ToolExecutionResultMessage} whose {@code AiMessage} is not in the window is not appended: keeping it
+     * would leave a result without the tool call it answers, which some providers reject.
+     *
+     * @return {@code true} if the message was appended, {@code false} if it was ignored (a {@code SystemMessage}
+     *         identical to the existing one, or a tool result whose tool call is not in the window).
+     */
+    private boolean append(List<ChatMessage> messages, ChatMessage message) {
+        if (message instanceof ToolExecutionResultMessage result
+                && result.id() != null
+                && !containsToolCall(messages, result.id())) {
+            return false; // the AiMessage that declared this result has been evicted
+        }
+
         if (message instanceof SystemMessage) {
             Optional<SystemMessage> maybeSystemMessage = SystemMessage.findFirst(messages);
             if (maybeSystemMessage.isPresent()) {
@@ -117,11 +153,20 @@ public class TokenWindowChatMemory implements ChatMemory {
             messages.add(message);
         }
 
+        return true;
+    }
+
+    private static boolean containsToolCall(List<ChatMessage> messages, String toolCallId) {
+        return messages.stream()
+                .anyMatch(message -> message instanceof AiMessage aiMessage
+                        && aiMessage.toolExecutionRequests().stream()
+                                .anyMatch(request -> toolCallId.equals(request.id())));
+    }
+
+    private void applyWindow(List<ChatMessage> messages) {
         Integer maxTokens = maxTokensProvider.apply(id);
         ensureGreaterThanZero(maxTokens, "maxTokens");
         ensureCapacity(messages, maxTokens, tokenCountEstimator);
-
-        return true;
     }
 
     @Override

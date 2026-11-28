@@ -1,16 +1,16 @@
 package dev.langchain4j.memory;
 
+import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
 import dev.langchain4j.Experimental;
+import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.internal.AsyncNotSupported;
-import dev.langchain4j.data.message.ChatMessage;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-
-import static dev.langchain4j.internal.ValidationUtils.ensureNotEmpty;
-import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
 
 /**
  * Represents the memory (history) of a chat conversation.
@@ -51,6 +51,25 @@ public interface ChatMemory {
         if (messages != null) {
             messages.forEach(this::add);
         }
+    }
+
+    /**
+     * Adds messages to the chat memory as a single operation, so that an implementation can append all of them
+     * before it applies its window and writes to the {@link dev.langchain4j.store.memory.chat.ChatMemoryStore}.
+     * <p>
+     * This matters for the messages of a tool round: an implementation that evicts after each message can evict the
+     * {@link dev.langchain4j.data.message.AiMessage} that carries the tool calls while only some of the results of
+     * the round have been appended, and the results appended afterwards are left without it. Most providers reject a
+     * history with a {@link dev.langchain4j.data.message.ToolExecutionResultMessage} whose {@code AiMessage} is not
+     * there.
+     * <p>
+     * The default implementation delegates to {@link #add(Iterable)}, so existing implementations keep working.
+     *
+     * @param messages The {@link ChatMessage}s to add
+     * @since 1.25.0
+     */
+    default void addAll(Iterable<ChatMessage> messages) {
+        add(messages);
     }
 
     /**
