@@ -632,9 +632,10 @@ public abstract class AiServices<T> {
 
     /**
      * By default, when the LLM calls multiple tools, the synchronous and {@link TokenStream} modes execute them
-     * sequentially. (The asynchronous and reactive modes always run tools on an {@link Executor} and therefore
-     * execute them concurrently by default; pass a single-threaded {@link Executor} to
-     * {@link #executeToolsConcurrently(Executor)} to serialize them there.)
+     * sequentially. The asynchronous and reactive modes run tools on an {@link Executor} and therefore
+     * execute them concurrently by default; call {@link #executeToolsConcurrently(boolean)
+     * executeToolsConcurrently(false)} or pass a single-threaded {@link Executor} to
+     * {@link #executeToolsConcurrently(Executor)} to serialize them there.
      * If you enable this option, tools will be executed concurrently (with one exception - see below),
      * using the default {@link Executor}.
      * You can also specify your own {@link Executor}, see {@link #executeToolsConcurrently(Executor)}.
@@ -670,6 +671,27 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Enables or disables concurrent execution of the tools requested in a single model response.
+     * <p>
+     * {@code true} is equivalent to {@link #executeToolsConcurrently()}.
+     * {@code false} clears any previously set tool {@link Executor} and makes every invocation mode —
+     * synchronous, {@link TokenStream}, asynchronous ({@link java.util.concurrent.CompletableFuture}),
+     * reactive and the streaming-event publisher — run the tools of a round one after another, in request
+     * order. Tools in the asynchronous, reactive and publisher modes are still offloaded so they do not
+     * block the model-response thread.
+     *
+     * @param concurrently whether tools requested in the same model response should run concurrently
+     * @return builder
+     * @see #executeToolsConcurrently()
+     * @see #executeToolsConcurrently(Executor)
+     * @since 1.25.0
+     */
+    public AiServices<T> executeToolsConcurrently(boolean concurrently) {
+        context.toolService.executeToolsConcurrently(concurrently);
+        return this;
+    }
+
+    /**
      * See {@link #executeToolsConcurrently()}'s Javadoc for more info.
      * <p>
      * If {@code null} is specified, the default {@link Executor} will be used.
@@ -677,7 +699,8 @@ public abstract class AiServices<T> {
      * <b>Running tools sequentially.</b> The asynchronous AI Service modes (methods returning a
      * {@link java.util.concurrent.CompletableFuture} or a reactive {@link java.util.concurrent.Flow.Publisher})
      * execute tools concurrently by default. To run them one at a time instead — e.g. for tools that are not
-     * thread-safe, that must preserve the order of their side effects, or that need to be rate-limited — pass a
+     * thread-safe, that must preserve the order of their side effects, or that need to be rate-limited — call
+     * {@link #executeToolsConcurrently(boolean) executeToolsConcurrently(false)}, or pass a
      * single-threaded executor such as {@link java.util.concurrent.Executors#newSingleThreadExecutor()}. Tools
      * are then submitted in request order and executed serially, while still being kept off the
      * model-response thread. (The synchronous and {@link TokenStream} modes already execute tools sequentially
