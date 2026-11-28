@@ -11,6 +11,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 @Execution(ExecutionMode.CONCURRENT)
 class AzureOpenAiTokenCountEstimatorTest {
@@ -85,6 +86,20 @@ class AzureOpenAiTokenCountEstimatorTest {
     @ParameterizedTest
     @EnumSource(AzureOpenAiLanguageModelName.class)
     void should_support_all_language_models(AzureOpenAiLanguageModelName modelName) {
+
+        // given
+        TokenCountEstimator tokenCountEstimator = new AzureOpenAiTokenCountEstimator(modelName);
+
+        // when
+        int tokenCount = tokenCountEstimator.estimateTokenCountInText("a");
+
+        // then
+        assertThat(tokenCount).isEqualTo(1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"gpt-5", "gpt-5-mini", "gpt-6", "gpt-6-luna", "gpt-6.1-sol", "gpt-6.1-terra"})
+    void should_support_gpt_5_and_gpt_6_model_names(String modelName) {
 
         // given
         TokenCountEstimator tokenCountEstimator = new AzureOpenAiTokenCountEstimator(modelName);
