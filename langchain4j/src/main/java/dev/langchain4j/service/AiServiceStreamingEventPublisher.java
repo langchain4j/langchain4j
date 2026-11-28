@@ -13,6 +13,7 @@ import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.guardrail.ChatExecutor;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
@@ -459,6 +460,11 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 throw runtime(
                         "Something is wrong, exceeded %s tool calling round trips (maxToolCallingRoundTrips)",
                         context.toolService.maxToolCallingRoundTrips());
+            }
+
+            LangChain4jException truncatedToolCalls = ToolService.truncatedToolCallsError(chatResponse);
+            if (truncatedToolCalls != null) {
+                throw truncatedToolCalls;
             }
 
             getMemory().addAsync(List.of(aiMessage)).whenComplete((ignored, error) -> {

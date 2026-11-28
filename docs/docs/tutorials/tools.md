@@ -1971,6 +1971,18 @@ contain internal details, exactly like the message of your own exceptions.
 release. Configuring it explicitly today means the change will not affect your application.
 :::
 
+#### Responses Cut Off by the Output Token Limit
+
+If the response of the LLM is cut off by the output token limit (finish reason `LENGTH`) while it requests tool calls,
+the arguments of those calls can be missing or incomplete, and calls the LLM meant to make can be missing.
+The AI Service does not execute the tool calls of such a response.
+It fails with a `LangChain4jException` instead, and the tool calls are not added to the chat memory.
+To avoid it, give the chat model a higher output token limit.
+
+In the reactive mode, and in the `TokenStream` mode with `executeToolsConcurrently()`, a tool is started
+as soon as the LLM completes its call, before the finish reason is known.
+So a tool whose call was completed before the response was cut off can already be running when the AI Service fails.
+
 ### Compensating Tool Actions
 
 When an AI Service uses multiple tools to accomplish a task, a failure in one tool
