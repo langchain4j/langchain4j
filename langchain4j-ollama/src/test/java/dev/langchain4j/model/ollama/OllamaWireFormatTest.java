@@ -2,6 +2,7 @@ package dev.langchain4j.model.ollama;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.model.chat.request.ResponseFormat;
 import dev.langchain4j.model.chat.request.ResponseFormatType;
 import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
@@ -50,10 +51,8 @@ class OllamaWireFormatTest {
     void chat_request_fields_are_snake_case() {
         String json = OllamaJsonUtils.toJsonWithoutIdent(OllamaChatRequest.builder()
                 .model("llama3")
-                .messages(List.of(Message.builder()
-                        .role(Role.USER)
-                        .content("hi")
-                        .build()))
+                .messages(
+                        List.of(Message.builder().role(Role.USER).content("hi").build()))
                 .keepAlive(300)
                 .build());
 
@@ -110,5 +109,20 @@ class OllamaWireFormatTest {
         assertThat(response.getDoneReason()).isEqualTo("stop");
         assertThat(response.getEvalCount()).isEqualTo(7);
         assertThat(response.getPromptEvalCount()).isEqualTo(3);
+    }
+
+    @Test
+    void a_tool_without_parameters_is_sent_with_an_empty_object_schema() {
+        ToolSpecification tool = ToolSpecification.builder()
+                .name("currentTime")
+                .description("Returns the current time")
+                .build();
+
+        String json = OllamaJsonUtils.toJsonWithoutIdent(OllamaChatRequest.builder()
+                .model("llama3")
+                .tools(InternalOllamaHelper.toOllamaTools(List.of(tool)))
+                .build());
+
+        assertThat(json).contains("\"parameters\":{\"type\":\"object\",\"properties\":{},\"required\":[]}");
     }
 }
