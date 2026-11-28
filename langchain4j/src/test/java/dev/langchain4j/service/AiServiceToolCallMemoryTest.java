@@ -3,6 +3,7 @@ package dev.langchain4j.service;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
@@ -16,21 +17,23 @@ import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
-import dev.langchain4j.test.mock.MockChatModel;
-import dev.langchain4j.test.mock.MockStreamingChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.observability.api.event.AiServiceCompletedEvent;
 import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.ToolCompensatedEventListener;
 import dev.langchain4j.service.AiServiceStreamingEvent.FinalResponseEvent;
+import dev.langchain4j.test.mock.MockChatModel;
+import dev.langchain4j.test.mock.MockStreamingChatModel;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -79,6 +82,14 @@ class AiServiceToolCallMemoryTest {
         @Tool
         String temperature() {
             return "42";
+        }
+    }
+
+    static class FailingBooking {
+
+        @Tool
+        String book(String what) {
+            throw new IllegalStateException("the booking system is down");
         }
     }
 
@@ -288,8 +299,7 @@ class AiServiceToolCallMemoryTest {
     void async_service_should_send_the_stored_tool_result_to_the_model_on_the_next_turn() throws Exception {
 
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
-        MockChatModel model =
-                MockChatModel.thatResponds(AiMessage.from(BOOK_HOTEL), AiMessage.from("You are welcome"));
+        MockChatModel model = MockChatModel.thatResponds(AiMessage.from(BOOK_HOTEL), AiMessage.from("You are welcome"));
 
         AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
                 .chatModel(model)
@@ -411,9 +421,9 @@ class AiServiceToolCallMemoryTest {
                 .chatMemory(memory)
                 .tools(booking)
                 .compensateOnToolErrors(true)
-                .registerListeners(List.of(
-                        (ToolCompensatedEventListener) compensated::complete,
-                        (AiServiceCompletedListener) completedEvents::add))
+                .registerListeners(
+                        List.of((ToolCompensatedEventListener) compensated::complete, (AiServiceCompletedListener)
+                                completedEvents::add))
                 .build();
 
         CompletableFuture<Result<String>> future = assistant.chat("Book a hotel");
@@ -521,8 +531,9 @@ class AiServiceToolCallMemoryTest {
     }
 
     @Test
-    void reactive_service_should_roll_back_only_after_the_tool_result_is_persisted_when_cancelled_as_the_persist_starts()
-            throws Exception {
+    void
+            reactive_service_should_roll_back_only_after_the_tool_result_is_persisted_when_cancelled_as_the_persist_starts()
+                    throws Exception {
 
         EventCollector collector = new EventCollector();
         SlowToolResultMemory memory = new SlowToolResultMemory() {
@@ -560,7 +571,8 @@ class AiServiceToolCallMemoryTest {
     }
 
     @Test
-    void token_stream_service_should_not_store_an_unanswered_tool_call_when_round_trips_are_exceeded() throws Exception {
+    void token_stream_service_should_not_store_an_unanswered_tool_call_when_round_trips_are_exceeded()
+            throws Exception {
 
         ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
 
@@ -604,5 +616,131 @@ class AiServiceToolCallMemoryTest {
         assertThat(collector.terminated).failsWithin(10, SECONDS);
         assertThat(memory.messages()).hasSize(3);
         assertThat(memory.messages().get(2)).isInstanceOf(ToolExecutionResultMessage.class);
+    }
+
+    private static final ToolExecutionRequest INVALID_BOOK_HOTEL = ToolExecutionRequest.builder()
+            .id("call-3")
+            .name("book")
+            .arguments("{ invalid json }")
+            .build();
+
+    /**
+     * Providers reject a request whose history has a tool call without a result, so a round that fails the
+     * invocation must still answer each of its tool calls in the chat memory.
+     */
+    private static void assertEveryToolCallIsAnswered(ChatMemory memory) {
+        List<ChatMessage> messages = memory.messages();
+        Set<String> answeredToolCallIds = messages.stream()
+                .filter(ToolExecutionResultMessage.class::isInstance)
+                .map(ToolExecutionResultMessage.class::cast)
+                .map(ToolExecutionResultMessage::id)
+                .collect(Collectors.toSet());
+        for (ChatMessage message : messages) {
+            if (message instanceof AiMessage aiMessage && aiMessage.hasToolExecutionRequests()) {
+                for (ToolExecutionRequest request : aiMessage.toolExecutionRequests()) {
+                    assertThat(answeredToolCallIds)
+                            .as("a result for the tool call '%s' (%s)", request.name(), request.id())
+                            .contains(request.id());
+                }
+            }
+        }
+    }
+
+    @Test
+    void sync_service_should_answer_the_tool_call_when_an_invalid_arguments_error_fails_the_invocation() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        SyncAssistant assistant = AiServices.builder(SyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(INVALID_BOOK_HOTEL), AiMessage.from("answer")))
+                .chatMemory(memory)
+                .tools(new Booking())
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Book a hotel")).isInstanceOf(RuntimeException.class);
+
+        assertEveryToolCallIsAnswered(memory);
+    }
+
+    @Test
+    void token_stream_service_should_answer_the_tool_call_when_an_invalid_arguments_error_fails_the_invocation() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
+                .streamingChatModel(MockStreamingChatModel.thatResponds(AiMessage.from(INVALID_BOOK_HOTEL)))
+                .chatMemory(memory)
+                .tools(new Booking())
+                .build();
+
+        CompletableFuture<ChatResponse> completed = new CompletableFuture<>();
+        assistant
+                .chat("Book a hotel")
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(completed::complete)
+                .onError(completed::completeExceptionally)
+                .start();
+
+        assertThat(completed).failsWithin(10, SECONDS);
+
+        assertEveryToolCallIsAnswered(memory);
+    }
+
+    @Test
+    void sync_service_should_answer_the_tool_calls_skipped_after_another_call_of_the_same_round_failed() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        ToolExecutionRequest bookCar = ToolExecutionRequest.builder()
+                .id("call-4")
+                .name("book")
+                .arguments("{\"arg0\": \"car\"}")
+                .build();
+
+        SyncAssistant assistant = AiServices.builder(SyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(
+                        AiMessage.from(INVALID_BOOK_HOTEL, bookCar), AiMessage.from("answer")))
+                .chatMemory(memory)
+                .tools(new Booking())
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Book a hotel and a car")).isInstanceOf(RuntimeException.class);
+
+        assertEveryToolCallIsAnswered(memory);
+    }
+
+    @Test
+    void async_service_should_answer_the_tool_call_when_a_tool_error_fails_the_invocation() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(BOOK_HOTEL), AiMessage.from("answer")))
+                .chatMemory(memory)
+                .tools(new FailingBooking())
+                .build();
+
+        assertThat(assistant.chat("Book a hotel")).failsWithin(10, SECONDS);
+
+        assertEveryToolCallIsAnswered(memory);
+    }
+
+    @Test
+    void reactive_service_should_answer_the_tool_call_when_a_tool_error_fails_the_invocation() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(MockStreamingChatModel.thatResponds(AiMessage.from(BOOK_HOTEL)))
+                .chatMemory(memory)
+                .tools(new FailingBooking())
+                .build();
+
+        EventCollector collector = new EventCollector();
+        assistant.chat("Book a hotel").subscribe(collector);
+
+        assertThat(collector.terminated).failsWithin(10, SECONDS);
+
+        assertEveryToolCallIsAnswered(memory);
     }
 }
