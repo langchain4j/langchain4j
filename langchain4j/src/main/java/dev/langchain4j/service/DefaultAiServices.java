@@ -197,6 +197,7 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     public T build() {
         validate();
+        context.toolService.toolGuardrailService(context.toolGuardrailService());
         ToolErrorHandlingNotice.logOnceIfNeeded(context, this::hasBlockingMethod);
 
         context.streamingBufferSize = ensureGreaterThanZero(
@@ -664,7 +665,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                                                         context.toolService.createContext(
                                                                                 guardedInput.invocationContext(),
                                                                                 guardedInput.userMessage(),
-                                                                                assembledMessages);
+                                                                                assembledMessages,
+                                                                                commonGuardrailParam);
                                                                 var streamingEventStreamParameters =
                                                                         AiServiceTokenStreamParameters.builder()
                                                                                 .messages(assembledMessages)
@@ -796,8 +798,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                         CompletableFuture<Moderation> moderationFuture =
                                 triggerModerationIfNeeded(method, messages, invocationContext);
 
-                        ToolServiceContext toolServiceContext =
-                                context.toolService.createContext(invocationContext, userMessage, messages);
+                        ToolServiceContext toolServiceContext = context.toolService.createContext(
+                                invocationContext, userMessage, messages, commonGuardrailParam);
 
                         if (streaming) {
                             var tokenStreamParameters = AiServiceTokenStreamParameters.builder()
@@ -987,8 +989,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                             return;
                         }
 
-                        ToolServiceContext toolServiceContext =
-                                context.toolService.createContext(invocationContext, userMessage, messages);
+                        ToolServiceContext toolServiceContext = context.toolService.createContext(
+                                invocationContext, userMessage, messages, commonGuardrailParam);
                         ChatRequestParameters parameters =
                                 chatRequestParameters(method, args, toolServiceContext, responseFormat);
                         ChatRequest chatRequest = transformChatRequest(
@@ -1389,12 +1391,13 @@ class DefaultAiServices<T> extends AiServices<T> {
                                 .allMatch(returnBehavior -> returnBehavior == ReturnBehavior.IMMEDIATE
                                         || returnBehavior == ReturnBehavior.IMMEDIATE_IF_LAST)) {
                             int numNullResults = 0;
-                            ToolExecution lastNonNull = null;
+                            Object lastNonNull = null;
                             for (ToolExecution execution : toolServiceResult.toolExecutions()) {
-                                if (execution.resultObject() == null) {
+                                Object value = immediateResult(execution, returnType, method);
+                                if (value == null) {
                                     numNullResults++;
                                 } else {
-                                    lastNonNull = execution;
+                                    lastNonNull = value;
                                 }
                             }
                             if (numNullResults
@@ -1404,8 +1407,8 @@ class DefaultAiServices<T> extends AiServices<T> {
                                             == toolServiceResult
                                                     .toolExecutions()
                                                     .size()
-                                    && resolvesToType(lastNonNull.resultObject(), returnType)) {
-                                return fireEventAndReturn(invocationContext, lastNonNull.resultObject());
+                                    && resolvesToType(lastNonNull, returnType)) {
+                                return fireEventAndReturn(invocationContext, lastNonNull);
                             }
                             throw illegalConfiguration(
                                     "AI Service method '%s' call cannot resolve return type from tool executions with ReturnBehavior.%s/%s. Use %s as your return type.",
@@ -1602,6 +1605,33 @@ class DefaultAiServices<T> extends AiServices<T> {
 
     private static boolean resolvesToType(Object o, Type returnType) {
         return o != null && returnType instanceof Class && ((Class) returnType).isAssignableFrom(o.getClass());
+    }
+
+    /**
+     * What an execution of a tool with an immediate {@link ReturnBehavior} returns from a method whose return type is
+     * not {@link Result}: the object the tool returned. When a tool output guardrail rewrote the result, that object is
+     * gone (it no longer matches what the LLM sees, and returning it would bypass the rewrite), so a {@code String}
+     * method gets the text of the rewritten result, and any other return type fails.
+     */
+    private static Object immediateResult(ToolExecution execution, Type returnType, Method method) {
+        if (!execution.isResultRewritten()) {
+            return execution.resultObject();
+        }
+        if (returnType != String.class) {
+            throw illegalConfiguration(
+                    "AI Service method '%s' cannot return the result of tool '%s' with ReturnBehavior.%s/%s: a tool output guardrail rewrote the result, so there is no object returned by the tool. Use %s as your return type.",
+                    method.getName(), execution.request().name(), IMMEDIATE, IMMEDIATE_IF_LAST, Result.class.getName());
+        }
+        var texts = execution.resultContents().stream()
+                .filter(TextContent.class::isInstance)
+                .map(content -> ((TextContent) content).text())
+                .toList();
+        if (texts.isEmpty()) {
+            throw illegalConfiguration(
+                    "AI Service method '%s' cannot return the result of tool '%s' with ReturnBehavior.%s/%s as a String: a tool output guardrail rewrote the result to contents without text. Use %s as your return type.",
+                    method.getName(), execution.request().name(), IMMEDIATE, IMMEDIATE_IF_LAST, Result.class.getName());
+        }
+        return String.join("\n", texts);
     }
 
     private UserMessage invokeInputGuardrails(

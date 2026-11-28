@@ -76,6 +76,8 @@ public class ToolSearchService {
         Set<String> toolNamesFoundEarlier = messages.stream()
                 .filter(it -> it instanceof ToolExecutionResultMessage)
                 .map(it -> (ToolExecutionResultMessage) it)
+                // an error result found no tool, also when a tool output guardrail made it one
+                .filter(it -> !Boolean.TRUE.equals(it.isError()))
                 .map(it -> it.attributes().get(FOUND_TOOLS_ATTRIBUTE))
                 .filter(Objects::nonNull)
                 .map(it -> (List<String>) it)
@@ -128,6 +130,10 @@ public class ToolSearchService {
             ToolServiceContext toolServiceContext, Collection<ToolExecutionResult> toolResults) {
         Set<String> foundToolNames = new LinkedHashSet<>();
         for (ToolExecutionResult toolResult : toolResults) {
+            if (toolResult.isError()) {
+                // an error result found no tool, also when a tool output guardrail made it one
+                continue;
+            }
             Object attribute = toolResult.attributes().get(FOUND_TOOLS_ATTRIBUTE);
             if (attribute instanceof List<?> foundToolNamesList) {
                 foundToolNames.addAll((List<String>) foundToolNamesList);

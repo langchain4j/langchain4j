@@ -919,6 +919,23 @@ class DefaultToolExecutorTest implements WithAssertions {
                 .withCauseInstanceOf(IllegalArgumentException.class);
     }
 
+    public String echoTool(String input) {
+        return "input=%s".formatted(input);
+    }
+
+    @Test
+    void the_json_literal_null_as_arguments_is_handled_like_an_empty_object() throws Exception {
+        Method method = getClass().getMethod("echoTool", String.class);
+        DefaultToolExecutor executor = new DefaultToolExecutor(this, method);
+        ToolExecutionRequest request = ToolExecutionRequest.builder()
+                .id("1")
+                .name("echoTool")
+                .arguments("null")
+                .build();
+
+        assertThat(executor.execute(request, "DEFAULT")).isEqualTo("input=null");
+    }
+
     @Test
     void executeAsync_should_return_a_failed_future_for_invalid_arguments() throws Exception {
         Method method = getClass().getMethod("primitiveTool", String.class, int.class, int.class);

@@ -1,0 +1,234 @@
+package dev.langchain4j.guardrail;
+
+import static dev.langchain4j.internal.ValidationUtils.ensureNotNull;
+
+import dev.langchain4j.Experimental;
+import dev.langchain4j.internal.JacocoIgnoreCoverageGenerated;
+import dev.langchain4j.internal.Json;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
+import org.jspecify.annotations.Nullable;
+
+/**
+ * The result of the validation of a {@link ToolInputGuardrail}.
+ * <p>
+ *     A successful result may carry rewritten tool arguments (a JSON string), which replace the arguments of the
+ *     tool execution request for the guardrails that follow and for the tool execution itself.
+ * </p>
+ *
+ * @since 1.25.0
+ */
+@Experimental
+public final class ToolInputGuardrailResult implements GuardrailResult<ToolInputGuardrailResult> {
+    private static final ToolInputGuardrailResult SUCCESS = new ToolInputGuardrailResult();
+
+    private final Result result;
+    private final @Nullable String successfulText;
+    private final List<Failure> failures;
+    private final @Nullable String rewrittenArguments;
+
+    private ToolInputGuardrailResult(
+            Result result, @Nullable String successfulText, List<Failure> failures, @Nullable String rewrittenArguments) {
+        this.result = ensureNotNull(result, "result");
+        this.successfulText = successfulText;
+        this.failures = Optional.ofNullable(failures).orElseGet(List::of);
+        this.rewrittenArguments = rewrittenArguments;
+    }
+
+    private ToolInputGuardrailResult(Result result, @Nullable String successfulText, List<Failure> failures) {
+        this(result, successfulText, failures, successfulText);
+    }
+
+    private ToolInputGuardrailResult() {
+        this(Result.SUCCESS, null, Collections.emptyList());
+    }
+
+    ToolInputGuardrailResult(List<Failure> failures, boolean fatal) {
+        this(fatal ? Result.FATAL : Result.FAILURE, null, failures);
+    }
+
+    ToolInputGuardrailResult(Failure failure, boolean fatal) {
+        this(new ArrayList<>(List.of(failure)), fatal);
+    }
+
+    private ToolInputGuardrailResult(String rewrittenArguments) {
+        this(Result.SUCCESS_WITH_RESULT, rewrittenArguments, Collections.emptyList());
+    }
+
+    /**
+     * Gets a successful tool input guardrail result.
+     *
+     * @return a successful result without any rewrite
+     */
+    public static ToolInputGuardrailResult success() {
+        return SUCCESS;
+    }
+
+    /**
+     * Produces a successful result with rewritten tool arguments.
+     *
+     * @param rewrittenArguments
+     *            the new arguments of the tool, as a JSON object (otherwise the executor fails the call with a
+     *            {@link ToolInputGuardrailException}). When {@code null}, the result is a plain
+     *            {@linkplain #success() success}.
+     * @return a successful result carrying the rewritten arguments
+     */
+    public static ToolInputGuardrailResult successWith(@Nullable String rewrittenArguments) {
+        return (rewrittenArguments == null) ? success() : new ToolInputGuardrailResult(rewrittenArguments);
+    }
+
+    /**
+     * Produces a successful result with rewritten tool arguments, given as a map of argument names to values. The map
+     * is serialized to a JSON object right away, with the same JSON codec that
+     * {@link ToolInputGuardrailRequest#argumentsAsMap()} parses the arguments with, so quotes and other special
+     * characters in the values need no escaping.
+     * <p>
+     *     Unlike {@link #successWith(String)}, a {@code null} map is rejected: a guardrail that redacts the arguments
+     *     and returns {@code null} by mistake must not let the original arguments through.
+     * </p>
+     *
+     * @param rewrittenArguments the new arguments of the tool, by name; must not be {@code null}
+     * @return a successful result carrying the rewritten arguments
+     * @throws IllegalArgumentException if {@code rewrittenArguments} is {@code null}
+     * @throws RuntimeException if a value has no JSON representation; thrown from a guardrail, it is a fatal failure
+     *         of the guardrail, before the tool runs
+     */
+    public static ToolInputGuardrailResult successWithArguments(Map<String, ?> rewrittenArguments) {
+        ensureNotNull(rewrittenArguments, "rewrittenArguments");
+        return new ToolInputGuardrailResult(Json.toJson(rewrittenArguments));
+    }
+
+    @Override
+    public Result result() {
+        return result;
+    }
+
+    /**
+     * @return the rewritten tool arguments (a JSON string), or {@code null} if the arguments were not rewritten
+     */
+    @Override
+    public @Nullable String successfulText() {
+        return successfulText;
+    }
+
+    /**
+     * Gets the tool arguments as the guardrail chain left them: the arguments rewritten by the guardrails that ran,
+     * or empty if none of them rewrote the arguments.
+     * <p>
+     *     Unlike {@link #successfulText()}, this is also available on a failed result, when a guardrail that ran
+     *     before the failing one rewrote the arguments. The tool is not executed then, but what the caller reports
+     *     for the rejected call is the latest request state.
+     * </p>
+     *
+     * @return the rewritten tool arguments (a JSON string), if any guardrail of the chain rewrote them
+     */
+    public Optional<String> rewrittenArguments() {
+        return Optional.ofNullable(rewrittenArguments);
+    }
+
+    /**
+     * @return a copy of this result that also carries the given rewritten arguments, which {@code null} clears
+     */
+    ToolInputGuardrailResult withRewrittenArguments(String arguments) {
+        return new ToolInputGuardrailResult(result, successfulText, failures, arguments);
+    }
+
+    /**
+     * Gets the text of the error tool result that reports the failures of this result to the LLM: the messages of
+     * all the failures, joined with {@code \n} in chain order. No framework text is added.
+     *
+     * @return the joined failure messages, or an empty string if there are no failures
+     */
+    public String failureMessage() {
+        return failures.stream().map(Failure::message).collect(Collectors.joining("\n"));
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public <F extends GuardrailResult.Failure> List<F> failures() {
+        return (List<F>) failures;
+    }
+
+    @Override
+    @JacocoIgnoreCoverageGenerated
+    public String toString() {
+        return asString();
+    }
+
+    @Override
+    @JacocoIgnoreCoverageGenerated
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        ToolInputGuardrailResult that = (ToolInputGuardrailResult) o;
+        return result == that.result
+                && Objects.equals(successfulText, that.successfulText)
+                && Objects.equals(rewrittenArguments, that.rewrittenArguments)
+                && Objects.equals(failures, that.failures);
+    }
+
+    @Override
+    @JacocoIgnoreCoverageGenerated
+    public int hashCode() {
+        return Objects.hash(result, successfulText, rewrittenArguments, failures);
+    }
+
+    /**
+     * Represents a tool input guardrail failure.
+     * Its message is sent to the LLM verbatim as the content of an error tool result, unless the failure is fatal.
+     *
+     * @since 1.25.0
+     */
+    @Experimental
+    public static final class Failure implements GuardrailResult.Failure {
+        private final String message;
+        private final @Nullable Throwable cause;
+        private final @Nullable Class<? extends Guardrail> guardrailClass;
+
+        Failure(String message, @Nullable Throwable cause, @Nullable Class<? extends Guardrail> guardrailClass) {
+            this.message = ensureNotNull(message, "message");
+            this.cause = cause;
+            this.guardrailClass = guardrailClass;
+        }
+
+        Failure(String message) {
+            this(message, null, null);
+        }
+
+        Failure(String message, @Nullable Throwable cause) {
+            this(message, cause, null);
+        }
+
+        @Override
+        public Failure withGuardrailClass(Class<? extends Guardrail> guardrailClass) {
+            ensureNotNull(guardrailClass, "guardrailClass");
+            return new Failure(this.message, this.cause, guardrailClass);
+        }
+
+        @Override
+        public String message() {
+            return message;
+        }
+
+        @Override
+        public @Nullable Throwable cause() {
+            return cause;
+        }
+
+        @Override
+        public @Nullable Class<? extends Guardrail> guardrailClass() {
+            return guardrailClass;
+        }
+
+        @Override
+        @JacocoIgnoreCoverageGenerated
+        public String toString() {
+            return asString();
+        }
+    }
+}

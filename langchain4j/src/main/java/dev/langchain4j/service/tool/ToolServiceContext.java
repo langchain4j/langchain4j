@@ -9,6 +9,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import dev.langchain4j.guardrail.GuardrailRequestParams;
+import dev.langchain4j.service.guardrail.ToolGuardrailService;
+import dev.langchain4j.service.guardrail.ToolGuardrailService.ToolKey;
+import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.service.tool.search.ToolSearchStrategy;
@@ -24,6 +29,9 @@ public class ToolServiceContext {
     private final Map<String, ToolExecutor> toolExecutors;
     private final Map<String, ReturnBehavior> returnBehaviors;
     private final List<ToolProvider> dynamicToolProviders;
+    private final Map<String, ToolKey> toolGuardrailKeys;
+    private final ToolGuardrailService toolGuardrailService;
+    private final GuardrailRequestParams guardrailRequestParams;
 
     public ToolServiceContext(Builder builder) {
         this.effectiveTools = copy(builder.effectiveTools);
@@ -31,6 +39,9 @@ public class ToolServiceContext {
         this.toolExecutors = copy(builder.toolExecutors);
         this.returnBehaviors = copy(builder.returnBehaviors);
         this.dynamicToolProviders = copy(builder.dynamicToolProviders);
+        this.toolGuardrailKeys = copy(builder.toolGuardrailKeys);
+        this.toolGuardrailService = builder.toolGuardrailService;
+        this.guardrailRequestParams = builder.guardrailRequestParams;
     }
 
     /**
@@ -43,6 +54,9 @@ public class ToolServiceContext {
         this.toolExecutors = copy(toolExecutors);
         this.returnBehaviors = Map.of();
         this.dynamicToolProviders = List.of();
+        this.toolGuardrailKeys = Map.of();
+        this.toolGuardrailService = null;
+        this.guardrailRequestParams = null;
     }
 
     /**
@@ -118,13 +132,60 @@ public class ToolServiceContext {
         return dynamicToolProviders;
     }
 
+    /**
+     * Returns the key that {@link ToolGuardrailService#bind(Class, AiServiceTool)} of the
+     * {@linkplain #toolGuardrailService() tool guardrail service} returned for each tool, by tool name. The key carries
+     * the specification and the source of the tool, and the guardrails that apply to it.
+     * <p>
+     *     A tool without a key is bound on demand by the tool guardrail service when it is called, with its
+     *     specification and executor from this context, so it gets at least the guardrails that apply to every tool:
+     *     no tool skips the tool guardrails because it was not bound beforehand. Without a tool guardrail service, no
+     *     tool guardrails run. A key from another tool guardrail service fails the call with an
+     *     {@link IllegalArgumentException}.
+     * </p>
+     *
+     * @since 1.25.0
+     */
+    public Map<String, ToolKey> toolGuardrailKeys() {
+        return toolGuardrailKeys;
+    }
+
+    /**
+     * Returns the service that executes the tool guardrails, and binds the tools that have no
+     * {@linkplain #toolGuardrailKeys() key} (the tools that are provided while the invocation runs, or a framework
+     * did not bind), if one is set.
+     *
+     * @since 1.25.0
+     */
+    public Optional<ToolGuardrailService> toolGuardrailService() {
+        return Optional.ofNullable(toolGuardrailService);
+    }
+
+    /**
+     * Returns the {@link GuardrailRequestParams} of the AI service invocation, which the tool guardrails receive in
+     * their requests (so they see the same context as the AI service guardrails, and their events reach the listeners
+     * registered for the invocation), if the invocation has any.
+     * <p>
+     *     It is absent when the context is not created by an AI service invocation. The tool guardrails then
+     *     run with minimal parameters (an empty user message template and no variables).
+     * </p>
+     *
+     * @since 1.25.0
+     */
+    public Optional<GuardrailRequestParams> guardrailRequestParams() {
+        return Optional.ofNullable(guardrailRequestParams);
+    }
+
     public Builder toBuilder() {
         return builder()
                 .effectiveTools(effectiveTools)
                 .availableTools(availableTools)
                 .toolExecutors(toolExecutors)
                 .returnBehaviors(returnBehaviors)
-                .dynamicToolProviders(dynamicToolProviders);
+                .dynamicToolProviders(dynamicToolProviders)
+                .toolGuardrailKeys(toolGuardrailKeys)
+                .toolGuardrailService(toolGuardrailService)
+                .guardrailRequestParams(guardrailRequestParams);
     }
 
     @Override
@@ -135,23 +196,34 @@ public class ToolServiceContext {
                 && Objects.equals(availableTools, that.availableTools)
                 && Objects.equals(toolExecutors, that.toolExecutors)
                 && Objects.equals(returnBehaviors, that.returnBehaviors)
-                && Objects.equals(dynamicToolProviders, that.dynamicToolProviders);
+                && Objects.equals(dynamicToolProviders, that.dynamicToolProviders)
+                && Objects.equals(toolGuardrailKeys, that.toolGuardrailKeys)
+                && (toolGuardrailService == that.toolGuardrailService)
+                && Objects.equals(guardrailRequestParams, that.guardrailRequestParams);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(effectiveTools, availableTools, toolExecutors, returnBehaviors, dynamicToolProviders);
+        return Objects.hash(
+                effectiveTools,
+                availableTools,
+                toolExecutors,
+                returnBehaviors,
+                dynamicToolProviders,
+                toolGuardrailKeys);
     }
 
     @Override
     public String toString() {
-        return "ToolServiceContext{" +
-                "effectiveTools=" + effectiveTools +
-                ", availableTools=" + availableTools +
-                ", toolExecutors=" + toolExecutors +
-                ", returnBehaviorByName=" + returnBehaviors +
-                ", dynamicToolProviders=" + dynamicToolProviders +
-                '}';
+        return "ToolServiceContext{" + "effectiveTools="
+                + effectiveTools + ", availableTools="
+                + availableTools + ", toolExecutors="
+                + toolExecutors + ", returnBehaviorByName="
+                + returnBehaviors + ", dynamicToolProviders="
+                + dynamicToolProviders + ", toolGuardrailKeys="
+                + toolGuardrailKeys + ", toolGuardrailService="
+                + toolGuardrailService + ", guardrailRequestParams="
+                + guardrailRequestParams + '}';
     }
 
     public static Builder builder() {
@@ -165,6 +237,9 @@ public class ToolServiceContext {
         private Map<String, ToolExecutor> toolExecutors;
         private Map<String, ReturnBehavior> returnBehaviors = new HashMap<>();
         private List<ToolProvider> dynamicToolProviders;
+        private Map<String, ToolKey> toolGuardrailKeys;
+        private ToolGuardrailService toolGuardrailService;
+        private GuardrailRequestParams guardrailRequestParams;
 
         /**
          * Sets <b>effective</b> tool specifications that should be included in the next {@link ChatRequest}.
@@ -232,6 +307,50 @@ public class ToolServiceContext {
          */
         public Builder dynamicToolProviders(List<ToolProvider> dynamicToolProviders) {
             this.dynamicToolProviders = dynamicToolProviders;
+            return this;
+        }
+
+        /**
+         * Sets the key that {@link ToolGuardrailService#bind(Class, AiServiceTool)} of the
+         * {@linkplain #toolGuardrailService(ToolGuardrailService) tool guardrail service} returned for each tool, by
+         * tool name. A tool without a key is bound on demand when it is called.
+         *
+         * @param toolGuardrailKeys the keys of the tools, by tool name
+         * @return this builder
+         * @since 1.25.0
+         */
+        public Builder toolGuardrailKeys(Map<String, ToolKey> toolGuardrailKeys) {
+            this.toolGuardrailKeys = toolGuardrailKeys;
+            return this;
+        }
+
+        /**
+         * Sets the service that executes the tool guardrails, and binds on demand the tools that have no
+         * {@linkplain #toolGuardrailKeys(Map) key}.
+         *
+         * @param toolGuardrailService the tool guardrail service, or {@code null} (the default) for no tool
+         *                             guardrails: then no tool guardrail runs, whatever the keys
+         * @return this builder
+         * @since 1.25.0
+         */
+        public Builder toolGuardrailService(@Nullable ToolGuardrailService toolGuardrailService) {
+            this.toolGuardrailService = toolGuardrailService;
+            return this;
+        }
+
+        /**
+         * Sets the {@link GuardrailRequestParams} of the AI service invocation, which the tool guardrails receive in
+         * their requests, so they see the same context as the AI service guardrails and their events reach the
+         * listeners registered for the invocation.
+         *
+         * @param guardrailRequestParams the parameters, or {@code null} (the default) when the context is not created
+         *                               by an AI service invocation: the tool guardrails then run with minimal
+         *                               parameters (an empty user message template and no variables)
+         * @return this builder
+         * @since 1.25.0
+         */
+        public Builder guardrailRequestParams(@Nullable GuardrailRequestParams guardrailRequestParams) {
+            this.guardrailRequestParams = guardrailRequestParams;
             return this;
         }
 

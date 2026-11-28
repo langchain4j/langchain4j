@@ -4,6 +4,7 @@ import dev.langchain4j.exception.AsyncNotSupportedException;
 import dev.langchain4j.exception.UnsupportedFeatureException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 
 import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
@@ -19,6 +20,9 @@ import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
+import dev.langchain4j.guardrail.ToolOutputGuardrail;
+import dev.langchain4j.guardrail.ToolOutputGuardrailRequest;
+import dev.langchain4j.guardrail.ToolOutputGuardrailResult;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
@@ -44,11 +48,14 @@ import dev.langchain4j.service.AiServiceStreamingEvent.PartialResponseEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.RawEvent;
 import dev.langchain4j.service.AiServiceStreamingEvent.RetrievedContentsEvent;
 import dev.langchain4j.test.mock.MockStreamingChatModel;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Flow;
 import java.util.concurrent.CyclicBarrier;
@@ -904,6 +911,46 @@ class AiServiceStreamingPublisherTest {
     }
 
     @Test
+    void tool_compensated_event_in_the_stream_carries_the_result_the_llm_saw_after_the_tool_output_guardrails()
+            throws Exception {
+        CompensatingTools tools = new CompensatingTools();
+        MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
+                AiMessage.builder()
+                        .toolExecutionRequests(List.of(toolRequest("1", "credit"), toolRequest("2", "withdraw")))
+                        .build(),
+                AiMessage.from("unreachable"));
+        ToolOutputGuardrail sanitizing = new ToolOutputGuardrail() {
+
+            @Override
+            public ToolOutputGuardrailResult validate(ToolOutputGuardrailRequest request) {
+                return request.toolName().equals("credit") ? successWith("credited <redacted>") : success();
+            }
+
+            @Override
+            public CompletableFuture<ToolOutputGuardrailResult> validateAsync(ToolOutputGuardrailRequest request) {
+                return CompletableFuture.completedFuture(validate(request));
+            }
+        };
+
+        EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                .streamingChatModel(model)
+                .tools(tools)
+                .compensateOnToolErrors(true)
+                .toolOutputGuardrails(sanitizing)
+                .build();
+
+        Collected<AiServiceStreamingEvent> collected = collect(assistant.chat("transfer"));
+
+        assertThat(tools.calls).contains("credit", "withdraw", "uncredit");
+        assertThat(collected.items)
+                .filteredOn(AiServiceStreamingEvent.ToolCompensatedEvent.class::isInstance)
+                .map(AiServiceStreamingEvent.ToolCompensatedEvent.class::cast)
+                .singleElement()
+                .extracting(event -> event.toolExecution().result())
+                .isEqualTo("credited <redacted>");
+    }
+
+    @Test
     void tool_compensated_event_in_the_stream_carries_the_error_of_a_failed_compensating_action() throws Exception {
         ToolsWithFailingCompensation tools = new ToolsWithFailingCompensation();
         StreamingEventChatModelMock model = StreamingEventChatModelMock.thatStreams(
@@ -1241,97 +1288,147 @@ class AiServiceStreamingPublisherTest {
     @Test
     void concurrent_cancellation_and_round_completion_never_double_compensate() throws Exception {
         // Regression guard for the accumulator data race: a subscriber cancel and a round's completion touch the
-        // shared compensable-tools accumulator on different threads. Aligning the tool's return with the cancel via
-        // a barrier maximises the overlap; the compensating action must never run twice for one tool (no double
-        // refund) and the accumulator access must not throw. Credit always succeeds and withdraw always fails, so
-        // each iteration rolls credit back exactly once: by the round completion or by the cancellation, whichever
-        // claims the round first.
+        // shared compensable-tools accumulator on different threads. Credit always succeeds and withdraw always
+        // fails, so both the round completion and the cancellation want to roll credit back. Withdraw waits until
+        // credit has returned, then meets the canceller at a barrier, so that its failure lands together with the
+        // cancel. The compensating action must run exactly once in every iteration (no double refund), whichever
+        // path claims the round first, and the accumulator access must not throw.
+        Duration timeout = Duration.ofSeconds(10);
+        ExecutorService pool = Executors.newCachedThreadPool();
         List<AtomicInteger> uncreditCounts = new ArrayList<>();
-        for (int i = 0; i < 60; i++) {
-            AtomicInteger creditCount = new AtomicInteger();
-            AtomicInteger uncreditCount = new AtomicInteger();
-            uncreditCounts.add(uncreditCount);
-            CountDownLatch uncredited = new CountDownLatch(1);
-            CyclicBarrier barrier = new CyclicBarrier(2);
+        try {
+            for (int i = 0; i < 60; i++) {
+                AtomicInteger creditCount = new AtomicInteger();
+                AtomicInteger uncreditCount = new AtomicInteger();
+                uncreditCounts.add(uncreditCount);
+                CountDownLatch creditReturned = new CountDownLatch(1);
+                CyclicBarrier barrier = new CyclicBarrier(2);
+                List<Throwable> gateFailures = new CopyOnWriteArrayList<>();
+                List<ToolCompensatedEvent> compensatedEvents = new CopyOnWriteArrayList<>();
+                // completed by the compensation listener, which is called once the compensating action has run
+                CompletableFuture<ToolCompensatedEvent> rolledBack = new CompletableFuture<>();
+                TrackingExecutor toolExecutor = new TrackingExecutor(pool);
 
-            class RacyTools {
+                class RacyTools {
 
-                @Tool
-                String credit(String city) {
-                    creditCount.incrementAndGet();
-                    return "credited";
-                }
-
-                @CompensateFor("credit")
-                void uncredit(String city) {
-                    uncreditCount.incrementAndGet();
-                    uncredited.countDown();
-                }
-
-                // fails, so the round-completion path also compensates 'credit' - racing the cancel path on the
-                // same tool. Blocks on the barrier so its failure lands together with the cancel.
-                @Tool
-                String withdraw(String city) {
-                    try {
-                        barrier.await(1, TimeUnit.SECONDS);
-                    } catch (Exception e) {
-                        // barrier broken/timeout - fine for the race window
+                    @Tool
+                    String credit(String city) {
+                        creditCount.incrementAndGet();
+                        creditReturned.countDown();
+                        return "credited";
                     }
-                    throw new RuntimeException("insufficient funds");
+
+                    @CompensateFor("credit")
+                    void uncredit(String city) {
+                        uncreditCount.incrementAndGet();
+                    }
+
+                    // fails, so the round-completion path also compensates 'credit' - racing the cancel path on the
+                    // same tool
+                    @Tool
+                    String withdraw(String city) {
+                        try {
+                            if (!creditReturned.await(timeout.toMillis(), TimeUnit.MILLISECONDS)) {
+                                gateFailures.add(new AssertionError("credit did not return"));
+                            }
+                            barrier.await(timeout.toMillis(), TimeUnit.MILLISECONDS);
+                        } catch (Exception e) {
+                            gateFailures.add(e);
+                        }
+                        throw new RuntimeException("insufficient funds");
+                    }
                 }
-            }
 
-            MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
-                    AiMessage.builder()
-                            .toolExecutionRequests(List.of(toolRequest("1", "credit"), toolRequest("2", "withdraw")))
-                            .build(),
-                    AiMessage.from("done"));
-            EventStreamer assistant = AiServices.builder(EventStreamer.class)
-                    .streamingChatModel(model)
-                    .tools(new RacyTools())
-                    .compensateOnToolErrors(true)
-                    .build();
+                MockStreamingChatModel model = MockStreamingChatModel.thatResponds(
+                        AiMessage.builder()
+                                .toolExecutionRequests(
+                                        List.of(toolRequest("1", "credit"), toolRequest("2", "withdraw")))
+                                .build(),
+                        AiMessage.from("done"));
+                EventStreamer assistant = AiServices.builder(EventStreamer.class)
+                        .streamingChatModel(model)
+                        .tools(new RacyTools())
+                        .executeToolsConcurrently(toolExecutor)
+                        .compensateOnToolErrors(true)
+                        .registerListener((ToolCompensatedEventListener) event -> {
+                            compensatedEvents.add(event);
+                            rolledBack.complete(event);
+                        })
+                        .build();
 
-            AtomicReference<Flow.Subscription> subscription = new AtomicReference<>();
-            assistant.chat("go").subscribe(new Flow.Subscriber<>() {
-                @Override
-                public void onSubscribe(Flow.Subscription s) {
-                    subscription.set(s);
-                    s.request(Long.MAX_VALUE);
-                }
+                AtomicReference<Flow.Subscription> subscription = new AtomicReference<>();
+                assistant.chat("go").subscribe(new Flow.Subscriber<>() {
+                    @Override
+                    public void onSubscribe(Flow.Subscription s) {
+                        subscription.set(s);
+                        s.request(Long.MAX_VALUE);
+                    }
 
-                @Override
-                public void onNext(AiServiceStreamingEvent event) {}
+                    @Override
+                    public void onNext(AiServiceStreamingEvent event) {}
 
-                @Override
-                public void onError(Throwable throwable) {}
+                    @Override
+                    public void onError(Throwable throwable) {}
 
-                @Override
-                public void onComplete() {}
-            });
+                    @Override
+                    public void onComplete() {}
+                });
 
-            // cancel exactly as the tool returns, so whenCancelled races the round-completion callback
-            Thread canceller = new Thread(() -> {
-                try {
-                    barrier.await(1, TimeUnit.SECONDS);
-                } catch (Exception e) {
-                    return;
-                }
+                // cancel exactly as the tool returns, so whenCancelled races the round-completion callback
+                barrier.await(timeout.toMillis(), TimeUnit.MILLISECONDS);
                 subscription.get().cancel();
-            });
-            canceller.start();
-            canceller.join(2000);
 
-            assertThat(uncredited.await(5, TimeUnit.SECONDS))
-                    .as("iteration %d: the compensable tool is rolled back", i)
-                    .isTrue();
-            assertThat(creditCount).as("iteration %d", i).hasValue(1);
+                assertThat(rolledBack).succeedsWithin(timeout);
+                // both paths have ended: they run on the thread that cancels and on the threads of the tools
+                await().atMost(timeout).until(toolExecutor::isIdle);
+                assertThat(gateFailures).as("iteration %d: the tools met the canceller", i).isEmpty();
+                assertThat(creditCount).as("iteration %d: credit runs once", i).hasValue(1);
+                assertThat(uncreditCount)
+                        .as("iteration %d: a compensable tool that ran is rolled back exactly once", i)
+                        .hasValue(1);
+                assertThat(compensatedEvents)
+                        .as("iteration %d: one rollback is reported", i)
+                        .singleElement()
+                        .returns("credit", event -> event.request().name());
+            }
+        } finally {
+            pool.shutdownNow();
         }
-        // checked once all iterations ran, so that a second rollback that comes late is seen too
-        for (int i = 0; i < uncreditCounts.size(); i++) {
-            assertThat(uncreditCounts.get(i))
-                    .as("iteration %d: a compensable tool must be rolled back exactly once (no double refund)", i)
-                    .hasValue(1);
+        // checked again once all iterations ran, so that a second rollback that comes late is seen too
+        assertThat(uncreditCounts).allSatisfy(uncreditCount -> assertThat(uncreditCount)
+                .as("a compensable tool that ran is rolled back exactly once")
+                .hasValue(1));
+    }
+
+    /** Runs the tasks on a pool, and tells whether a task it was given has not ended yet. */
+    private static final class TrackingExecutor implements Executor {
+
+        private final Executor pool;
+        private final AtomicInteger unfinishedTasks = new AtomicInteger();
+
+        TrackingExecutor(Executor pool) {
+            this.pool = pool;
+        }
+
+        @Override
+        public void execute(Runnable task) {
+            unfinishedTasks.incrementAndGet();
+            try {
+                pool.execute(() -> {
+                    try {
+                        task.run();
+                    } finally {
+                        unfinishedTasks.decrementAndGet();
+                    }
+                });
+            } catch (RuntimeException rejected) {
+                unfinishedTasks.decrementAndGet();
+                throw rejected;
+            }
+        }
+
+        boolean isIdle() {
+            return unfinishedTasks.get() == 0;
         }
     }
 

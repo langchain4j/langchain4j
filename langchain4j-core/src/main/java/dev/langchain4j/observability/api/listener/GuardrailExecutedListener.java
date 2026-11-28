@@ -24,4 +24,8 @@ public sealed interface GuardrailExecutedListener<
                 P extends GuardrailRequest<P>,
                 R extends GuardrailResult<R>,
                 G extends Guardrail<P, R>>
-        extends AiServiceListener<E> permits InputGuardrailExecutedListener, OutputGuardrailExecutedListener {}
+        extends AiServiceListener<E>
+        permits InputGuardrailExecutedListener,
+                OutputGuardrailExecutedListener,
+                ToolInputGuardrailExecutedListener,
+                ToolOutputGuardrailExecutedListener {}

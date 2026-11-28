@@ -13,7 +13,12 @@ import dev.langchain4j.guardrail.InputGuardrailResult.Failure;
  *     the model. A failed guardrail means that the input is invalid and cannot be sent to the model.
  * </p>
  * <p>
- *     A failed guardrail will stop further processing of any other input guardrails.
+ *     A failed guardrail does not stop the other input guardrails, so that all the failures are collected. A fatal
+ *     failure stops the chain.
+ * </p>
+ * <p>
+ *     This guardrail checks the user message. To check the arguments of a tool call before the tool is executed,
+ *     see {@link ToolInputGuardrail}.
  * </p>
  */
 public interface InputGuardrail extends Guardrail<InputGuardrailRequest, InputGuardrailResult> {

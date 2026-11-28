@@ -20,8 +20,12 @@ import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.guardrail.InputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrail;
+import dev.langchain4j.guardrail.ToolInputGuardrail;
+import dev.langchain4j.guardrail.ToolOutputGuardrail;
 import dev.langchain4j.guardrail.config.InputGuardrailsConfig;
 import dev.langchain4j.guardrail.config.OutputGuardrailsConfig;
+import dev.langchain4j.guardrail.config.ToolInputGuardrailsConfig;
+import dev.langchain4j.guardrail.config.ToolOutputGuardrailsConfig;
 import dev.langchain4j.invocation.InvocationContext;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.memory.chat.ChatMemoryProvider;
@@ -46,6 +50,8 @@ import dev.langchain4j.rag.content.retriever.ContentRetriever;
 import dev.langchain4j.rag.content.retriever.EmbeddingStoreContentRetriever;
 import dev.langchain4j.service.guardrail.InputGuardrails;
 import dev.langchain4j.service.guardrail.OutputGuardrails;
+import dev.langchain4j.service.guardrail.ToolInputGuardrails;
+import dev.langchain4j.service.guardrail.ToolOutputGuardrails;
 import dev.langchain4j.service.tool.AiServiceTool;
 import dev.langchain4j.service.tool.BeforeToolExecution;
 import dev.langchain4j.service.tool.DefaultToolExecutor;
@@ -70,6 +76,7 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
+import org.jspecify.annotations.Nullable;
 
 /**
  * AI Services is a high-level API of LangChain4j to interact with {@link ChatModel} and {@link StreamingChatModel}.
@@ -1320,6 +1327,267 @@ public abstract class AiServices<T> {
     }
 
     /**
+     * Configures the input guardrail executors of every tool by setting the provided
+     * {@link ToolInputGuardrailsConfig}.
+     * <p>
+     *     The configuration set this way applies to every tool, including the ones whose guardrails are declared in a
+     *     {@link ToolInputGuardrails} annotation or on an {@link AiServiceTool}.
+     *     It sets the arguments rewrite note: when an input guardrail changes the arguments of a tool call, the tool
+     *     result that the LLM gets carries a note that says so, since the chat memory keeps the call as the LLM made
+     *     it. {@link ToolInputGuardrailsConfig#isArgumentsRewriteNoteEnabled()} turns the note on or off (it is on by
+     *     default), and {@link ToolInputGuardrailsConfig#argumentsRewriteNoteTemplate()} is its text.
+     * </p>
+     *
+     * @param config the configuration. Must not be null.
+     * @return the current instance of {@link AiServices} to allow method chaining
+     * @since 1.25.0
+     */
+    @Experimental
+    public AiServices<T> toolInputGuardrailsConfig(ToolInputGuardrailsConfig config) {
+        context.toolGuardrailServiceBuilder.inputGuardrailsConfig(config);
+        return this;
+    }
+
+    /**
+     * Configures the output guardrail executors of every tool by setting the provided
+     * {@link ToolOutputGuardrailsConfig}.
+     * <p>
+     *     The configuration set this way applies to every tool, including the ones whose guardrails are declared in a
+     *     {@link ToolOutputGuardrails} annotation or on an {@link AiServiceTool}.
+     *     The default configuration has no settings; a framework that provides its own implementation sets it here.
+     * </p>
+     *
+     * @param config the configuration. Must not be null.
+     * @return the current instance of {@link AiServices} to allow method chaining
+     * @since 1.25.0
+     */
+    @Experimental
+    public AiServices<T> toolOutputGuardrailsConfig(ToolOutputGuardrailsConfig config) {
+        context.toolGuardrailServiceBuilder.outputGuardrailsConfig(config);
+        return this;
+    }
+
+    /**
+     * Sets the {@link ToolInputGuardrail} instances that apply to every tool. Replaces the ones set previously; {@code null} clears them.
+     * <p>
+     *     These guardrails apply to <strong>every</strong> tool of the AI service, including tools without a method
+     *     (MCP, {@link ToolProvider}) and the built-in tool search tool, and run <strong>first</strong>,
+     *     followed by the guardrails of the class annotation, the method annotation and the
+     *     {@link AiServiceTool} of each tool
+     *     (see {@link ToolInputGuardrails} and {@link ToolOutputGuardrails}). This <strong>differs</strong> from
+     *     {@link #inputGuardrails(List)} and {@link #outputGuardrails(List)}, where the guardrails set on the
+     *     builder replace the ones of the annotations. A guardrail that must not apply to some tools can skip them by
+     *     checking {@code toolName()} or {@code toolSource()} of its request.
+     * </p>
+     *
+     * @param guardrails the tool input guardrails, or {@code null} to clear them
+     * @param <I>        the type of the guardrails
+     * @return the current instance of {@link AiServices} to allow method chaining
+     * @since 1.25.0
+     */
+    @Experimental
+    public <I extends ToolInputGuardrail> AiServices<T> toolInputGuardrails(@Nullable List<I> guardrails) {
+        ensureNoNullEntries(guardrails, "toolInputGuardrails");
+        context.toolGuardrailServiceBuilder.inputGuardrails(guardrails);
+        return this;
+    }
+
+    /**
+     * Sets the {@link ToolInputGuardrail} instances that apply to every tool. Replaces the ones set previously.
+     * <p>
+     *     These guardrails apply to <strong>every</strong> tool of the AI service, including tools without a method
+     *     (MCP, {@link ToolProvider}) and the built-in tool search tool, and run <strong>first</strong>,
+     *     followed by the guardrails of the class annotation, the method annotation and the
+     *     {@link AiServiceTool} of each tool
+     *     (see {@link ToolInputGuardrails} and {@link ToolOutputGuardrails}). This <strong>differs</strong> from
+     *     {@link #inputGuardrails(List)} and {@link #outputGuardrails(List)}, where the guardrails set on the
+     *     builder replace the ones of the annotations. A guardrail that must not apply to some tools can skip them by
+     *     checking {@code toolName()} or {@code toolSource()} of its request.
+     * </p>
+     *
+     * @param guardrails the tool input guardrails
+     * @param <I>        the type of the guardrails
+     * @return the current instance of {@link AiServices} to allow method chaining
+     * @since 1.25.0
+     */
+    @Experimental
+    @SuppressWarnings("unchecked")
+    public <I extends ToolInputGuardrail> AiServices<T> toolInputGuardrails(I... guardrails) {
+        ensureNoNullEntries(guardrails, "toolInputGuardrails");
+        context.toolGuardrailServiceBuilder.inputGuardrails(guardrails);
+        return this;
+    }
+
+    /**
+     * Sets the classes of the {@link ToolInputGuardrail}s that apply to every tool. They are instantiated like the classes of {@link #inputGuardrailClasses(List)}, after the instances set with {@link #toolInputGuardrails(List)}.
+     * <p>
+     *     These guardrails apply to <strong>every</strong> tool of the AI service, including tools without a method
+     *     (MCP, {@link ToolProvider}) and the built-in tool search tool, and run <strong>first</strong>,
+     *     followed by the guardrails of the class annotation, the method annotation and the
+     *     {@link AiServiceTool} of each tool
+     *     (see {@link ToolInputGuardrails} and {@link ToolOutputGuardrails}). This <strong>differs</strong> from
+     *     {@link #inputGuardrails(List)} and {@link #outputGuardrails(List)}, where the guardrails set on the
+     *     builder replace the ones of the annotations. A guardrail that must not apply to some tools can skip them by
+     *     checking {@code toolName()} or {@code toolSource()} of its request.
+     * </p>
+     *
+     * @param guardrailClasses the classes of the tool input guardrails, or {@code null} to clear them
+     * @param <I>              the type of the guardrails
+     * @return the current instance of {@link AiServices} to allow method chaining
+     * @since 1.25.0
+     */
+    @Experimental
+    public <I extends ToolInputGuardrail> AiServices<T> toolInputGuardrailClasses(
+            @Nullable List<Class<? extends I>> guardrailClasses) {
+        ensureNoNullEntries(guardrailClasses, "toolInputGuardrailClasses");
+        context.toolGuardrailServiceBuilder.inputGuardrailClasses(guardrailClasses);
+        return this;
+    }
+
+    /**
+     * Sets the classes of the {@link ToolInputGuardrail}s that apply to every tool.
+     * <p>
+     *     These guardrails apply to <strong>every</strong> tool of the AI service, including tools without a method
+     *     (MCP, {@link ToolProvider}) and the built-in tool search tool, and run <strong>first</strong>,
+     *     followed by the guardrails of the class annotation, the method annotation and the
+     *     {@link AiServiceTool} of each tool
+     *     (see {@link ToolInputGuardrails} and {@link ToolOutputGuardrails}). This <strong>differs</strong> from
+     *     {@link #inputGuardrails(List)} and {@link #outputGuardrails(List)}, where the guardrails set on the
+     *     builder replace the ones of the annotations. A guardrail that must not apply to some tools can skip them by
+     *     checking {@code toolName()} or {@code toolSource()} of its request.
+     * </p>
+     *
+     * @param guardrailClasses the classes of the tool input guardrails
+     * @param <I>              the type of the guardrails
+     * @return the current instance of {@link AiServices} to allow method chaining
+     * @since 1.25.0
+     */
+    @Experimental
+    @SuppressWarnings("unchecked")
+    public <I extends ToolInputGuardrail> AiServices<T> toolInputGuardrailClasses(
+            Class<? extends I>... guardrailClasses) {
+        ensureNoNullEntries(guardrailClasses, "toolInputGuardrailClasses");
+        context.toolGuardrailServiceBuilder.inputGuardrailClasses(guardrailClasses);
+        return this;
+    }
+
+    /**
+     * Sets the {@link ToolOutputGuardrail} instances that apply to every tool. Replaces the ones set previously; {@code null} clears them.
+     * <p>
+     *     These guardrails apply to <strong>every</strong> tool of the AI service, including tools without a method
+     *     (MCP, {@link ToolProvider}) and the built-in tool search tool, and run <strong>first</strong>,
+     *     followed by the guardrails of the class annotation, the method annotation and the
+     *     {@link AiServiceTool} of each tool
+     *     (see {@link ToolInputGuardrails} and {@link ToolOutputGuardrails}). This <strong>differs</strong> from
+     *     {@link #inputGuardrails(List)} and {@link #outputGuardrails(List)}, where the guardrails set on the
+     *     builder replace the ones of the annotations. A guardrail that must not apply to some tools can skip them by
+     *     checking {@code toolName()} or {@code toolSource()} of its request.
+     * </p>
+     *
+     * @param guardrails the tool output guardrails, or {@code null} to clear them
+     * @param <O>        the type of the guardrails
+     * @return the current instance of {@link AiServices} to allow method chaining
+     * @since 1.25.0
+     */
+    @Experimental
+    public <O extends ToolOutputGuardrail> AiServices<T> toolOutputGuardrails(@Nullable List<O> guardrails) {
+        ensureNoNullEntries(guardrails, "toolOutputGuardrails");
+        context.toolGuardrailServiceBuilder.outputGuardrails(guardrails);
+        return this;
+    }
+
+    /**
+     * Sets the {@link ToolOutputGuardrail} instances that apply to every tool. Replaces the ones set previously.
+     * <p>
+     *     These guardrails apply to <strong>every</strong> tool of the AI service, including tools without a method
+     *     (MCP, {@link ToolProvider}) and the built-in tool search tool, and run <strong>first</strong>,
+     *     followed by the guardrails of the class annotation, the method annotation and the
+     *     {@link AiServiceTool} of each tool
+     *     (see {@link ToolInputGuardrails} and {@link ToolOutputGuardrails}). This <strong>differs</strong> from
+     *     {@link #inputGuardrails(List)} and {@link #outputGuardrails(List)}, where the guardrails set on the
+     *     builder replace the ones of the annotations. A guardrail that must not apply to some tools can skip them by
+     *     checking {@code toolName()} or {@code toolSource()} of its request.
+     * </p>
+     *
+     * @param guardrails the tool output guardrails
+     * @param <O>        the type of the guardrails
+     * @return the current instance of {@link AiServices} to allow method chaining
+     * @since 1.25.0
+     */
+    @Experimental
+    @SuppressWarnings("unchecked")
+    public <O extends ToolOutputGuardrail> AiServices<T> toolOutputGuardrails(O... guardrails) {
+        ensureNoNullEntries(guardrails, "toolOutputGuardrails");
+        context.toolGuardrailServiceBuilder.outputGuardrails(guardrails);
+        return this;
+    }
+
+    /**
+     * Sets the classes of the {@link ToolOutputGuardrail}s that apply to every tool. They are instantiated like the classes of {@link #outputGuardrailClasses(List)}, after the instances set with {@link #toolOutputGuardrails(List)}.
+     * <p>
+     *     These guardrails apply to <strong>every</strong> tool of the AI service, including tools without a method
+     *     (MCP, {@link ToolProvider}) and the built-in tool search tool, and run <strong>first</strong>,
+     *     followed by the guardrails of the class annotation, the method annotation and the
+     *     {@link AiServiceTool} of each tool
+     *     (see {@link ToolInputGuardrails} and {@link ToolOutputGuardrails}). This <strong>differs</strong> from
+     *     {@link #inputGuardrails(List)} and {@link #outputGuardrails(List)}, where the guardrails set on the
+     *     builder replace the ones of the annotations. A guardrail that must not apply to some tools can skip them by
+     *     checking {@code toolName()} or {@code toolSource()} of its request.
+     * </p>
+     *
+     * @param guardrailClasses the classes of the tool output guardrails, or {@code null} to clear them
+     * @param <O>              the type of the guardrails
+     * @return the current instance of {@link AiServices} to allow method chaining
+     * @since 1.25.0
+     */
+    @Experimental
+    public <O extends ToolOutputGuardrail> AiServices<T> toolOutputGuardrailClasses(
+            @Nullable List<Class<? extends O>> guardrailClasses) {
+        ensureNoNullEntries(guardrailClasses, "toolOutputGuardrailClasses");
+        context.toolGuardrailServiceBuilder.outputGuardrailClasses(guardrailClasses);
+        return this;
+    }
+
+    /**
+     * Sets the classes of the {@link ToolOutputGuardrail}s that apply to every tool.
+     * <p>
+     *     These guardrails apply to <strong>every</strong> tool of the AI service, including tools without a method
+     *     (MCP, {@link ToolProvider}) and the built-in tool search tool, and run <strong>first</strong>,
+     *     followed by the guardrails of the class annotation, the method annotation and the
+     *     {@link AiServiceTool} of each tool
+     *     (see {@link ToolInputGuardrails} and {@link ToolOutputGuardrails}). This <strong>differs</strong> from
+     *     {@link #inputGuardrails(List)} and {@link #outputGuardrails(List)}, where the guardrails set on the
+     *     builder replace the ones of the annotations. A guardrail that must not apply to some tools can skip them by
+     *     checking {@code toolName()} or {@code toolSource()} of its request.
+     * </p>
+     *
+     * @param guardrailClasses the classes of the tool output guardrails
+     * @param <O>              the type of the guardrails
+     * @return the current instance of {@link AiServices} to allow method chaining
+     * @since 1.25.0
+     */
+    @Experimental
+    @SuppressWarnings("unchecked")
+    public <O extends ToolOutputGuardrail> AiServices<T> toolOutputGuardrailClasses(
+            Class<? extends O>... guardrailClasses) {
+        ensureNoNullEntries(guardrailClasses, "toolOutputGuardrailClasses");
+        context.toolGuardrailServiceBuilder.outputGuardrailClasses(guardrailClasses);
+        return this;
+    }
+
+    private static void ensureNoNullEntries(@Nullable Object[] entries, String setting) {
+        ensureNoNullEntries((entries != null) ? asList(entries) : null, setting);
+    }
+
+    private static void ensureNoNullEntries(@Nullable List<?> entries, String setting) {
+        if (entries != null) {
+            for (int i = 0; i < entries.size(); i++) {
+                ensureNotNull(entries.get(i), "%s[%s] cannot be null", setting, i);
+            }
+        }
+    }
+
+    /**
      * Configures whether user messages that were augmented with retrieved content
      * (RAG) should be stored in {@link ChatMemory}.
      * <p>
@@ -1349,6 +1617,7 @@ public abstract class AiServices<T> {
      * A tool error starts the rollback also when it ends the invocation (for example when the
      * {@link ToolExecutionErrorHandler} or the {@link ToolArgumentsErrorHandler} rethrows it, or when the LLM calls a
      * tool that does not exist): the tool calls are rolled back before the error reaches the caller.
+     * A tool guardrail that rejects a call or turns a result into an error result starts the rollback too.
      *
      * @param compensateOnToolErrors whether to run compensating actions when a tool fails or the invocation is
      *                               cancelled

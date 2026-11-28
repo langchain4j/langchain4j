@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.jspecify.annotations.Nullable;
+import dev.langchain4j.agent.tool.ToolSource;
+import dev.langchain4j.mcp.McpToolProvider;
 
 /**
  * Represents a client that can communicate with an MCP server over a given transport protocol,
@@ -20,6 +22,10 @@ public interface McpClient extends AutoCloseable {
 
     /**
      * Returns the unique key of this client.
+     * <p>
+     * {@link McpToolProvider} stamps this key onto the {@link ToolSource}
+     * of every tool obtained from this client. Note that {@link DefaultMcpClient} defaults the key to a random UUID;
+     * configure an explicit key via {@link DefaultMcpClient.Builder#key(String)} if tool guardrails route on the server key.
      */
     String key();
 

@@ -186,7 +186,8 @@ class FileSystemDocumentLoaderTest implements WithAssertions {
                         "junit-platform.properties",
                         "dev.langchain4j.spi.services.CompletableFutureAdapter",
                         "dev.langchain4j.spi.services.DecisionServicesFactory",
-                        "dev.langchain4j.spi.services.PublisherAdapter");
+                        "dev.langchain4j.spi.services.PublisherAdapter",
+                        "dev.langchain4j.service.guardrail.spi.ToolGuardrailServiceBuilderFactory");
 
         // when-then
         assertThat(loadDocumentsRecursively(resourceDirectory.toString(), new TextDocumentParser()))
