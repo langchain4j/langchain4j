@@ -5,8 +5,11 @@ import static dev.langchain4j.internal.Utils.isNullOrBlank;
 
 import com.google.genai.errors.ApiException;
 import com.google.genai.gaos.models.errors.GaosApiException;
+import com.google.genai.gaos.models.errors.GaosClientException;
+import com.google.genai.gaos.models.errors.GaosServerException;
 import dev.langchain4j.Internal;
 import dev.langchain4j.exception.AuthenticationException;
+import dev.langchain4j.exception.ContentFilteredException;
 import dev.langchain4j.exception.InternalServerException;
 import dev.langchain4j.exception.InvalidDecisionResponseException;
 import dev.langchain4j.exception.InvalidRequestException;
@@ -19,6 +22,8 @@ import dev.langchain4j.internal.Json;
 import java.io.InterruptedIOException;
 import java.net.SocketTimeoutException;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 @Internal
@@ -33,23 +38,39 @@ class GoogleGenAiExceptionMapper extends ExceptionMapper.DefaultExceptionMapper 
         }
     };
 
+    private static final Set<String> CONTENT_BLOCKED_CODES = Set.of(
+            "safety",
+            "prohibited_content",
+            "blocklist",
+            "content_blocked",
+            "recitation",
+            "spii",
+            "image_safety",
+            "image_prohibited_content");
+
     private GoogleGenAiExceptionMapper() {}
 
     @Override
     public RuntimeException mapException(Throwable t) {
         Throwable unwrapped = unwrapCompletionException(t);
-        GaosApiException gaosException = unwrapped instanceof GaosApiException ge
-                ? ge
-                : (unwrapped.getCause() instanceof GaosApiException ge ? ge : null);
-        if (gaosException != null) {
-            if (gaosException.code() >= 200 && gaosException.code() < 300) {
-                return map2xxGaosException(gaosException);
-            }
-            return mapGaosHttpStatusCode(gaosException);
+        if (unwrapped instanceof GaosApiException gaosException
+                && gaosException.code() >= 200
+                && gaosException.code() < 300) {
+            return map2xxGaosException(gaosException);
+        } else if (unwrapped.getCause() instanceof GaosApiException gaosException
+                && gaosException.code() >= 200
+                && gaosException.code() < 300) {
+            return map2xxGaosException(gaosException);
         }
-        if (unwrapped instanceof ApiException apiException) {
-            return mapHttpStatusCode(apiException, apiException.code());
-        } else if (unwrapped.getCause() instanceof ApiException apiException) {
+
+        ApiException apiException = unwrapped instanceof ApiException ae
+                ? ae
+                : (unwrapped.getCause() instanceof ApiException ae ? ae : null);
+        if (apiException != null) {
+            Optional<String> body = extractBody(apiException);
+            if (body.isPresent()) {
+                return mapGaosHttpStatusCode(apiException, apiException.code(), body.get());
+            }
             return mapHttpStatusCode(apiException, apiException.code());
         }
         if (isTimeout(unwrapped) || isTimeout(unwrapped.getCause())) {
@@ -59,8 +80,20 @@ class GoogleGenAiExceptionMapper extends ExceptionMapper.DefaultExceptionMapper 
         return super.mapException(unwrapped);
     }
 
+    private static Optional<String> extractBody(ApiException exception) {
+        if (exception instanceof GaosApiException gaosApi) {
+            return gaosApi.bodyAsString();
+        }
+        if (exception instanceof GaosClientException gaosClient) {
+            return gaosClient.bodyAsString();
+        }
+        if (exception instanceof GaosServerException gaosServer) {
+            return gaosServer.bodyAsString();
+        }
+        return Optional.empty();
+    }
+
     private static boolean isTimeout(@Nullable Throwable t) {
-        // OkHttp reports an expired call timeout (HttpOptions.timeout) as InterruptedIOException("timeout")
         return t instanceof SocketTimeoutException
                 || (t instanceof InterruptedIOException && "timeout".equals(t.getMessage()));
     }
@@ -70,9 +103,12 @@ class GoogleGenAiExceptionMapper extends ExceptionMapper.DefaultExceptionMapper 
                 "The response of the Gemini API is invalid: " + gaosException.getMessage(), gaosException);
     }
 
-    private static RuntimeException mapGaosHttpStatusCode(GaosApiException cause) {
-        int httpStatusCode = cause.code();
-        String message = extractErrorMessage(cause);
+    private static RuntimeException mapGaosHttpStatusCode(ApiException cause, int httpStatusCode, String body) {
+        String message = extractErrorMessage(cause, body);
+        Object codeField = errorField(body, "code");
+        if (codeField instanceof String codeStr && CONTENT_BLOCKED_CODES.contains(codeStr.toLowerCase())) {
+            return new ContentFilteredException(message, cause);
+        }
         if (httpStatusCode >= 500 && httpStatusCode < 600) {
             return new InternalServerException(message, cause);
         }
@@ -94,18 +130,13 @@ class GoogleGenAiExceptionMapper extends ExceptionMapper.DefaultExceptionMapper 
         return new LangChain4jException(message, cause);
     }
 
-    private static String extractErrorMessage(GaosApiException exception) {
-        String body = exception.bodyAsString().orElse(null);
+    private static String extractErrorMessage(ApiException exception, String body) {
         if (isNullOrBlank(body)) {
             return exception.getMessage();
         }
         return errorField(body, "message") instanceof String message && !isNullOrBlank(message) ? message : body;
     }
 
-    /**
-     * A field of the {@code error} object of a Gemini error body, such as {@code {"error": {"message": "..."}}}, or
-     * {@code null} when the body has no such field.
-     */
     static @Nullable Object errorField(String body, String field) {
         try {
             Map<?, ?> root = Json.fromJson(body, Map.class);
