@@ -15,6 +15,7 @@ import org.bson.Document;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
+@SuppressWarnings("removal")
 class AzureCosmosDBMongoVCoreEmbeddingStoreTest {
 
     private static final String DATABASE_NAME = "test_db";

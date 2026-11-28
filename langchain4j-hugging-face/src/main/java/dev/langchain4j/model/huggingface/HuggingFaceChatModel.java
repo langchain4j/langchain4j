@@ -37,6 +37,7 @@ import dev.langchain4j.model.output.Response;
  * </pre>
  */
 @Deprecated(forRemoval = true, since = "1.7.0-beta13")
+@SuppressWarnings("removal")
 public class HuggingFaceChatModel implements ChatModel {
 
     private final HuggingFaceClient client;

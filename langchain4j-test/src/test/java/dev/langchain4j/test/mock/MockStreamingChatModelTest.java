@@ -1454,6 +1454,7 @@ public class MockStreamingChatModelTest {
         RuntimeException failure = new IllegalStateException("broken subscriber");
         List<Flow.Subscription> subscriptions = new ArrayList<>();
         CompletableFuture<Thread> streamingThread = new CompletableFuture<>();
+        CompletableFuture<Throwable> uncaught = new CompletableFuture<>();
 
         MockStreamingChatModel.thatResponds("Hello")
                 .chat(ChatRequest.builder().messages(UserMessage.from("Hi")).build())
@@ -1469,6 +1470,8 @@ public class MockStreamingChatModelTest {
                     @Override
                     public void onNext(ChatModelStreamingEvent event) {
                         signals.add(event);
+                        // recorded by the test instead of printed to stderr by the JVM
+                        Thread.currentThread().setUncaughtExceptionHandler((thread, error) -> uncaught.complete(error));
                         streamingThread.complete(Thread.currentThread());
                         throw failure;
                     }
@@ -1489,6 +1492,7 @@ public class MockStreamingChatModelTest {
         subscriptions.get(0).request(10);
 
         assertThat(signals).singleElement().isInstanceOf(PartialResponse.class);
+        assertThat(uncaught).succeedsWithin(5, SECONDS).isSameAs(failure);
     }
 
     @Test

@@ -19,6 +19,7 @@ import org.slf4j.Logger;
  * @deprecated use {@code OpenAiEmbeddingModel} from {@code langchain4j-open-ai} module instead
  */
 @Deprecated(forRemoval = true, since = "1.14.0")
+@SuppressWarnings("removal")
 public class OvhAiEmbeddingModel implements EmbeddingModel {
 
     private final DefaultOvhAiClient client;

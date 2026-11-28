@@ -19,7 +19,6 @@ import dev.langchain4j.guardrail.InputGuardrailResult.Failure;
 public interface InputGuardrail extends Guardrail<InputGuardrailRequest, InputGuardrailResult> {
     /**
      * Validates the {@code user message} that will be sent to the LLM.
-     * <p>
      *
      * @param userMessage
      *            the user message to be sent to the LLM

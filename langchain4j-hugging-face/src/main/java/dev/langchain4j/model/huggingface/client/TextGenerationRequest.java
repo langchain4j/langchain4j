@@ -11,6 +11,7 @@ import static dev.langchain4j.internal.Utils.quoted;
 @Deprecated(forRemoval = true, since = "1.7.0-beta13")
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(NON_NULL)
+@SuppressWarnings("removal")
 public class TextGenerationRequest {
 
     private final String inputs;

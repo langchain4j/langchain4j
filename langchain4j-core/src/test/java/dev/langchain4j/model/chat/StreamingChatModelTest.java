@@ -14,6 +14,7 @@ import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.CustomChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.test.mock.MockStreamingChatModel;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -557,8 +558,9 @@ class StreamingChatModelTest implements WithAssertions {
         doAnswer(invocation -> {
                     // like a provider: each exception thrown by the handler is reported to its onError
                     StreamingChatResponseHandler handler = invocation.getArgument(1);
-                    InternalStreamingChatResponseHandlerUtils.onPartialResponse(handler, "H");
-                    InternalStreamingChatResponseHandlerUtils.onPartialResponse(handler, "i");
+                    StreamingHandle streamingHandle = mock(StreamingHandle.class);
+                    InternalStreamingChatResponseHandlerUtils.onPartialResponse(handler, "H", streamingHandle);
+                    InternalStreamingChatResponseHandlerUtils.onPartialResponse(handler, "i", streamingHandle);
                     InternalStreamingChatResponseHandlerUtils.onCompleteResponse(handler, response);
                     return null;
                 })

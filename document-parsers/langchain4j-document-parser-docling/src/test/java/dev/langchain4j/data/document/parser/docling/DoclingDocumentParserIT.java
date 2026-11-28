@@ -32,7 +32,7 @@ class DoclingDocumentParserIT {
 
     @Test
     void shouldParsePdfDocument() throws Exception {
-        DoclingDocumentParser parser = new DoclingDocumentParser(client);
+        DoclingDocumentParser parser = DoclingDocumentParser.builder().doclingClient(client).build();
 
         try (InputStream inputStream = getClass().getResourceAsStream("/test-file.pdf")) {
             Document document = parser.parse(inputStream);
@@ -45,7 +45,7 @@ class DoclingDocumentParserIT {
 
     @Test
     void shouldParseDocxDocument() throws Exception {
-        DoclingDocumentParser parser = new DoclingDocumentParser(client);
+        DoclingDocumentParser parser = DoclingDocumentParser.builder().doclingClient(client).build();
 
         try (InputStream inputStream = getClass().getResourceAsStream("/test-file.docx")) {
             Document document = parser.parse(inputStream);
@@ -73,7 +73,7 @@ class DoclingDocumentParserIT {
 
     @Test
     void shouldParsePdfDocumentAsync() throws Exception {
-        DoclingDocumentParser parser = new DoclingDocumentParser(client);
+        DoclingDocumentParser parser = DoclingDocumentParser.builder().doclingClient(client).build();
 
         try (InputStream inputStream = getClass().getResourceAsStream("/test-file.pdf")) {
             assertThat(parser.parseAsync(inputStream).toCompletableFuture())

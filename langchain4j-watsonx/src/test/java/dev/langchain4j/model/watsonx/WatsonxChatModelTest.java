@@ -116,6 +116,7 @@ public class WatsonxChatModelTest {
     }
 
     @Test
+    @SuppressWarnings("removal")
     void should_create_create_a_watsonx_chat_model_from_a_chat_service() {
 
         var chatModel = assertDoesNotThrow(() -> WatsonxChatModel.builder()

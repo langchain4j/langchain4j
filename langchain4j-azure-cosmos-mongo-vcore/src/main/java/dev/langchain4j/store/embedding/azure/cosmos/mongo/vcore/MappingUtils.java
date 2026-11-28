@@ -7,6 +7,7 @@ import dev.langchain4j.store.embedding.EmbeddingMatch;
 
 import static dev.langchain4j.internal.Utils.toStringValueMap;
 
+@SuppressWarnings("removal")
 class MappingUtils {
 
     private MappingUtils() throws InstantiationException {

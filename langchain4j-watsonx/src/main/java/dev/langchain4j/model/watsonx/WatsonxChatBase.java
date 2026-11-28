@@ -435,7 +435,7 @@ abstract class WatsonxChatBase<R extends BaseChatRequest> {
         }
 
         /**
-         * Sets the name of the specific tool to force when {@link #toolChoice} is set to force a particular tool.
+         * Sets the name of the specific tool to force when {@code toolChoice} is set to force a particular tool.
          *
          * @param toolChoiceName the tool name to force
          * @return {@code this}

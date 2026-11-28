@@ -29,13 +29,13 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Represents an <a href="https://www.elastic.co/">Elasticsearch</a> index as a {@link ContentRetriever}.
+ * Supports storing {@link Metadata} and filtering by it using {@link Filter}
+ * (provided inside {@link EmbeddingSearchRequest}).
+ *
  * @see ElasticsearchConfigurationScript for the exact brute force implementation (slower - 100% accurate)
  * @see ElasticsearchConfigurationKnn for the knn search implementation (faster - approximative)
  * @see ElasticsearchConfigurationFullText for full text search (non vector)
  * @see ElasticsearchConfigurationHybrid for hybrid search (semantic and text search combined)
- * <br>
- * Supports storing {@link Metadata} and filtering by it using {@link Filter}
- * (provided inside {@link EmbeddingSearchRequest}).
  */
 public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddingStore implements ContentRetriever {
 
@@ -72,6 +72,7 @@ public class ElasticsearchContentRetriever extends AbstractElasticsearchEmbeddin
         this(configuration, restClient, indexName, embeddingModel, maxResults, minScore, filter, null);
     }
 
+    @SuppressWarnings("removal")
     private ElasticsearchContentRetriever(
             ElasticsearchConfiguration configuration,
             RestClient restClient,

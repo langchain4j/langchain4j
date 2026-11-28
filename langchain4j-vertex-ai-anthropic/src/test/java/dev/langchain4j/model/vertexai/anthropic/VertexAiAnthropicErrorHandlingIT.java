@@ -11,6 +11,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -97,7 +98,7 @@ class VertexAiAnthropicErrorHandlingIT {
         // when/then
         assertThrows(Exception.class, () -> {
             model.chat(ChatRequest.builder()
-                    .messages(List.of(null)) // null message
+                    .messages(Collections.singletonList(null)) // null message
                     .build());
         });
     }

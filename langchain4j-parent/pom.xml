@@ -856,6 +856,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
                 <version>3.12.0</version>
+                <configuration>
+                    <!-- still reports broken links, HTML and syntax; only missing comments are not reported -->
+                    <doclint>all,-missing</doclint>
+                </configuration>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
