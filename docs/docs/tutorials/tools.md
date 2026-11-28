@@ -1605,11 +1605,11 @@ so for those you do not have to write a handler yourself:
 | Handler | What happens when a tool fails |
 |---------|--------------------------------|
 | `ToolArgumentsErrorHandler.sendExceptionMessageToLlm()` | The message of the error is sent to the LLM, so that it can correct the arguments and try again. The AI Service invocation continues. ⚠️ See the warning below. |
-| `ToolArgumentsErrorHandler.failInvocation()` | The error is rethrown: the AI Service invocation fails and nothing is sent to the LLM. |
+| `ToolArgumentsErrorHandler.failInvocation()` | The error is rethrown: the AI Service invocation fails, and nothing from the error is sent to the LLM (the tool call gets a generic result in the `ChatMemory`, see [When a Tool Error Ends the Call](#when-a-tool-error-ends-the-call)). |
 | `ToolExecutionErrorHandler.sendExceptionMessageToLlm()` | The message of the exception thrown by the tool is sent to the LLM (or the text from `messageForLlm()`, if the exception implements `ToolErrorVisibleToLlm`), so that it can react to it. The AI Service invocation continues. ⚠️ See the warning below. |
 | `ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm()` | Only exceptions implementing `ToolErrorVisibleToLlm` are shown to the LLM, using the text they provide. Every other exception fails the AI Service invocation. See [Deciding per exception what the LLM sees](#deciding-per-exception-what-the-llm-sees). |
 | `ToolExecutionErrorHandler.sendGenericMessageToLlmUnlessVisibleToLlm(String)` | Exceptions implementing `ToolErrorVisibleToLlm` are shown to the LLM, using the text they provide. For every other exception, the given generic message is sent to the LLM, and the exception is logged at WARN level. The AI Service invocation continues. |
-| `ToolExecutionErrorHandler.failInvocation()` | The exception is rethrown: the AI Service invocation fails and nothing is sent to the LLM. |
+| `ToolExecutionErrorHandler.failInvocation()` | The exception is rethrown: the AI Service invocation fails, and nothing from the exception is sent to the LLM (the tool call gets a generic result in the `ChatMemory`, see [When a Tool Error Ends the Call](#when-a-tool-error-ends-the-call)). |
 
 ```java
 Assistant assistant = AiServices.builder(Assistant.class)
@@ -1971,6 +1971,34 @@ contain internal details, exactly like the message of your own exceptions.
 release. Configuring it explicitly today means the change will not affect your application.
 :::
 
+#### When a Tool Error Ends the Call
+
+A tool error ends the AI Service call when its error handler rethrows it: with `failInvocation()`, and also by default,
+for argument errors in the synchronous and `TokenStream` modes, and for execution errors (unless the exception
+implements `ToolErrorVisibleToLlm`) in the `CompletableFuture` and `Flow.Publisher` modes
+(see [Tool errors](/tutorials/non-blocking#tool-errors)). The call also ends when the LLM calls a tool that does not
+exist and the strategy set with `hallucinatedToolNameStrategy(...)` throws, which it does by default
+(see [Handling Tool Name Errors](#handling-tool-name-errors)), and when the executor set with
+`.executeToolsConcurrently(executor)` rejects a tool call.
+
+In these cases, the tool calls the LLM asked for do not get their usual results. Most LLM providers reject a
+conversation in which a tool call has no result, so before the error reaches your code, LangChain4j saves a result
+for every tool call of that LLM response in the `ChatMemory`:
+- a tool that ran keeps its result, including an error message that its error handler chose to send to the LLM
+  (or a message saying that it was rolled back, when [compensation](#compensating-tool-actions) is enabled);
+- each tool that failed gets a message like _"Tool 'chargeCard' failed, so the request was stopped"_.
+  The error itself is not included, so nothing from the exception reaches the LLM;
+- a call to a tool that does not exist gets a message like
+  _"Tool 'multiply' does not exist, so the request was stopped"_;
+- a tool that did not run because another tool failed first gets a message like
+  _"Tool 'sendReceipt' was not executed because tool 'chargeCard' failed"_
+  (or _"... because tool 'multiply' does not exist"_).
+
+This way, the next call in the same conversation sends a valid history, and the LLM knows which tools ran.
+If saving these results fails, the error from the `ChatMemory` is added as a suppressed exception to the tool error,
+and some or all of these tool calls are left without a result, so the LLM provider can reject the next call in that
+conversation.
+
 ### Compensating Tool Actions
 
 When an AI Service uses multiple tools to accomplish a task, a failure in one tool
@@ -2099,7 +2127,8 @@ Whether a tool error is sent to the LLM or ends the call is decided by the error
 So in the example above, the error of `withdraw` is sent to the LLM when the method returns a plain value
 or a `TokenStream`, and it ends the call when the method returns a `CompletableFuture` or a `Flow.Publisher`.
 When a tool error ends the call, every successful tool call that has a compensating action is undone first,
-and then the AI Service fails with the tool error.
+and then the AI Service fails with the tool error. Before it fails, a result for every tool call of that LLM
+response is saved in the `ChatMemory` (see [When a Tool Error Ends the Call](#when-a-tool-error-ends-the-call)).
 The same happens when the LLM calls a tool that does not exist, which ends the call by default
 (see [Handling Tool Name Errors](#handling-tool-name-errors)), and when the executor set with
 `.executeToolsConcurrently(executor)` rejects a tool call.

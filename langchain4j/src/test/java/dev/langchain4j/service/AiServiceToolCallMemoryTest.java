@@ -3,14 +3,19 @@ package dev.langchain4j.service;
 import static dev.langchain4j.agent.tool.ReturnBehavior.IMMEDIATE;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.assertj.core.api.Assertions.tuple;
 
 import dev.langchain4j.agent.tool.CompensateFor;
 import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.data.message.ChatMessageType;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.ToolErrorVisibleToLlm;
 import dev.langchain4j.guardrail.OutputGuardrail;
 import dev.langchain4j.guardrail.OutputGuardrailRequest;
 import dev.langchain4j.guardrail.OutputGuardrailResult;
@@ -24,6 +29,7 @@ import dev.langchain4j.observability.api.event.ToolCompensatedEvent;
 import dev.langchain4j.observability.api.listener.AiServiceCompletedListener;
 import dev.langchain4j.observability.api.listener.ToolCompensatedEventListener;
 import dev.langchain4j.service.AiServiceStreamingEvent.FinalResponseEvent;
+import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -79,6 +85,90 @@ class AiServiceToolCallMemoryTest {
         @Tool
         String temperature() {
             return "42";
+        }
+    }
+
+    private static final ToolExecutionRequest DIVIDE_FOUR_BY_TWO = ToolExecutionRequest.builder()
+            .id("call-3")
+            .name("divide")
+            .arguments("{\"arg0\": 4, \"arg1\": 2}")
+            .build();
+
+    private static final ToolExecutionRequest DIVIDE_BY_ZERO = ToolExecutionRequest.builder()
+            .id("call-4")
+            .name("divide")
+            .arguments("{\"arg0\": 1, \"arg1\": 0}")
+            .build();
+
+    private static final ToolExecutionRequest DIVIDE_WITH_INVALID_ARGUMENTS = ToolExecutionRequest.builder()
+            .id("call-5")
+            .name("divide")
+            .arguments("{\"arg0\": \"one\", \"arg1\": 2}")
+            .build();
+
+    private static final ToolExecutionRequest NON_EXISTENT_TOOL = ToolExecutionRequest.builder()
+            .id("call-6")
+            .name("multiply")
+            .arguments("{}")
+            .build();
+
+    private static final String DIVIDE_FAILED = "Tool 'divide' failed, so the request was stopped";
+
+    static class Calculator {
+
+        @Tool
+        double divide(double a, double b) {
+            if (b == 0) {
+                throw new IllegalArgumentException("Division by zero in /opt/app/Calculator.java");
+            }
+            return a / b;
+        }
+    }
+
+    private static final ToolExecutionRequest FIND_ORDER = ToolExecutionRequest.builder()
+            .id("call-8")
+            .name("findOrder")
+            .arguments("{\"arg0\": \"42\"}")
+            .build();
+
+    static class Orders {
+
+        @Tool
+        String findOrder(String id) {
+            throw ToolErrorVisibleToLlm.from("There is no order " + id);
+        }
+    }
+
+    public static class Report {
+
+        public String getTitle() {
+            throw new IllegalStateException("the title cannot be read");
+        }
+    }
+
+    static class Reports {
+
+        @Tool
+        Report report() {
+            return new Report();
+        }
+    }
+
+    private static final ToolExecutionRequest REPORT = ToolExecutionRequest.builder()
+            .id("call-7")
+            .name("report")
+            .arguments("{}")
+            .build();
+
+    // a memory whose blocking add fails for tool results, like a store that is down
+    static class ThrowingBlockingToolResultMemory extends SlowToolResultMemory {
+
+        @Override
+        public void add(ChatMessage message) {
+            if (message instanceof ToolExecutionResultMessage) {
+                throw new IllegalStateException("store is down");
+            }
+            super.add(message);
         }
     }
 
@@ -604,5 +694,479 @@ class AiServiceToolCallMemoryTest {
         assertThat(collector.terminated).failsWithin(10, SECONDS);
         assertThat(memory.messages()).hasSize(3);
         assertThat(memory.messages().get(2)).isInstanceOf(ToolExecutionResultMessage.class);
+    }
+
+    private static List<ToolExecutionResultMessage> toolResultsIn(ChatMemory memory) {
+        return memory.messages().stream()
+                .filter(ToolExecutionResultMessage.class::isInstance)
+                .map(ToolExecutionResultMessage.class::cast)
+                .toList();
+    }
+
+    @Test
+    void sync_service_should_answer_every_tool_call_of_a_round_whose_tool_error_fails_the_invocation() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+        MockChatModel model = MockChatModel.thatResponds(
+                AiMessage.from(DIVIDE_WITH_INVALID_ARGUMENTS, GET_TEMPERATURE), AiMessage.from("Hello"));
+
+        SyncAssistant assistant = AiServices.builder(SyncAssistant.class)
+                .chatModel(model)
+                .chatMemory(memory)
+                .tools(new Calculator(), new Weather())
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Divide one by two")).isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(memory.messages()).hasSize(4);
+        assertThat(toolResultsIn(memory))
+                .extracting(
+                        ToolExecutionResultMessage::id, ToolExecutionResultMessage::text, ToolExecutionResultMessage::isError)
+                .containsExactly(
+                        tuple("call-5", DIVIDE_FAILED, true),
+                        tuple("call-2", "Tool 'temperature' was not executed because tool 'divide' failed", true));
+
+        // the next invocation of the same conversation sends a history that providers accept
+        assistant.chat("Hi");
+        List<ChatMessage> nextRequest = model.lastRequest().messages();
+        assertThat(nextRequest)
+                .extracting(ChatMessage::type)
+                .containsExactly(
+                        ChatMessageType.USER,
+                        ChatMessageType.AI,
+                        ChatMessageType.TOOL_EXECUTION_RESULT,
+                        ChatMessageType.TOOL_EXECUTION_RESULT,
+                        ChatMessageType.USER);
+        assertThat(((AiMessage) nextRequest.get(1)).toolExecutionRequests())
+                .extracting(ToolExecutionRequest::id)
+                .containsExactly("call-5", "call-2");
+        assertThat(List.of(nextRequest.get(2), nextRequest.get(3)))
+                .extracting(message -> ((ToolExecutionResultMessage) message).id())
+                .containsExactly("call-5", "call-2");
+    }
+
+    @Test
+    void sync_service_should_keep_the_results_of_the_tools_that_ran_and_not_store_the_tool_error() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        SyncAssistant assistant = AiServices.builder(SyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(DIVIDE_FOUR_BY_TWO, DIVIDE_BY_ZERO)))
+                .chatMemory(memory)
+                .tools(new Calculator())
+                .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm())
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Divide"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Division by zero");
+
+        assertThat(toolResultsIn(memory))
+                .extracting(
+                        ToolExecutionResultMessage::id, ToolExecutionResultMessage::text, ToolExecutionResultMessage::isError)
+                .containsExactly(tuple("call-3", "2.0", false), tuple("call-4", DIVIDE_FAILED, true));
+    }
+
+    @Test
+    void sync_service_should_answer_a_call_of_a_tool_that_does_not_exist() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        SyncAssistant assistant = AiServices.builder(SyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(NON_EXISTENT_TOOL, GET_TEMPERATURE)))
+                .chatMemory(memory)
+                .tools(new Calculator(), new Weather())
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Multiply")).hasMessageContaining("no such tool exists");
+
+        assertThat(toolResultsIn(memory))
+                .extracting(ToolExecutionResultMessage::id, ToolExecutionResultMessage::text)
+                .containsExactly(
+                        tuple("call-6", "Tool 'multiply' does not exist, so the request was stopped"),
+                        tuple("call-2", "Tool 'temperature' was not executed because tool 'multiply' does not exist"));
+    }
+
+    @Test
+    void async_service_should_answer_a_call_of_a_tool_that_does_not_exist() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(NON_EXISTENT_TOOL, DIVIDE_FOUR_BY_TWO)))
+                .chatMemory(memory)
+                .tools(new Calculator())
+                .build();
+
+        assertThat(assistant.chat("Multiply and divide")).failsWithin(10, SECONDS);
+
+        assertThat(toolResultsIn(memory))
+                .extracting(ToolExecutionResultMessage::id, ToolExecutionResultMessage::text)
+                .containsExactly(
+                        tuple("call-6", "Tool 'multiply' does not exist, so the request was stopped"),
+                        tuple("call-3", "2.0"));
+    }
+
+    @Test
+    void sync_service_should_store_the_rolled_back_results_of_a_round_whose_tool_error_fails_the_invocation() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+        CompensableBooking booking = new CompensableBooking();
+
+        SyncAssistant assistant = AiServices.builder(SyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(BOOK_HOTEL, DIVIDE_WITH_INVALID_ARGUMENTS)))
+                .chatMemory(memory)
+                .tools(booking, new Calculator())
+                .compensateOnToolErrors(true)
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Book a hotel")).isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(booking.cancellations).hasValue(1);
+        assertThat(toolResultsIn(memory))
+                .extracting(ToolExecutionResultMessage::id, ToolExecutionResultMessage::text)
+                .containsExactly(
+                        tuple("call-1", "Tool 'book' was executed successfully but was rolled back because tool 'divide' failed"),
+                        tuple("call-5", DIVIDE_FAILED));
+    }
+
+    @Test
+    void sync_service_should_rethrow_the_tool_error_when_the_results_of_the_failed_round_cannot_be_stored() {
+
+        ChatMemory memory = new ThrowingBlockingToolResultMemory();
+
+        SyncAssistant assistant = AiServices.builder(SyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(DIVIDE_WITH_INVALID_ARGUMENTS)))
+                .chatMemory(memory)
+                .tools(new Calculator())
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Divide"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasSuppressedException(new IllegalStateException("store is down"));
+    }
+
+    @Test
+    void token_stream_service_should_answer_every_tool_call_of_a_round_whose_tool_error_fails_the_invocation() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        TokenStreamAssistant assistant = AiServices.builder(TokenStreamAssistant.class)
+                .streamingChatModel(
+                        MockStreamingChatModel.thatResponds(AiMessage.from(DIVIDE_WITH_INVALID_ARGUMENTS, GET_TEMPERATURE)))
+                .chatMemory(memory)
+                .tools(new Calculator(), new Weather())
+                .build();
+
+        CompletableFuture<ChatResponse> completed = new CompletableFuture<>();
+        assistant
+                .chat("Divide one by two")
+                .onPartialResponse(ignored -> {})
+                .onCompleteResponse(completed::complete)
+                .onError(completed::completeExceptionally)
+                .start();
+
+        assertThat(completed)
+                .failsWithin(10, SECONDS)
+                .withThrowableOfType(ExecutionException.class)
+                .withCauseInstanceOf(IllegalArgumentException.class);
+        assertThat(memory.messages()).hasSize(4);
+        assertThat(toolResultsIn(memory))
+                .extracting(ToolExecutionResultMessage::id, ToolExecutionResultMessage::text)
+                .containsExactly(
+                        tuple("call-5", DIVIDE_FAILED),
+                        tuple("call-2", "Tool 'temperature' was not executed because tool 'divide' failed"));
+    }
+
+    @Test
+    void async_service_should_answer_every_tool_call_of_a_round_whose_tool_error_fails_the_invocation() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(DIVIDE_FOUR_BY_TWO, DIVIDE_BY_ZERO)))
+                .chatMemory(memory)
+                .tools(new Calculator())
+                .build();
+
+        assertThat(assistant.chat("Divide"))
+                .failsWithin(10, SECONDS)
+                .withThrowableOfType(ExecutionException.class)
+                .havingRootCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .withMessageContaining("Division by zero");
+        assertThat(memory.messages()).hasSize(4);
+        assertThat(toolResultsIn(memory))
+                .extracting(
+                        ToolExecutionResultMessage::id, ToolExecutionResultMessage::text, ToolExecutionResultMessage::isError)
+                .containsExactly(tuple("call-3", "2.0", false), tuple("call-4", DIVIDE_FAILED, true));
+    }
+
+    @Test
+    void async_service_should_fail_with_the_tool_error_when_the_results_of_the_failed_round_cannot_be_stored() {
+
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(DIVIDE_BY_ZERO)))
+                .chatMemory(new ThrowingToolResultMemory())
+                .tools(new Calculator())
+                .build();
+
+        CompletableFuture<Result<String>> future = assistant.chat("Divide");
+
+        assertThat(future).failsWithin(10, SECONDS);
+        assertThat(catchThrowable(future::join))
+                .rootCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasSuppressedException(new IllegalStateException("store is down"));
+    }
+
+    @Test
+    void reactive_service_should_answer_every_tool_call_of_a_round_whose_tool_error_fails_the_invocation() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(MockStreamingChatModel.thatResponds(AiMessage.from(DIVIDE_FOUR_BY_TWO, DIVIDE_BY_ZERO)))
+                .chatMemory(memory)
+                .tools(new Calculator())
+                .build();
+
+        EventCollector collector = new EventCollector();
+        assistant.chat("Divide").subscribe(collector);
+
+        assertThat(collector.terminated)
+                .failsWithin(10, SECONDS)
+                .withThrowableOfType(ExecutionException.class)
+                .havingRootCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .withMessageContaining("Division by zero");
+        assertThat(memory.messages()).hasSize(4);
+        assertThat(toolResultsIn(memory))
+                .extracting(
+                        ToolExecutionResultMessage::id, ToolExecutionResultMessage::text, ToolExecutionResultMessage::isError)
+                .containsExactly(tuple("call-3", "2.0", false), tuple("call-4", DIVIDE_FAILED, true));
+    }
+
+    @Test
+    void reactive_service_should_fail_with_the_tool_error_when_the_results_of_the_failed_round_cannot_be_stored() {
+
+        ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(MockStreamingChatModel.thatResponds(AiMessage.from(DIVIDE_BY_ZERO)))
+                .chatMemory(new ThrowingToolResultMemory())
+                .tools(new Calculator())
+                .build();
+
+        EventCollector collector = new EventCollector();
+        assistant.chat("Divide").subscribe(collector);
+
+        assertThat(collector.terminated).failsWithin(10, SECONDS);
+        assertThat(catchThrowable(collector.terminated::join))
+                .rootCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasSuppressedException(new IllegalStateException("store is down"));
+    }
+
+    @Test
+    void sync_service_should_rethrow_the_tool_error_when_the_result_of_another_tool_cannot_be_converted() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        SyncAssistant assistant = AiServices.builder(SyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(REPORT, DIVIDE_WITH_INVALID_ARGUMENTS)))
+                .chatMemory(memory)
+                .tools(new Reports(), new Calculator())
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Report and divide"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .satisfies(error -> assertThat(error.getSuppressed())
+                        .singleElement()
+                        .satisfies(suppressed -> assertThat(suppressed).hasMessageContaining("the title cannot be read")));
+
+        assertThat(toolResultsIn(memory))
+                .extracting(ToolExecutionResultMessage::id, ToolExecutionResultMessage::text)
+                .containsExactly(
+                        tuple("call-7", "Tool 'report' failed, so the request was stopped"),
+                        tuple("call-5", DIVIDE_FAILED));
+    }
+
+    @Test
+    void async_service_should_fail_with_the_tool_error_when_the_result_of_another_tool_cannot_be_converted() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(REPORT, DIVIDE_BY_ZERO)))
+                .chatMemory(memory)
+                .tools(new Reports(), new Calculator())
+                .build();
+
+        CompletableFuture<Result<String>> future = assistant.chat("Report and divide");
+
+        assertThat(future).failsWithin(10, SECONDS);
+        assertThat(catchThrowable(future::join))
+                .rootCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Division by zero");
+        assertThat(toolResultsIn(memory))
+                .extracting(ToolExecutionResultMessage::id, ToolExecutionResultMessage::text)
+                .containsExactly(
+                        tuple("call-7", "Tool 'report' failed, so the request was stopped"),
+                        tuple("call-4", DIVIDE_FAILED));
+    }
+
+    @Test
+    void reactive_service_should_fail_with_the_tool_error_when_the_result_of_another_tool_cannot_be_converted() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(MockStreamingChatModel.thatResponds(AiMessage.from(REPORT, DIVIDE_BY_ZERO)))
+                .chatMemory(memory)
+                .tools(new Reports(), new Calculator())
+                .build();
+
+        EventCollector collector = new EventCollector();
+        assistant.chat("Report and divide").subscribe(collector);
+
+        assertThat(collector.terminated).failsWithin(10, SECONDS);
+        assertThat(catchThrowable(collector.terminated::join))
+                .rootCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Division by zero");
+        assertThat(toolResultsIn(memory))
+                .extracting(ToolExecutionResultMessage::id, ToolExecutionResultMessage::text)
+                .containsExactly(
+                        tuple("call-7", "Tool 'report' failed, so the request was stopped"),
+                        tuple("call-4", DIVIDE_FAILED));
+    }
+
+    @Test
+    void sync_service_should_keep_the_error_text_a_handler_sent_to_the_llm_when_another_tool_ends_the_invocation() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        SyncAssistant assistant = AiServices.builder(SyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(FIND_ORDER, DIVIDE_BY_ZERO)))
+                .chatMemory(memory)
+                .tools(new Orders(), new Calculator())
+                .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocationUnlessVisibleToLlm())
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat("Find the order and divide"))
+                .isInstanceOf(IllegalArgumentException.class);
+
+        assertThat(toolResultsIn(memory))
+                .extracting(
+                        ToolExecutionResultMessage::id,
+                        ToolExecutionResultMessage::toolName,
+                        ToolExecutionResultMessage::text,
+                        ToolExecutionResultMessage::isError)
+                .containsExactly(
+                        tuple("call-8", "findOrder", "There is no order 42", true),
+                        tuple("call-4", "divide", DIVIDE_FAILED, true));
+    }
+
+    @Test
+    void async_service_should_keep_the_error_text_a_handler_sent_to_the_llm_when_another_tool_ends_the_invocation() {
+
+        ChatMemory memory = MessageWindowChatMemory.withMaxMessages(10);
+
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(FIND_ORDER, DIVIDE_BY_ZERO)))
+                .chatMemory(memory)
+                .tools(new Orders(), new Calculator())
+                .build();
+
+        assertThat(assistant.chat("Find the order and divide")).failsWithin(10, SECONDS);
+
+        assertThat(toolResultsIn(memory))
+                .extracting(
+                        ToolExecutionResultMessage::id,
+                        ToolExecutionResultMessage::toolName,
+                        ToolExecutionResultMessage::text,
+                        ToolExecutionResultMessage::isError)
+                .containsExactly(
+                        tuple("call-8", "findOrder", "There is no order 42", true),
+                        tuple("call-4", "divide", DIVIDE_FAILED, true));
+    }
+
+    @Test
+    void async_service_should_fail_only_once_the_results_of_the_failed_round_are_stored() throws Exception {
+
+        SlowToolResultMemory memory = new SlowToolResultMemory();
+
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(DIVIDE_BY_ZERO)))
+                .chatMemory(memory)
+                .tools(new Calculator())
+                .build();
+
+        CompletableFuture<Result<String>> future = assistant.chat("Divide");
+
+        assertThat(memory.toolResultPersistRequested.await(10, SECONDS)).isTrue();
+        assertThat(future).isNotDone();
+        memory.toolResultPersisted.complete(null);
+
+        assertThat(future)
+                .failsWithin(10, SECONDS)
+                .withThrowableOfType(ExecutionException.class)
+                .havingRootCause()
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(toolResultsIn(memory))
+                .extracting(ToolExecutionResultMessage::id, ToolExecutionResultMessage::text)
+                .containsExactly(tuple("call-4", DIVIDE_FAILED));
+    }
+
+    @Test
+    void async_service_should_fail_with_the_tool_error_when_storing_the_results_of_the_failed_round_fails_later()
+            throws Exception {
+
+        SlowToolResultMemory memory = new SlowToolResultMemory();
+
+        AsyncAssistant assistant = AiServices.builder(AsyncAssistant.class)
+                .chatModel(MockChatModel.thatResponds(AiMessage.from(DIVIDE_BY_ZERO)))
+                .chatMemory(memory)
+                .tools(new Calculator())
+                .build();
+
+        CompletableFuture<Result<String>> future = assistant.chat("Divide");
+
+        assertThat(memory.toolResultPersistRequested.await(10, SECONDS)).isTrue();
+        memory.toolResultPersisted.completeExceptionally(new IllegalStateException("store is down"));
+
+        assertThat(future).failsWithin(10, SECONDS);
+        assertThat(catchThrowable(future::join))
+                .rootCause()
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasSuppressedException(new IllegalStateException("store is down"));
+    }
+
+    @Test
+    void reactive_service_should_fail_only_once_the_results_of_the_failed_round_are_stored() throws Exception {
+
+        SlowToolResultMemory memory = new SlowToolResultMemory();
+
+        ReactiveAssistant assistant = AiServices.builder(ReactiveAssistant.class)
+                .streamingChatModel(MockStreamingChatModel.thatResponds(AiMessage.from(DIVIDE_BY_ZERO)))
+                .chatMemory(memory)
+                .tools(new Calculator())
+                .build();
+
+        EventCollector collector = new EventCollector();
+        assistant.chat("Divide").subscribe(collector);
+
+        assertThat(memory.toolResultPersistRequested.await(10, SECONDS)).isTrue();
+        assertThat(collector.terminated).isNotDone();
+        memory.toolResultPersisted.complete(null);
+
+        assertThat(collector.terminated)
+                .failsWithin(10, SECONDS)
+                .withThrowableOfType(ExecutionException.class)
+                .havingRootCause()
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThat(toolResultsIn(memory))
+                .extracting(ToolExecutionResultMessage::id, ToolExecutionResultMessage::text)
+                .containsExactly(tuple("call-4", DIVIDE_FAILED));
     }
 }

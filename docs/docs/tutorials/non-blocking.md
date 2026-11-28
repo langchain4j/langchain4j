@@ -248,6 +248,9 @@ AiServices.builder(Assistant.class)
 ```
 
 See [Error Handling](/tutorials/tools#error-handling) for what those handlers can do.
+When a tool error ends the call, a result for every tool call of that LLM response is still saved in the
+`ChatMemory`, so that the next call in the same conversation sends a valid history
+(see [When a Tool Error Ends the Call](/tutorials/tools#when-a-tool-error-ends-the-call)).
 
 ### Tool concurrency
 

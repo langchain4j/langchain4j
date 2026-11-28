@@ -493,8 +493,10 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
 
             List<ToolExecutionRequest> toolRequests = aiMessage.toolExecutionRequests();
 
+            Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> toolFutures =
+                    toolFuturesInRequestOrder(toolRequests, startedTools, currentToolContext);
             CompletableFuture<ToolService.CombinedToolResults> toolResultsFuture =
-                    combineEagerlyStartedTools(toolRequests, startedTools, currentToolContext);
+                    ToolService.combineToolResultsCollectingErrors(toolFutures);
             InflightRound round = new InflightRound(toolRequests, toolResultsFuture);
             boolean promoted = underAccumulatorLock(() -> {
                 if (tube.cancelled()) {
@@ -541,6 +543,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                             toolRequests,
                             combined.results(),
                             combined.firstError(),
+                            toolFutures,
                             failedToolNameHolder[0]);
                 } catch (Throwable t) {
                     fail(t);
@@ -601,9 +604,9 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 CompletableFuture<ToolService.CombinedToolResults> toolsFuture) {}
 
         /**
-         * Combines the tools that were already started eagerly (on their CompleteToolCall) into a single
-         * future of results, in request order. Any requested tool that was not started eagerly (e.g. a
-         * provider emitted no matching CompleteToolCall) is started now, so the result set is always complete.
+         * The futures of the tools that were already started eagerly (on their CompleteToolCall), in request order.
+         * Any requested tool that was not started eagerly (e.g. a provider emitted no matching CompleteToolCall) is
+         * started now, so the result set is always complete.
          * <p>
          * A tool call is matched to what was started for it by position, because the same call is not always
          * {@link Object#equals(Object) equal} on both sides: some providers rebuild the request for the final
@@ -611,7 +614,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
          * announced in the order they appear in the response, so positions line up whenever every call was
          * announced; otherwise each request is looked up on its own and the missing ones are started here.
          */
-        private CompletableFuture<ToolService.CombinedToolResults> combineEagerlyStartedTools(
+        private Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> toolFuturesInRequestOrder(
                 List<ToolExecutionRequest> toolRequests,
                 Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> startedTools,
                 ToolServiceContext currentToolContext) {
@@ -637,7 +640,7 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 }
                 orderedFutures.put(toolRequest, future);
             }
-            return ToolService.combineToolResultsCollectingErrors(orderedFutures);
+            return orderedFutures;
         }
 
         private void afterToolsExecuted(
@@ -648,23 +651,29 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 List<ToolExecutionRequest> toolRequests,
                 Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
                 Throwable firstError,
+                Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> toolFutures,
                 String preCollectedFailedToolName) {
 
-            ToolService.ToolResultsOutcome outcome = context.toolService.processToolResults(
-                    context,
-                    toolRequests,
-                    toolResults,
-                    new ArrayList<>(),
-                    invocationContext,
-                    currentToolContext);
+            ToolService.ToolResultsOutcome outcome = firstError == null
+                    ? context.toolService.processToolResults(
+                            context, toolRequests, toolResults, new ArrayList<>(), invocationContext, currentToolContext)
+                    : context.toolService.processToolResultsOfFailedRound(
+                            context,
+                            toolRequests,
+                            toolResults,
+                            new ArrayList<>(),
+                            invocationContext,
+                            currentToolContext,
+                            firstError);
 
+            ChatMemory memory = getMemory();
             CompletableFuture<Void> compensated = context.toolService.compensateIfNeededAsync(
                     toolRequests,
                     toolResults,
                     outcome.resultMessages(),
                     compensableExecutions,
                     outcome.anyToolErrored(),
-                    getMemory(),
+                    memory,
                     messages,
                     invocationContext,
                     context.eventListenerRegistrar,
@@ -681,13 +690,23 @@ public class AiServiceStreamingEventPublisher implements Flow.Publisher<AiServic
                 // The default asynchronous ToolExecutionErrorHandler rethrows a tool execution error. The tools that
                 // succeeded have now been compensated (a failed compensating action is already attached to the tool
                 // error as suppressed); fail the stream with the tool error, attaching any compensation-infra failure
-                // (e.g. a failing memory rewrite) as suppressed so the root cause is not masked. When there was no
-                // tool error, surface the compensation failure directly.
+                // (e.g. a failing memory rewrite) as suppressed so the root cause is not masked. The round's results
+                // are saved first, so that no tool call in the chat memory is left without a result. When there was
+                // no tool error, surface the compensation failure directly.
                 if (firstError != null) {
-                    if (compensationError != null) {
-                        firstError.addSuppressed(unwrapCompletionException(compensationError));
+                    Throwable compensationCause = unwrapCompletionException(compensationError);
+                    if (compensationCause != null && compensationCause != firstError) {
+                        firstError.addSuppressed(compensationCause);
                     }
-                    fail(firstError);
+                    context.toolService
+                            .saveResultsOfFailedRoundAsync(
+                                    memory,
+                                    toolRequests,
+                                    outcome.resultMessages(),
+                                    toolFutures,
+                                    currentToolContext.toolExecutors(),
+                                    firstError)
+                            .whenComplete((ignored, neverFails) -> fail(firstError));
                     return;
                 }
                 if (compensationError != null) {

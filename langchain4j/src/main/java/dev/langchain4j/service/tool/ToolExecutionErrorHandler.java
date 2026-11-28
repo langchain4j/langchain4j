@@ -41,7 +41,8 @@ public interface ToolExecutionErrorHandler {
 
     /**
      * Returns a handler that rethrows the error, failing the AI Service invocation.
-     * Nothing about the error is sent to the LLM.
+     * The error itself is not sent to the LLM. When the AI Service has a chat memory, the result saved there for this
+     * tool call only says that the tool failed, so that later calls of the same conversation still work.
      * <p>
      * Use this when a failing tool means the interaction cannot produce a correct answer,
      * or when the error must not reach the LLM.

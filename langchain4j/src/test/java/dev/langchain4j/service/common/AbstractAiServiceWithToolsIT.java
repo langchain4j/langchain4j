@@ -46,6 +46,7 @@ import dev.langchain4j.model.chat.request.json.JsonStringSchema;
 import dev.langchain4j.service.AiServices;
 import dev.langchain4j.service.IllegalConfigurationException;
 import dev.langchain4j.service.Result;
+import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
@@ -1090,6 +1091,40 @@ public abstract class AbstractAiServiceWithToolsIT {
         messages = chatMemory.messages();
         assertThat(messages).hasSize(6);
         checkMemoryWithImmediateTool(messages.subList(3, 6), "Now use the tool to add 47 to the previous result", "171");
+    }
+
+    static class FailingToolWithPrimitiveParameters {
+
+        @Tool
+        public int add(int a, int b) {
+            throw new IllegalStateException("The calculator is not available");
+        }
+    }
+
+    @ParameterizedTest
+    @MethodSource("models")
+    protected void should_keep_memory_consistent_when_a_tool_error_ends_the_invocation(ChatModel model) {
+        ChatMemory chatMemory = MessageWindowChatMemory.withMaxMessages(10);
+
+        var assistant = AiServices.builder(Assistant.class)
+                .chatModel(model)
+                .tools(new FailingToolWithPrimitiveParameters())
+                .toolExecutionErrorHandler(ToolExecutionErrorHandler.failInvocation())
+                .chatMemory(chatMemory)
+                .build();
+
+        assertThatThrownBy(() -> assistant.chat(adaptPrompt2("How much is 37 plus 87?")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("The calculator is not available");
+
+        List<ChatMessage> messages = chatMemory.messages();
+        assertThat(messages.get(messages.size() - 1)).isInstanceOf(ToolExecutionResultMessage.class);
+        assertThat(((ToolExecutionResultMessage) messages.get(messages.size() - 1)).toolName())
+                .isEqualTo("add");
+
+        // the next call of the same conversation sends the saved history, which the provider must accept
+        var response = assistant.chat("What is the capital of France? Answer without using any tool.");
+        assertThat(response.content()).isNotBlank();
     }
 
     static void checkMemoryWithImmediateTool(List<ChatMessage> messages, String request, String response) {

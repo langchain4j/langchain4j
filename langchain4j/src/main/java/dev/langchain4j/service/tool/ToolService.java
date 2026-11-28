@@ -700,6 +700,7 @@ public class ToolService {
                         round.results(),
                         round.errors(),
                         round.errorToRethrow(),
+                        toolServiceContext.toolExecutors(),
                         compensableExecutions,
                         chatMemory,
                         messages,
@@ -944,8 +945,9 @@ public class ToolService {
                         intermediateResponses.add(chatResponse);
 
                         List<ToolExecutionRequest> toolExecutionRequests = aiMessage.toolExecutionRequests();
-                        return executeToolsCollectingErrors(
-                                        toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext)
+                        Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> toolFutures =
+                                startTools(toolExecutionRequests, toolServiceContext.toolExecutors(), invocationContext);
+                        return combineToolResultsCollectingErrors(toolFutures)
                                 .thenCompose(combined -> afterToolsExecuted(
                                         parameters,
                                         accumulator,
@@ -954,7 +956,8 @@ public class ToolService {
                                         roundTripsLeft,
                                         toolExecutionRequests,
                                         combined.results(),
-                                        combined.firstError()));
+                                        combined.firstError(),
+                                        toolFutures));
                     })
                     .toCompletableFuture();
         }
@@ -962,7 +965,9 @@ public class ToolService {
         /**
          * After the round's tools have executed: records their results, compensates if a tool errored, persists the
          * results, and then either returns immediately (per {@link ReturnBehavior}) or continues via
-         * {@link #callModelAndContinue}.
+         * {@link #callModelAndContinue}. When a tool error fails the invocation, the results are persisted too, with
+         * a result that says that the tool failed for each tool whose future in {@code toolFutures} failed, before the
+         * invocation fails.
          */
         private CompletableFuture<ToolServiceResult> afterToolsExecuted(
                 ChatRequestParameters parameters,
@@ -972,7 +977,8 @@ public class ToolService {
                 int roundTripsLeft,
                 List<ToolExecutionRequest> toolExecutionRequests,
                 Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
-                Throwable firstError) {
+                Throwable firstError,
+                Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> toolFutures) {
 
             if (isCancelled(cancellation)) {
                 List<ToolExecutionResultMessage> resultMessages = toolExecutionRequests.stream()
@@ -987,8 +993,22 @@ public class ToolService {
                         firstError instanceof CancellationException ? firstError : new CancellationException());
             }
 
-            ToolResultsOutcome outcome = processToolResults(
-                    context, toolExecutionRequests, toolResults, toolExecutions, invocationContext, toolServiceContext);
+            ToolResultsOutcome outcome = firstError == null
+                    ? processToolResults(
+                            context,
+                            toolExecutionRequests,
+                            toolResults,
+                            toolExecutions,
+                            invocationContext,
+                            toolServiceContext)
+                    : processToolResultsOfFailedRound(
+                            context,
+                            toolExecutionRequests,
+                            toolResults,
+                            toolExecutions,
+                            invocationContext,
+                            toolServiceContext,
+                            firstError);
 
             return compensateIfNeededAsync(
                             toolExecutionRequests,
@@ -1008,9 +1028,16 @@ public class ToolService {
                     .thenCompose(compensationError -> {
                         if (firstError != null) {
                             if (compensationError != null) {
-                                firstError.addSuppressed(unwrapCompletionException(compensationError));
+                                addSuppressedUnlessSame(firstError, unwrapCompletionException(compensationError));
                             }
-                            return CompletableFuture.<ToolServiceResult>failedFuture(firstError);
+                            return saveResultsOfFailedRoundAsync(
+                                            chatMemory,
+                                            toolExecutionRequests,
+                                            outcome.resultMessages(),
+                                            toolFutures,
+                                            toolServiceContext.toolExecutors(),
+                                            firstError)
+                                    .thenCompose(ignored -> CompletableFuture.<ToolServiceResult>failedFuture(firstError));
                         }
                         if (compensationError != null) {
                             return CompletableFuture.<ToolServiceResult>failedFuture(
@@ -1174,6 +1201,68 @@ public class ToolService {
         }
 
         return new ToolResultsOutcome(anyToolErrored, returnBehaviors, resultMessages);
+    }
+
+    /**
+     * {@link #processToolResults} for a round whose tool error fails the invocation with {@code error}, in the
+     * {@code CompletableFuture} and reactive modes, so that the results of the round can still be saved before the
+     * invocation fails: a tool whose result cannot be converted to a message (for example when serializing the value
+     * it returned fails) gets a result that says that it failed, and a failure while processing the results (for
+     * example of a listener) does not stop the processing. Such failures are added as suppressed to {@code error}, which
+     * stays the error that fails the invocation.
+     *
+     * @since 1.25.0
+     */
+    @Internal
+    public ToolResultsOutcome processToolResultsOfFailedRound(
+            AiServiceContext context,
+            List<ToolExecutionRequest> toolExecutionRequests,
+            Map<ToolExecutionRequest, ToolExecutionResult> toolResults,
+            List<ToolExecution> toolExecutions,
+            InvocationContext invocationContext,
+            ToolServiceContext toolServiceContext,
+            Throwable error) {
+        Map<ToolExecutionRequest, ToolExecutionResult> convertibleResults = convertibleResults(toolResults, error);
+        try {
+            return processToolResults(
+                    context,
+                    toolExecutionRequests,
+                    convertibleResults,
+                    toolExecutions,
+                    invocationContext,
+                    toolServiceContext);
+        } catch (RuntimeException processingError) {
+            addSuppressedUnlessSame(error, processingError);
+            List<ToolExecutionResultMessage> resultMessages = new ArrayList<>(toolExecutionRequests.size());
+            for (ToolExecutionRequest request : toolExecutionRequests) {
+                resultMessages.add(toResultMessage(request, convertibleResults.get(request)));
+            }
+            return new ToolResultsOutcome(true, List.of(), resultMessages);
+        }
+    }
+
+    /**
+     * The results of a failed round, each of which can be converted to a message: the result of a tool whose contents
+     * cannot be produced (for example when serializing the value it returned fails) is replaced by a result that says
+     * that the tool failed, and the conversion error is added as suppressed to {@code error}.
+     */
+    private static Map<ToolExecutionRequest, ToolExecutionResult> convertibleResults(
+            Map<ToolExecutionRequest, ToolExecutionResult> results, Throwable error) {
+        Map<ToolExecutionRequest, ToolExecutionResult> convertibleResults = new LinkedHashMap<>(results);
+        results.forEach((request, result) -> {
+            try {
+                result.resultContents();
+            } catch (RuntimeException conversionError) {
+                addSuppressedUnlessSame(error, conversionError);
+                convertibleResults.put(
+                        request,
+                        ToolExecutionResult.builder()
+                                .isError(true)
+                                .resultText(failedToolResultText(request, true))
+                                .build());
+            }
+        });
+        return convertibleResults;
     }
 
     /**
@@ -1786,10 +1875,20 @@ public class ToolService {
             List<CompensableToolExecution> compensableExecutions,
             InvocationContext invocationContext) {
         List<ToolExecutionResultMessage> resultMessages = toolExecutionRequests.stream()
-                .map(request -> toResultMessage(request, toolResults.get(request)))
+                .map(request -> resultMessageOrFailed(request, toolResults.get(request)))
                 .toList();
         return collectCompensable(
                 toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
+    }
+
+    // the conversion error is reported where the results are processed, not here
+    private static ToolExecutionResultMessage resultMessageOrFailed(
+            ToolExecutionRequest request, ToolExecutionResult result) {
+        try {
+            return toResultMessage(request, result);
+        } catch (RuntimeException conversionError) {
+            return failedToolResultMessage(request, true);
+        }
     }
 
     private String collectCompensable(
@@ -2200,12 +2299,13 @@ public class ToolService {
     }
 
     /**
-     * Non-blocking counterpart of {@link #execute(List, Map, InvocationContext)} that collects the results of all
-     * tools (including failed ones) instead of short-circuiting on the first failure, so the caller can compensate
-     * the successful tools before failing the invocation with the tool error. Every tool is started on the
+     * Non-blocking counterpart of {@link #execute(List, Map, InvocationContext)}: starts every tool of a round, in
+     * request order, and returns their futures, so that the caller can wait for all of them (including failed ones)
+     * with {@link #combineToolResultsCollectingErrors(Map)} instead of short-circuiting on the first failure, and
+     * compensate the successful tools before failing the invocation with the tool error. Every tool is started on the
      * {@linkplain #effectiveToolExecutor() effective executor} so the model-delivery thread is never blocked.
      */
-    private CompletableFuture<CombinedToolResults> executeToolsCollectingErrors(
+    private Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> startTools(
             List<ToolExecutionRequest> toolRequests,
             Map<String, ToolExecutor> toolExecutors,
             InvocationContext invocationContext) {
@@ -2221,7 +2321,7 @@ public class ToolService {
                             null,
                             CapturedContextSupport.restoringIn(effectiveToolExecutor(), invocationContext)));
         }
-        return combineToolResultsCollectingErrors(futures);
+        return futures;
     }
 
     /**
@@ -2514,13 +2614,21 @@ public class ToolService {
      *     the agentic system right away, as for any other tool error;</li>
      *     <li>when compensation on tool errors is enabled, rolls back the tools with a compensating action that
      *     succeeded in this round and in the earlier rounds: their compensating actions run, their results in the
-     *     chat memory are rewritten, and a {@link ToolCompensatedEvent} is fired for each of them.</li>
+     *     chat memory are rewritten, and a {@link ToolCompensatedEvent} is fired for each of them;</li>
+     *     <li>saves, in the chat memory, a result for every request of the round, so that no tool call in the chat
+     *     memory is left without a result (most providers reject such a history on the next request): the result of
+     *     each tool that succeeded (or a result that says that it was rolled back), a result that says that a tool
+     *     failed for each tool in {@code errors} (the error itself is not included, so that nothing from the exception
+     *     reaches the LLM), and a result that says that a tool was not executed for each request that has not run.</li>
      * </ol>
+     * A tool whose result cannot be converted to a message (for example when serializing the value it returned fails)
+     * gets a result that says that it failed, and the conversion error is added as suppressed to
+     * {@code errorToRethrow}; for its rollback, the tool still counts as one that succeeded.
      * A failure of a listener of the {@link ToolExecutedEvent}s is added as suppressed to the first error in
      * {@code errors}. A failure of cross-agent compensation, or while rolling back (for example while rewriting the
-     * chat memory), is added as suppressed to {@code errorToRethrow}. A compensating action that fails does not stop
-     * the others: it is logged, the result of its tool says that the rollback failed, and its error is added as
-     * suppressed to {@code errorToRethrow}.
+     * chat memory), or while saving the results, is added as suppressed to {@code errorToRethrow}. A compensating
+     * action that fails does not stop the others: it is logged, the result of its tool says that the rollback failed,
+     * and its error is added as suppressed to {@code errorToRethrow}.
      *
      * @param toolRequests          the requests of the round, in the order the tools were requested
      * @param results               the results of the tools that succeeded
@@ -2528,6 +2636,9 @@ public class ToolService {
      * @param errorToRethrow        the error the caller rethrows once this method returns: the first error in
      *                              {@code errors}, as the caller rethrows it (wrapped in a {@link RuntimeException}
      *                              when the caller cannot rethrow it as it is)
+     * @param toolExecutors         the executors of the tools of the round, by tool name: a failed request whose tool
+     *                              has no executor (the LLM called a tool that does not exist) gets a result that
+     *                              says that the tool does not exist
      * @param compensableExecutions the compensable tools collected across rounds, or {@code null} when compensation
      *                              is disabled
      * @param chatMemory            the chat memory, or {@code null} when the AI Service has none
@@ -2541,13 +2652,19 @@ public class ToolService {
             Map<ToolExecutionRequest, ToolExecutionResult> results,
             Map<ToolExecutionRequest, Throwable> errors,
             Throwable errorToRethrow,
+            Map<String, ToolExecutor> toolExecutors,
             @Nullable List<CompensableToolExecution> compensableExecutions,
             @Nullable ChatMemory chatMemory,
             @Nullable List<ChatMessage> messages,
             InvocationContext invocationContext,
             AiServiceListenerRegistrar listenerRegistrar) {
-        fireToolExecutedEventsOfFailedRound(invocationContext, toolRequests, results, errors, listenerRegistrar);
-        if (onCompensableToolExecution == null && onToolExecutionError == null && !compensateOnToolErrors) {
+        Map<ToolExecutionRequest, ToolExecutionResult> convertibleResults = convertibleResults(results, errorToRethrow);
+        fireToolExecutedEventsOfFailedRound(
+                invocationContext, toolRequests, convertibleResults, errors, listenerRegistrar);
+        if (chatMemory == null
+                && onCompensableToolExecution == null
+                && onToolExecutionError == null
+                && !compensateOnToolErrors) {
             return;
         }
         List<ToolExecutionRequest> executedRequests = new ArrayList<>();
@@ -2566,6 +2683,8 @@ public class ToolService {
                                 .build());
             }
         }
+        List<ToolExecutionResultMessage> executedResultMessages =
+                resultMessagesOfFailedRound(executedRequests, convertibleResults, errors, toolExecutors);
         try {
             for (ToolExecutionRequest request : executedRequests) {
                 reportCompensableToolExecution(ToolExecution.builder()
@@ -2577,26 +2696,158 @@ public class ToolService {
             if (onToolExecutionError != null) {
                 onToolExecutionError.accept(invocationContext);
             }
-            if (compensateOnToolErrors) {
-                List<ToolExecutionResultMessage> resultMessages = new ArrayList<>();
-                for (ToolExecutionRequest request : executedRequests) {
-                    resultMessages.add(toResultMessage(request, roundResults.get(request)));
-                }
-                rollBackIfNeeded(
-                        executedRequests,
-                        roundResults,
-                        resultMessages,
-                        compensableExecutions,
-                        true,
-                        chatMemory,
-                        messages,
-                        invocationContext,
-                        listenerRegistrar,
-                        errorToRethrow);
-            }
+            rollBackIfNeeded(
+                    executedRequests,
+                    roundResults,
+                    executedResultMessages,
+                    compensableExecutions,
+                    true,
+                    chatMemory,
+                    messages,
+                    invocationContext,
+                    listenerRegistrar,
+                    errorToRethrow);
         } catch (RuntimeException compensationError) {
-            errorToRethrow.addSuppressed(compensationError);
+            addSuppressedUnlessSame(errorToRethrow, compensationError);
         }
+        if (chatMemory != null) {
+            try {
+                resultsOfFailedRound(toolRequests, executedRequests, executedResultMessages, errors, toolExecutors)
+                        .forEach(chatMemory::add);
+            } catch (RuntimeException saveError) {
+                addSuppressedUnlessSame(errorToRethrow, saveError);
+            }
+        }
+    }
+
+    /**
+     * The result message of each tool of a failed round that has terminated, in the order of {@code executedRequests}:
+     * a result that says that the tool failed for a tool in {@code errors}, and the result of each other tool, from
+     * {@code convertibleResults} (see {@link #convertibleResults}).
+     */
+    private static List<ToolExecutionResultMessage> resultMessagesOfFailedRound(
+            List<ToolExecutionRequest> executedRequests,
+            Map<ToolExecutionRequest, ToolExecutionResult> convertibleResults,
+            Map<ToolExecutionRequest, Throwable> errors,
+            Map<String, ToolExecutor> toolExecutors) {
+        List<ToolExecutionRequest> failedRequests = new ArrayList<>(errors.keySet());
+        List<ToolExecutionResultMessage> resultMessages = new ArrayList<>(executedRequests.size());
+        for (ToolExecutionRequest request : executedRequests) {
+            boolean failed = indexOf(failedRequests, request) >= 0 || !convertibleResults.containsKey(request);
+            resultMessages.add(
+                    failed
+                            ? failedToolResultMessage(request, toolExecutors)
+                            : toResultMessage(request, convertibleResults.get(request)));
+        }
+        return resultMessages;
+    }
+
+    private static void addSuppressedUnlessSame(Throwable error, Throwable suppressed) {
+        if (suppressed != error) {
+            error.addSuppressed(suppressed);
+        }
+    }
+
+    /**
+     * Saves, in the chat memory, a result for every tool call of a round whose tool error fails the invocation in the
+     * {@code CompletableFuture} and reactive modes, right before the invocation fails with {@code error}, so that no
+     * tool call in the chat memory is left without a result (most providers reject such a history on the next
+     * request). A tool whose future completed exceptionally gets a result that says that it failed; the error itself
+     * is not included, so that nothing from the exception reaches the LLM. The other tools get their result from
+     * {@code resultMessages}. A failure while saving is added as suppressed to {@code error}: the returned future
+     * always completes normally, and this method never throws.
+     *
+     * @param chatMemory     the chat memory, or {@code null} when the AI Service has none (then nothing is saved)
+     * @param toolRequests   the requests of the round, in the order the tools were requested
+     * @param resultMessages the result of each request, in the same order
+     * @param toolFutures    the futures of the round's tools, all completed, keyed like the results were collected
+     * @param toolExecutors  the executors of the tools of the round, by tool name: a failed request whose tool has no
+     *                       executor (the LLM called a tool that does not exist) gets a result that says that the tool
+     *                       does not exist
+     * @param error          the error the invocation fails with
+     * @since 1.25.0
+     */
+    @Internal
+    public CompletableFuture<Void> saveResultsOfFailedRoundAsync(
+            @Nullable ChatMemory chatMemory,
+            List<ToolExecutionRequest> toolRequests,
+            List<ToolExecutionResultMessage> resultMessages,
+            Map<ToolExecutionRequest, CompletableFuture<ToolExecutionResult>> toolFutures,
+            Map<String, ToolExecutor> toolExecutors,
+            Throwable error) {
+        if (chatMemory == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+        return failOnThrow(() -> {
+                    List<ChatMessage> results = new ArrayList<>(toolRequests.size());
+                    for (int i = 0; i < toolRequests.size(); i++) {
+                        ToolExecutionRequest request = toolRequests.get(i);
+                        // looked up like the results were collected: equal tool calls share one future
+                        boolean failed = toolFutures.get(request).isCompletedExceptionally();
+                        results.add(failed ? failedToolResultMessage(request, toolExecutors) : resultMessages.get(i));
+                    }
+                    return chatMemory.addAsync(results);
+                })
+                .handle((ignored, saveError) -> {
+                    if (saveError != null) {
+                        addSuppressedUnlessSame(error, unwrapCompletionException(saveError));
+                    }
+                    return null;
+                });
+    }
+
+    /**
+     * A result for every request of a failed round, in request order: the result of each tool that has terminated
+     * (from {@code executedResultMessages}, in the order of {@code executedRequests}), and, for each tool that did not
+     * run because a tool of the round failed, a result that says so.
+     */
+    private static List<ToolExecutionResultMessage> resultsOfFailedRound(
+            List<ToolExecutionRequest> toolRequests,
+            List<ToolExecutionRequest> executedRequests,
+            List<ToolExecutionResultMessage> executedResultMessages,
+            Map<ToolExecutionRequest, Throwable> errors,
+            Map<String, ToolExecutor> toolExecutors) {
+        ToolExecutionRequest failedRequest = errors.keySet().iterator().next();
+        List<ToolExecutionResultMessage> results = new ArrayList<>(toolRequests.size());
+        for (ToolExecutionRequest request : toolRequests) {
+            int executedIndex = indexOf(executedRequests, request);
+            results.add(
+                    executedIndex >= 0
+                            ? executedResultMessages.get(executedIndex)
+                            : notExecutedToolResultMessage(request, failedRequest, toolExecutors));
+        }
+        return results;
+    }
+
+    private static ToolExecutionResultMessage failedToolResultMessage(
+            ToolExecutionRequest request, Map<String, ToolExecutor> toolExecutors) {
+        return failedToolResultMessage(request, toolExecutors.containsKey(request.name()));
+    }
+
+    private static ToolExecutionResultMessage failedToolResultMessage(ToolExecutionRequest request, boolean toolExists) {
+        return ToolExecutionResultMessage.builder()
+                .id(request.id())
+                .toolName(request.name())
+                .text(failedToolResultText(request, toolExists))
+                .isError(true)
+                .build();
+    }
+
+    private static String failedToolResultText(ToolExecutionRequest request, boolean toolExists) {
+        return "Tool '" + request.name() + "' " + (toolExists ? "failed" : "does not exist")
+                + ", so the request was stopped";
+    }
+
+    private static ToolExecutionResultMessage notExecutedToolResultMessage(
+            ToolExecutionRequest request, ToolExecutionRequest failedRequest, Map<String, ToolExecutor> toolExecutors) {
+        String failure = toolExecutors.containsKey(failedRequest.name()) ? "failed" : "does not exist";
+        return ToolExecutionResultMessage.builder()
+                .id(request.id())
+                .toolName(request.name())
+                .text("Tool '" + request.name() + "' was not executed because tool '" + failedRequest.name() + "' "
+                        + failure)
+                .isError(true)
+                .build();
     }
 
     /**

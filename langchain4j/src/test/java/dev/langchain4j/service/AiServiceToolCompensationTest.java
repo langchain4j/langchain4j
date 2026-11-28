@@ -1056,12 +1056,13 @@ class AiServiceToolCompensationTest {
 
         if (errorHandling == ErrorHandling.SEND_TO_LLM) {
             assertThat(answer).succeedsWithin(10, SECONDS).isEqualTo("done");
-            assertThat(toolResultTexts(memory, "credit")).containsExactly("credited", CREDIT_ROLLED_BACK);
         } else {
             assertThat(failureOf(answer)).isSameAs(bank.thrown);
-            // the results of the failing round are not saved
-            assertThat(toolResultTexts(memory, "credit")).containsExactly("credited");
+            // the results of the failing round are saved too, so that no tool call is left without a result
+            assertThat(toolResultTexts(memory, "withdraw"))
+                    .containsExactly("Tool 'withdraw' failed, so the request was stopped");
         }
+        assertThat(toolResultTexts(memory, "credit")).containsExactly("credited", CREDIT_ROLLED_BACK);
         assertThat(bank.calls).containsExactlyInAnyOrder("credit:Mario", "withdraw:Mario", "uncredit:Mario");
     }
 
@@ -1093,12 +1094,10 @@ class AiServiceToolCompensationTest {
 
         if (errorHandling == ErrorHandling.SEND_TO_LLM) {
             assertThat(answer).succeedsWithin(10, SECONDS).isEqualTo("done");
-            assertThat(toolResultTexts(memory, "credit")).containsExactly(CREDIT_ROLLED_BACK);
         } else {
             assertThat(failureOf(answer)).isSameAs(bank.thrown);
-            // the results of the failing round are not saved
-            assertThat(toolResultTexts(memory, "credit")).isEmpty();
         }
+        assertThat(toolResultTexts(memory, "credit")).containsExactly(CREDIT_ROLLED_BACK);
         assertThat(toolResultTexts(memory, "reserve")).containsExactly(RESERVE_ROLLED_BACK);
         assertThat(bank.calls)
                 .containsExactlyInAnyOrder(
