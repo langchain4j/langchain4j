@@ -17,6 +17,7 @@ https://github.com/googleapis/java-genai
 - [Models Available](#models-available)
 - [GoogleGenAiChatModel](#googlegenaichatmodel)
     - [Configuring](#configuring)
+- [GoogleGenAiInteractionsChatModel](#googlegenaiinteractionschatmodel)    
 - [GoogleGenAiStreamingChatModel](#googlegenaistreamingchatmodel)
     - [Executor](#executor)
 - [GoogleGenAiEmbeddingModel](#googlegenaiembeddingmodel)
@@ -197,6 +198,23 @@ ChatModel gemini = GoogleGenAiChatModel.builder()
 ```
 
 This works the same way on `GoogleGenAiStreamingChatModel`.
+
+## GoogleGenAiInteractionsChatModel
+
+`GoogleGenAiInteractionsChatModel` targets the Gemini Interactions API (`client.interactions`), supporting multi-turn conversations, multimodal inputs, function calling, built-in tools (Google Search, Google Maps, URL context, code execution), structured JSON schema outputs, and thinking models.
+
+Unlike server-side stateful interaction chains, `GoogleGenAiInteractionsChatModel` runs statelessly (`store=false`) and stores the serialized turn steps (`thought`, `function_call`, `model_output`, and built-in tool steps) in `AiMessage` attributes under `"interaction_steps"`. Keep the returned `AiMessage` intact in `ChatMemory` so subsequent turns replay the exact step sequence (including hidden thought signatures).
+
+```java
+ChatModel gemini = GoogleGenAiInteractionsChatModel.builder()
+    .apiKey(System.getenv("GOOGLE_AI_GEMINI_API_KEY"))
+    .modelName("gemini-3.8-flash")
+    .thinkingLevel("LOW")
+    .includeThoughts(true)
+    .returnThinking(true)
+    .build();
+
+String response = gemini.chat("Hello Gemini!");
 
 ## Request & Response Logging
 
@@ -820,6 +838,7 @@ if (metadata.rawResponse() != null
 
 You can apply custom key-value labels to your Google Gen AI requests, which can be useful for billing, metrics, and tracking purposes. Custom labels are supported by:
 - `GoogleGenAiChatModel`
+- `GoogleGenAiInteractionsChatModel` (with `.apiVersion("v1beta")`)
 - `GoogleGenAiStreamingChatModel`
 - `GoogleGenAiBatchChatModel`
 - `GoogleGenAiImageModel`
