@@ -97,7 +97,12 @@ class MongoDbMetadataFilterMapper {
     }
 
     private static Bson mapNot(Not filter) {
-        return Filters.not(map(filter.expression()));
+        Filter expression = filter.expression();
+        if (expression instanceof And || expression instanceof Or || expression instanceof Not) {
+            // $not can only negate a field condition, so MongoDB rejects it around $and, $or and $nor
+            return Filters.nor(map(expression));
+        }
+        return Filters.not(map(expression));
     }
 
     private static Bson mapContains(ContainsString filter) {
