@@ -21,6 +21,8 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.TokenCountEstimator;
 import dev.langchain4j.model.openai.OpenAiTokenCountEstimator;
+import dev.langchain4j.store.memory.chat.ChatMemoryStore;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -29,8 +31,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
 import org.junit.jupiter.api.Test;
-import dev.langchain4j.store.memory.chat.ChatMemoryStore;
-import java.time.Duration;
 
 class TokenWindowChatMemoryTest implements WithAssertions {
 
@@ -617,8 +617,7 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
     @Test
     void should_work_even_if_the_first_message_exceeds_max_tokens() {
-        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(
-                2, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(2, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
 
         chatMemory.add(userMessageWithTokens(25));
         chatMemory.add(aiMessageWithTokens(10));
@@ -629,8 +628,7 @@ class TokenWindowChatMemoryTest implements WithAssertions {
 
     @Test
     void should_not_fail_even_with_just_system_message() {
-        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(
-                2, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(2, new OpenAiTokenCountEstimator("gpt-3.5-turbo"));
         chatMemory.add(systemMessageWithTokens(10));
     }
 
@@ -899,7 +897,10 @@ class TokenWindowChatMemoryTest implements WithAssertions {
                 .chatMemoryStore(store)
                 .build();
 
-        assertThat(chatMemory.messagesAsync()).failsWithin(Duration.ofSeconds(5)).withThrowableThat().withCause(failure);
+        assertThat(chatMemory.messagesAsync())
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .withCause(failure);
         assertThat(chatMemory.addAsync(List.of(userMessage("hi"))))
                 .failsWithin(Duration.ofSeconds(5))
                 .withThrowableThat()
@@ -950,7 +951,159 @@ class TokenWindowChatMemoryTest implements WithAssertions {
         boolean interruptFlagRestored = Thread.interrupted(); // also clears the flag for the next tests
 
         assertThat(interruptFlagRestored).isTrue();
-        assertThat(future).failsWithin(Duration.ofSeconds(5)).withThrowableThat().withCause(interrupted);
+        assertThat(future)
+                .failsWithin(Duration.ofSeconds(5))
+                .withThrowableThat()
+                .withCause(interrupted);
+    }
+
+    @Test
+    void should_estimate_token_count_once_per_add() {
+
+        // given
+        CountingTokenCountEstimator estimator = new CountingTokenCountEstimator();
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(1000, estimator);
+
+        // when
+        chatMemory.add(userMessageWithTokens(10));
+        chatMemory.add(aiMessageWithTokens(10));
+        chatMemory.add(userMessageWithTokens(10));
+
+        // then: each add estimates the whole window exactly once
+        assertThat(estimator.bulkEstimationCalls).isEqualTo(3);
+        assertThat(estimator.messageEstimationCalls).isZero();
+    }
+
+    @Test
+    void should_estimate_token_count_once_per_add_async() {
+
+        // given
+        CountingTokenCountEstimator estimator = new CountingTokenCountEstimator();
+        TokenWindowChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(1000, estimator);
+        chatMemory.add(userMessage("seed"));
+        int bulkEstimationCallsBefore = estimator.bulkEstimationCalls;
+
+        // when
+        chatMemory
+                .addAsync(List.of(userMessageWithTokens(10), aiMessageWithTokens(10)))
+                .join();
+
+        // then: one estimation per added message, no extra estimation of the window
+        assertThat(estimator.bulkEstimationCalls - bulkEstimationCallsBefore).isEqualTo(2);
+    }
+
+    @Test
+    void should_still_estimate_evicted_message_separately_when_eviction_happens() {
+
+        // given
+        CountingTokenCountEstimator estimator = new CountingTokenCountEstimator();
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(25, estimator);
+
+        // when
+        chatMemory.add(userMessageWithTokens(10));
+        chatMemory.add(aiMessageWithTokens(10));
+        chatMemory.add(userMessageWithTokens(10));
+
+        // then: whole window estimated once per add, the evicted message once
+        assertThat(estimator.bulkEstimationCalls).isEqualTo(3);
+        assertThat(estimator.messageEstimationCalls).isEqualTo(1);
+        assertThat(chatMemory.messages()).hasSize(2);
+    }
+
+    @Test
+    void should_respect_latest_max_tokens_when_adding_to_a_store_that_no_longer_fits() {
+
+        // given
+        int[] maxTokens = {33};
+        CountingTokenCountEstimator estimator = new CountingTokenCountEstimator();
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .dynamicMaxTokens(id -> maxTokens[0], estimator)
+                .build();
+        UserMessage msgA = userMessageWithTokens(10);
+        UserMessage msgB = userMessageWithTokens(10);
+        UserMessage msgC = userMessageWithTokens(10);
+        chatMemory.add(msgA);
+        chatMemory.add(msgB);
+        chatMemory.add(msgC);
+
+        // when the window shrinks and a new message is added without an intermediate read
+        maxTokens[0] = 23;
+        int bulkEstimationCallsBefore = estimator.bulkEstimationCalls;
+        UserMessage msgD = userMessageWithTokens(10);
+        chatMemory.add(msgD);
+
+        // then the stored messages are windowed with the latest maxTokens,
+        // and the add falls back to estimating the window before and after appending
+        assertThat(estimator.bulkEstimationCalls - bulkEstimationCallsBefore).isEqualTo(2);
+        assertThat(chatMemory.messages()).containsExactly(msgC, msgD);
+    }
+
+    @Test
+    void should_not_re_estimate_when_reading_messages_that_have_not_changed() {
+
+        // given
+        CountingTokenCountEstimator estimator = new CountingTokenCountEstimator();
+        ChatMemory chatMemory = TokenWindowChatMemory.withMaxTokens(1000, estimator);
+        chatMemory.add(userMessageWithTokens(10));
+        chatMemory.add(aiMessageWithTokens(10));
+        int bulkEstimationCallsBefore = estimator.bulkEstimationCalls;
+
+        // when the same, already windowed messages are read again
+        chatMemory.messages();
+        chatMemory.messages();
+
+        // then no new estimation is needed
+        assertThat(estimator.bulkEstimationCalls).isEqualTo(bulkEstimationCallsBefore);
+    }
+
+    @Test
+    void should_keep_newly_added_tool_result_when_store_no_longer_fits() {
+
+        // given a stored AiMessage with tool requests that no longer fits the window
+        int[] maxTokens = {100};
+        ChatMemory chatMemory = TokenWindowChatMemory.builder()
+                .dynamicMaxTokens(id -> maxTokens[0], TOKEN_COUNT_ESTIMATOR)
+                .build();
+        ToolExecutionRequest toolExecutionRequest = ToolExecutionRequest.builder()
+                .id("1")
+                .name("calculator")
+                .arguments("{ \"a\": 2, \"b\": 2 }")
+                .build();
+        AiMessage aiMessage = AiMessage.from(toolExecutionRequest);
+        chatMemory.add(aiMessage);
+        maxTokens[0] = 25;
+
+        // when a tool result is added while the stored messages exceed maxTokens
+        ToolExecutionResultMessage toolExecutionResultMessage =
+                ToolExecutionResultMessage.from(toolExecutionRequest, "4");
+        chatMemory.add(toolExecutionResultMessage);
+
+        // then the stored AiMessage is evicted first and the new tool result is kept,
+        // instead of being evicted as an orphan of the AiMessage it was appended to
+        assertThat(chatMemory.messages()).containsExactly(toolExecutionResultMessage);
+    }
+
+    private static class CountingTokenCountEstimator implements TokenCountEstimator {
+
+        private int bulkEstimationCalls;
+        private int messageEstimationCalls;
+
+        @Override
+        public int estimateTokenCountInText(String text) {
+            return TOKEN_COUNT_ESTIMATOR.estimateTokenCountInText(text);
+        }
+
+        @Override
+        public int estimateTokenCountInMessage(ChatMessage message) {
+            messageEstimationCalls++;
+            return TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessage(message);
+        }
+
+        @Override
+        public int estimateTokenCountInMessages(Iterable<ChatMessage> messages) {
+            bulkEstimationCalls++;
+            return TOKEN_COUNT_ESTIMATOR.estimateTokenCountInMessages(messages);
+        }
     }
 
     @SuppressWarnings("unchecked")
