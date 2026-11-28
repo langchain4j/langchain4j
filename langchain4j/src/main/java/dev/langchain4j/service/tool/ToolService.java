@@ -975,12 +975,18 @@ public class ToolService {
                 Throwable firstError) {
 
             if (isCancelled(cancellation)) {
-                List<ToolExecutionResultMessage> resultMessages = toolExecutionRequests.stream()
-                        .map(request -> toResultMessage(request, toolResults.get(request)))
-                        .toList();
-                synchronized (compensableExecutions) {
-                    collectCompensable(
-                            toolExecutionRequests, toolResults, resultMessages, compensableExecutions, invocationContext);
+                if (compensableExecutions != null) {
+                    List<ToolExecutionResultMessage> resultMessages = toolExecutionRequests.stream()
+                            .map(request -> toResultMessage(request, toolResults.get(request)))
+                            .toList();
+                    synchronized (compensableExecutions) {
+                        collectCompensable(
+                                toolExecutionRequests,
+                                toolResults,
+                                resultMessages,
+                                compensableExecutions,
+                                invocationContext);
+                    }
                 }
                 unsavedRoundRequests = toolExecutionRequests;
                 return CompletableFuture.failedFuture(
