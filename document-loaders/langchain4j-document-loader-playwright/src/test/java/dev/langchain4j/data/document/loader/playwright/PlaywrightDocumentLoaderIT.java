@@ -5,19 +5,27 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNullPointerException;
 
 import com.microsoft.playwright.Browser;
+import com.microsoft.playwright.Playwright;
 import dev.langchain4j.data.document.Document;
 import dev.langchain4j.data.document.DocumentParser;
 import dev.langchain4j.data.document.parser.TextDocumentParser;
 import dev.langchain4j.data.document.transformer.jsoup.HtmlToTextDocumentTransformer;
-import io.orangebuffalo.testcontainers.playwright.PlaywrightContainer;
+import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 
 class PlaywrightDocumentLoaderIT {
 
+    // the Playwright server in the container must have the same version as the Playwright client on the classpath
+    static final String PLAYWRIGHT_VERSION = Playwright.class.getPackage().getImplementationVersion();
+    static final int PLAYWRIGHT_SERVER_PORT = 3000;
+
     static PlaywrightDocumentLoader loader;
-    static PlaywrightContainer playwrightContainer;
+    static GenericContainer<?> playwrightContainer;
+    static Playwright playwright;
     static Browser browser;
 
     HtmlToTextDocumentTransformer extractor = new HtmlToTextDocumentTransformer();
@@ -25,9 +33,27 @@ class PlaywrightDocumentLoaderIT {
 
     @BeforeAll
     static void beforeAll() {
-        playwrightContainer = new PlaywrightContainer();
+        playwrightContainer = new GenericContainer<>("mcr.microsoft.com/playwright:v" + PLAYWRIGHT_VERSION + "-noble")
+                .withExposedPorts(PLAYWRIGHT_SERVER_PORT)
+                .withCommand(
+                        "npx",
+                        "-y",
+                        "playwright@" + PLAYWRIGHT_VERSION,
+                        "run-server",
+                        "--port",
+                        String.valueOf(PLAYWRIGHT_SERVER_PORT),
+                        "--host",
+                        "0.0.0.0")
+                .waitingFor(Wait.forLogMessage(".*Listening on.*", 1));
         playwrightContainer.start();
-        browser = playwrightContainer.getPlaywrightApi().chromium();
+
+        // browsers run in the container, so there is no need to download them locally
+        playwright = Playwright.create(
+                new Playwright.CreateOptions().setEnv(Map.of("PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD", "1")));
+        browser = playwright
+                .chromium()
+                .connect("ws://" + playwrightContainer.getHost() + ":"
+                        + playwrightContainer.getMappedPort(PLAYWRIGHT_SERVER_PORT) + "/");
         loader = PlaywrightDocumentLoader.builder().browser(browser).build();
     }
 
@@ -38,6 +64,9 @@ class PlaywrightDocumentLoaderIT {
         }
         if (browser != null) {
             browser.close();
+        }
+        if (playwright != null) {
+            playwright.close();
         }
         if (playwrightContainer != null) {
             playwrightContainer.stop();
