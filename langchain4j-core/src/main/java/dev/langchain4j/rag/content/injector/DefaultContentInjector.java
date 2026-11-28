@@ -14,6 +14,7 @@ import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.input.Prompt;
 import dev.langchain4j.model.input.PromptTemplate;
 import dev.langchain4j.rag.content.Content;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -83,7 +84,7 @@ public class DefaultContentInjector implements ContentInjector {
         Prompt prompt = createPrompt(chatMessage, contents);
         if (chatMessage instanceof UserMessage userMessage) {
             return userMessage.toBuilder()
-                    .contents(List.of(TextContent.from(prompt.text())))
+                    .contents(mergeInjectedText(userMessage.contents(), prompt.text()))
                     .build();
         } else {
             return prompt.toUserMessage();
@@ -92,9 +93,52 @@ public class DefaultContentInjector implements ContentInjector {
 
     protected Prompt createPrompt(ChatMessage chatMessage, List<Content> contents) {
         Map<String, Object> variables = new HashMap<>();
-        variables.put("userMessage", ((UserMessage) chatMessage).singleText());
+        variables.put("userMessage", userMessageText((UserMessage) chatMessage));
         variables.put("contents", format(contents));
         return promptTemplate.apply(variables);
+    }
+
+    /**
+     * Text of the user message used as the {@code {{userMessage}}} prompt variable.
+     * Concatenates every {@link TextContent} part; does not require a single text part, so multimodal
+     * messages (text plus image, audio or PDF) can be injected into.
+     */
+    private static String userMessageText(UserMessage userMessage) {
+        if (userMessage.hasSingleText()) {
+            return userMessage.singleText();
+        }
+        StringBuilder text = new StringBuilder();
+        for (dev.langchain4j.data.message.Content part : userMessage.contents()) {
+            if (part instanceof TextContent textContent) {
+                text.append(textContent.text());
+            }
+        }
+        return text.toString();
+    }
+
+    /**
+     * Replaces the first text part with the injected prompt (or prepends one if the message had no text),
+     * leaving non-text parts (images, audio, PDFs, ...) in their original order. Additional text parts are
+     * omitted because their text is already included in the prompt.
+     */
+    private static List<dev.langchain4j.data.message.Content> mergeInjectedText(
+            List<dev.langchain4j.data.message.Content> parts, String injectedText) {
+        List<dev.langchain4j.data.message.Content> merged = new ArrayList<>(parts.size());
+        boolean replacedText = false;
+        for (dev.langchain4j.data.message.Content part : parts) {
+            if (part instanceof TextContent) {
+                if (!replacedText) {
+                    merged.add(TextContent.from(injectedText));
+                    replacedText = true;
+                }
+            } else {
+                merged.add(part);
+            }
+        }
+        if (!replacedText) {
+            merged.add(0, TextContent.from(injectedText));
+        }
+        return merged;
     }
 
     protected String format(List<Content> contents) {
