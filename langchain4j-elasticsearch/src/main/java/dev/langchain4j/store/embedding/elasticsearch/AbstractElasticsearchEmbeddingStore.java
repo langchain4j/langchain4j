@@ -13,6 +13,9 @@ import co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import co.elastic.clients.elasticsearch._types.ErrorCause;
 import co.elastic.clients.elasticsearch._types.Refresh;
+import co.elastic.clients.elasticsearch._types.mapping.DynamicTemplate;
+import co.elastic.clients.elasticsearch._types.mapping.Property;
+import co.elastic.clients.elasticsearch._types.mapping.TypeMapping;
 import co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
@@ -24,6 +27,7 @@ import co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.Version;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
+import co.elastic.clients.util.NamedValue;
 import dev.langchain4j.data.document.Metadata;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.data.segment.TextSegment;
@@ -54,10 +58,14 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
 
     private static final Logger log = LoggerFactory.getLogger(AbstractElasticsearchEmbeddingStore.class);
 
+    static final int METADATA_KEYWORD_IGNORE_ABOVE = 32766;
+
     protected ElasticsearchConfiguration configuration;
     protected ElasticsearchClient client;
     protected String indexName;
     protected Refresh refresh;
+    private final Object indexLock = new Object();
+    private volatile boolean indexReady;
 
     /**
      * Initialize using a RestClient
@@ -316,16 +324,20 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
      */
     @Override
     public void removeAll() {
-        try {
-            client.indices().delete(dir -> dir.index(indexName));
-        } catch (ElasticsearchException e) {
-            if (e.status() == 404) {
-                log.debug("The index [{}] does not exist.", indexName);
-            } else {
+        synchronized (indexLock) {
+            try {
+                client.indices().delete(dir -> dir.index(indexName));
+                indexReady = false;
+            } catch (ElasticsearchException e) {
+                if (e.status() == 404) {
+                    indexReady = false;
+                    log.debug("The index [{}] does not exist.", indexName);
+                } else {
+                    throw new ElasticsearchRequestFailedException(e);
+                }
+            } catch (IOException e) {
                 throw new ElasticsearchRequestFailedException(e);
             }
-        } catch (IOException e) {
-            throw new ElasticsearchRequestFailedException(e);
         }
     }
 
@@ -349,6 +361,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
 
     private void bulkIndex(List<String> ids, List<Embedding> embeddings, List<TextSegment> embedded)
             throws IOException {
+        ensureIndex();
         int size = ids.size();
         log.debug("calling bulkIndex with [{}] elements", size);
         BulkRequest.Builder bulkBuilder = new BulkRequest.Builder().refresh(refresh);
@@ -369,6 +382,7 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
     }
 
     private void bulkIndexText(List<String> ids, List<TextSegment> embedded) throws IOException {
+        ensureIndex();
         int size = ids.size();
         log.debug("calling bulkIndex with [{}] elements", size);
         BulkRequest.Builder bulkBuilder = new BulkRequest.Builder().refresh(refresh);
@@ -384,6 +398,44 @@ public abstract class AbstractElasticsearchEmbeddingStore implements EmbeddingSt
         }
         BulkResponse response = client.bulk(bulkBuilder.build());
         handleBulkResponseErrors(response);
+    }
+
+    private void ensureIndex() throws IOException {
+        if (indexReady) {
+            return;
+        }
+        synchronized (indexLock) {
+            if (indexReady) {
+                return;
+            }
+            if (!client.indices().exists(request -> request.index(indexName)).value()) {
+                try {
+                    client.indices().create(request -> request.index(indexName).mappings(stringMetadataMapping()));
+                } catch (ElasticsearchException e) {
+                    if (!indexAlreadyExists(e)) {
+                        throw e;
+                    }
+                }
+            }
+            indexReady = true;
+        }
+    }
+
+    static TypeMapping stringMetadataMapping() {
+        return TypeMapping.of(mappings -> mappings.dateDetection(false)
+                .dynamicTemplates(NamedValue.of(
+                        "metadata_strings",
+                        DynamicTemplate.of(template -> template.pathMatch("metadata.*")
+                                .matchMappingType("string")
+                                .mapping(Property.of(property -> property.text(text -> text.fields(
+                                        "keyword",
+                                        Property.of(keyword -> keyword.keyword(
+                                                field -> field.ignoreAbove(METADATA_KEYWORD_IGNORE_ABOVE)))))))))));
+    }
+
+    private static boolean indexAlreadyExists(ElasticsearchException exception) {
+        ErrorCause cause = exception.error();
+        return cause != null && "resource_already_exists_exception".equals(cause.type());
     }
 
     private void handleBulkResponseErrors(BulkResponse response) {

@@ -3,6 +3,7 @@ package dev.langchain4j.store.embedding.elasticsearch;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.RETURNS_SELF;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
@@ -13,10 +14,16 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.Refresh;
 import co.elastic.clients.elasticsearch.core.BulkRequest;
 import co.elastic.clients.elasticsearch.core.BulkResponse;
+import co.elastic.clients.elasticsearch.indices.ElasticsearchIndicesClient;
+import co.elastic.clients.elasticsearch.indices.ExistsRequest;
+import co.elastic.clients.transport.endpoints.BooleanResponse;
+import co.elastic.clients.util.ObjectBuilder;
 import dev.langchain4j.data.embedding.Embedding;
 import dev.langchain4j.rag.content.retriever.elasticsearch.ElasticsearchContentRetriever;
 import java.io.IOException;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpVersion;
 import org.apache.http.entity.ContentType;
@@ -153,10 +160,18 @@ class ElasticsearchEmbeddingStoreRefreshTest {
 
     private static ElasticsearchClient mockClient() throws IOException {
         ElasticsearchClient client = mock(ElasticsearchClient.class, RETURNS_SELF);
+        ElasticsearchIndicesClient indices = mock(ElasticsearchIndicesClient.class);
+        when(client.indices()).thenReturn(indices);
+        when(indices.exists(anyExists())).thenReturn(new BooleanResponse(true));
         when(client.bulk(any(BulkRequest.class)))
                 .thenReturn(BulkResponse.of(
                         response -> response.took(0).errors(false).items(List.of())));
         return client;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Function<ExistsRequest.Builder, ObjectBuilder<ExistsRequest>> anyExists() {
+        return any(Function.class);
     }
 
     private static RestClient mockRestClient() throws IOException {
@@ -167,7 +182,17 @@ class ElasticsearchEmbeddingStoreRefreshTest {
         when(response.getEntity())
                 .thenAnswer(ignored ->
                         new StringEntity("{\"took\":0,\"errors\":false,\"items\":[]}", ContentType.APPLICATION_JSON));
-        when(restClient.performRequest(any(Request.class))).thenReturn(response);
+        when(restClient.performRequest(any(Request.class))).thenAnswer(invocation -> {
+            Request request = invocation.getArgument(0);
+            if ("HEAD".equals(request.getMethod())) {
+                Response exists = mock(Response.class);
+                when(exists.getStatusLine()).thenReturn(new BasicStatusLine(HttpVersion.HTTP_1_1, 200, "OK"));
+                when(exists.getHeader("X-Elastic-Product")).thenReturn("Elasticsearch");
+                when(exists.getEntity()).thenReturn(new StringEntity("", ContentType.APPLICATION_JSON));
+                return exists;
+            }
+            return response;
+        });
         return restClient;
     }
 
@@ -190,10 +215,12 @@ class ElasticsearchEmbeddingStoreRefreshTest {
 
     private static void assertRestRequests(RestClient restClient, Refresh refresh) throws IOException {
         ArgumentCaptor<Request> requests = ArgumentCaptor.forClass(Request.class);
-        verify(restClient, times(2)).performRequest(requests.capture());
-        assertThat(requests.getAllValues()).allSatisfy(request -> {
-            assertThat(request.getEndpoint()).isEqualTo("/_bulk");
-            assertThat(request.getParameters()).containsEntry("refresh", refresh.jsonValue());
-        });
+        verify(restClient, atLeast(2)).performRequest(requests.capture());
+        assertThat(requests.getAllValues().stream()
+                        .filter(request -> "/_bulk".equals(request.getEndpoint()))
+                        .collect(Collectors.toList()))
+                .hasSize(2)
+                .allSatisfy(
+                        request -> assertThat(request.getParameters()).containsEntry("refresh", refresh.jsonValue()));
     }
 }
