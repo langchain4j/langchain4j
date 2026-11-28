@@ -154,6 +154,14 @@ public abstract class HierarchicalDocumentSplitter implements DocumentSplitter {
                 }
             }
 
+            // The buffer now contains only carried overlap. Start a fresh segment if the part fits on its own.
+            if (partSize <= maxSegmentSize) {
+                segmentBuilder.reset();
+                overlap = null;
+                segmentBuilder.append(part);
+                continue;
+            }
+
             // Enforce that we have a sub-splitter defined.
             if (subSplitter == null) {
                 throw new RuntimeException(String.format(
