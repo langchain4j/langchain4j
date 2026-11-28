@@ -6,10 +6,12 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.exception.HttpException;
 import dev.langchain4j.mcp.client.transport.McpOperationHandler;
 import dev.langchain4j.mcp.client.transport.McpTransport;
 import dev.langchain4j.mcp.protocol.McpClientMessage;
+import dev.langchain4j.mcp.protocol.McpListToolsRequest;
 import dev.langchain4j.mcp.protocol.McpServerDiscoverRequest;
 import dev.langchain4j.mcp.protocol.McpSubscriptionsListenRequest;
 import dev.langchain4j.spi.CapturedContext;
@@ -474,6 +476,90 @@ public class DefaultMcpClientListenResubscribeTest {
         assertThat(listenCalls.get()).isEqualTo(1);
     }
 
+    @Test
+    public void should_keep_cached_tools_while_listen_is_down() throws Exception {
+        McpTransport transport = mock(McpTransport.class);
+        when(transport.requiresCancellationNotification()).thenReturn(false);
+
+        CompletableFuture<String> firstListen = new CompletableFuture<>();
+        AtomicInteger listenCalls = new AtomicInteger();
+        AtomicInteger toolsListCalls = new AtomicInteger();
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            McpClientMessage message =
+                    invocation.getArgument(0, McpCallContext.class).message();
+            if (message instanceof McpServerDiscoverRequest) {
+                return CompletableFuture.completedFuture(discoverResult());
+            }
+            if (message instanceof McpSubscriptionsListenRequest) {
+                listenCalls.incrementAndGet();
+                return firstListen;
+            }
+            if (message instanceof McpListToolsRequest) {
+                toolsListCalls.incrementAndGet();
+                return CompletableFuture.completedFuture(toolsListResult("echo"));
+            }
+            return CompletableFuture.completedFuture("{}");
+        });
+
+        // Long interval so the retry listen is not opened before we assert fail-open.
+        try (DefaultMcpClient client = client(transport)
+                .reconnectInterval(Duration.ofSeconds(2))
+                .cacheToolList(true)
+                .build()) {
+            assertThat(client.listTools()).extracting(ToolSpecification::name).containsExactly("echo");
+            assertThat(toolsListCalls.get()).isEqualTo(1);
+
+            firstListen.completeExceptionally(new RuntimeException("Connection prematurely closed"));
+
+            assertThat(client.listTools()).extracting(ToolSpecification::name).containsExactly("echo");
+            assertThat(toolsListCalls.get()).isEqualTo(1);
+        }
+    }
+
+    @Test
+    public void should_evict_caches_only_after_a_new_listen_is_established() throws Exception {
+        McpTransport transport = mock(McpTransport.class);
+        when(transport.requiresCancellationNotification()).thenReturn(false);
+
+        CompletableFuture<String> firstListen = new CompletableFuture<>();
+        CountDownLatch listenStartedAgain = new CountDownLatch(1);
+        AtomicInteger listenCalls = new AtomicInteger();
+        AtomicInteger toolsListCalls = new AtomicInteger();
+        when(transport.sendRequest(any(McpCallContext.class))).thenAnswer(invocation -> {
+            McpClientMessage message =
+                    invocation.getArgument(0, McpCallContext.class).message();
+            if (message instanceof McpServerDiscoverRequest) {
+                return CompletableFuture.completedFuture(discoverResult());
+            }
+            if (message instanceof McpSubscriptionsListenRequest) {
+                int n = listenCalls.incrementAndGet();
+                if (n == 1) {
+                    return firstListen;
+                }
+                listenStartedAgain.countDown();
+                return new CompletableFuture<>();
+            }
+            if (message instanceof McpListToolsRequest) {
+                int n = toolsListCalls.incrementAndGet();
+                String name = n == 1 ? "echo" : "echo2";
+                return CompletableFuture.completedFuture(toolsListResult(name));
+            }
+            return CompletableFuture.completedFuture("{}");
+        });
+
+        try (DefaultMcpClient client = client(transport).cacheToolList(true).build()) {
+            assertThat(client.listTools()).extracting(ToolSpecification::name).containsExactly("echo");
+            assertThat(toolsListCalls.get()).isEqualTo(1);
+
+            firstListen.completeExceptionally(new RuntimeException("Connection prematurely closed"));
+            assertThat(listenStartedAgain.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThat(listenCalls.get()).isGreaterThanOrEqualTo(2);
+
+            assertThat(client.listTools()).extracting(ToolSpecification::name).containsExactly("echo2");
+            assertThat(toolsListCalls.get()).isEqualTo(2);
+        }
+    }
+
     private static DefaultMcpClient.Builder client(McpTransport transport) {
         return new DefaultMcpClient.Builder()
                 .transport(transport)
@@ -555,5 +641,13 @@ public class DefaultMcpClientListenResubscribeTest {
         return """
                 {"result":{"supportedVersions":["2026-07-28"],"capabilities":{},"resultType":"complete"}}
                 """;
+    }
+
+    private static String toolsListResult(String name) {
+        return "{\"result\":{\"tools\":[{\"name\":\""
+                + name
+                + "\",\"description\":\""
+                + name
+                + "\",\"inputSchema\":{\"type\":\"object\",\"properties\":{}}}]}}";
     }
 }

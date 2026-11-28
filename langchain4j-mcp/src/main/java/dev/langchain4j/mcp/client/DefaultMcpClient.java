@@ -156,6 +156,7 @@ public class DefaultMcpClient implements McpClient {
     private volatile CompletableFuture<String> listChangeSubscriptionFuture;
     private final AtomicLong listChangeSubscribeGeneration = new AtomicLong();
     private final AtomicInteger listChangeRetryAttempt = new AtomicInteger();
+    private final AtomicBoolean listCachesStaleAfterDisconnect = new AtomicBoolean();
     private final Executor listChangeResubscribeExecutor;
     private volatile CapturedContext listChangeSubscribeContext = CapturedContext.NONE;
 
@@ -635,6 +636,9 @@ public class DefaultMcpClient implements McpClient {
                 return;
             }
             logListChangeSubscriptionFailure(error, rejected ? errorMessageOf(result) : null, streamEnded);
+            // Fail open: keep the cached lists until a later listen is established.
+            // Evicting here would hand the model an empty tool list mid-outage.
+            listCachesStaleAfterDisconnect.set(true);
             scheduleListChangeResubscribe(generation);
         });
     }
@@ -661,6 +665,33 @@ public class DefaultMcpClient implements McpClient {
         if (listChangeRetryAttempt.getAndSet(0) > 0) {
             log.info("Re-subscribed to list-change notifications");
         }
+        evictStaleListCachesIfListenEstablished();
+    }
+
+    /**
+     * After a disconnect, cached tool, prompt and resource lists are kept until a
+     * new {@code subscriptions/listen} is actually open. Evicting on failure would
+     * expose an empty list mid-session; evicting only after the listen is established
+     * lets the next {@code listTools()} (and friends) re-read, because {@code list_changed}
+     * notifications sent while disconnected are gone.
+     */
+    private void evictStaleListCachesIfListenEstablished() {
+        if (!listCachesStaleAfterDisconnect.get()) {
+            return;
+        }
+        CompletableFuture<String> listen = listChangeSubscriptionFuture;
+        if (listen == null || listen.isDone()) {
+            return;
+        }
+        evictListCaches();
+        listCachesStaleAfterDisconnect.set(false);
+    }
+
+    private void evictListCaches() {
+        toolListRefs.set(null);
+        resourceRefs.set(null);
+        resourceTemplateRefs.set(null);
+        promptRefs.set(null);
     }
 
     private void logListChangeSubscriptionFailure(Throwable error, String rejectedMessage, boolean streamEnded) {
@@ -1614,6 +1645,7 @@ public class DefaultMcpClient implements McpClient {
             Supplier<T> cachedReferenceSupplier,
             InvocationContext invocationContext) {
         if (useCache) {
+            evictStaleListCachesIfListenEstablished();
             T cachedValue = cachedReferenceSupplier.get();
             if (cachedValue != null) {
                 // if there is a value in the cache, just return it
