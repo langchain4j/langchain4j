@@ -8,8 +8,6 @@ import static dev.langchain4j.internal.Utils.isNullOrEmpty;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.fromJson;
 import static dev.langchain4j.model.ollama.OllamaJsonUtils.toJsonWithoutIdent;
 
-import java.lang.reflect.Type;
-import dev.langchain4j.internal.Types;
 import dev.langchain4j.Internal;
 import dev.langchain4j.agent.tool.ToolExecutionRequest;
 import dev.langchain4j.agent.tool.ToolSpecification;
@@ -25,6 +23,7 @@ import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.exception.UnsupportedFeatureException;
+import dev.langchain4j.internal.Types;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.request.ResponseFormat;
@@ -33,6 +32,7 @@ import dev.langchain4j.model.chat.request.json.JsonObjectSchema;
 import dev.langchain4j.model.chat.response.ChatResponseMetadata;
 import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,15 +78,15 @@ class InternalOllamaHelper {
     }
 
     private static Parameters toOllamaParameters(ToolSpecification toolSpecification) {
-        if (toolSpecification.parameters() != null) {
-            JsonObjectSchema parameters = toolSpecification.parameters();
-            return Parameters.builder()
-                    .properties(toMap(parameters.properties()))
-                    .required(parameters.required())
-                    .build();
-        } else {
-            return null;
+        JsonObjectSchema parameters = toolSpecification.parameters();
+        if (parameters == null) {
+            // Ollama >= 0.34.2 rejects a tool without a "parameters" object
+            return Parameters.builder().properties(Map.of()).required(List.of()).build();
         }
+        return Parameters.builder()
+                .properties(toMap(parameters.properties()))
+                .required(parameters.required())
+                .build();
     }
 
     static List<ToolExecutionRequest> toToolExecutionRequests(List<ToolCall> toolCalls) {
