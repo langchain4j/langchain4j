@@ -39,6 +39,8 @@ import dev.langchain4j.service.guardrail.OutputGuardrails;
 import dev.langchain4j.service.tool.ToolErrorHandlerResult;
 import dev.langchain4j.store.memory.chat.ChatMemoryStore;
 import dev.langchain4j.store.memory.chat.InMemoryChatMemoryStore;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CancellationException;
@@ -1553,8 +1555,20 @@ class AiServicesNonBlockingTest {
 
     private static void assertNoBlockingCalls() {
         assertThat(violations)
-                .as("BlockHound detected blocking calls on the model-response delivery thread "
-                        + "- see stack trace(s) below")
+                .withFailMessage(() -> "BlockHound detected blocking calls on the model-response delivery thread:%n%s"
+                        .formatted(stackTracesOf(violations)))
                 .isEmpty();
+    }
+
+    /**
+     * The full stack trace of each recorded violation. AssertJ's default failure message cuts every stack after a few
+     * frames, so it shows BlockHound's own frames but not the code that actually blocked.
+     */
+    private static String stackTracesOf(List<Throwable> violations) {
+        StringWriter stackTraces = new StringWriter();
+        PrintWriter writer = new PrintWriter(stackTraces);
+        violations.forEach(violation -> violation.printStackTrace(writer));
+        writer.flush();
+        return stackTraces.toString();
     }
 }

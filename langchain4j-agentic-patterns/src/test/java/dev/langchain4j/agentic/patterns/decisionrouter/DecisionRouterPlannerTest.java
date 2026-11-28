@@ -1,6 +1,6 @@
 package dev.langchain4j.agentic.patterns.decisionrouter;
 
-import static dev.langchain4j.agentic.patterns.decisionrouter.DecisionRouterPlanner.QUESTION_NAME;
+import static dev.langchain4j.agentic.patterns.decisionrouter.DecisionRouterPlanner.CHOICE_QUESTION_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.entry;
@@ -136,7 +136,7 @@ class DecisionRouterPlannerTest {
     }
 
     private static MockDecisionModel modelAnswering(ChoiceAnswer answer) {
-        return MockDecisionModel.thatAnswers(Map.of(QUESTION_NAME, answer));
+        return MockDecisionModel.thatAnswers(Map.of(CHOICE_QUESTION_NAME, answer));
     }
 
     private static MockDecisionModel modelAnsweringRelevance(Map<String, Double> probabilities) {
@@ -183,8 +183,8 @@ class DecisionRouterPlannerTest {
 
         DecisionRequest request = model.request();
         assertThat(request.input()).isEqualTo(FieldsInput.from(Map.of("request", REQUEST)));
-        assertThat(request.questions()).containsOnlyKeys(QUESTION_NAME);
-        ChoiceQuestion question = (ChoiceQuestion) request.questions().get(QUESTION_NAME);
+        assertThat(request.questions()).containsOnlyKeys(CHOICE_QUESTION_NAME);
+        ChoiceQuestion question = (ChoiceQuestion) request.questions().get(CHOICE_QUESTION_NAME);
         assertThat(question.text()).isEqualTo("Which agent is best suited to handle this request?");
         // an option is named after its agent, and an agent without a description is described by its name
         assertThat(question.options())
@@ -203,7 +203,7 @@ class DecisionRouterPlannerTest {
                 .build();
 
         assertThat(router(ExpertRouter.class, planner).ask(REQUEST)).isEqualTo("medical answer");
-        assertThat(model.request().questions().get(QUESTION_NAME).text())
+        assertThat(model.request().questions().get(CHOICE_QUESTION_NAME).text())
                 .isEqualTo("Which expert should answer this request?");
     }
 
@@ -321,7 +321,7 @@ class DecisionRouterPlannerTest {
                 .build();
 
         assertThat(router.ask(REQUEST)).isEqualTo("medical answer");
-        ChoiceQuestion question = (ChoiceQuestion) model.request().questions().get(QUESTION_NAME);
+        ChoiceQuestion question = (ChoiceQuestion) model.request().questions().get(CHOICE_QUESTION_NAME);
         assertThat(question.options()).containsOnlyKeys("medical", "technical");
         assertThat(inactiveCalls).hasValue(0);
     }
@@ -502,7 +502,7 @@ class DecisionRouterPlannerTest {
     @Test
     void shouldTellApartByTheirIdsTheSubagentsWithTheSameName() {
         MockDecisionModel model =
-                MockDecisionModel.thatAnswers(Map.of(QUESTION_NAME, choice("medical$1", Map.of())));
+                MockDecisionModel.thatAnswers(Map.of(CHOICE_QUESTION_NAME, choice("medical$1", Map.of())));
 
         ExpertRouter router = AgenticServices.plannerBuilder(ExpertRouter.class)
                 .subAgents(medicalExpert, new AnotherMedicalExpert(), legalExpert)
@@ -512,7 +512,7 @@ class DecisionRouterPlannerTest {
         assertThat(router.ask(REQUEST)).isEqualTo("another medical answer");
         assertThat(medicalExpert.calls).hasValue(0);
         // only the agents with the same name are options named after their ids
-        ChoiceQuestion question = (ChoiceQuestion) model.request().questions().get(QUESTION_NAME);
+        ChoiceQuestion question = (ChoiceQuestion) model.request().questions().get(CHOICE_QUESTION_NAME);
         assertThat(question.options())
                 .containsExactly(
                         entry("medical$0", "Answers medical questions"),
@@ -693,7 +693,7 @@ class DecisionRouterPlannerTest {
     @Test
     void shouldCountTheDecisionCallOnTheRouter() {
         MockDecisionModel model = MockDecisionModel.thatResponds(DecisionResponse.builder()
-                .answer(QUESTION_NAME, choice("legal", Map.of("legal", 0.8, "medical", 0.2)))
+                .answer(CHOICE_QUESTION_NAME, choice("legal", Map.of("legal", 0.8, "medical", 0.2)))
                 .modelName("decision-model")
                 .tokenUsage(new TokenUsage(40, 2))
                 .build());
@@ -711,7 +711,7 @@ class DecisionRouterPlannerTest {
     void shouldCountNoTokensWhenTheOnlyCandidateIsInvokedWithoutAskingTheModel() {
         // a response with tokens, so that a call that should not happen would be counted
         MockDecisionModel model = MockDecisionModel.thatResponds(DecisionResponse.builder()
-                .answer(QUESTION_NAME, choice("medical", Map.of()))
+                .answer(CHOICE_QUESTION_NAME, choice("medical", Map.of()))
                 .tokenUsage(new TokenUsage(40, 2))
                 .build());
         AgentMonitor monitor = new AgentMonitor();

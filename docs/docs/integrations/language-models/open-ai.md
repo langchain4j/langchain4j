@@ -320,45 +320,56 @@ String mimeType = response.audio().mimeType();      // e.g. "audio/mpeg"
 The input text must not exceed 4096 characters (the OpenAI Speech API limit);
 longer input causes an `IllegalArgumentException`.
 
-## Creating `OpenAiTextToSpeechModel`
+## Creating `OpenAiAudioTranscriptionModel`
 
-`OpenAiTextToSpeechModel` performs text-to-speech (TTS) using the
-[OpenAI Speech API](https://platform.openai.com/docs/api-reference/audio/createSpeech).
-It returns the generated audio as raw bytes wrapped in an `Audio` object.
+:::note
+This feature is experimental and may change in future releases.
+:::
 
-The supported models are `tts-1`, `tts-1-hd`, `gpt-4o-mini-tts`, and `gpt-4o-mini-tts-2025-12-15`
-(see `OpenAiTextToSpeechModelName`). The default voice is `alloy`.
+`OpenAiAudioTranscriptionModel` performs speech-to-text (STT) using the
+[OpenAI Audio Transcriptions API](https://platform.openai.com/docs/api-reference/audio/createTranscription).
+It is available in the same `langchain4j-open-ai` dependency shown above.
 
 ### Plain Java
+
 ```java
-import dev.langchain4j.model.audio.TextToSpeechModel;
-import dev.langchain4j.model.audio.TextToSpeechRequest;
-import dev.langchain4j.model.audio.TextToSpeechResponse;
-import dev.langchain4j.model.openai.OpenAiTextToSpeechModel;
-import dev.langchain4j.model.openai.OpenAiTextToSpeechModelName;
+import dev.langchain4j.data.audio.Audio;
+import dev.langchain4j.model.audio.AudioTranscriptionModel;
+import dev.langchain4j.model.audio.AudioTranscriptionRequest;
+import dev.langchain4j.model.audio.AudioTranscriptionResponse;
+import dev.langchain4j.model.openai.OpenAiAudioTranscriptionModel;
+import dev.langchain4j.model.openai.OpenAiAudioTranscriptionModelName;
 
-TextToSpeechModel model = OpenAiTextToSpeechModel.builder()
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+AudioTranscriptionModel model = OpenAiAudioTranscriptionModel.builder()
         .apiKey(System.getenv("OPENAI_API_KEY"))
-        .modelName(OpenAiTextToSpeechModelName.TTS_1)
-        .voice("alloy") // optional, defaults to "alloy"
+        .modelName(OpenAiAudioTranscriptionModelName.WHISPER_1)
         .build();
 
-// Convenience method (uses the model's default voice):
-TextToSpeechResponse response = model.synthesize("Hello world!");
-
-// Or with an explicit request (the voice here overrides the model default):
-TextToSpeechRequest request = TextToSpeechRequest.builder()
-        .text("Hello world!")
-        .voice("nova")
+Audio audio = Audio.builder()
+        .binaryData(Files.readAllBytes(Path.of("sample.wav")))
+        .mimeType("audio/wav")
         .build();
-TextToSpeechResponse response2 = model.synthesize(request);
 
-byte[] audioBytes = response.audio().binaryData(); // e.g. write to an .mp3 file
-String mimeType = response.audio().mimeType();      // e.g. "audio/mpeg"
+// Convenience method returning the transcribed text:
+String text = model.transcribeToText(audio);
+
+// Or an explicit request with an optional language and prompt:
+AudioTranscriptionRequest request = AudioTranscriptionRequest.builder(audio)
+        .language("en")
+        .prompt("A conversation about LangChain4j.")
+        .build();
+AudioTranscriptionResponse response = model.transcribe(request);
+String textWithOptions = response.text();
 ```
 
-The input text must not exceed 4096 characters (the OpenAI Speech API limit);
-longer input causes an `IllegalArgumentException`.
+The example reads a local WAV file and requires handling `IOException`, for example by declaring
+`throws IOException` on the enclosing method. Set the MIME type to match the audio file.
+
+Provide the audio as binary data or as Base64-encoded data using `Audio.builder().base64Data(...)`.
+URL-based audio is not supported by this integration; download it before creating the `Audio`.
 
 ## Creating `OpenAiTokenCountEstimator`
 
