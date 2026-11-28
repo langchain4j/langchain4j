@@ -29,6 +29,7 @@ import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.TextContent;
 import dev.langchain4j.data.message.ToolExecutionResultMessage;
 import dev.langchain4j.data.message.UserMessage;
+import dev.langchain4j.exception.LangChain4jException;
 import dev.langchain4j.exception.ToolArgumentsException;
 import dev.langchain4j.exception.ToolExecutionException;
 import dev.langchain4j.internal.CurrentInvocation;
@@ -41,6 +42,7 @@ import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.model.output.FinishReason;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.observability.api.AiServiceListenerRegistrar;
 import dev.langchain4j.observability.api.event.AiServiceRequestIssuedEvent;
@@ -679,6 +681,11 @@ public class ToolService {
 
             AiMessage aiMessage = chatResponse.aiMessage();
 
+            LangChain4jException truncatedToolCalls = truncatedToolCallsError(chatResponse);
+            if (truncatedToolCalls != null) {
+                throw truncatedToolCalls;
+            }
+
             if (chatMemory != null) {
                 chatMemory.add(aiMessage);
             } else {
@@ -916,6 +923,11 @@ public class ToolService {
             }
 
             AiMessage aiMessage = chatResponse.aiMessage();
+
+            LangChain4jException truncatedToolCalls = truncatedToolCallsError(chatResponse);
+            if (truncatedToolCalls != null) {
+                return CompletableFuture.failedFuture(truncatedToolCalls);
+            }
 
             final List<ChatMessage> accumulator;
             final CompletionStage<Void> aiMessageAdded;
@@ -2044,6 +2056,28 @@ public class ToolService {
             }
             return rolledBack;
         });
+    }
+
+    /**
+     * Checks whether the tools requested by a model response may be executed.
+     * <p>
+     * A response that was cut off by the output token limit ({@link FinishReason#LENGTH}) can contain tool calls with
+     * missing or incomplete arguments, or lack tool calls the model meant to make. Executing them would run application
+     * code on input the model never completed, so the tool calls of such a response are refused.
+     * <p>
+     * Call this before the model's message is added to the chat memory, so that no tool call is left without a result.
+     *
+     * @param chatResponse the response of the model
+     * @return the exception to throw instead of executing the tools, or {@code null} if the response may be acted on
+     */
+    public static @Nullable LangChain4jException truncatedToolCallsError(ChatResponse chatResponse) {
+        if (chatResponse.finishReason() != FinishReason.LENGTH
+                || !chatResponse.aiMessage().hasToolExecutionRequests()) {
+            return null;
+        }
+        return new LangChain4jException("The model's response was cut off by the output token limit "
+                + "(finish reason: LENGTH) while it was requesting tool calls, so the tools were not executed. "
+                + "Give the chat model a higher output token limit.");
     }
 
     public static boolean shouldReturnImmediately(boolean anyToolErrored, List<ReturnBehavior> returnBehaviors) {
