@@ -309,7 +309,8 @@ public final class RetryUtils {
                 DefaultExecutorProvider.getDefaultExecutor().execute(task);
             } catch (Throwable error) {
                 Exceptions.restoreInterruptIfInterrupted(error);
-                result.completeExceptionally(error);
+                // Keep caller completion callbacks off the shared delay scheduler.
+                CompletableFuture.runAsync(() -> result.completeExceptionally(error));
             }
         };
     }
