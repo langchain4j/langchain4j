@@ -15,8 +15,10 @@ import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.request.ChatRequestParameters;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.vertexai.anthropic.internal.ValidationUtils;
+import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicOutputConfig;
 import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicRequest;
 import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicResponse;
+import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.vertexai.anthropic.internal.client.VertexAiAnthropicClient;
 import dev.langchain4j.model.vertexai.anthropic.internal.mapper.AnthropicRequestMapper;
 import dev.langchain4j.model.vertexai.anthropic.internal.mapper.AnthropicResponseMapper;
@@ -68,6 +70,8 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
     private final Boolean logRequests;
     private final Boolean logResponses;
     private final Boolean enablePromptCaching;
+    private final AnthropicThinking thinking;
+    private final AnthropicOutputConfig outputConfig;
     private final List<ChatModelListener> listeners;
     private final String location;
 
@@ -86,6 +90,9 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
         this.logRequests = getOrDefault(builder.logRequests, false);
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.enablePromptCaching = getOrDefault(builder.enablePromptCaching, false);
+        this.thinking = AnthropicRequestMapper.toThinking(
+                builder.thinkingType, builder.thinkingBudgetTokens, builder.thinkingDisplay);
+        this.outputConfig = AnthropicRequestMapper.toOutputConfig(builder.effort);
         this.listeners = builder.listeners != null ? List.copyOf(builder.listeners) : List.of();
         this.location = ensureNotBlank(builder.location, "location");
     }
@@ -127,7 +134,9 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
                                     && !parameters.stopSequences().isEmpty()
                             ? parameters.stopSequences()
                             : stopSequences,
-                    enablePromptCaching);
+                    enablePromptCaching,
+                    thinking,
+                    outputConfig);
 
             if (logRequests) {
                 logger.debug("Anthropic request: {}", anthropicRequest);
@@ -179,6 +188,10 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
         private Boolean logRequests;
         private Boolean logResponses;
         private Boolean enablePromptCaching;
+        private String thinkingType;
+        private Integer thinkingBudgetTokens;
+        private String thinkingDisplay;
+        private String effort;
         private List<ChatModelListener> listeners;
         private GoogleCredentials credentials;
 
@@ -261,6 +274,61 @@ public class VertexAiAnthropicChatModel implements ChatModel, Closeable {
          */
         public VertexAiAnthropicChatModelBuilder enablePromptCaching(Boolean enablePromptCaching) {
             this.enablePromptCaching = enablePromptCaching;
+            return this;
+        }
+
+        /**
+         * Sets the {@code type} of the <a href="https://platform.claude.com/docs/en/build-with-claude/extended-thinking">thinking</a>
+         * request parameter, for example {@code "adaptive"}, {@code "disabled"} or {@code "enabled"}.
+         * <p>
+         * When neither this nor {@link #thinkingBudgetTokens(Integer)} is set, no {@code thinking} parameter is sent
+         * and the model uses its default. The value is sent as is; which types are accepted depends on the model.
+         *
+         * @see #thinkingBudgetTokens(Integer)
+         * @see #thinkingDisplay(String)
+         * @see #effort(String)
+         */
+        public VertexAiAnthropicChatModelBuilder thinkingType(String thinkingType) {
+            this.thinkingType = thinkingType;
+            return this;
+        }
+
+        /**
+         * Sets the {@code budget_tokens} of the thinking request parameter. Used with thinking type {@code "enabled"},
+         * which only older models accept; current models use {@code "adaptive"} thinking together with
+         * {@link #effort(String)} instead.
+         *
+         * @see #thinkingType(String)
+         */
+        public VertexAiAnthropicChatModelBuilder thinkingBudgetTokens(Integer thinkingBudgetTokens) {
+            this.thinkingBudgetTokens = thinkingBudgetTokens;
+            return this;
+        }
+
+        /**
+         * Sets the {@code display} of the thinking request parameter: {@code "summarized"} or {@code "omitted"}.
+         * Only sent together with {@link #thinkingType(String)} or {@link #thinkingBudgetTokens(Integer)}.
+         * <p>
+         * This only controls what the API returns in thinking blocks; the model thinks and is billed the same way.
+         * This model does not currently return thinking content: thinking blocks are left out of the {@code AiMessage}.
+         *
+         * @see #thinkingType(String)
+         */
+        public VertexAiAnthropicChatModelBuilder thinkingDisplay(String thinkingDisplay) {
+            this.thinkingDisplay = thinkingDisplay;
+            return this;
+        }
+
+        /**
+         * Sets the <a href="https://platform.claude.com/docs/en/build-with-claude/effort">effort</a>
+         * ({@code output_config.effort}), for example {@code "low"}, {@code "medium"}, {@code "high"},
+         * {@code "xhigh"} or {@code "max"}. When not set, the model uses its default.
+         * The value is sent as is; which levels are accepted depends on the model.
+         *
+         * @see #thinkingType(String)
+         */
+        public VertexAiAnthropicChatModelBuilder effort(String effort) {
+            this.effort = effort;
             return this;
         }
 

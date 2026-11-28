@@ -40,6 +40,34 @@ public class AnthropicRequestMapper {
             Integer topK,
             List<String> stopSequences,
             Boolean enablePromptCaching) {
+        return toRequest(
+                model,
+                messages,
+                toolSpecs,
+                toolChoice,
+                maxTokens,
+                temperature,
+                topP,
+                topK,
+                stopSequences,
+                enablePromptCaching,
+                null,
+                null);
+    }
+
+    public static AnthropicRequest toRequest(
+            String model,
+            List<ChatMessage> messages,
+            List<ToolSpecification> toolSpecs,
+            ToolChoice toolChoice,
+            Integer maxTokens,
+            Double temperature,
+            Double topP,
+            Integer topK,
+            List<String> stopSequences,
+            Boolean enablePromptCaching,
+            AnthropicThinking thinking,
+            AnthropicOutputConfig outputConfig) {
         if (model == null || model.trim().isEmpty()) {
             throw new IllegalArgumentException("model cannot be null or empty");
         }
@@ -54,6 +82,8 @@ public class AnthropicRequestMapper {
         request.topK = topK;
         request.stopSequences = stopSequences;
         request.stream = false;
+        request.thinking = thinking;
+        request.outputConfig = outputConfig;
 
         // Process messages like the original AnthropicMapper
         List<AnthropicMessage> anthropicMessages = toAnthropicMessages(messages);
@@ -76,6 +106,26 @@ public class AnthropicRequestMapper {
         request.anthropicVersion = Constants.ANTHROPIC_VERSION;
 
         return request;
+    }
+
+    /**
+     * Returns the {@code thinking} request object, or {@code null} when neither a type nor a budget is set,
+     * so that the request stays unchanged. Values are passed through as is: which combinations are accepted
+     * depends on the model, and the API reports invalid ones.
+     */
+    public static AnthropicThinking toThinking(
+            String thinkingType, Integer thinkingBudgetTokens, String thinkingDisplay) {
+        if (thinkingType == null && thinkingBudgetTokens == null) {
+            return null;
+        }
+        return new AnthropicThinking(thinkingType, thinkingBudgetTokens, thinkingDisplay);
+    }
+
+    /**
+     * Returns the {@code output_config} request object, or {@code null} when no effort is set.
+     */
+    public static AnthropicOutputConfig toOutputConfig(String effort) {
+        return effort == null ? null : new AnthropicOutputConfig(effort);
     }
 
     public static List<AnthropicMessage> toAnthropicMessages(List<ChatMessage> messages) {

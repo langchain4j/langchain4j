@@ -19,8 +19,10 @@ import dev.langchain4j.model.chat.response.StreamingChatResponseHandler;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.model.vertexai.anthropic.internal.Constants;
 import dev.langchain4j.model.vertexai.anthropic.internal.ValidationUtils;
+import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicOutputConfig;
 import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicRequest;
 import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicResponse;
+import dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicThinking;
 import dev.langchain4j.model.vertexai.anthropic.internal.client.StreamingResponseHandler;
 import dev.langchain4j.model.vertexai.anthropic.internal.client.VertexAiAnthropicClient;
 import dev.langchain4j.model.vertexai.anthropic.internal.client.VertexAiAnthropicJsonUtils;
@@ -47,6 +49,8 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
     private final Boolean logRequests;
     private final Boolean logResponses;
     private final Boolean enablePromptCaching;
+    private final AnthropicThinking thinking;
+    private final AnthropicOutputConfig outputConfig;
     private final List<ChatModelListener> listeners;
 
     public VertexAiAnthropicStreamingChatModel(VertexAiAnthropicStreamingChatModelBuilder builder) {
@@ -63,10 +67,10 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
                 builder.credentials);
         this.defaultRequestParameters = DefaultChatRequestParameters.builder()
                 .modelName(modelName)
-                .maxOutputTokens(
-                        ValidationUtils.validateMaxTokens(getOrDefault(builder.maxTokens, commonParameters.maxOutputTokens())))
-                .temperature(
-                        ValidationUtils.validateTemperature(getOrDefault(builder.temperature, commonParameters.temperature())))
+                .maxOutputTokens(ValidationUtils.validateMaxTokens(
+                        getOrDefault(builder.maxTokens, commonParameters.maxOutputTokens())))
+                .temperature(ValidationUtils.validateTemperature(
+                        getOrDefault(builder.temperature, commonParameters.temperature())))
                 .topP(ValidationUtils.validateTopP(getOrDefault(builder.topP, commonParameters.topP())))
                 .topK(ValidationUtils.validateTopK(getOrDefault(builder.topK, commonParameters.topK())))
                 .stopSequences(getOrDefault(builder.stopSequences, commonParameters.stopSequences()))
@@ -77,6 +81,9 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
         this.logRequests = getOrDefault(builder.logRequests, false);
         this.logResponses = getOrDefault(builder.logResponses, false);
         this.enablePromptCaching = getOrDefault(builder.enablePromptCaching, false);
+        this.thinking = AnthropicRequestMapper.toThinking(
+                builder.thinkingType, builder.thinkingBudgetTokens, builder.thinkingDisplay);
+        this.outputConfig = AnthropicRequestMapper.toOutputConfig(builder.effort);
         this.listeners = builder.listeners != null ? List.copyOf(builder.listeners) : List.of();
     }
 
@@ -105,8 +112,8 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
 
             logRequestIfEnabled(requestModelName, chatRequest.parameters().modelName(), anthropicRequest);
 
-            client.generateContentStreaming(anthropicRequest, requestModelName,
-                    createStreamingResponseHandler(handler));
+            client.generateContentStreaming(
+                    anthropicRequest, requestModelName, createStreamingResponseHandler(handler));
 
         } catch (Exception e) {
             try {
@@ -136,10 +143,13 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
                 parameters.topP(),
                 parameters.topK(),
                 parameters.stopSequences(),
-                enablePromptCaching);
+                enablePromptCaching,
+                thinking,
+                outputConfig);
     }
 
-    private void logRequestIfEnabled(String requestModelName, String parameterModelName, AnthropicRequest anthropicRequest) {
+    private void logRequestIfEnabled(
+            String requestModelName, String parameterModelName, AnthropicRequest anthropicRequest) {
         if (logRequests) {
             logger.debug("Using model name: {}", requestModelName);
             logger.debug("Anthropic streaming request: {}", anthropicRequest);
@@ -202,7 +212,8 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
             private void extractToolCallsFromResponse(AnthropicResponse response) {
                 if (response.content != null) {
                     logger.debug("Processing {} content blocks from response", response.content.size());
-                    for (dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent content : response.content) {
+                    for (dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent content :
+                            response.content) {
                         logger.debug("Content block: type={}, name={}, id={}", content.type, content.name, content.id);
                         if (isToolUseContent(content)) {
                             processToolContent(content);
@@ -212,11 +223,13 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
                 }
             }
 
-            private boolean isToolUseContent(dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent content) {
+            private boolean isToolUseContent(
+                    dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent content) {
                 return Constants.TOOL_USE_CONTENT_TYPE.equals(content.type) && content.name != null;
             }
 
-            private void processToolContent(dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent content) {
+            private void processToolContent(
+                    dev.langchain4j.model.vertexai.anthropic.internal.api.AnthropicContent content) {
                 try {
                     String arguments = serializeToolArguments(content.input);
                     dev.langchain4j.agent.tool.ToolExecutionRequest toolRequest =
@@ -369,6 +382,10 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
         private Boolean logRequests;
         private Boolean logResponses;
         private Boolean enablePromptCaching;
+        private String thinkingType;
+        private Integer thinkingBudgetTokens;
+        private String thinkingDisplay;
+        private String effort;
         private List<ChatModelListener> listeners;
         private GoogleCredentials credentials;
 
@@ -451,6 +468,62 @@ public class VertexAiAnthropicStreamingChatModel implements StreamingChatModel, 
          */
         public VertexAiAnthropicStreamingChatModelBuilder enablePromptCaching(Boolean enablePromptCaching) {
             this.enablePromptCaching = enablePromptCaching;
+            return this;
+        }
+
+        /**
+         * Sets the {@code type} of the <a href="https://platform.claude.com/docs/en/build-with-claude/extended-thinking">thinking</a>
+         * request parameter, for example {@code "adaptive"}, {@code "disabled"} or {@code "enabled"}.
+         * <p>
+         * When neither this nor {@link #thinkingBudgetTokens(Integer)} is set, no {@code thinking} parameter is sent
+         * and the model uses its default. The value is sent as is; which types are accepted depends on the model.
+         *
+         * @see #thinkingBudgetTokens(Integer)
+         * @see #thinkingDisplay(String)
+         * @see #effort(String)
+         */
+        public VertexAiAnthropicStreamingChatModelBuilder thinkingType(String thinkingType) {
+            this.thinkingType = thinkingType;
+            return this;
+        }
+
+        /**
+         * Sets the {@code budget_tokens} of the thinking request parameter. Used with thinking type {@code "enabled"},
+         * which only older models accept; current models use {@code "adaptive"} thinking together with
+         * {@link #effort(String)} instead.
+         *
+         * @see #thinkingType(String)
+         */
+        public VertexAiAnthropicStreamingChatModelBuilder thinkingBudgetTokens(Integer thinkingBudgetTokens) {
+            this.thinkingBudgetTokens = thinkingBudgetTokens;
+            return this;
+        }
+
+        /**
+         * Sets the {@code display} of the thinking request parameter: {@code "summarized"} or {@code "omitted"}.
+         * Only sent together with {@link #thinkingType(String)} or {@link #thinkingBudgetTokens(Integer)}.
+         * <p>
+         * This only controls what the API returns in thinking blocks; the model thinks and is billed the same way.
+         * This model does not currently return thinking content: thinking blocks are left out of the
+         * {@code AiMessage} and are not passed to {@code onPartialResponse}.
+         *
+         * @see #thinkingType(String)
+         */
+        public VertexAiAnthropicStreamingChatModelBuilder thinkingDisplay(String thinkingDisplay) {
+            this.thinkingDisplay = thinkingDisplay;
+            return this;
+        }
+
+        /**
+         * Sets the <a href="https://platform.claude.com/docs/en/build-with-claude/effort">effort</a>
+         * ({@code output_config.effort}), for example {@code "low"}, {@code "medium"}, {@code "high"},
+         * {@code "xhigh"} or {@code "max"}. When not set, the model uses its default.
+         * The value is sent as is; which levels are accepted depends on the model.
+         *
+         * @see #thinkingType(String)
+         */
+        public VertexAiAnthropicStreamingChatModelBuilder effort(String effort) {
+            this.effort = effort;
             return this;
         }
 
