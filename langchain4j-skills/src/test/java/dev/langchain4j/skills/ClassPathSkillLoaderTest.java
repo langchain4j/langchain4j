@@ -1,5 +1,6 @@
 package dev.langchain4j.skills;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
@@ -13,7 +14,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import org.junit.jupiter.api.Test;
@@ -24,6 +31,8 @@ class ClassPathSkillLoaderTest {
 
     private static final String SYMBOLIC_LINKS_NEED_PRIVILEGES_ON_WINDOWS =
             "creating symbolic links on Windows requires special privileges";
+    private static final int SKILL_LOADING_THREAD_COUNT = 15;
+    private static final int SKILL_LOADING_TIMEOUT_SECONDS = 30;
 
     @Test
     void should_load_all_skills_from_directory() {
@@ -265,6 +274,89 @@ class ClassPathSkillLoaderTest {
                         .extracting(SkillResource::relativePath, SkillResource::content)
                         .containsExactly(tuple("references/ref.md", "reference"));
             });
+        }
+    }
+
+    @Test
+    void should_load_skills_in_parallel_from_directory(@TempDir Path tempDir) throws Exception {
+        int skillsCount = 20;
+        String skillDirectoryPathPrefix = "skills/skill-";
+        for (int skillIndex = 0; skillIndex < skillsCount; skillIndex++) {
+            writeSkill(tempDir.resolve(skillDirectoryPathPrefix + skillIndex));
+        }
+
+        ExecutorService executor = Executors.newFixedThreadPool(SKILL_LOADING_THREAD_COUNT);
+        try (URLClassLoader classLoader = new URLClassLoader(new URL[] {tempDir.toUri().toURL()}, null)) {
+            List<Callable<Skill>> loadSkillOperations = new ArrayList<>();
+            for (int skillIndex = 0; skillIndex < skillsCount; skillIndex++) {
+                String skillDirectory = skillDirectoryPathPrefix + skillIndex;
+                loadSkillOperations.add(() -> ClassPathSkillLoader.loadSkill(skillDirectory, classLoader));
+            }
+
+            List<String> names = new ArrayList<>();
+            for (Future<Skill> pendingSkill : executor.invokeAll(loadSkillOperations)) {
+                names.add(pendingSkill.get(SKILL_LOADING_TIMEOUT_SECONDS, SECONDS).name());
+            }
+            assertThat(names).hasSize(skillsCount).doesNotHaveDuplicates();
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void should_load_skills_in_parallel_from_jar(@TempDir Path tempDir) throws Exception {
+        Path jarFile = createSkillsJar(tempDir);
+        List<String> skillNames = List.of("greeting-user", "test-skill", "using-process-tool");
+        int operationsPerSkill = 30;
+
+        ExecutorService executor = Executors.newFixedThreadPool(SKILL_LOADING_THREAD_COUNT);
+        try (URLClassLoader classLoader = new URLClassLoader(new URL[] {jarFile.toUri().toURL()}, null)) {
+            // all operations wait at the latch, so they open and close the JAR filesystem at the same time
+            CountDownLatch startSignal = new CountDownLatch(1);
+            List<Callable<Skill>> loadSkillOperations = new ArrayList<>();
+            for (int i = 0; i < operationsPerSkill; i++) {
+                for (String skillName : skillNames) {
+                    loadSkillOperations.add(() -> {
+                        startSignal.await();
+                        return ClassPathSkillLoader.loadSkill("skills/" + skillName, classLoader);
+                    });
+                }
+            }
+
+            List<Future<Skill>> pendingSkills = new ArrayList<>();
+            for (Callable<Skill> operation : loadSkillOperations) {
+                pendingSkills.add(executor.submit(operation));
+            }
+            startSignal.countDown();
+
+            List<String> names = new ArrayList<>();
+            for (Future<Skill> pendingSkill : pendingSkills) {
+                // rethrows an operation failure as ExecutionException
+                names.add(pendingSkill.get(SKILL_LOADING_TIMEOUT_SECONDS, SECONDS).name());
+            }
+            assertThat(names).hasSize(skillNames.size() * operationsPerSkill);
+            assertThat(names.stream().distinct().sorted().toList()).isEqualTo(skillNames);
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void should_load_skills_from_jar_whose_path_contains_spaces(@TempDir Path tempDir) throws IOException {
+        // the JAR URI is then URL-encoded: jar:file:/.../dir%20with%20spaces/skills.jar!/skills/...
+        Path jarFile = createSkillsJar(Files.createDirectories(tempDir.resolve("dir with spaces")));
+        try (URLClassLoader classLoader = new URLClassLoader(new URL[] {jarFile.toUri().toURL()}, null)) {
+
+            Skill skill = ClassPathSkillLoader.loadSkill("skills/using-process-tool", classLoader);
+            List<Skill> skills = ClassPathSkillLoader.loadSkills("skills", classLoader);
+
+            assertThat(skill.name()).isEqualTo("using-process-tool");
+            assertThat(skill.resources())
+                    .extracting(SkillResource::relativePath)
+                    .containsExactlyInAnyOrder("references/17.md", "references/25.md");
+            assertThat(skills)
+                    .extracting(Skill::name)
+                    .containsExactlyInAnyOrder("greeting-user", "test-skill", "using-process-tool");
         }
     }
 
