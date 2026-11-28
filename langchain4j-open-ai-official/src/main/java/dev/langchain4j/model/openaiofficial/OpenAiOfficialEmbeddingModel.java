@@ -53,7 +53,7 @@ public class OpenAiOfficialEmbeddingModel extends DimensionAwareEmbeddingModel {
                     builder.customHeaders);
         }
         this.modelName = builder.modelName;
-        this.dimensions = getOrDefault(builder.dimensions, knownDimension());
+        this.dimensions = builder.dimensions;
         this.user = builder.user;
         this.maxSegmentsPerBatch = getOrDefault(builder.maxSegmentsPerBatch, 2048);
         ensureGreaterThanZero(this.maxSegmentsPerBatch, "maxSegmentsPerBatch");
