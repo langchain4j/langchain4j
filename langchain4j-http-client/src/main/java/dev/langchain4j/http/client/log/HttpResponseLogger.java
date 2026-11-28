@@ -10,17 +10,17 @@ import org.slf4j.Logger;
 class HttpResponseLogger {
 
     static void log(Logger log, SuccessfulHttpResponse response) {
+        log(log, response, false);
+    }
+
+    static void log(Logger log, SuccessfulHttpResponse response, boolean logPayloads) {
         try {
-            log.info(
-                    """
+            log.info("""
                             HTTP response:
                             - status code: {}
                             - headers: {}
                             - body: {}
-                            """,
-                    response.statusCode(),
-                    format(response.headers()),
-                    formatBody(response));
+                            """, response.statusCode(), format(response.headers()), formatBody(response, logPayloads));
         } catch (Exception e) {
             log.warn("Exception occurred while logging HTTP response: {}", e.getMessage());
         }
@@ -28,14 +28,19 @@ class HttpResponseLogger {
 
     /**
      * Avoids decoding and dumping binary responses (e.g. audio) as text.
+     * Request and response payloads are redacted by default; full bodies
+     * (with secret fields masked) are logged only when {@code logPayloads} is true.
      */
-    private static Object formatBody(SuccessfulHttpResponse response) {
-        String contentType = response.contentType();
-        if (isTextual(contentType)) {
-            return response.body();
-        }
+    private static Object formatBody(SuccessfulHttpResponse response, boolean logPayloads) {
         byte[] bytes = response.bodyBytes();
         int length = bytes == null ? 0 : bytes.length;
+        if (!logPayloads) {
+            return length == 0 && bytes == null ? response.body() : "<" + length + " bytes>";
+        }
+        String contentType = response.contentType();
+        if (isTextual(contentType)) {
+            return HttpRequestLogger.maskBody(response.body());
+        }
         return "[binary body, " + length + " bytes, content-type: " + contentType + "]";
     }
 

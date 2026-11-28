@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import dev.langchain4j.http.client.HttpRequest;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -51,7 +52,9 @@ class HttpRequestLoggerMaskingTest {
     void should_mask_credential_carrying_header(String headerKey) {
         String formatted = HttpRequestLogger.format(headerKey, List.of(SECRET));
 
-        assertThat(formatted).isEqualTo("[" + headerKey + ": " + MASKED_SECRET + "]").doesNotContain(SECRET);
+        assertThat(formatted)
+                .isEqualTo("[" + headerKey + ": " + MASKED_SECRET + "]")
+                .doesNotContain(SECRET);
     }
 
     @ParameterizedTest
@@ -75,7 +78,9 @@ class HttpRequestLoggerMaskingTest {
     void should_mask_every_value_of_a_multi_valued_secret_header() {
         String formatted = HttpRequestLogger.format("Set-Cookie", List.of(SECRET, "session=0987654321fedcba"));
 
-        assertThat(formatted).isEqualTo("[Set-Cookie: [sk-12...gh, sessi...ba]]").doesNotContain(SECRET);
+        assertThat(formatted)
+                .isEqualTo("[Set-Cookie: [sk-12...gh, sessi...ba]]")
+                .doesNotContain(SECRET);
     }
 
     @ParameterizedTest
@@ -103,8 +108,7 @@ class HttpRequestLoggerMaskingTest {
 
     @Test
     void should_mask_user_info_containing_at_sign_in_url() {
-        assertThat(HttpRequestLogger.maskUrl("http://user:p@ss@localhost/path"))
-                .isEqualTo("http://***@localhost/path");
+        assertThat(HttpRequestLogger.maskUrl("http://user:p@ss@localhost/path")).isEqualTo("http://***@localhost/path");
     }
 
     @Test
@@ -161,7 +165,8 @@ class HttpRequestLoggerMaskingTest {
     void should_mask_only_secret_query_parameters_and_keep_the_rest_of_the_url() {
         String url = "https://example.com/search?q=cats&key=abc123&num=10&sig=xyz#top";
 
-        assertThat(HttpRequestLogger.maskUrl(url)).isEqualTo("https://example.com/search?q=cats&key=...&num=10&sig=...#top");
+        assertThat(HttpRequestLogger.maskUrl(url))
+                .isEqualTo("https://example.com/search?q=cats&key=...&num=10&sig=...#top");
     }
 
     @ParameterizedTest
@@ -223,9 +228,8 @@ class HttpRequestLoggerMaskingTest {
 
     @Test
     void should_not_mask_json_fields_whose_name_only_contains_a_secret_name() {
-        String body =
-                "{\"model\":\"gpt-4o\",\"max_tokens\":100,\"tokens\":\"visible\",\"token_count\":\"visible\","
-                        + "\"max_completion_tokens\":50,\"secrets_manager\":\"visible\"}";
+        String body = "{\"model\":\"gpt-4o\",\"max_tokens\":100,\"tokens\":\"visible\",\"token_count\":\"visible\","
+                + "\"max_completion_tokens\":50,\"secrets_manager\":\"visible\"}";
 
         assertThat(HttpRequestLogger.maskBody(body)).isEqualTo(body);
     }
@@ -299,7 +303,7 @@ class HttpRequestLoggerMaskingTest {
     // ---------- whole request ----------
 
     @Test
-    void should_mask_url_headers_and_body_when_logging_request() {
+    void should_mask_url_headers_and_body_when_logging_full_payloads() {
         HttpRequest request = HttpRequest.builder()
                 .method(POST)
                 .url("https://user:pass@example.com/v1/search")
@@ -310,10 +314,11 @@ class HttpRequestLoggerMaskingTest {
                 .build();
         Logger log = mock(Logger.class);
 
-        HttpRequestLogger.log(log, request);
+        HttpRequestLogger.log(log, request, true);
 
         ArgumentCaptor<Object> arguments = ArgumentCaptor.forClass(Object.class);
-        verify(log).info(anyString(), arguments.capture(), arguments.capture(), arguments.capture(), arguments.capture());
+        verify(log)
+                .info(anyString(), arguments.capture(), arguments.capture(), arguments.capture(), arguments.capture());
         verifyNoMoreInteractions(log);
         assertThat(arguments.getAllValues())
                 .containsExactly(
@@ -322,5 +327,51 @@ class HttpRequestLoggerMaskingTest {
                         "[Content-Type: application/json], [x-functions-key: " + MASKED_SECRET + "]",
                         "{\"api_key\":\"" + MASKED_SECRET + "\",\"max_tokens\":100}");
         assertThat(arguments.getAllValues().toString()).doesNotContain(SECRET);
+    }
+
+    @Test
+    void should_redact_request_body_by_default() {
+        String body = "{\"prompt\":\"PRIVATE_PROMPT\",\"api_key\":\"" + SECRET + "\"}";
+        HttpRequest request = HttpRequest.builder()
+                .method(POST)
+                .url("https://api.example.com/v1/chat?key=" + SECRET)
+                .addHeader("Authorization", "Bearer " + SECRET)
+                .body(body)
+                .build();
+        Logger log = mock(Logger.class);
+
+        HttpRequestLogger.log(log, request);
+
+        ArgumentCaptor<Object> arguments = ArgumentCaptor.forClass(Object.class);
+        verify(log)
+                .info(anyString(), arguments.capture(), arguments.capture(), arguments.capture(), arguments.capture());
+        verifyNoMoreInteractions(log);
+        String loggedUrl = (String) arguments.getAllValues().get(1);
+        String loggedHeaders = (String) arguments.getAllValues().get(2);
+        String loggedBody = (String) arguments.getAllValues().get(3);
+        assertThat(loggedUrl)
+                .isEqualTo("https://api.example.com/v1/chat?key=" + MASKED_SECRET)
+                .doesNotContain(SECRET);
+        assertThat(loggedHeaders).doesNotContain(SECRET);
+        assertThat(loggedBody)
+                .isEqualTo("<" + body.getBytes(StandardCharsets.UTF_8).length + " bytes>")
+                .doesNotContain("PRIVATE_PROMPT")
+                .doesNotContain(SECRET);
+    }
+
+    @Test
+    void formatBody_redacts_by_default_and_masks_when_logging_payloads() {
+        String body = "{\"prompt\":\"PRIVATE_PROMPT\",\"api_key\":\"" + SECRET + "\"}";
+
+        assertThat(HttpRequestLogger.formatBody(body, false))
+                .isEqualTo("<" + body.getBytes(StandardCharsets.UTF_8).length + " bytes>")
+                .doesNotContain("PRIVATE_PROMPT")
+                .doesNotContain(SECRET);
+        assertThat(HttpRequestLogger.formatBody(body, true))
+                .isEqualTo("{\"prompt\":\"PRIVATE_PROMPT\",\"api_key\":\"" + MASKED_SECRET + "\"}")
+                .doesNotContain(SECRET)
+                .contains("PRIVATE_PROMPT");
+        assertThat(HttpRequestLogger.formatBody(null, false)).isNull();
+        assertThat(HttpRequestLogger.formatBody("", true)).isEmpty();
     }
 }

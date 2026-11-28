@@ -11,6 +11,7 @@ import static java.util.stream.Collectors.toList;
 import dev.langchain4j.Internal;
 import dev.langchain4j.http.client.HttpRequest;
 import dev.langchain4j.internal.SecretMasking;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -43,8 +44,13 @@ class HttpRequestLogger {
     private static final Pattern JSON_START = Pattern.compile("\\s*[\\[{]");
 
     static void log(Logger log, HttpRequest httpRequest) {
+        log(log, httpRequest, false);
+    }
+
+    static void log(Logger log, HttpRequest httpRequest, boolean logPayloads) {
         try {
-            log.info("""
+            log.info(
+                    """
                             HTTP request:
                             - method: {}
                             - url: {}
@@ -54,7 +60,7 @@ class HttpRequestLogger {
                     httpRequest.method(),
                     maskUrl(httpRequest.url()),
                     format(httpRequest.headers()),
-                    maskBody(httpRequest.body()));
+                    formatBody(httpRequest.body(), logPayloads));
         } catch (Exception e) {
             log.warn("Exception occurred while logging HTTP request: {}", e.getMessage());
         }
@@ -88,6 +94,16 @@ class HttpRequestLogger {
 
     private static boolean isSecretQueryParameter(String name) {
         return isSecretName(name) || OTHER_SECRET_QUERY_PARAMETERS.contains(name.toLowerCase(Locale.ROOT));
+    }
+
+    static @Nullable String formatBody(@Nullable String body, boolean logPayloads) {
+        if (isNullOrEmpty(body)) {
+            return body;
+        }
+        if (logPayloads) {
+            return maskBody(body);
+        }
+        return "<" + body.getBytes(StandardCharsets.UTF_8).length + " bytes>";
     }
 
     static @Nullable String maskBody(@Nullable String body) {

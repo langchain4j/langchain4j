@@ -72,12 +72,16 @@ A value of 20 or more characters is shown as its first 5 and last 2 characters (
 a shorter value is replaced by `...`.
 - Request URL: the user info (`https://user:password@host` is logged as `https://***@host`)
 and the value of every query parameter whose name contains one of the words above, as well as `sig` and `code`.
-- Request body: the values of the JSON string fields and form fields `api_key`, `apikey`, `api-key`, `password`,
-`secret`, `client_secret`, `token`, `access_token`, `refresh_token` and `id_token`.
+- Request body: by default the body is logged only as its size (`<123 bytes>`), so prompts and other
+application data do not end up in log files. The same applies to textual response bodies.
+To log the full payload, set the system property `-Dlangchain4j.http.logPayloads=true`,
+or construct a `LoggingHttpClient` with `logPayloads` set to `true`.
+Secret JSON string fields and form fields (`api_key`, `apikey`, `api-key`, `password`,
+`secret`, `client_secret`, `token`, `access_token`, `refresh_token` and `id_token`)
+are still masked when full payloads are enabled.
 
 Body field names are matched as a whole and ignoring case,
 so `apiKey` is masked, but `max_tokens` is not.
-Everything else, including your prompts and the model's answers, is logged as is.
 The Amazon Bedrock integration masks request and response headers with the same name rule
 and logs `[REDACTED]` instead of their values.
 
