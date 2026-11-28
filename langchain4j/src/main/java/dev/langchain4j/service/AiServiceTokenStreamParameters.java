@@ -1,13 +1,14 @@
 package dev.langchain4j.service;
 
 import dev.langchain4j.Internal;
+import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.guardrail.GuardrailRequestParams;
 import dev.langchain4j.invocation.InvocationContext;
+import dev.langchain4j.memory.ChatMemory;
 import dev.langchain4j.model.chat.request.ChatRequest;
 import dev.langchain4j.model.chat.response.StreamingHandle;
 import dev.langchain4j.rag.content.Content;
-import dev.langchain4j.agent.tool.ToolSpecification;
 import dev.langchain4j.service.tool.ToolArgumentsErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutionErrorHandler;
 import dev.langchain4j.service.tool.ToolExecutor;
@@ -32,6 +33,7 @@ public class AiServiceTokenStreamParameters {
     private final List<Content> retrievedContents;
     private final AiServiceContext context;
     private final InvocationContext invocationContext;
+    private final ChatMemory chatMemory;
     private final GuardrailRequestParams commonGuardrailParams;
     private final Object methodKey;
 
@@ -45,6 +47,7 @@ public class AiServiceTokenStreamParameters {
         this.retrievedContents = builder.retrievedContents;
         this.context = builder.context;
         this.invocationContext = builder.invocationContext;
+        this.chatMemory = builder.chatMemory;
         this.commonGuardrailParams = builder.commonGuardrailParams;
         this.methodKey = builder.methodKey;
     }
@@ -154,6 +157,10 @@ public class AiServiceTokenStreamParameters {
         return invocationContext;
     }
 
+    public ChatMemory chatMemory() {
+        return chatMemory;
+    }
+
     /**
      * Retrieves the common parameters shared across guardrail checks for validating interactions
      * between a user and a language model, if available.
@@ -197,6 +204,7 @@ public class AiServiceTokenStreamParameters {
         private List<Content> retrievedContents;
         private AiServiceContext context;
         private InvocationContext invocationContext;
+        private ChatMemory chatMemory;
         private GuardrailRequestParams commonGuardrailParams;
         private Object methodKey;
 
@@ -370,6 +378,11 @@ public class AiServiceTokenStreamParameters {
 
         public Builder invocationContext(InvocationContext invocationContext) {
             this.invocationContext = invocationContext;
+            return this;
+        }
+
+        public Builder chatMemory(ChatMemory chatMemory) {
+            this.chatMemory = chatMemory;
             return this;
         }
 

@@ -89,7 +89,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private final Consumer<Throwable> errorHandler;
 
-    private final ChatMemory temporaryMemory;
+    private final ChatMemory chatMemory;
     private final TokenUsage tokenUsage;
 
     private final ToolServiceContext toolServiceContext;
@@ -134,7 +134,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
             Consumer<ChatResponse> intermediateResponseHandler,
             Consumer<ChatResponse> completeResponseHandler,
             Consumer<Throwable> errorHandler,
-            ChatMemory temporaryMemory,
+            ChatMemory chatMemory,
             TokenUsage tokenUsage,
             ToolServiceContext toolServiceContext,
             int toolCallingRoundTripsLeft,
@@ -164,7 +164,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
         this.toolExecutionHandler = toolExecutionHandler;
         this.errorHandler = errorHandler;
 
-        this.temporaryMemory = temporaryMemory;
+        this.chatMemory = chatMemory != null
+                ? chatMemory
+                : context.hasChatMemory()
+                        ? context.chatMemoryService.getOrCreateInvocationChatMemory(invocationContext)
+                        : null;
         this.tokenUsage = tokenUsage;
         this.commonGuardrailParams = commonGuardrailParams;
 
@@ -412,7 +416,8 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 for (StartedTool startedTool : startedTools) {
                     executedRequests.add(startedTool.request());
                     try {
-                        ToolRequestResult toolRequestResult = startedTool.execution().get();
+                        ToolRequestResult toolRequestResult =
+                                startedTool.execution().get();
                         if (toolRequestResult.error() != null) {
                             toolErrors.put(startedTool.request(), toolRequestResult.error());
                         } else {
@@ -528,7 +533,7 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     intermediateResponseHandler,
                     completeResponseHandler,
                     errorHandler,
-                    temporaryMemory,
+                    chatMemory,
                     TokenUsage.sum(tokenUsage, chatResponse.metadata().tokenUsage()),
                     next.toolServiceContext(),
                     toolCallingRoundTripsLeft,
@@ -540,7 +545,9 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                     methodKey,
                     compensableExecutions);
 
-            CurrentInvocation.runWith(invocationContext, () -> context.streamingChatModel.chat(next.chatRequest(), HandlerWithoutInvocation.wrap(handler)));
+            CurrentInvocation.runWith(
+                    invocationContext,
+                    () -> context.streamingChatModel.chat(next.chatRequest(), HandlerWithoutInvocation.wrap(handler)));
         } else {
             ChatResponse finalChatResponse = finalResponse(chatResponse, aiMessage);
 
@@ -661,9 +668,10 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
                 .whenComplete((ignored, error) -> {
                     Map<ToolExecutionRequest, ToolExecutionResult> results = new LinkedHashMap<>();
                     for (StartedTool startedTool : drained) {
-                        ToolRequestResult toolRequestResult = startedTool.execution().isCompletedExceptionally()
-                                ? null
-                                : startedTool.execution().getNow(null);
+                        ToolRequestResult toolRequestResult =
+                                startedTool.execution().isCompletedExceptionally()
+                                        ? null
+                                        : startedTool.execution().getNow(null);
                         if (toolRequestResult != null && toolRequestResult.error() == null) {
                             results.put(startedTool.request(), toolRequestResult.result());
                         }
@@ -734,21 +742,11 @@ class AiServiceStreamingResponseHandler implements StreamingChatResponseHandler 
 
     private ToolExecutionResult execute(ToolExecutionRequest toolRequest) {
         return context.toolService.executeTool(
-                invocationContext,
-                toolExecutors,
-                toolRequest,
-                beforeToolExecutionHandler,
-                toolExecutionHandler);
+                invocationContext, toolExecutors, toolRequest, beforeToolExecutionHandler, toolExecutionHandler);
     }
 
     private ChatMemory getMemory() {
-        return getMemory(invocationContext.chatMemoryId());
-    }
-
-    private ChatMemory getMemory(Object memId) {
-        return context.hasChatMemory()
-                ? context.chatMemoryService.getOrCreateInvocationChatMemory(invocationContext)
-                : temporaryMemory;
+        return chatMemory;
     }
 
     private void addToMemory(ChatMessage chatMessage) {
