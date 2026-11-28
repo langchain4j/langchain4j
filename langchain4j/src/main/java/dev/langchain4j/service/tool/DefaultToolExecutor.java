@@ -525,6 +525,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         }
 
         if (Collection.class.isAssignableFrom(parameterClass) || Map.class.isAssignableFrom(parameterClass)) {
+            NestedToolArguments.check(argument, parameterType, parameterName);
             // Conversion to JSON and back is required when parameterType is a POJO
             return Json.fromJson(Json.toJson(argument), parameterType);
         }
@@ -536,6 +537,7 @@ public class DefaultToolExecutor implements ToolExecutor {
         if (argument instanceof String) {
             return Json.fromJson(argument.toString(), parameterClass);
         } else {
+            NestedToolArguments.check(argument, getOrDefault(parameterType, parameterClass), parameterName);
             // Conversion to JSON and back is required when parameterClass is a POJO
             return Json.fromJson(Json.toJson(argument), parameterClass);
         }
