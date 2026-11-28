@@ -16,16 +16,20 @@ import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.WeakHashMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Stream;
 
 class AiServiceValidation {
 
-    private static final Set<Method> VALID_METHODS = new HashSet<>();
+    /**
+     * Methods whose parameters have already been validated. A weak-key map so the cache does not pin the
+     * method's class loader after the class is unloaded. Access is synchronized in {@link #validateParameters}.
+     */
+    static final WeakHashMap<Method, Boolean> VALID_METHODS = new WeakHashMap<>();
 
     /**
      * LangChain4j types that are supported as the content of a {@link Result}, e.g. {@code Result<AiMessage>}.
@@ -122,7 +126,8 @@ class AiServiceValidation {
 
         if (rawReturnType == Result.class) {
             Type contentType = TypeUtils.resolveFirstGenericParameterType(returnType);
-            if (isResolvable(contentType) && SUPPORTED_RESULT_CONTENT_TYPES.contains(TypeUtils.getRawClass(contentType))) {
+            if (isResolvable(contentType)
+                    && SUPPORTED_RESULT_CONTENT_TYPES.contains(TypeUtils.getRawClass(contentType))) {
                 return;
             }
             validateContentType(methodName, returnType, contentType);
@@ -187,8 +192,10 @@ class AiServiceValidation {
     }
 
     static void validateParameters(Class<?> serviceClass, Method method) {
-        if (!VALID_METHODS.add(method)) {
-            return;
+        synchronized (VALID_METHODS) {
+            if (VALID_METHODS.put(method, Boolean.TRUE) != null) {
+                return;
+            }
         }
 
         Parameter[] parameters = method.getParameters();

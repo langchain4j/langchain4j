@@ -1,5 +1,6 @@
 package dev.langchain4j.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -13,13 +14,20 @@ import dev.langchain4j.data.message.UserMessage;
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.memory.chat.MessageWindowChatMemory;
 import dev.langchain4j.model.chat.ChatModel;
-import dev.langchain4j.test.mock.MockChatModel;
 import dev.langchain4j.model.chat.response.ChatResponse;
 import dev.langchain4j.model.output.Response;
 import dev.langchain4j.model.output.TokenUsage;
 import dev.langchain4j.service.memory.ChatMemoryAccess;
+import dev.langchain4j.test.mock.MockChatModel;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Set;
+import java.util.WeakHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -219,5 +227,49 @@ class AiServiceValidationTest {
                         .chatMemoryProvider(memoryId -> MessageWindowChatMemory.withMaxMessages(10))
                         .build())
                 .doesNotThrowAnyException();
+    }
+
+    interface WithTwoNamedParameters {
+        String chat(@dev.langchain4j.service.UserMessage String userMessage, @V("topic") String topic);
+    }
+
+    @Test
+    void should_validate_parameters_concurrently_without_throwing() throws Exception {
+        Method method = WithTwoNamedParameters.class.getMethod("chat", String.class, String.class);
+        int threads = 32;
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threads);
+        AtomicReference<Throwable> error = new AtomicReference<>();
+        try {
+            for (int i = 0; i < threads; i++) {
+                pool.submit(() -> {
+                    try {
+                        start.await();
+                        for (int n = 0; n < 50; n++) {
+                            AiServiceValidation.validateParameters(WithTwoNamedParameters.class, method);
+                        }
+                    } catch (Throwable t) {
+                        error.compareAndSet(null, t);
+                    } finally {
+                        done.countDown();
+                    }
+                });
+            }
+            start.countDown();
+            if (!done.await(15, TimeUnit.SECONDS)) {
+                throw new AssertionError("timed out waiting for concurrent validateParameters calls");
+            }
+            if (error.get() != null) {
+                throw new AssertionError("validateParameters failed under concurrency", error.get());
+            }
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @Test
+    void should_track_validated_methods_in_a_weak_hash_map() {
+        assertThat(AiServiceValidation.VALID_METHODS).isInstanceOf(WeakHashMap.class);
     }
 }
